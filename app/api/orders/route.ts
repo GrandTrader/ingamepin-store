@@ -361,12 +361,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       order: {
         ...orderResult.data,
+        id: String(orderResult.data.id),
+        orderNumber: String(
+          orderResult.data.orderNumber ??
+            orderResult.data.order_number ??
+            "",
+        ),
+        subtotal: Number(orderResult.data.subtotal ?? 0),
+        totalAmount: Number(
+          orderResult.data.totalAmount ??
+            orderResult.data.total ??
+            0,
+        ),
         paymentMethod: isWalletPayment
           ? "WALLET"
-          : orderResult.data.paymentMethod,
+          : requestedPaymentMethod.toUpperCase(),
         status:
           String(walletPaymentResult?.orderStatus ?? "") ||
-          orderResult.data.status,
+          String(orderResult.data.status ?? "PENDING_PAYMENT"),
+        createdAt: String(
+          orderResult.data.createdAt ??
+            orderResult.data.created_at ??
+            new Date().toISOString(),
+        ),
         walletBalanceAfter:
           walletPaymentResult?.walletBalanceAfter ?? null,
         accessToken,
