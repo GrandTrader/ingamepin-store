@@ -281,6 +281,27 @@ export default async function Home() {
         }
       : null;
 
+  const featuredProductsForDisplay: ProductCardData[] =
+    preorderPopup
+      ? [
+          {
+            id: "independent-preorder",
+            name: preorderPopup.gameTitle,
+            category: "Game Preorder",
+            price:
+              preorderPopup.preorderPrice ?? 0,
+            image: preorderPopup.imageUrl,
+            badge: "Preorder",
+            stock: 999999,
+            rating: 5,
+            sold: 0,
+            slug: "preorder",
+            href: "/preorder",
+          },
+          ...featuredProducts,
+        ]
+      : featuredProducts;
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {preorderPopup && (
@@ -337,13 +358,13 @@ export default async function Home() {
         )}
       </section>
 
-      {featuredProducts.length > 0 && (
+      {featuredProductsForDisplay.length > 0 && (
         <div className="hidden sm:block"><ProductSection
           id="featured-products"
           eyebrow="Best Sellers"
           title="Featured Products"
           description="Popular products selected for InGamePin customers."
-          products={featuredProducts}
+          products={featuredProductsForDisplay}
         /></div>
       )}
 

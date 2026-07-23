@@ -14,6 +14,7 @@ export type ProductCardData = {
   rating: number;
   sold: number;
   slug: string;
+  href?: string;
   discountPercent?: number;
 };
 
@@ -39,7 +40,10 @@ export default function ProductCard({ product }: Props) {
 
   return (
     <Link
-      href={`/product/${product.slug}`}
+      href={
+        product.href ??
+        `/product/${product.slug}`
+      }
       className="block"
     >
       <article className="group h-full overflow-hidden rounded-xl border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-2 hover:border-cyan-400 sm:rounded-2xl">
