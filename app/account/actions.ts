@@ -71,7 +71,7 @@ export async function customerRegister(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: "https://ingamepin.com/account/callback",
+      emailRedirectTo: "https://www.ingamepin.com/account/callback",
       data: {
         full_name: fullName,
         phone,
@@ -106,7 +106,7 @@ export async function requestPasswordReset(formData: FormData) {
   const supabase = await createClient();
   const result = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo:
-      "https://ingamepin.com/account/callback?next=/account/reset-password",
+      "https://www.ingamepin.com/account/callback?next=/account/reset-password",
   });
 
   if (result.error) {
