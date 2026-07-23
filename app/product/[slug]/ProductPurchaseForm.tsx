@@ -88,7 +88,16 @@ export default function ProductPurchaseForm({
   );
 
   const firstAvailableFixedOption =
-    fixedOptions.find((option) => option.stockQuantity > 0) ??
+    fixedOptions.find(
+      (option) =>
+        option.stockQuantity > 0 &&
+        option.optionName
+          .toLowerCase()
+          .includes("standard"),
+    ) ??
+    fixedOptions.find(
+      (option) => option.stockQuantity > 0,
+    ) ??
     fixedOptions[0];
 
   const initialValueMode: ValueMode =
