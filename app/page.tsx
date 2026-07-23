@@ -68,6 +68,7 @@ type StoreProduct = BrowseProduct & {
 
 type PreorderPopupRow = {
   is_enabled: boolean;
+  product_id: string | null;
   game_title: string;
   image_url: string;
   launch_date: string | null;
@@ -188,7 +189,7 @@ export default async function Home() {
     supabase
       .from("preorder_popup_settings")
       .select(
-        "is_enabled, game_title, image_url, launch_date, preorder_price, bonus_text, button_text",
+        "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, bonus_text, button_text",
       )
       .eq("id", true)
       .eq("is_enabled", true)
@@ -294,7 +295,11 @@ export default async function Home() {
             badge: "Preorder",
             stock: 999999,
             rating: 5,
-            sold: 0,
+            sold: popupRow?.product_id
+              ? paidProductSales.get(
+                  popupRow.product_id,
+                ) ?? 0
+              : 0,
             slug: "preorder",
             href: "/preorder",
           },
