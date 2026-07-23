@@ -8,12 +8,12 @@ export default function Footer() {
       <div className="px-3 py-6 sm:hidden">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400 font-black text-slate-950">
-            IP
+            iP
           </div>
 
           <div>
             <p className="text-lg font-black">
-              Nexa<span className="text-cyan-400">Pins</span>
+              iNgame<span className="text-cyan-400">PIN</span>
             </p>
             <p className="text-[10px] uppercase tracking-widest text-slate-500">
               Digital Gaming Store
@@ -63,14 +63,14 @@ export default function Footer() {
             className="flex items-center gap-3"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400 text-lg font-black text-slate-950">
-              IP
+              iP
             </div>
 
             <div>
               <p className="text-xl font-black">
-                Nexa
+                iNgame
                 <span className="text-cyan-400">
-                  Pins
+                  PIN
                 </span>
               </p>
 

@@ -212,12 +212,12 @@ export default function Header() {
             className="flex shrink-0 items-center gap-2 sm:gap-3"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400 text-base font-black text-slate-950 sm:h-11 sm:w-11 sm:text-xl">
-              IP
+              iP
             </div>
 
             <div>
               <p className="text-lg font-black leading-none sm:text-xl">
-                Nexa<span className="text-cyan-400">Pins</span>
+                iNgame<span className="text-cyan-400">PIN</span>
               </p>
 
               <p className="mt-1 hidden text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 min-[380px]:block">
