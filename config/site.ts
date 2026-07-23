@@ -8,7 +8,7 @@ export const siteConfig = {
 
   email: "support@ingamepin.com",
 
-  telegram: "",
+  telegram: "https://t.me/ingamepinsupport",
 
   whatsapp: "",
 

@@ -37,11 +37,11 @@ export default function SupportPage() {
             </p>
 
             <p className="mt-6 text-lg font-bold text-cyan-400">
-              @inditopup
+              "@ingamepinsupport"
             </p>
 
             <a
-              href="https://t.me/inditopup"
+              href="https://t.me/ingamepinsupport"
               target="_blank"
               rel="noopener noreferrer"
               className="mt-6 inline-flex rounded-xl bg-cyan-400 px-6 py-3 font-bold text-slate-950 transition hover:bg-cyan-300"
