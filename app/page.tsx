@@ -7,6 +7,9 @@ import ProductCard, {
 import ProductBrowser, {
   type BrowseProduct,
 } from "@/components/ProductBrowser";
+import PreorderPopup, {
+  type PreorderPopupData,
+} from "@/components/PreorderPopup";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { createClient } from "@/lib/supabase/server";
@@ -61,6 +64,17 @@ type ProductRow = {
 type StoreProduct = BrowseProduct & {
   productType: ProductType;
   isFeatured: boolean;
+};
+
+type PreorderPopupRow = {
+  is_enabled: boolean;
+  product_id: string | null;
+  game_title: string;
+  image_url: string;
+  launch_date: string | null;
+  preorder_price: number | string | null;
+  bonus_text: string;
+  button_text: string;
 };
 
 function getCategoryIcon(
@@ -123,6 +137,7 @@ export default async function Home() {
   const [
     categoryResult,
     productResult,
+    preorderPopupResult,
   ] = await Promise.all([
     supabase
       .from("categories")
@@ -169,6 +184,15 @@ export default async function Home() {
       .order("sort_order", {
         ascending: true,
       }),
+
+    supabase
+      .from("preorder_popup_settings")
+      .select(
+        "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, bonus_text, button_text",
+      )
+      .eq("id", true)
+      .eq("is_enabled", true)
+      .maybeSingle(),
   ]);
 
   if (categoryResult.error) {
@@ -180,6 +204,12 @@ export default async function Home() {
   if (productResult.error) {
     throw new Error(
       `Unable to load products: ${productResult.error.message}`,
+    );
+  }
+
+  if (preorderPopupResult.error) {
+    throw new Error(
+      `Unable to load preorder popup: ${preorderPopupResult.error.message}`,
     );
   }
 
@@ -226,8 +256,45 @@ export default async function Home() {
       (product) => product.isFeatured,
     );
 
+  const popupRow =
+    preorderPopupResult.data as PreorderPopupRow | null;
+  const popupProduct = popupRow?.product_id
+    ? products.find(
+        (product) =>
+          product.id === popupRow.product_id,
+      )
+    : null;
+
+  const preorderPopup: PreorderPopupData | null =
+    popupRow &&
+    popupProduct &&
+    popupRow.launch_date &&
+    popupRow.game_title &&
+    popupRow.image_url
+      ? {
+          gameTitle: popupRow.game_title,
+          imageUrl: popupRow.image_url,
+          launchDate: popupRow.launch_date,
+          preorderPrice:
+            popupRow.preorder_price === null
+              ? null
+              : Number(
+                  popupRow.preorder_price,
+                ),
+          bonusText: popupRow.bonus_text,
+          buttonText:
+            popupRow.button_text ||
+            "PREORDER NOW",
+          productSlug: popupProduct.slug,
+        }
+      : null;
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      {preorderPopup && (
+        <PreorderPopup popup={preorderPopup} />
+      )}
+
       <HeroSlider />
 
       <section className="mx-auto max-w-7xl px-3 py-5 sm:px-5 sm:py-10">

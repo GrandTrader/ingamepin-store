@@ -35,6 +35,11 @@ const links = [
     icon: "▤",
   },
   {
+    label: "Preorder Popup",
+    href: "/admin/preorder-popup",
+    icon: "P",
+  },
+  {
     label: "Wallet",
     href: "/admin/wallet",
     icon: "$",
