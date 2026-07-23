@@ -99,7 +99,7 @@ begin
   end if;
 
   insert into public.customer_wallets(user_id, balance, currency)
-  values (v_request.user_id, 0, 'INR')
+  values (v_request.user_id, 0, 'USD')
   on conflict (user_id) do nothing;
 
   select balance into v_before

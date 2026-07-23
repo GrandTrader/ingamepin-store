@@ -101,11 +101,11 @@ export default function ProductCard({ product }: Props) {
               )}
               <span className="flex flex-wrap items-baseline gap-1.5">
                 <span className="truncate text-lg font-black sm:text-2xl">
-                  {"\u20B9"}{customerPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                  ${customerPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 {discountPercent > 0 && (
                   <span className="text-xs text-slate-500 line-through">
-                    {"\u20B9"}{product.price.toLocaleString("en-IN")}
+                    ${product.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 )}
               </span>

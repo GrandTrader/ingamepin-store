@@ -31,7 +31,7 @@ type CustomerOrder = {
 function formatMoney(value: number | string, currency: string) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: currency || "INR",
+    currency: currency || "USD",
   }).format(Number(value));
 }
 
@@ -118,7 +118,7 @@ export default async function CustomerDashboardPage() {
     };
   });
 
-  const wallet = walletResult.data ?? { balance: 0, currency: "INR" };
+  const wallet = walletResult.data ?? { balance: 0, currency: "USD" };
   const notifications = notificationResult.data ?? [];
   const unreadCount = notifications.filter((notification) => !notification.is_read).length;
   const displayName =

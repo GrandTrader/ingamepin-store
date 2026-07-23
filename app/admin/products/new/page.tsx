@@ -196,7 +196,7 @@ export default async function AddProductPage({
                     required
                     minLength={3}
                     maxLength={3}
-                    defaultValue="INR"
+                    defaultValue="USD"
                     className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 uppercase outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>

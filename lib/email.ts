@@ -122,7 +122,7 @@ function escapeHtml(value: string) {
 function formatMoney(value: number, currency: string) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: currency || "INR",
+    currency: currency || "USD",
   }).format(value);
 }
 

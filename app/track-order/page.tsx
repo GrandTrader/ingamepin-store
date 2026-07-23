@@ -36,7 +36,7 @@ function formatMoney(
 ) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: currency || "INR",
+    currency: currency || "USD",
   }).format(Number(amount));
 }
 

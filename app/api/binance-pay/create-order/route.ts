@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         env: { terminalType: "WEB" },
         merchantTradeNo,
         fiatAmount: Number(order.total),
-        fiatCurrency: "INR",
+        fiatCurrency: "USD",
         description: `InGamePin order ${order.order_number}`,
         goodsDetails: [
           {

@@ -61,7 +61,7 @@ begin
   values (
     v_order_id, v_order_number, p_customer_name, p_customer_email,
     nullif(p_customer_phone, ''), nullif(btrim(coalesce(p_customer_note, '')), ''),
-    'INR', 0, 0, 0, 'PENDING_PAYMENT'
+    'USD', 0, 0, 0, 'PENDING_PAYMENT'
   );
 
   for v_item in
@@ -141,7 +141,7 @@ begin
     order_id, method, status, amount, currency
   )
   values (
-    v_order_id, v_method, 'PENDING', v_subtotal, 'INR'
+    v_order_id, v_method, 'PENDING', v_subtotal, 'USD'
   );
 
   return jsonb_build_object(
@@ -150,7 +150,7 @@ begin
     'customer_name', p_customer_name,
     'customer_email', p_customer_email,
     'customer_phone', nullif(p_customer_phone, ''),
-    'currency', 'INR',
+    'currency', 'USD',
     'subtotal', v_subtotal,
     'discount', 0,
     'total', v_subtotal,

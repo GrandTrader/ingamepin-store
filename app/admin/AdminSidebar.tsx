@@ -37,7 +37,7 @@ const links = [
   {
     label: "Wallet",
     href: "/admin/wallet",
-    icon: "₹",
+    icon: "$",
   },
   {
     label: "Gift codes",

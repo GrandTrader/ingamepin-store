@@ -309,7 +309,7 @@ export default async function CustomersPage({
             wallet?.balance ?? 0,
           ),
           walletCurrency:
-            wallet?.currency ?? "INR",
+            wallet?.currency ?? "USD",
           orderCount:
             orderSummary?.count ?? 0,
           totalSpent:

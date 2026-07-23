@@ -346,12 +346,12 @@ export default function CartPage() {
                           </p>
 
                           <p className="mt-1 text-2xl font-black text-cyan-400">
-                            ₹
+                            $
                             {(
                               item.unitPrice *
                               item.quantity *
                               (1 - Number(item.productId ? customerDiscounts[item.productId] ?? 0 : 0) / 100)
-                            ).toLocaleString("en-IN")}
+                            ).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                         </div>
                       </div>
@@ -396,7 +396,7 @@ export default function CartPage() {
                 {discountAmount > 0 && (
                   <div className="mb-4 flex items-center justify-between text-sm text-emerald-300">
                     <span>Your product discounts</span>
-                    <span className="font-bold">-₹{discountAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                    <span className="font-bold">-${discountAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
@@ -405,7 +405,7 @@ export default function CartPage() {
                   </span>
 
                   <span className="text-3xl font-black text-cyan-400">
-                    ₹{payableTotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                    ${payableTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>

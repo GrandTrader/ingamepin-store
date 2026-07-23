@@ -148,10 +148,10 @@ export default function CategoryProductForm({
       !isCustomAmountValid
     ) {
       showError(
-        `Please enter an amount between ₹${minimumCustomAmount.toLocaleString(
-          "en-IN"
-        )} and ₹${maximumCustomAmount.toLocaleString(
-          "en-IN"
+        `Please enter an amount between $${minimumCustomAmount.toLocaleString(
+          "en-US"
+        )} and $${maximumCustomAmount.toLocaleString(
+          "en-US"
         )}.`
       );
 
@@ -229,8 +229,8 @@ export default function CategoryProductForm({
       window.dispatchEvent(new Event("cartUpdated"));
 
       showSuccess(
-        `${category.name} ₹${selectedAmount.toLocaleString(
-          "en-IN"
+        `${category.name} $${selectedAmount.toLocaleString(
+          "en-US"
         )} × ${quantity} added to your cart.`
       );
     } catch {
@@ -273,13 +273,13 @@ export default function CategoryProductForm({
 
           {category.allowCustomAmount && (
             <span className="text-sm text-slate-400">
-              ₹
+              $
               {minimumCustomAmount.toLocaleString(
-                "en-IN"
+                "en-US"
               )}{" "}
-              – ₹
+              – $
               {maximumCustomAmount.toLocaleString(
-                "en-IN"
+                "en-US"
               )}
             </span>
           )}
@@ -308,9 +308,9 @@ export default function CategoryProductForm({
                     : "border-white/15 bg-slate-950 text-white hover:border-cyan-400"
                 }`}
               >
-                ₹
+                $
                 {Number(option.denomination ?? 0).toLocaleString(
-                  "en-IN"
+                  "en-US"
                 )}
               </button>
             );
@@ -344,20 +344,20 @@ export default function CategoryProductForm({
             </label>
 
             <p className="mt-1 text-sm text-slate-400">
-              Enter any whole amount from ₹
+              Enter any amount from $
               {minimumCustomAmount.toLocaleString(
-                "en-IN"
+                "en-US"
               )}{" "}
-              to ₹
+              to $
               {maximumCustomAmount.toLocaleString(
-                "en-IN"
+                "en-US"
               )}
               .
             </p>
 
             <div className="mt-3 flex overflow-hidden rounded-xl border border-white/15 bg-slate-950 focus-within:border-cyan-400">
               <span className="flex items-center border-r border-white/15 px-4 text-lg font-black text-white">
-                ₹
+                $
               </span>
 
               <input
@@ -378,13 +378,13 @@ export default function CategoryProductForm({
             {customAmount !== "" &&
               !isCustomAmountValid && (
                 <p className="mt-2 text-sm font-medium text-red-400">
-                  The amount must be between ₹
+                  The amount must be between $
                   {minimumCustomAmount.toLocaleString(
-                    "en-IN"
+                    "en-US"
                   )}{" "}
-                  and ₹
+                  and $
                   {maximumCustomAmount.toLocaleString(
-                    "en-IN"
+                    "en-US"
                   )}
                   .
                 </p>
@@ -478,9 +478,9 @@ export default function CategoryProductForm({
           <span>Amount</span>
 
           <span className="font-medium text-white">
-            ₹
+            $
             {selectedAmount.toLocaleString(
-              "en-IN"
+              "en-US"
             )}
           </span>
         </div>
@@ -500,9 +500,9 @@ export default function CategoryProductForm({
             </span>
 
             <span className="text-2xl font-black text-cyan-400">
-              ₹
+              $
               {totalPrice.toLocaleString(
-                "en-IN"
+                "en-US"
               )}
             </span>
           </div>

@@ -176,10 +176,11 @@ const initialForm: CheckoutForm = {
 };
 
 function formatPrice(price: number) {
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(price);
 }
 
@@ -197,7 +198,7 @@ export default function CheckoutPage() {
     "buyNowItem" | "cart"
   >("cart");
   const [form, setForm] = useState<CheckoutForm>(initialForm);
-  const [paymentMethod, setPaymentMethod] = useState("upi");
+  const [paymentMethod, setPaymentMethod] = useState("binance");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [message, setMessage] = useState("");
@@ -205,7 +206,7 @@ export default function CheckoutPage() {
   const [wallet, setWallet] = useState<WalletDetails>({
     authenticated: false,
     balance: 0,
-    currency: "INR",
+    currency: "USD",
     loading: true,
   });
   const [customerDiscounts, setCustomerDiscounts] = useState<CustomerDiscountDetails>({
@@ -365,7 +366,7 @@ export default function CheckoutPage() {
           setWallet({
             authenticated: Boolean(result.authenticated),
             balance: Number(result.balance ?? 0),
-            currency: result.currency ?? "INR",
+            currency: result.currency ?? "USD",
             loading: false,
           });
         }
@@ -1243,7 +1244,7 @@ export default function CheckoutPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400/10 text-xl font-black text-cyan-400">
-                      ₹
+                      $
                     </span>
 
                     <div>
@@ -1275,7 +1276,7 @@ export default function CheckoutPage() {
                 className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
                   paymentMethod === "upi"
                     ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                    : "border-white/10 bg-slate-950 hover:border-white/20 hidden"
                 }`}
               >
                 <input
@@ -1283,6 +1284,7 @@ export default function CheckoutPage() {
                   name="paymentMethod"
                   value="upi"
                   checked={paymentMethod === "upi"}
+                  disabled
                   onChange={(event) =>
                     setPaymentMethod(event.target.value)
                   }

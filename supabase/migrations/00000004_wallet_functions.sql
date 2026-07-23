@@ -12,15 +12,15 @@ declare
   v_request_id uuid;
 begin
   if auth.uid() is null then raise exception 'Sign in is required.'; end if;
-  if p_amount < 10 or p_amount > 100000 then
-    raise exception 'Enter an amount between INR 10 and INR 100,000.';
+  if p_amount < 1 or p_amount > 10000 then
+    raise exception 'Enter an amount between USD 1 and USD 10,000.';
   end if;
 
   insert into public.wallet_topup_requests (
     user_id, amount, currency, payment_method, payment_reference
   )
   values (
-    auth.uid(), p_amount, 'INR', upper(btrim(p_payment_method)),
+    auth.uid(), p_amount, 'USD', upper(btrim(p_payment_method)),
     btrim(p_payment_reference)
   )
   returning id into v_request_id;
@@ -63,7 +63,7 @@ begin
   end if;
 
   insert into public.customer_wallets(user_id, balance, currency)
-  values (v_request.user_id, 0, 'INR')
+  values (v_request.user_id, 0, 'USD')
   on conflict (user_id) do nothing;
 
   select balance into v_before

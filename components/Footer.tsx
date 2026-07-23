@@ -46,7 +46,7 @@ export default function Footer() {
           </MobileFooterSection>
 
           <MobileFooterSection title="Payment & Delivery">
-            <span>UPI and Binance Pay</span>
+            <span>USD payments with Binance Pay</span>
             <Link href="/track-order">Check order status</Link>
           </MobileFooterSection>
         </div>
@@ -212,7 +212,6 @@ export default function Footer() {
 
           <div className="flex flex-wrap items-center justify-center gap-2">
             {[
-              "UPI",
               "Binance Pay",
             ].map((method) => (
               <span

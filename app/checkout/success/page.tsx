@@ -49,7 +49,7 @@ type DeliveryResult = {
 function formatPrice(value: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: "INR",
+    currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
 }

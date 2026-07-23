@@ -29,7 +29,7 @@ type RecentOrder = {
 
 function formatMoney(
   amount: number | string,
-  currency = "INR",
+  currency = "USD",
 ) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",

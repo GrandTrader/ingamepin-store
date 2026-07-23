@@ -40,7 +40,7 @@ export default async function BinanceWalletTopupPage({
       <div className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-sm sm:p-9">
         <p className="text-xs font-black uppercase tracking-[0.25em] text-amber-600">Binance Pay</p>
         <h1 className="mt-3 text-3xl font-black">Add money to your wallet</h1>
-        <p className="mt-3 text-slate-500">Binance calculates the supported cryptocurrency amount from your INR top-up.</p>
+        <p className="mt-3 text-slate-500">Binance calculates the supported cryptocurrency amount from your USD top-up.</p>
         <div className="my-7 rounded-2xl bg-slate-950 p-6 text-white">
           <p className="text-sm text-slate-400">Wallet top-up</p>
           <p className="mt-2 text-4xl font-black text-cyan-400">{amount}</p>

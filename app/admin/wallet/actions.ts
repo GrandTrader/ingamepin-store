@@ -26,7 +26,7 @@ async function notify(requestId: string, approved: boolean, reason?: string) {
   const customer = await admin.auth.admin.getUserById(request.data.user_id);
   const email = customer.data.user?.email;
   if (!email) return;
-  const amount = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(request.data.amount));
+  const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(request.data.amount));
   const title = approved ? "Wallet top-up approved" : "Wallet top-up rejected";
   const message = approved ? `${amount} has been added to your InGamePin wallet.` : `Your ${amount} wallet top-up was rejected. Reason: ${reason}`;
   const results = await Promise.allSettled([

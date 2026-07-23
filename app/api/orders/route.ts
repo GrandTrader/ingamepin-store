@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       p_customer_email: String(customer.email ?? ""),
       p_customer_phone: String(customer.phone ?? ""),
       p_payment_method: isWalletPayment
-        ? "upi"
+        ? "wallet"
         : requestedPaymentMethod,
       p_items: body.items,
       p_customer_note: String(customer.orderNote ?? "") || null,

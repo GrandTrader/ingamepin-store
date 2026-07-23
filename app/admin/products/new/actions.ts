@@ -173,7 +173,7 @@ export async function createProduct(
   ).trim();
 
   const currency = String(
-    formData.get("currency") ?? "INR",
+    formData.get("currency") ?? "USD",
   )
     .trim()
     .toUpperCase();

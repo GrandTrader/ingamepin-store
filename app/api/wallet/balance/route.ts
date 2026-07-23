@@ -16,7 +16,7 @@ export async function GET() {
       return NextResponse.json({
         authenticated: false,
         balance: 0,
-        currency: "INR",
+        currency: "USD",
       });
     }
 
@@ -41,7 +41,7 @@ export async function GET() {
     return NextResponse.json({
       authenticated: true,
       balance: Number(walletResult.data?.balance ?? 0),
-      currency: walletResult.data?.currency ?? "INR",
+      currency: walletResult.data?.currency ?? "USD",
     });
   } catch (error) {
     console.error("Wallet balance endpoint failed:", error);

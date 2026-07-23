@@ -50,7 +50,7 @@ export default function ProductOptionsFields() {
       type: "CURRENCY",
       value: "",
       unit: "",
-      currency: "INR",
+      currency: "USD",
       stockQuantity: 0,
       inStock: false,
     },
@@ -77,7 +77,7 @@ export default function ProductOptionsFields() {
         type: "CURRENCY",
         value: "",
         unit: "",
-        currency: "INR",
+        currency: "USD",
         stockQuantity: 0,
         inStock: false,
       },
@@ -212,8 +212,8 @@ export default function ProductOptionsFields() {
                         }
                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       >
-                        <option value="INR">
-                          INR
+                        <option value="USD">
+                          USD
                         </option>
 
                         <option value="USD">

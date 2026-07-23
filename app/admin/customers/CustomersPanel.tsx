@@ -43,7 +43,7 @@ type CustomersPanelProps = {
 
 function formatMoney(
   value: number,
-  currency = "INR",
+  currency = "USD",
 ) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",

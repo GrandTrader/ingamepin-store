@@ -275,7 +275,7 @@ export default async function GiftCodesPage({
                     </p>
 
                     <p className="mt-1 font-black">
-                      ₹
+                      $
                       {(
                         giftCode.denomination ?? 0
                       ).toLocaleString("en-IN")}

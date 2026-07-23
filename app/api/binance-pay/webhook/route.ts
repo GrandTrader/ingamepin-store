@@ -124,11 +124,11 @@ async function sendBinanceWalletEmails(
 
   const amountLabel = new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: "INR",
+    currency: "USD",
   }).format(amount);
   const balanceLabel = new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: "INR",
+    currency: "USD",
   }).format(balanceAfter);
   const results = await Promise.allSettled([
     sendEmail({

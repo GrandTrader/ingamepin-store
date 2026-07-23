@@ -37,7 +37,7 @@ type OptionRow = EditableProductOption & {
 };
 
 const currencies = [
-  "INR",
+  "USD",
   "USD",
   "EUR",
   "GBP",
@@ -133,7 +133,7 @@ export default function EditProductOptionsFields({
       denomination:
         optionType === "CURRENCY" ? 1 : null,
       denominationCurrency:
-        optionType === "CURRENCY" ? "INR" : null,
+        optionType === "CURRENCY" ? "USD" : null,
     });
   }
 
@@ -268,7 +268,7 @@ export default function EditProductOptionsFields({
                   <label>
                     <span className="text-sm font-bold">Currency</span>
                     <select
-                      value={row.denominationCurrency ?? "INR"}
+                      value={row.denominationCurrency ?? "USD"}
                       onChange={(event) =>
                         updateRow(row.clientId, {
                           denominationCurrency: event.target.value,
@@ -406,7 +406,7 @@ export default function EditProductOptionsFields({
               name="option_denomination_currency"
               value={
                 row.optionType === "CURRENCY"
-                  ? row.denominationCurrency ?? "INR"
+                  ? row.denominationCurrency ?? "USD"
                   : ""
               }
             />

@@ -7,7 +7,7 @@ import { approveWalletTopup, rejectWalletTopup } from "./actions";
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ error?: string; success?: string }> };
 type RequestRow = { id: string; user_id: string; amount: number | string; payment_method: string; payment_reference: string; status: string; rejection_reason: string | null; created_at: string };
-const money = (value: number | string) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(value));
+const money = (value: number | string) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value));
 const date = (value: string) => new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(value));
 
 export default async function AdminWalletPage({ searchParams }: Props) {
