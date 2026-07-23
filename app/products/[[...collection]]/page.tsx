@@ -179,6 +179,7 @@ export default async function ProductsPage({
       `,
     )
     .eq("status", "ACTIVE")
+    .eq("is_preorder_only", false)
     .order("is_featured", { ascending: false })
     .order("sort_order", { ascending: true });
 

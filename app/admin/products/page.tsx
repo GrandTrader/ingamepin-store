@@ -150,6 +150,7 @@ export default async function AdminProductsPage({
         )
       `,
     )
+    .eq("is_preorder_only", false)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 

@@ -48,6 +48,7 @@ export async function GET(
       `,
     )
     .eq("status", "ACTIVE")
+    .eq("is_preorder_only", false)
     .ilike("name", `%${query}%`)
     .order("is_featured", {
       ascending: false,

@@ -68,7 +68,6 @@ type StoreProduct = BrowseProduct & {
 
 type PreorderPopupRow = {
   is_enabled: boolean;
-  product_id: string | null;
   game_title: string;
   image_url: string;
   launch_date: string | null;
@@ -181,6 +180,7 @@ export default async function Home() {
         `,
       )
       .eq("status", "ACTIVE")
+      .eq("is_preorder_only", false)
       .order("sort_order", {
         ascending: true,
       }),
@@ -188,7 +188,7 @@ export default async function Home() {
     supabase
       .from("preorder_popup_settings")
       .select(
-        "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, bonus_text, button_text",
+        "is_enabled, game_title, image_url, launch_date, preorder_price, bonus_text, button_text",
       )
       .eq("id", true)
       .eq("is_enabled", true)
@@ -258,16 +258,9 @@ export default async function Home() {
 
   const popupRow =
     preorderPopupResult.data as PreorderPopupRow | null;
-  const popupProduct = popupRow?.product_id
-    ? products.find(
-        (product) =>
-          product.id === popupRow.product_id,
-      )
-    : null;
 
   const preorderPopup: PreorderPopupData | null =
     popupRow &&
-    popupProduct &&
     popupRow.launch_date &&
     popupRow.game_title &&
     popupRow.image_url
@@ -285,7 +278,6 @@ export default async function Home() {
           buttonText:
             popupRow.button_text ||
             "PREORDER NOW",
-          productSlug: popupProduct.slug,
         }
       : null;
 

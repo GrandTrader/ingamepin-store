@@ -36,6 +36,25 @@ function settingsRedirect(
   );
 }
 
+function readPrice(
+  formData: FormData,
+  field: string,
+  label: string,
+) {
+  const value = Number(
+    String(formData.get(field) ?? "").trim(),
+  );
+
+  if (!Number.isFinite(value) || value < 0) {
+    settingsRedirect(
+      "error",
+      `Enter a valid ${label} price.`,
+    );
+  }
+
+  return value;
+}
+
 export async function savePreorderPopup(
   formData: FormData,
 ) {
@@ -43,20 +62,17 @@ export async function savePreorderPopup(
 
   const isEnabled =
     formData.get("is_enabled") === "on";
-  const productId = String(
-    formData.get("product_id") ?? "",
-  ).trim();
   const gameTitle = String(
     formData.get("game_title") ?? "",
+  ).trim();
+  const description = String(
+    formData.get("description") ?? "",
   ).trim();
   const imageUrl = String(
     formData.get("image_url") ?? "",
   ).trim();
   const launchDate = String(
     formData.get("launch_date") ?? "",
-  ).trim();
-  const priceInput = String(
-    formData.get("preorder_price") ?? "",
   ).trim();
   const bonusText = String(
     formData.get("bonus_text") ?? "",
@@ -65,37 +81,46 @@ export async function savePreorderPopup(
     String(
       formData.get("button_text") ?? "",
     ).trim() || "PREORDER NOW";
+  const standardPrice = readPrice(
+    formData,
+    "standard_price",
+    "Standard Edition",
+  );
+  const ultimatePrice = readPrice(
+    formData,
+    "ultimate_price",
+    "Ultimate Edition",
+  );
 
   if (
-    isEnabled &&
-    (!productId ||
-      !gameTitle ||
-      !imageUrl ||
-      !launchDate)
+    !gameTitle ||
+    !description ||
+    !imageUrl ||
+    !launchDate
   ) {
     settingsRedirect(
       "error",
-      "Select a product and enter the title, image, and launch date before enabling the popup.",
+      "Enter the title, description, image, and launch date.",
     );
   }
 
-  if (imageUrl) {
-    try {
-      new URL(imageUrl);
-    } catch {
-      settingsRedirect(
-        "error",
-        "Enter a valid image URL.",
-      );
+  try {
+    const image = new URL(imageUrl);
+    if (!["http:", "https:"].includes(image.protocol)) {
+      throw new Error("Invalid protocol");
     }
+  } catch {
+    settingsRedirect(
+      "error",
+      "Enter a valid image URL.",
+    );
   }
 
-  const parsedLaunchDate = launchDate
-    ? new Date(`${launchDate}:00+05:30`)
-    : null;
+  const parsedLaunchDate = new Date(
+    `${launchDate}:00+05:30`,
+  );
 
   if (
-    parsedLaunchDate &&
     Number.isNaN(parsedLaunchDate.getTime())
   ) {
     settingsRedirect(
@@ -104,65 +129,198 @@ export async function savePreorderPopup(
     );
   }
 
-  const preorderPrice = priceInput
-    ? Number(priceInput)
-    : null;
+  const admin = createAdminClient();
+  const existingSettings = await admin
+    .from("preorder_popup_settings")
+    .select("product_id")
+    .eq("id", true)
+    .maybeSingle();
 
-  if (
-    preorderPrice !== null &&
-    (!Number.isFinite(preorderPrice) ||
-      preorderPrice < 0)
-  ) {
+  if (existingSettings.error) {
     settingsRedirect(
       "error",
-      "Enter a valid preorder price.",
+      existingSettings.error.message,
     );
   }
 
-  const admin = createAdminClient();
+  let preorderProductId =
+    existingSettings.data?.product_id ?? null;
 
-  if (productId) {
-    const productResult = await admin
+  if (preorderProductId) {
+    const ownedProduct = await admin
       .from("products")
       .select("id")
-      .eq("id", productId)
-      .eq("status", "ACTIVE")
+      .eq("id", preorderProductId)
+      .eq("is_preorder_only", true)
       .maybeSingle();
 
-    if (!productResult.data) {
+    if (!ownedProduct.data) {
+      preorderProductId = null;
+    }
+  }
+
+  if (!preorderProductId) {
+    const existingPreorderProduct = await admin
+      .from("products")
+      .select("id")
+      .eq("is_preorder_only", true)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingPreorderProduct.error) {
       settingsRedirect(
         "error",
-        "The selected product is unavailable.",
+        existingPreorderProduct.error.message,
+      );
+    }
+
+    preorderProductId =
+      existingPreorderProduct.data?.id ?? null;
+  }
+
+  const productValues = {
+    name: gameTitle,
+    description,
+    image_url: imageUrl,
+    currency: "USD",
+    price: standardPrice,
+    delivery_type: "MANUAL",
+    status: isEnabled ? "ACTIVE" : "INACTIVE",
+    is_featured: false,
+    minimum_quantity: 1,
+    maximum_quantity: 1,
+    stock_quantity: 999999,
+    badge: "Preorder",
+    region: "Global",
+    product_type: "GAME_KEY",
+    allows_fixed_values: true,
+    allows_custom_value: false,
+    is_preorder_only: true,
+  };
+
+  if (preorderProductId) {
+    const productUpdate = await admin
+      .from("products")
+      .update(productValues)
+      .eq("id", preorderProductId);
+
+    if (productUpdate.error) {
+      settingsRedirect(
+        "error",
+        productUpdate.error.message,
+      );
+    }
+  } else {
+    const productInsert = await admin
+      .from("products")
+      .insert({
+        ...productValues,
+        slug: `preorder-${Date.now()}`,
+      })
+      .select("id")
+      .single();
+
+    if (productInsert.error) {
+      settingsRedirect(
+        "error",
+        productInsert.error.message,
+      );
+    }
+
+    preorderProductId = productInsert.data.id;
+  }
+
+  const optionResult = await admin
+    .from("product_options")
+    .select("id, option_name")
+    .eq("product_id", preorderProductId);
+
+  if (optionResult.error) {
+    settingsRedirect(
+      "error",
+      optionResult.error.message,
+    );
+  }
+
+  const editions = [
+    {
+      optionName: "Standard Edition",
+      price: standardPrice,
+      sortOrder: 0,
+    },
+    {
+      optionName: "Ultimate Edition",
+      price: ultimatePrice,
+      sortOrder: 1,
+    },
+  ];
+
+  for (const edition of editions) {
+    const existingOption =
+      optionResult.data?.find(
+        (option) =>
+          option.option_name ===
+          edition.optionName,
+      );
+    const optionValues = {
+      option_name: edition.optionName,
+      option_type: "EDITION",
+      selling_price: edition.price,
+      stock_quantity: 999999,
+      is_custom_value: false,
+      is_active: true,
+      sort_order: edition.sortOrder,
+    };
+
+    const editionResult = existingOption
+      ? await admin
+          .from("product_options")
+          .update(optionValues)
+          .eq("id", existingOption.id)
+      : await admin
+          .from("product_options")
+          .insert({
+            ...optionValues,
+            product_id: preorderProductId,
+          });
+
+    if (editionResult.error) {
+      settingsRedirect(
+        "error",
+        editionResult.error.message,
       );
     }
   }
 
-  const result = await admin
+  const settingsResult = await admin
     .from("preorder_popup_settings")
     .upsert({
       id: true,
       is_enabled: isEnabled,
-      product_id: productId || null,
+      product_id: preorderProductId,
       game_title: gameTitle,
+      description,
       image_url: imageUrl,
       launch_date:
-        parsedLaunchDate?.toISOString() ?? null,
-      preorder_price: preorderPrice,
+        parsedLaunchDate.toISOString(),
+      preorder_price: standardPrice,
+      ultimate_price: ultimatePrice,
       bonus_text: bonusText,
       button_text: buttonText,
     });
 
-  if (result.error) {
+  if (settingsResult.error) {
     settingsRedirect(
       "error",
-      result.error.message,
+      settingsResult.error.message,
     );
   }
 
   revalidatePath("/");
+  revalidatePath("/preorder");
   revalidatePath("/admin/preorder-popup");
   settingsRedirect(
     "success",
-    "Preorder popup settings saved.",
+    "Independent preorder product saved.",
   );
 }

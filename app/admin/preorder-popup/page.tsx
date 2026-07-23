@@ -17,19 +17,14 @@ type PageProps = {
 
 type PopupSettings = {
   is_enabled: boolean;
-  product_id: string | null;
   game_title: string;
+  description: string;
   image_url: string;
   launch_date: string | null;
   preorder_price: number | string | null;
+  ultimate_price: number | string | null;
   bonus_text: string;
   button_text: string;
-};
-
-type ProductRow = {
-  id: string;
-  name: string;
-  slug: string;
 };
 
 function dateTimeLocal(
@@ -73,21 +68,13 @@ export default async function PreorderPopupPage({
   }
 
   const admin = createAdminClient();
-  const [settingsResult, productsResult] =
-    await Promise.all([
-      admin
-        .from("preorder_popup_settings")
-        .select(
-          "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, bonus_text, button_text",
-        )
-        .eq("id", true)
-        .maybeSingle(),
-      admin
-        .from("products")
-        .select("id, name, slug")
-        .eq("status", "ACTIVE")
-        .order("name"),
-    ]);
+  const settingsResult = await admin
+    .from("preorder_popup_settings")
+    .select(
+      "is_enabled, game_title, description, image_url, launch_date, preorder_price, ultimate_price, bonus_text, button_text",
+    )
+    .eq("id", true)
+    .maybeSingle();
 
   if (settingsResult.error) {
     throw new Error(
@@ -95,16 +82,8 @@ export default async function PreorderPopupPage({
     );
   }
 
-  if (productsResult.error) {
-    throw new Error(
-      `Unable to load products: ${productsResult.error.message}`,
-    );
-  }
-
   const settings =
     settingsResult.data as PopupSettings | null;
-  const products =
-    (productsResult.data ?? []) as ProductRow[];
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -117,8 +96,8 @@ export default async function PreorderPopupPage({
               Preorder popup
             </h1>
             <p className="mt-2 text-sm text-slate-500">
-              Control the game preorder notice shown
-              on the store homepage.
+              Manage an independent preorder product,
+              its editions, and the homepage popup.
             </p>
           </header>
 
@@ -160,29 +139,7 @@ export default async function PreorderPopupPage({
             </label>
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
-              <Field label="Product">
-                <select
-                  name="product_id"
-                  defaultValue={
-                    settings?.product_id ?? ""
-                  }
-                  className={inputClass}
-                >
-                  <option value="">
-                    Select a product
-                  </option>
-                  {products.map((product) => (
-                    <option
-                      key={product.id}
-                      value={product.id}
-                    >
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Game title">
+              <Field label="Game title" wide>
                 <input
                   name="game_title"
                   maxLength={120}
@@ -190,6 +147,20 @@ export default async function PreorderPopupPage({
                     settings?.game_title ?? ""
                   }
                   placeholder="Game title"
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Product description" wide>
+                <textarea
+                  name="description"
+                  required
+                  maxLength={5000}
+                  rows={6}
+                  defaultValue={
+                    settings?.description ?? ""
+                  }
+                  placeholder="Describe the game, preorder benefits, delivery details, and important information."
                   className={inputClass}
                 />
               </Field>
@@ -217,16 +188,32 @@ export default async function PreorderPopupPage({
                 />
               </Field>
 
-              <Field label="Preorder price (USD)">
+              <Field label="Standard Edition price (USD)">
                 <input
                   type="number"
-                  name="preorder_price"
+                  name="standard_price"
                   min="0"
                   step="0.01"
+                  required
                   defaultValue={
                     settings?.preorder_price ?? ""
                   }
                   placeholder="59.99"
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Ultimate Edition price (USD)">
+                <input
+                  type="number"
+                  name="ultimate_price"
+                  min="0"
+                  step="0.01"
+                  required
+                  defaultValue={
+                    settings?.ultimate_price ?? ""
+                  }
+                  placeholder="89.99"
                   className={inputClass}
                 />
               </Field>

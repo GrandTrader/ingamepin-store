@@ -101,6 +101,7 @@ export default async function ProductPage({
     )
     .eq("slug", slug)
     .eq("status", "ACTIVE")
+    .eq("is_preorder_only", false)
     .maybeSingle();
 
   if (productResult.error) {

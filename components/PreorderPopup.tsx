@@ -10,7 +10,6 @@ export type PreorderPopupData = {
   preorderPrice: number | null;
   bonusText: string;
   buttonText: string;
-  productSlug: string;
 };
 
 type TimeLeft = {
@@ -162,7 +161,7 @@ export default function PreorderPopup({
           )}
 
           <Link
-            href={`/product/${popup.productSlug}`}
+            href="/preorder"
             onClick={closePopup}
             className="mt-6 rounded-xl bg-cyan-400 px-5 py-4 font-black text-slate-950 shadow-[0_0_30px_rgba(34,211,238,0.25)] transition hover:bg-cyan-300"
           >
