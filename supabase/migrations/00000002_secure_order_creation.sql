@@ -46,6 +46,7 @@ begin
     when 'upi' then v_method := 'UPI';
     when 'binance_pay' then v_method := 'BINANCE_PAY';
     when 'binance' then v_method := 'BINANCE_PAY';
+    when 'nowpayments' then v_method := 'NOWPAYMENTS';
     when 'wallet' then v_method := 'WALLET';
     else raise exception 'The payment method is invalid.';
   end case;

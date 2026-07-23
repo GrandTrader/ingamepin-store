@@ -34,7 +34,9 @@ export default function PaymentPage() {
       if (
         !parsedOrder?.databaseId ||
         !parsedOrder.accessToken ||
-        !parsedOrder.paymentMethod?.toLowerCase().includes("binance") ||
+        !["binance", "nowpayments"].includes(
+          parsedOrder.paymentMethod?.toLowerCase() ?? "",
+        ) ||
         Number(parsedOrder.totalAmount) <= 0
       ) {
         setOrder(null);
@@ -49,35 +51,42 @@ export default function PaymentPage() {
     }
   }, []);
 
-  async function openBinancePay() {
+  async function openPaymentGateway() {
     if (!order?.databaseId || !order.accessToken) return;
 
     setIsSubmitting(true);
     setMessage("");
 
     try {
-      const response = await fetch("/api/binance-pay/create-order", {
+      const isNowPayments =
+        order.paymentMethod?.toLowerCase() === "nowpayments";
+      const response = await fetch(
+        isNowPayments
+          ? "/api/nowpayments/create-invoice"
+          : "/api/binance-pay/create-order",
+        {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: order.databaseId,
           accessToken: order.accessToken,
         }),
-      });
+        },
+      );
       const result = (await response.json()) as {
         checkoutUrl?: string;
         error?: string;
       };
 
       if (!response.ok || !result.checkoutUrl) {
-        throw new Error(result.error ?? "Unable to open Binance Pay.");
+        throw new Error(result.error ?? "Unable to open payment gateway.");
       }
 
       localStorage.setItem("latestOrder", JSON.stringify(order));
       window.location.href = result.checkoutUrl;
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Unable to open Binance Pay.",
+        error instanceof Error ? error.message : "Unable to open payment gateway.",
       );
       setIsSubmitting(false);
     }
@@ -114,14 +123,19 @@ export default function PaymentPage() {
     <main className="min-h-screen bg-slate-950 px-4 py-20 text-white">
       <div className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-slate-900 p-8 text-center">
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">
-          Binance Pay
+          {order.paymentMethod?.toLowerCase() === "nowpayments"
+            ? "NOWPayments"
+            : "Binance Pay"}
         </p>
         <h1 className="mt-3 text-3xl font-black">
-          Pay securely with Binance
+          Pay securely with{" "}
+          {order.paymentMethod?.toLowerCase() === "nowpayments"
+            ? "NOWPayments"
+            : "Binance"}
         </h1>
         <p className="mt-3 text-slate-400">
-          Binance will calculate the supported cryptocurrency amount from your
-          USD order total.
+          Choose a supported cryptocurrency and complete your USD-priced order
+          securely.
         </p>
         <div className="mt-6 rounded-2xl bg-slate-950 p-5">
           <p className="text-sm text-slate-500">Order total</p>
@@ -136,11 +150,15 @@ export default function PaymentPage() {
         )}
         <button
           type="button"
-          onClick={() => void openBinancePay()}
+          onClick={() => void openPaymentGateway()}
           disabled={isSubmitting}
           className="mt-6 w-full rounded-xl bg-amber-300 px-5 py-4 font-black text-slate-950 disabled:opacity-60"
         >
-          {isSubmitting ? "Opening Binance Pay..." : "Continue to Binance Pay"}
+          {isSubmitting
+            ? "Opening payment gateway..."
+            : order.paymentMethod?.toLowerCase() === "nowpayments"
+              ? "Continue to NOWPayments"
+              : "Continue to Binance Pay"}
         </button>
         <Link
           href="/checkout"
