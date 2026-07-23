@@ -37,7 +37,7 @@ export default function SupportPage() {
             </p>
 
             <p className="mt-6 text-lg font-bold text-cyan-400">
-              "@ingamepinsupport"
+              @ingamepinsupport
             </p>
 
             <a
