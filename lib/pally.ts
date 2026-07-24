@@ -1,6 +1,28 @@
 const PALLY_API_URL = "https://pal24.pro/api/v1";
 const DEFAULT_USD_RUB_RATE = 85;
 
+function getPallyRequestTarget(): {
+  baseUrl: string;
+  headers: Record<string, string>;
+} {
+  const relayUrl = process.env.PALLY_RELAY_URL?.trim().replace(/\/+$/, "");
+
+  if (!relayUrl) {
+    return {
+      baseUrl: PALLY_API_URL,
+      headers: { Authorization: `Bearer ${getPallyToken()}` },
+    };
+  }
+
+  const relaySecret = process.env.PALLY_RELAY_SECRET?.trim();
+  if (!relaySecret) throw new Error("Pally relay secret is missing.");
+
+  return {
+    baseUrl: relayUrl,
+    headers: { "x-relay-secret": relaySecret },
+  };
+}
+
 function getPallyToken() {
   const token = process.env.PALLY_API_TOKEN?.trim();
   if (!token) throw new Error("Pally API token is missing.");
@@ -67,11 +89,12 @@ type PallyBillStatusResponse = {
 };
 
 export async function getPallyBillStatus(billId: string) {
+  const target = getPallyRequestTarget();
   const response = await fetch(
-    `${PALLY_API_URL}/bill/status?id=${encodeURIComponent(billId)}`,
+    `${target.baseUrl}/bill/status?id=${encodeURIComponent(billId)}`,
     {
       headers: {
-        Authorization: `Bearer ${getPallyToken()}`,
+        ...target.headers,
         Accept: "application/json",
       },
       cache: "no-store",
@@ -87,6 +110,7 @@ export async function getPallyBillStatus(billId: string) {
 }
 
 export async function createPallyBill(input: CreatePallyBillInput) {
+  const target = getPallyRequestTarget();
   const form = new URLSearchParams({
     amount: input.amount.toFixed(2),
     shop_id: getPallyShopId(),
@@ -110,10 +134,10 @@ export async function createPallyBill(input: CreatePallyBillInput) {
     });
   });
 
-  const response = await fetch(`${PALLY_API_URL}/bill/create`, {
+  const response = await fetch(`${target.baseUrl}/bill/create`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getPallyToken()}`,
+      ...target.headers,
       "Content-Type": "application/x-www-form-urlencoded",
       Accept: "application/json",
     },
