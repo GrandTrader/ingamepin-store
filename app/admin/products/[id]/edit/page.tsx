@@ -56,13 +56,16 @@ type ProductRow = {
   id: string;
   category_id: string;
   name: string;
+  name_ru: string | null;
   slug: string;
   description: string | null;
+  description_ru: string | null;
   image_url: string | null;
   region: string;
   price: number | string;
   currency: string;
   badge: string | null;
+  badge_ru: string | null;
   stock_quantity: number;
   status: ProductStatus;
   is_featured: boolean;
@@ -116,13 +119,16 @@ export default async function EditProductPage({
           id,
           category_id,
           name,
+          name_ru,
           slug,
           description,
+          description_ru,
           image_url,
           region,
           price,
           currency,
           badge,
+          badge_ru,
           stock_quantity,
           status,
           is_featured,
@@ -270,6 +276,18 @@ export default async function EditProductPage({
                   />
                 </label>
 
+                <label className="md:col-span-2">
+                  <span className="text-sm font-bold">Product name (Russian)</span>
+                  <input
+                    name="name_ru"
+                    defaultValue={product.name_ru ?? ""}
+                    minLength={2}
+                    maxLength={150}
+                    placeholder="Название товара на русском языке"
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+
                 <CountrySelect defaultValue={product.region} />
 
                 <ResponsiveImageField
@@ -287,6 +305,18 @@ export default async function EditProductPage({
                     rows={6}
                     maxLength={5000}
                     defaultValue={product.description ?? ""}
+                    className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+
+                <label className="md:col-span-2">
+                  <span className="text-sm font-bold">Description (Russian)</span>
+                  <textarea
+                    name="description_ru"
+                    rows={6}
+                    maxLength={5000}
+                    defaultValue={product.description_ru ?? ""}
+                    placeholder="Описание товара на русском языке"
                     className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
@@ -394,6 +424,17 @@ export default async function EditProductPage({
                     defaultValue={product.badge ?? ""}
                     maxLength={100}
                     placeholder="Secure Manual Delivery"
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+
+                <label className="md:col-span-2">
+                  <span className="text-sm font-bold">Product badge (Russian)</span>
+                  <input
+                    name="badge_ru"
+                    defaultValue={product.badge_ru ?? ""}
+                    maxLength={100}
+                    placeholder="Цифровая доставка"
                     className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>

@@ -30,7 +30,7 @@ export default async function PaymentSettingsPage({
 
   const settings = await createAdminClient()
     .from("payment_gateway_settings")
-    .select("pally_usd_rub_rate")
+    .select("pally_usd_rub_rate, store_usd_rub_rate")
     .eq("id", true)
     .maybeSingle();
 
@@ -48,7 +48,7 @@ export default async function PaymentSettingsPage({
         <main className="min-w-0 flex-1 p-5 sm:p-8">
           <h1 className="text-3xl font-black">Payment Settings</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Manage the conversion rate used for Pally payments.
+            Manage storefront display and payment conversion rates.
           </p>
 
           {error && (
@@ -98,11 +98,46 @@ export default async function PaymentSettingsPage({
               This rate applies to newly created Pally payment links.
             </p>
 
+            <div className="my-6 border-t border-slate-200" />
+
+            <h2 className="text-xl font-black">Storefront exchange rate</h2>
+
+            <label
+              htmlFor="store_usd_rub_rate"
+              className="mt-6 block text-sm font-bold text-slate-700"
+            >
+              1 USD displays as
+            </label>
+
+            <div className="mt-2 flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-blue-500">
+              <span className="px-4 text-lg font-black text-slate-500">₽</span>
+              <input
+                id="store_usd_rub_rate"
+                name="store_usd_rub_rate"
+                type="number"
+                min="1"
+                max="1000"
+                step="0.0001"
+                required
+                defaultValue={Number(
+                  settings.data?.store_usd_rub_rate ??
+                    settings.data?.pally_usd_rub_rate ??
+                    85,
+                )}
+                className="min-w-0 flex-1 border-0 px-2 py-3 text-lg font-bold outline-none"
+              />
+              <span className="px-4 text-sm font-bold text-slate-500">RUB</span>
+            </div>
+
+            <p className="mt-3 text-sm text-slate-500">
+              This rate controls RUB prices displayed to customers.
+            </p>
+
             <button
               type="submit"
               className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-black text-white transition hover:bg-blue-700"
             >
-              Save exchange rate
+              Save exchange rates
             </button>
           </form>
         </main>

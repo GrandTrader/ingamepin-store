@@ -139,6 +139,8 @@ export async function createProduct(
     formData.get("name") ?? "",
   ).trim();
 
+  const nameRu = String(formData.get("name_ru") ?? "").trim();
+
   const slug = String(
     formData.get("slug") ?? "",
   )
@@ -147,6 +149,10 @@ export async function createProduct(
 
   const description = String(
     formData.get("description") ?? "",
+  ).trim();
+
+  const descriptionRu = String(
+    formData.get("description_ru") ?? "",
   ).trim();
 
   let imageUrl = String(
@@ -172,6 +178,8 @@ export async function createProduct(
   const badge = String(
     formData.get("badge") ?? "",
   ).trim();
+
+  const badgeRu = String(formData.get("badge_ru") ?? "").trim();
 
   const currency = String(
     formData.get("currency") ?? "USD",
@@ -713,14 +721,30 @@ export async function createProduct(
     );
   }
 
+  if (nameRu && (nameRu.length < 2 || nameRu.length > 150)) {
+    redirectWithError(
+      "Russian product name must contain between 2 and 150 characters.",
+    );
+  }
+
+  if (descriptionRu.length > 5000) {
+    redirectWithError("Russian description is too long.");
+  }
+
+  if (badgeRu.length > 100) {
+    redirectWithError("Russian product badge is too long.");
+  }
+
   const productResult = await supabase
     .from("products")
     .insert({
       category_id: categoryId,
       name,
+      name_ru: nameRu || null,
       slug,
       description:
         description || null,
+      description_ru: descriptionRu || null,
       image_url: imageUrl || null,
       region,
       product_type: productType,
@@ -746,6 +770,7 @@ export async function createProduct(
       maximum_custom_value:
         maximumCustomValue,
       badge: badge || null,
+      badge_ru: badgeRu || null,
       currency,
       price,
       stock_quantity:

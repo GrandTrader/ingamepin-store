@@ -38,6 +38,7 @@ export async function GET(
       `
         id,
         name,
+        name_ru,
         slug,
         image_url,
         price,
@@ -84,6 +85,7 @@ export async function GET(
       return {
         id: product.id,
         name: product.name,
+        nameRu: product.name_ru,
         slug: product.slug,
         image: product.image_url,
         price: Number(product.price),

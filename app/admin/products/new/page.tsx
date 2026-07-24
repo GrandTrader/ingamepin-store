@@ -111,12 +111,34 @@ export default async function AddProductPage({
                 <CountrySelect defaultValue="India" />
 
                 <label className="md:col-span-2">
+                  <span className="text-sm font-bold">Product name (Russian)</span>
+                  <input
+                    name="name_ru"
+                    minLength={2}
+                    maxLength={150}
+                    placeholder="Название товара на русском языке"
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+
+                <label className="md:col-span-2">
                   <span className="text-sm font-bold">Description</span>
                   <textarea
                     name="description"
                     rows={5}
                     maxLength={5000}
                     placeholder="Describe the product, supported region and redemption requirements."
+                    className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+
+                <label className="md:col-span-2">
+                  <span className="text-sm font-bold">Description (Russian)</span>
+                  <textarea
+                    name="description_ru"
+                    rows={5}
+                    maxLength={5000}
+                    placeholder="Описание товара на русском языке"
                     className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
@@ -220,6 +242,16 @@ export default async function AddProductPage({
                     name="badge"
                     maxLength={100}
                     placeholder="Secure Manual Delivery"
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+
+                <label className="sm:col-span-2">
+                  <span className="text-sm font-bold">Product badge (Russian)</span>
+                  <input
+                    name="badge_ru"
+                    maxLength={100}
+                    placeholder="Цифровая доставка"
                     className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { useStorePreferences } from "./StorePreferences";
 
 type CartItem = {
   cartId: string;
@@ -13,6 +14,7 @@ type CartItem = {
 type SearchProduct = {
   id: string;
   name: string;
+  nameRu: string | null;
   slug: string;
   image: string | null;
   price: number;
@@ -21,6 +23,14 @@ type SearchProduct = {
 };
 
 export default function Header() {
+  const {
+    language,
+    currency,
+    setLanguage,
+    setCurrency,
+    t,
+    formatPrice,
+  } = useStorePreferences();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartQuantity, setCartQuantity] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -178,25 +188,25 @@ export default function Header() {
         <div className="mx-auto flex max-w-7xl items-center justify-center px-3 py-1.5 text-center text-[10px] text-slate-300 sm:justify-between sm:px-5 sm:py-2 sm:text-xs">
           <p>
             <span aria-hidden="true">{"\u26A1"}</span>{" "}
-            Digital Delivery
+            {t("digitalDelivery")}
           </p>
 
           <div className="hidden flex-wrap items-center justify-center gap-4 sm:flex">
             <span>
               <span aria-hidden="true">{"\u2705"}</span>{" "}
-              Genuine Products
+              {t("genuineProducts")}
             </span>
 
             <span>
               <span aria-hidden="true">{"\uD83D\uDD12"}</span>{" "}
-              Secure Payment
+              {t("securePayment")}
             </span>
 
             <Link
               href="/support"
               className="transition hover:text-cyan-400"
             >
-              Customer Support
+              {t("customerSupport")}
             </Link>
           </div>
         </div>
@@ -221,7 +231,7 @@ export default function Header() {
               </p>
 
               <p className="mt-1 hidden text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 min-[380px]:block">
-                Digital Gaming Store
+                {t("storeTagline")}
               </p>
             </div>
           </Link>
@@ -235,7 +245,7 @@ export default function Header() {
               href="/"
               className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
             >
-              Home
+              {t("home")}
             </Link>
 
             <Link
@@ -263,29 +273,61 @@ export default function Header() {
               href="/products"
               className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
             >
-              All Products
+              {t("allProducts")}
             </Link>
 
             <Link
               href="/support"
               className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
             >
-              Support
+              {t("support")}
             </Link>
 
             <Link
               href="/track-order"
               className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
             >
-              Track Order
+              {t("trackOrder")}
             </Link>
           </nav>
 
           {/* Header actions */}
           <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-1 xl:flex">
+              <label htmlFor="store-language" className="sr-only">
+                Language
+              </label>
+              <select
+                id="store-language"
+                value={language}
+                onChange={(event) =>
+                  setLanguage(event.target.value === "ru" ? "ru" : "en")
+                }
+                className="h-10 rounded-xl border border-white/10 bg-slate-950 px-2 text-xs font-bold text-white outline-none transition hover:border-cyan-400"
+              >
+                <option value="en">🇺🇸 EN</option>
+                <option value="ru">🇷🇺 RU</option>
+              </select>
+
+              <label htmlFor="store-currency" className="sr-only">
+                Currency
+              </label>
+              <select
+                id="store-currency"
+                value={currency}
+                onChange={(event) =>
+                  setCurrency(event.target.value === "RUB" ? "RUB" : "USD")
+                }
+                className="h-10 rounded-xl border border-white/10 bg-slate-950 px-2 text-xs font-bold text-white outline-none transition hover:border-cyan-400"
+              >
+                <option value="USD">$ USD</option>
+                <option value="RUB">₽ RUB</option>
+              </select>
+            </div>
+
             <Link
               href="/cart"
-              aria-label={`Shopping cart with ${cartQuantity} items`}
+              aria-label={`${t("cart")}: ${cartQuantity}`}
               className="relative flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950 px-3 font-bold transition hover:border-cyan-400 sm:h-11"
             >
               <span
@@ -296,7 +338,7 @@ export default function Header() {
               </span>
 
               <span className="hidden text-sm sm:inline">
-                Cart
+                {t("cart")}
               </span>
 
               {cartQuantity > 0 && (
@@ -314,7 +356,7 @@ export default function Header() {
               }
               className="hidden h-11 items-center justify-center rounded-xl bg-cyan-400 px-4 text-sm font-black text-slate-950 transition hover:bg-cyan-300 sm:flex"
             >
-              {isAuthenticated ? "My Account" : "Login"}
+              {isAuthenticated ? t("myAccount") : t("login")}
             </Link>
 
             <button
@@ -324,8 +366,8 @@ export default function Header() {
               }}
               aria-label={
                 isMenuOpen
-                  ? "Close navigation menu"
-                  : "Open navigation menu"
+                  ? t("closeMenu")
+                  : t("openMenu")
               }
               aria-expanded={isMenuOpen}
               aria-controls="mobile-navigation"
@@ -350,7 +392,7 @@ export default function Header() {
                 htmlFor="header-product-search"
                 className="sr-only"
               >
-                Search products
+                {t("searchProducts")}
               </label>
 
               <input
@@ -372,7 +414,7 @@ export default function Header() {
                   );
                 }}
                 autoComplete="off"
-                placeholder="Search games, gift cards, subscriptions..."
+                placeholder={t("searchPlaceholder")}
                 className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 sm:px-4 sm:py-3"
               />
 
@@ -380,7 +422,7 @@ export default function Header() {
                 type="submit"
                 className="shrink-0 bg-cyan-400 px-4 text-sm font-black text-slate-950 transition hover:bg-cyan-300 sm:px-5"
               >
-                Search
+                {t("search")}
               </button>
             </form>
 
@@ -389,14 +431,14 @@ export default function Header() {
                 <div className="absolute left-0 right-0 top-full z-[60] mt-2 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
                   {isSearching && (
                     <p className="p-4 text-sm text-slate-400">
-                      Searching products...
+                      {t("searching")}
                     </p>
                   )}
 
                   {!isSearching &&
                     searchProducts.length === 0 && (
                       <p className="p-4 text-sm text-slate-400">
-                        No matching products found.
+                        {t("noResults")}
                       </p>
                     )}
 
@@ -428,7 +470,9 @@ export default function Header() {
 
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-bold text-white">
-                            {product.name}
+                            {language === "ru" && product.nameRu
+                              ? product.nameRu
+                              : product.name}
                           </p>
 
                           <p className="mt-1 truncate text-xs text-slate-400">
@@ -437,14 +481,9 @@ export default function Header() {
                         </div>
 
                         <p className="shrink-0 text-sm font-black text-cyan-300">
-                          {new Intl.NumberFormat(
-                            "en-IN",
-                            {
-                              style: "currency",
-                              currency: "USD",
-                              maximumFractionDigits: 0,
-                            },
-                          ).format(product.price)}
+                          {formatPrice(product.price, {
+                            maximumFractionDigits: currency === "RUB" ? 0 : 2,
+                          })}
                         </p>
                       </Link>
                     ))}
@@ -468,7 +507,7 @@ export default function Header() {
               >
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\u2302"}</span>
-                  Home
+                  {t("home")}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
@@ -480,7 +519,7 @@ export default function Header() {
               >
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\uD83C\uDFAE"}</span>
-                  Gaming Top-Ups
+                  {t("gamingTopups")}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
@@ -492,7 +531,7 @@ export default function Header() {
               >
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\uD83C\uDF81"}</span>
-                  Gift Cards
+                  {t("giftCards")}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
@@ -504,7 +543,7 @@ export default function Header() {
               >
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\u2605"}</span>
-                  Subscriptions
+                  {t("subscriptions")}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
@@ -516,7 +555,7 @@ export default function Header() {
               >
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\uD83D\uDD11"}</span>
-                  Game Keys
+                  {t("gameKeys")}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
@@ -530,7 +569,7 @@ export default function Header() {
               >
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\u2315"}</span>
-                  Track Order
+                  {t("trackOrder")}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
@@ -542,7 +581,7 @@ export default function Header() {
               >
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">?</span>
-                  Customer Support
+                  {t("customerSupport")}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
@@ -556,8 +595,42 @@ export default function Header() {
                 onClick={closeMenu}
                 className="mt-3 rounded-xl bg-cyan-400 px-4 py-3 text-center font-black text-slate-950 transition hover:bg-cyan-300"
               >
-                {isAuthenticated ? "My Account" : "Login"}
+                {isAuthenticated ? t("myAccount") : t("login")}
               </Link>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <label className="grid gap-1 text-xs font-bold text-slate-400">
+                  Language
+                  <select
+                    value={language}
+                    onChange={(event) =>
+                      setLanguage(
+                        event.target.value === "ru" ? "ru" : "en",
+                      )
+                    }
+                    className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm font-bold text-white outline-none"
+                  >
+                    <option value="en">🇺🇸 English</option>
+                    <option value="ru">🇷🇺 Русский</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-1 text-xs font-bold text-slate-400">
+                  Currency
+                  <select
+                    value={currency}
+                    onChange={(event) =>
+                      setCurrency(
+                        event.target.value === "RUB" ? "RUB" : "USD",
+                      )
+                    }
+                    className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm font-bold text-white outline-none"
+                  >
+                    <option value="USD">$ USD</option>
+                    <option value="RUB">₽ RUB</option>
+                  </select>
+                </label>
+              </div>
             </div>
           </nav>
         )}

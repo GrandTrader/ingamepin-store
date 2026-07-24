@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProductPurchaseForm from "./ProductPurchaseForm";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
+import LocalizedProductText from "@/components/LocalizedProductText";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +28,15 @@ type CategoryRelation =
 type ProductRow = {
   id: string;
   name: string;
+  name_ru: string | null;
   slug: string;
   description: string | null;
+  description_ru: string | null;
   image_url: string | null;
   region: string;
   currency: string;
   badge: string | null;
+  badge_ru: string | null;
   product_type: string;
   delivery_type: string;
   delivery_instructions: string | null;
@@ -77,12 +81,15 @@ export default async function ProductPage({
       `
         id,
         name,
+        name_ru,
         slug,
         description,
+        description_ru,
         image_url,
         region,
         currency,
         badge,
+        badge_ru,
         product_type,
         delivery_type,
         delivery_instructions,
@@ -159,7 +166,12 @@ export default async function ProductPage({
             {category.name}
           </Link>
           <span>/</span>
-          <span className="truncate text-white">{product.name}</span>
+          <span className="truncate text-white">
+            <LocalizedProductText
+              english={product.name}
+              russian={product.name_ru}
+            />
+          </span>
         </nav>
 
         <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
@@ -185,27 +197,42 @@ export default async function ProductPage({
               </p>
 
               <h1 className="mt-2 text-2xl font-black sm:mt-3 sm:text-4xl">
-                {product.name}
+                <LocalizedProductText
+                  english={product.name}
+                  russian={product.name_ru}
+                />
               </h1>
 
               <div className="mt-4 flex flex-wrap gap-2 text-xs sm:mt-5 sm:gap-3 sm:text-sm">
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
-                  Region: {product.region}
+                  <LocalizedProductText english="Region" russian="Регион" />:{" "}
+                  {product.region}
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
-                  {product.badge ?? "Digital Product"}
+                  <LocalizedProductText
+                    english={product.badge ?? "Digital Product"}
+                    russian={product.badge_ru}
+                  />
                 </span>
               </div>
 
               <div className="mt-5 whitespace-pre-line text-sm leading-6 text-slate-300 sm:mt-7 sm:text-base sm:leading-7">
-                {product.description ??
-                  "Product details and delivery information will be provided with your order."}
+                <LocalizedProductText
+                  english={
+                    product.description ??
+                    "Product details and delivery information will be provided with your order."
+                  }
+                  russian={product.description_ru}
+                />
               </div>
 
               {product.delivery_instructions && (
                 <div className="mt-5 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 sm:mt-7 sm:p-5">
                   <h2 className="font-black text-cyan-300">
-                    Delivery instructions
+                    <LocalizedProductText
+                      english="Delivery instructions"
+                      russian="Инструкции по доставке"
+                    />
                   </h2>
                   <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-300">
                     {product.delivery_instructions}
@@ -217,10 +244,16 @@ export default async function ProductPage({
 
           <aside className="order-2 h-fit rounded-2xl border border-white/10 bg-slate-900 p-5 sm:rounded-3xl sm:p-8 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
             <p className="text-xs font-bold text-cyan-400 sm:text-sm">
-              Secure checkout
+              <LocalizedProductText
+                english="Secure checkout"
+                russian="Безопасное оформление"
+              />
             </p>
             <h2 className="mt-1 text-xl font-black sm:mt-2 sm:text-2xl">
-              Choose your product option
+              <LocalizedProductText
+                english="Choose your product option"
+                russian="Выберите вариант товара"
+              />
             </h2>
 
             <ProductPurchaseForm
@@ -229,6 +262,7 @@ export default async function ProductPage({
                 slug: product.slug,
                 categorySlug: category.slug,
                 name: product.name,
+                nameRu: product.name_ru,
                 imageUrl: product.image_url,
                 currency: product.currency,
                 productType: product.product_type,

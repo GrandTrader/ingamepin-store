@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useStorePreferences } from "@/components/StorePreferences";
 
 type ProductOption = {
   id: string;
@@ -25,6 +26,7 @@ type ProductPurchaseFormProps = {
     slug: string;
     categorySlug: string;
     name: string;
+    nameRu?: string | null;
     imageUrl: string | null;
     currency: string;
     productType: string;
@@ -74,6 +76,13 @@ export default function ProductPurchaseForm({
   options,
 }: ProductPurchaseFormProps) {
   const router = useRouter();
+  const {
+    language,
+    t,
+    formatPrice: formatStorePrice,
+  } = useStorePreferences();
+  const localizedProductName =
+    language === "ru" && product.nameRu ? product.nameRu : product.name;
   const isGiftCard = product.productType === "GIFT_CARD";
   const isGamingTopup = product.productType === "GAME_TOPUP";
 
@@ -168,11 +177,7 @@ export default function ProductPurchaseForm({
   const customerTotal = totalPrice - customerDiscountAmount;
 
   function formatPrice(value: number) {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: product.currency,
-      maximumFractionDigits: 2,
-    }).format(value);
+    return formatStorePrice(value);
   }
 
   function clearMessage() {
@@ -335,9 +340,9 @@ export default function ProductPurchaseForm({
       productOptionId: selectedOption.id,
       slug: product.slug,
       categorySlug: product.categorySlug,
-      name: product.name,
-      title: product.name,
-      productName: product.name,
+      name: localizedProductName,
+      title: localizedProductName,
+      productName: localizedProductName,
       editionName,
       denomination:
         valueMode === "CUSTOM"
@@ -422,7 +427,7 @@ export default function ProductPurchaseForm({
         product.allowsPlayerIdTopup &&
         product.allowsGamingVoucher && (
           <section>
-            <h2 className="text-base font-black sm:text-lg">Select delivery method</h2>
+            <h2 className="text-base font-black sm:text-lg">{t("selectDeliveryMethod")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
               <button
                 type="button"
@@ -433,9 +438,9 @@ export default function ProductPurchaseForm({
                     : "border-white/10 bg-slate-950 hover:border-cyan-400"
                 }`}
               >
-                <span className="block font-black">Player ID top-up</span>
+                <span className="block font-black">{t("playerIdTopup")}</span>
                 <span className="mt-1 block text-xs opacity-70">
-                  Top-up is processed using your Player ID.
+                  {t("playerIdTopupDescription")}
                 </span>
               </button>
 
@@ -448,9 +453,9 @@ export default function ProductPurchaseForm({
                     : "border-white/10 bg-slate-950 hover:border-cyan-400"
                 }`}
               >
-                <span className="block font-black">Gaming voucher</span>
+                <span className="block font-black">{t("gamingVoucher")}</span>
                 <span className="mt-1 block text-xs opacity-70">
-                  Receive a voucher code after payment approval.
+                  {t("gamingVoucherDescription")}
                 </span>
               </button>
             </div>
@@ -461,7 +466,7 @@ export default function ProductPurchaseForm({
         product.allowsFixedValues &&
         product.allowsCustomValue && (
           <section>
-            <h2 className="text-base font-black sm:text-lg">Select value type</h2>
+            <h2 className="text-base font-black sm:text-lg">{t("selectValueType")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
               <button
                 type="button"
@@ -472,7 +477,7 @@ export default function ProductPurchaseForm({
                     : "border-white/10 bg-slate-950 hover:border-cyan-400"
                 }`}
               >
-                Fixed value
+                {t("fixedValue")}
               </button>
               <button
                 type="button"
@@ -483,7 +488,7 @@ export default function ProductPurchaseForm({
                     : "border-white/10 bg-slate-950 hover:border-cyan-400"
                 }`}
               >
-                Custom value
+                {t("customValue")}
               </button>
             </div>
           </section>
@@ -491,7 +496,7 @@ export default function ProductPurchaseForm({
 
       {valueMode === "FIXED" && (
         <section className="mt-5 sm:mt-7">
-          <h2 className="text-base font-black sm:text-lg">Select product option</h2>
+          <h2 className="text-base font-black sm:text-lg">{t("selectProductOption")}</h2>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
             {fixedOptions.map((option) => {
               const isSelected = selectedOptionId === option.id;
@@ -522,8 +527,8 @@ export default function ProductPurchaseForm({
                   </span>
                   <span className="mt-1 block text-xs opacity-70">
                     {isUnavailable
-                      ? "Out of Stock"
-                      : "In Stock"}
+                      ? t("outOfStock")
+                      : t("inStock")}
                   </span>
                 </button>
               );
@@ -535,7 +540,7 @@ export default function ProductPurchaseForm({
       {valueMode === "CUSTOM" && (
         <section className="mt-5 sm:mt-7">
           <label htmlFor="customValue" className="text-lg font-black">
-            Enter custom value
+            {t("enterCustomValue")}
           </label>
           <input
             id="customValue"
@@ -549,11 +554,11 @@ export default function ProductPurchaseForm({
               setCustomValue(event.target.value);
               clearMessage();
             }}
-            placeholder="Enter amount"
+            placeholder={t("enterAmount")}
             className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-lg font-black outline-none focus:border-cyan-400"
           />
           <p className="mt-2 text-xs text-slate-400">
-            Allowed range: {formatPrice(product.minimumCustomValue ?? 0)} to{" "}
+            {t("allowedRange")}: {formatPrice(product.minimumCustomValue ?? 0)} –{" "}
             {formatPrice(product.maximumCustomValue ?? 0)}
           </p>
         </section>
@@ -562,7 +567,7 @@ export default function ProductPurchaseForm({
       {isGamingTopup && fulfillmentMode === "PLAYER_ID_TOPUP" && (
         <section className="mt-5 sm:mt-7">
           <label htmlFor="playerId" className="text-sm font-bold">
-            {product.playerIdLabel ?? "Player ID"}
+            {product.playerIdLabel ?? t("playerId")}
           </label>
           <input
             id="playerId"
@@ -574,18 +579,21 @@ export default function ProductPurchaseForm({
               setPlayerId(event.target.value);
               clearMessage();
             }}
-            placeholder={`Enter ${product.playerIdLabel ?? "Player ID"}`}
+            placeholder={`${t("enterAmount").replace(
+              language === "ru" ? "сумму" : "amount",
+              product.playerIdLabel ?? t("playerId"),
+            )}`}
             className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
           />
           <p className="mt-2 text-xs text-amber-200">
-            Check this value carefully. An incorrect Player ID may delay delivery.
+            {t("checkPlayerId")}
           </p>
         </section>
       )}
 
       <section className="mt-5 sm:mt-7">
         <label htmlFor="deliveryEmail" className="text-sm font-bold">
-          Delivery email
+          {t("deliveryEmail")}
         </label>
         <input
           id="deliveryEmail"
@@ -602,7 +610,7 @@ export default function ProductPurchaseForm({
       </section>
 
       <section className="mt-5 sm:mt-7">
-        <p className="text-sm font-bold">Quantity</p>
+        <p className="text-sm font-bold">{t("quantity")}</p>
         <div className="mt-3 flex items-center gap-3">
           <button
             type="button"
@@ -630,40 +638,40 @@ export default function ProductPurchaseForm({
 
       <section className="mt-5 rounded-2xl border border-white/10 bg-slate-950 p-4 sm:mt-7 sm:p-5">
         <div className="flex justify-between gap-4 text-sm text-slate-400">
-          <span>Selected option</span>
+          <span>{t("selectedOption")}</span>
           <span className="text-right font-bold text-white">
             {valueMode === "CUSTOM"
               ? customValue
-                ? `Custom Value ${formatPrice(parsedCustomValue)}`
-                : "Enter custom value"
+                ? `${t("customValue")} ${formatPrice(parsedCustomValue)}`
+                : t("enterCustomValue")
               : selectedFixedOption
                 ? selectedFixedOption.platform
                   ? `${selectedFixedOption.optionName} - ${selectedFixedOption.platform}`
                   : selectedFixedOption.optionName
-                : "Not selected"}
+                : t("notSelected")}
           </span>
         </div>
 
         {isGamingTopup && (
           <div className="mt-3 flex justify-between gap-4 text-sm text-slate-400">
-            <span>Delivery method</span>
+            <span>{t("deliveryMethod")}</span>
             <span className="text-right font-bold text-white">
               {fulfillmentMode === "PLAYER_ID_TOPUP"
-                ? "Player ID top-up"
-                : "Gaming voucher"}
+                ? t("playerIdTopup")
+                : t("gamingVoucher")}
             </span>
           </div>
         )}
 
         <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-          <span className="font-bold">Total</span>
+          <span className="font-bold">{t("total")}</span>
           <span className="text-2xl font-black text-cyan-400">
             {formatPrice(customerTotal)}
           </span>
         </div>
         {customerDiscountAmount > 0 && (
           <div className="mt-2 flex justify-between text-xs text-emerald-300">
-            <span>Your discount</span><span>-{formatPrice(customerDiscountAmount)}</span>
+            <span>{t("yourDiscountShort")}</span><span>-{formatPrice(customerDiscountAmount)}</span>
           </div>
         )}
       </section>
@@ -674,13 +682,13 @@ export default function ProductPurchaseForm({
           onClick={addToCart}
           className="rounded-xl border-2 border-cyan-400 px-3 py-3.5 text-sm font-black text-cyan-400 transition hover:bg-cyan-400/10 sm:px-6 sm:py-4 sm:text-base"
         >
-          Add to Cart
+          {t("addToCart")}
         </button>
         <button
           type="submit"
           className="rounded-xl bg-cyan-400 px-3 py-3.5 text-sm font-black text-slate-950 transition hover:bg-cyan-300 sm:px-6 sm:py-4 sm:text-base"
         >
-          Buy Now
+          {t("buyNow")}
         </button>
       </div>
 

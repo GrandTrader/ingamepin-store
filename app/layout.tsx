@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { StorePreferencesProvider } from "../components/StorePreferences";
 
 import "./globals.css";
 
@@ -46,13 +47,15 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${inter.variable} ${robotoMono.variable} flex min-h-screen flex-col bg-slate-950 antialiased`}
       >
-        <Header />
+        <StorePreferencesProvider>
+          <Header />
 
-        <main className="flex flex-1 flex-col">
-          {children}
-        </main>
+          <main className="flex flex-1 flex-col">
+            {children}
+          </main>
 
-        <Footer />
+          <Footer />
+        </StorePreferencesProvider>
 
         <SpeedInsights />
       </body>

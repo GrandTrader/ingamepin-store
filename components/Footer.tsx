@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useStorePreferences } from "./StorePreferences";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { t } = useStorePreferences();
 
   return (
     <footer className="mt-auto border-t border-white/10 bg-slate-950 text-white">
@@ -16,43 +20,43 @@ export default function Footer() {
               iNgame<span className="text-cyan-400">PIN</span>
             </p>
             <p className="text-[10px] uppercase tracking-widest text-slate-500">
-              Digital Gaming Store
+              {t("storeTagline")}
             </p>
           </div>
         </Link>
 
         <p className="mt-4 text-xs leading-5 text-slate-400">
-          Gaming top-ups, gift cards, subscriptions and game keys with secure digital delivery.
+          {t("footerSummary")}
         </p>
 
         <div className="mt-5 divide-y divide-white/10 border-y border-white/10">
-          <MobileFooterSection title="Product Categories">
-            <Link href="/#game_topup">Gaming Top-Ups</Link>
-            <Link href="/#gift_card">Gift Cards</Link>
-            <Link href="/#subscription">Subscriptions</Link>
-            <Link href="/#game_key">Game Keys</Link>
+          <MobileFooterSection title={t("productCategories")}>
+            <Link href="/#game_topup">{t("gamingTopups")}</Link>
+            <Link href="/#gift_card">{t("giftCards")}</Link>
+            <Link href="/#subscription">{t("subscriptions")}</Link>
+            <Link href="/#game_key">{t("gameKeys")}</Link>
           </MobileFooterSection>
 
-          <MobileFooterSection title="Customer Help">
-            <Link href="/track-order">Track Your Order</Link>
-            <Link href="/support">Contact Support</Link>
-            <Link href="/cart">Shopping Cart</Link>
+          <MobileFooterSection title={t("customerHelp")}>
+            <Link href="/track-order">{t("trackYourOrder")}</Link>
+            <Link href="/support">{t("contactSupport")}</Link>
+            <Link href="/cart">{t("shoppingCart")}</Link>
           </MobileFooterSection>
 
-          <MobileFooterSection title="Legal">
-            <Link href="/terms">Terms &amp; Conditions</Link>
-            <Link href="/refund-policy">Return &amp; Refund Policy</Link>
-            <Link href="/privacy-policy">Privacy Policy</Link>
+          <MobileFooterSection title={t("legal")}>
+            <Link href="/terms">{t("terms")}</Link>
+            <Link href="/refund-policy">{t("refundPolicy")}</Link>
+            <Link href="/privacy-policy">{t("privacyPolicy")}</Link>
           </MobileFooterSection>
 
-          <MobileFooterSection title="Payment & Delivery">
-            <span>USD payments with Binance Pay</span>
-            <Link href="/track-order">Check order status</Link>
+          <MobileFooterSection title={t("paymentDelivery")}>
+            <span>Binance Pay</span>
+            <Link href="/track-order">{t("checkOrderStatus")}</Link>
           </MobileFooterSection>
         </div>
 
         <p className="mt-5 text-center text-[11px] text-slate-500">
-          {"\u00A9"} {currentYear} InGamePin, operated by AMAN G. All rights reserved.
+          {"\u00A9"} {currentYear} InGamePin, operated by AMAN G. {t("rightsReserved")}
         </p>
       </div>
 
@@ -75,32 +79,29 @@ export default function Footer() {
               </p>
 
               <p className="text-xs uppercase tracking-widest text-slate-500">
-                Digital Gaming Store
+                {t("storeTagline")}
               </p>
             </div>
           </Link>
 
           <p className="mt-5 max-w-sm text-sm leading-7 text-slate-400">
-            Shop gaming top-ups, gift cards,
-            subscriptions and game keys with secure
-            payment verification and protected digital
-            delivery.
+            {t("footerSummary")}
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2">
             <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
-              Secure Payment
+              {t("securePayment")}
             </span>
 
             <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
-              Digital Delivery
+              {t("digitalDelivery")}
             </span>
           </div>
         </div>
 
         <div>
           <h2 className="text-lg font-black">
-            Product Categories
+            {t("productCategories")}
           </h2>
 
           <nav className="mt-5 grid gap-3 text-sm text-slate-400">
@@ -108,42 +109,42 @@ export default function Footer() {
               href="/#game_topup"
               className="transition hover:text-cyan-400"
             >
-              Gaming Top-Ups
+              {t("gamingTopups")}
             </Link>
 
             <Link
               href="/#gift_card"
               className="transition hover:text-cyan-400"
             >
-              Gift Cards
+              {t("giftCards")}
             </Link>
 
             <Link
               href="/#subscription"
               className="transition hover:text-cyan-400"
             >
-              Subscriptions
+              {t("subscriptions")}
             </Link>
 
             <Link
               href="/#game_key"
               className="transition hover:text-cyan-400"
             >
-              Game Keys
+              {t("gameKeys")}
             </Link>
 
             <Link
               href="/#all-products"
               className="font-bold text-cyan-400 transition hover:text-cyan-300"
             >
-              View All Products
+              {t("viewAllProducts")}
             </Link>
           </nav>
         </div>
 
         <div>
           <h2 className="text-lg font-black">
-            Customer Help
+            {t("customerHelp")}
           </h2>
 
           <nav className="mt-5 grid gap-3 text-sm text-slate-400">
@@ -151,21 +152,21 @@ export default function Footer() {
               href="/track-order"
               className="transition hover:text-cyan-400"
             >
-              Track Your Order
+              {t("trackYourOrder")}
             </Link>
 
             <Link
               href="/support"
               className="transition hover:text-cyan-400"
             >
-              Contact Support
+              {t("contactSupport")}
             </Link>
 
             <Link
               href="/cart"
               className="transition hover:text-cyan-400"
             >
-              Shopping Cart
+              {t("shoppingCart")}
             </Link>
 
             <a
@@ -179,20 +180,20 @@ export default function Footer() {
 
         <div>
           <h2 className="text-lg font-black">
-            Order Delivery &amp; Legal
+            {t("orderDeliveryLegal")}
           </h2>
 
           <Link
             href="/track-order"
             className="mt-5 inline-flex rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300"
           >
-            Check order status
+            {t("checkOrderStatus")}
           </Link>
 
           <nav className="mt-5 grid gap-3 text-sm text-slate-400">
-            <Link href="/terms" className="transition hover:text-cyan-400">Terms &amp; Conditions</Link>
-            <Link href="/refund-policy" className="transition hover:text-cyan-400">Return &amp; Refund Policy</Link>
-            <Link href="/privacy-policy" className="transition hover:text-cyan-400">Privacy Policy</Link>
+            <Link href="/terms" className="transition hover:text-cyan-400">{t("terms")}</Link>
+            <Link href="/refund-policy" className="transition hover:text-cyan-400">{t("refundPolicy")}</Link>
+            <Link href="/privacy-policy" className="transition hover:text-cyan-400">{t("privacyPolicy")}</Link>
           </nav>
         </div>
       </div>
@@ -201,12 +202,11 @@ export default function Footer() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-5 py-6 md:flex-row">
           <div>
             <p className="text-sm font-bold text-white">
-              Secure checkout
+              {t("secureCheckout")}
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
-              Confirm your order details before submitting
-              payment.
+              {t("confirmBeforePayment")}
             </p>
           </div>
 
@@ -228,12 +228,11 @@ export default function Footer() {
       <div className="hidden border-t border-white/10 bg-black/20 sm:block">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 py-5 text-center text-xs text-slate-500 sm:flex-row sm:text-left">
           <p>
-            {"\u00A9"} {currentYear} InGamePin, operated by AMAN G. All rights reserved.
+            {"\u00A9"} {currentYear} InGamePin, operated by AMAN G. {t("rightsReserved")}
           </p>
 
           <p>
-            Product names and trademarks belong to their
-            respective owners.
+            {t("trademarkNotice")}
           </p>
         </div>
       </div>

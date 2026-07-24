@@ -35,10 +35,12 @@ type ProductType =
 type ProductRow = {
   id: string;
   name: string;
+  name_ru: string | null;
   slug: string;
   image_url: string | null;
   price: number | string;
   badge: string | null;
+  badge_ru: string | null;
   stock_quantity: number;
   rating: number | string;
   sold_count: number;
@@ -165,10 +167,12 @@ export default async function Home() {
         `
           id,
           name,
+          name_ru,
           slug,
           image_url,
           price,
           badge,
+          badge_ru,
           stock_quantity,
           rating,
           sold_count,
@@ -255,12 +259,14 @@ export default async function Home() {
     productRows.map((product) => ({
       id: product.id,
       name: product.name,
+      nameRu: product.name_ru,
       slug: product.slug,
       image: product.image_url ?? "",
       price: Number(product.price),
       badge:
         product.badge ??
         "Digital Delivery",
+      badgeRu: product.badge_ru,
       stock: getAvailableStock(product),
       rating: Number(product.rating),
       sold:

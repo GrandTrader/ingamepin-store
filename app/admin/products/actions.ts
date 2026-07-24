@@ -117,8 +117,14 @@ export async function updateProduct(
     formData.get("name") ?? "",
   ).trim();
 
+  const nameRu = String(formData.get("name_ru") ?? "").trim();
+
   const description = String(
     formData.get("description") ?? "",
+  ).trim();
+
+  const descriptionRu = String(
+    formData.get("description_ru") ?? "",
   ).trim();
 
   let imageUrl = String(
@@ -142,6 +148,8 @@ export async function updateProduct(
   const badge = String(
     formData.get("badge") ?? "",
   ).trim();
+
+  const badgeRu = String(formData.get("badge_ru") ?? "").trim();
 
   const price = Number(
     formData.get("price"),
@@ -224,6 +232,22 @@ export async function updateProduct(
     );
   }
 
+  if (nameRu && (nameRu.length < 2 || nameRu.length > 150)) {
+    productRedirect(
+      id,
+      "error",
+      "Russian product name must contain between 2 and 150 characters.",
+    );
+  }
+
+  if (descriptionRu.length > 5000) {
+    productRedirect(
+      id,
+      "error",
+      "Russian product description cannot exceed 5000 characters.",
+    );
+  }
+
   if (!isValidWebUrl(imageUrl)) {
     productRedirect(
       id,
@@ -268,6 +292,14 @@ export async function updateProduct(
       id,
       "error",
       "Product badge cannot exceed 100 characters.",
+    );
+  }
+
+  if (badgeRu.length > 100) {
+    productRedirect(
+      id,
+      "error",
+      "Russian product badge cannot exceed 100 characters.",
     );
   }
 
@@ -748,7 +780,9 @@ export async function updateProduct(
       category_id: categoryId,
       product_type: productType,
       name,
+      name_ru: nameRu || null,
       description: description || null,
+      description_ru: descriptionRu || null,
       image_url: imageUrl || null,
       region,
       delivery_type: deliveryType,
@@ -774,6 +808,7 @@ export async function updateProduct(
           ? playerIdLabel
           : null,
       badge: badge || null,
+      badge_ru: badgeRu || null,
       price,
       stock_quantity: stockQuantity,
       status,

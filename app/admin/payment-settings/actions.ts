@@ -31,6 +31,7 @@ export async function savePaymentSettings(formData: FormData) {
   await requireAdministrator();
 
   const pallyUsdRubRate = Number(formData.get("pally_usd_rub_rate"));
+  const storeUsdRubRate = Number(formData.get("store_usd_rub_rate"));
 
   if (
     !Number.isFinite(pallyUsdRubRate) ||
@@ -40,11 +41,23 @@ export async function savePaymentSettings(formData: FormData) {
     settingsRedirect("error", "Enter a valid exchange rate from 1 to 1000.");
   }
 
+  if (
+    !Number.isFinite(storeUsdRubRate) ||
+    storeUsdRubRate < 1 ||
+    storeUsdRubRate > 1000
+  ) {
+    settingsRedirect(
+      "error",
+      "Enter a valid storefront exchange rate from 1 to 1000.",
+    );
+  }
+
   const result = await createAdminClient()
     .from("payment_gateway_settings")
     .upsert({
       id: true,
       pally_usd_rub_rate: Number(pallyUsdRubRate.toFixed(4)),
+      store_usd_rub_rate: Number(storeUsdRubRate.toFixed(4)),
     });
 
   if (result.error) {
@@ -52,5 +65,6 @@ export async function savePaymentSettings(formData: FormData) {
   }
 
   revalidatePath("/admin/payment-settings");
-  settingsRedirect("success", "Pally exchange rate saved.");
+  revalidatePath("/api/store-settings");
+  settingsRedirect("success", "Payment and storefront exchange rates saved.");
 }
