@@ -22,7 +22,7 @@ export default async function HomepageSliderPage({
   const [settings, slides, products] = await Promise.all([
     admin.from("homepage_slider_settings").select("is_enabled, autoplay_ms").eq("id", true).maybeSingle(),
     admin.from("homepage_slides").select("id, product_id, eyebrow, title, description, desktop_image_url, mobile_image_url, button_text, button_url, starts_at, ends_at, sort_order, is_active").order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
-    admin.from("products").select("id, name, slug, description, image_url").eq("status", "ACTIVE").eq("is_preorder_only", false).order("name", { ascending: true }),
+    admin.from("products").select("id, name, slug, description, image_url, is_preorder_only").eq("status", "ACTIVE").order("name", { ascending: true }),
   ]);
   const loadError = settings.error ?? slides.error ?? products.error;
   if (loadError) throw new Error(`Unable to load homepage slider: ${loadError.message}`);

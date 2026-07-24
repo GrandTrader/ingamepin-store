@@ -66,9 +66,9 @@ export async function saveSlide(formData: FormData) {
     sliderRedirect("error", "Enter valid image URLs.");
   }
   if (productId) {
-    const product = await admin.from("products").select("slug").eq("id", productId).maybeSingle();
+    const product = await admin.from("products").select("slug, is_preorder_only").eq("id", productId).maybeSingle();
     if (product.error || !product.data) sliderRedirect("error", "The selected product could not be found.");
-    buttonUrl = `/product/${product.data.slug}`;
+    buttonUrl = product.data.is_preorder_only ? "/preorder" : `/product/${product.data.slug}`;
   }
   if (!buttonUrl || (!buttonUrl.startsWith("/") && !validWebUrl(buttonUrl))) {
     sliderRedirect("error", "Select a product or enter a valid button link.");

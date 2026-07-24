@@ -9,6 +9,7 @@ export type SliderProduct = {
   slug: string;
   description: string | null;
   image_url: string | null;
+  is_preorder_only: boolean;
 };
 
 export type AdminSlide = {
@@ -58,7 +59,11 @@ export default function AdminHomepageSlider({
       title: product?.name ?? current.title,
       description: product?.description ?? current.description,
       desktop_image_url: product?.image_url ?? current.desktop_image_url,
-      button_url: product ? `/product/${product.slug}` : current.button_url,
+      button_url: product
+        ? product.is_preorder_only
+          ? "/preorder"
+          : `/product/${product.slug}`
+        : current.button_url,
     }));
   }
 
