@@ -369,7 +369,7 @@ export default async function Home() {
       </section>
 
       {featuredProductsForDisplay.length > 0 && (
-        <div className="hidden sm:block"><ProductSection
+        <div><ProductSection
           id="featured-products"
           eyebrow="Best Sellers"
           title="Featured Products"
