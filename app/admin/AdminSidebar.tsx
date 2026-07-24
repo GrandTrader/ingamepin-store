@@ -40,6 +40,11 @@ const links = [
     icon: "P",
   },
   {
+    label: "Homepage Slider",
+    href: "/admin/homepage-slider",
+    icon: "▣",
+  },
+  {
     label: "Wallet",
     href: "/admin/wallet",
     icon: "$",

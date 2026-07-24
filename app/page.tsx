@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import HeroSlider from "@/components/HeroSlider";
+import HeroSlider, { type HeroSlide } from "@/components/HeroSlider";
 import ProductCard, {
   type ProductCardData,
 } from "@/components/ProductCard";
@@ -139,6 +139,8 @@ export default async function Home() {
     categoryResult,
     productResult,
     preorderPopupResult,
+    sliderSettingsResult,
+    slidesResult,
   ] = await Promise.all([
     supabase
       .from("categories")
@@ -195,6 +197,19 @@ export default async function Home() {
       .eq("id", true)
       .eq("is_enabled", true)
       .maybeSingle(),
+
+    supabase
+      .from("homepage_slider_settings")
+      .select("is_enabled, autoplay_ms")
+      .eq("id", true)
+      .maybeSingle(),
+
+    supabase
+      .from("homepage_slides")
+      .select("id, eyebrow, title, description, desktop_image_url, mobile_image_url, button_text, button_url, starts_at, ends_at")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
   ]);
 
   if (categoryResult.error) {
@@ -212,6 +227,14 @@ export default async function Home() {
   if (preorderPopupResult.error) {
     throw new Error(
       `Unable to load preorder popup: ${preorderPopupResult.error.message}`,
+    );
+  }
+
+  if (sliderSettingsResult.error || slidesResult.error) {
+    throw new Error(
+      `Unable to load homepage slider: ${
+        sliderSettingsResult.error?.message ?? slidesResult.error?.message
+      }`,
     );
   }
 
@@ -260,6 +283,24 @@ export default async function Home() {
 
   const popupRow =
     preorderPopupResult.data as PreorderPopupRow | null;
+
+  const now = Date.now();
+  const heroSlides: HeroSlide[] = (slidesResult.data ?? [])
+    .filter((slide) => {
+      const starts = slide.starts_at ? new Date(slide.starts_at).getTime() : null;
+      const ends = slide.ends_at ? new Date(slide.ends_at).getTime() : null;
+      return (starts === null || starts <= now) && (ends === null || ends > now);
+    })
+    .map((slide) => ({
+      id: slide.id,
+      eyebrow: slide.eyebrow,
+      title: slide.title,
+      description: slide.description,
+      desktopImageUrl: slide.desktop_image_url,
+      mobileImageUrl: slide.mobile_image_url,
+      buttonText: slide.button_text,
+      buttonUrl: slide.button_url,
+    }));
 
   const preorderPopup: PreorderPopupData | null =
     popupRow &&
@@ -318,7 +359,12 @@ export default async function Home() {
         <PreorderPopup popup={preorderPopup} />
       )}
 
-      <HeroSlider />
+      {sliderSettingsResult.data?.is_enabled && (
+        <HeroSlider
+          slides={heroSlides}
+          autoplayMs={sliderSettingsResult.data.autoplay_ms}
+        />
+      )}
 
       <section className="mx-auto max-w-7xl px-3 py-5 sm:px-5 sm:py-10">
         <SectionHeading
