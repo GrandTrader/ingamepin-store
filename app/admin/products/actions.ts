@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { uploadStoreImage } from "@/lib/store-image-upload";
 import { createClient } from "@/lib/supabase/server";
 
 const allowedProductTypes = [
@@ -98,6 +99,7 @@ export async function updateProduct(
   formData: FormData,
 ) {
   const supabase = await getAdminClient();
+  const admin = createAdminClient();
 
   const id = String(
     formData.get("id") ?? "",
@@ -119,7 +121,7 @@ export async function updateProduct(
     formData.get("description") ?? "",
   ).trim();
 
-  const imageUrl = String(
+  let imageUrl = String(
     formData.get("image_url") ?? "",
   ).trim();
 
@@ -689,7 +691,7 @@ export async function updateProduct(
 
   if (submittedExistingIds.length > 0) {
     const existingOptionResult =
-      await supabase
+      await admin
         .from("product_options")
         .select("id")
         .eq("product_id", id)
@@ -724,7 +726,23 @@ export async function updateProduct(
     }
   }
 
-  const updateResult = await supabase
+  try {
+    imageUrl =
+      (await uploadStoreImage(
+        formData.get("image_file"),
+        "products",
+      )) ?? imageUrl;
+  } catch (error) {
+    productRedirect(
+      id,
+      "error",
+      error instanceof Error
+        ? error.message
+        : "Unable to upload product image.",
+    );
+  }
+
+  const updateResult = await admin
     .from("products")
     .update({
       category_id: categoryId,
@@ -787,7 +805,7 @@ export async function updateProduct(
 
   for (const option of existingOptions) {
     const optionUpdateResult =
-      await supabase
+      await admin
         .from("product_options")
         .update({
           category_id: categoryId,
@@ -851,7 +869,7 @@ export async function updateProduct(
 
   if (newOptions.length > 0) {
     const optionInsertResult =
-      await supabase
+      await admin
         .from("product_options")
         .insert(newOptions);
 

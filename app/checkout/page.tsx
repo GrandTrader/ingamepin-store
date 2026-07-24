@@ -1526,7 +1526,7 @@ export default function CheckoutPage() {
                       <img
                         src={item.image}
                         alt={item.name || item.title || "Product"}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-fill"
                       />
                     ) : (
                       <span className="text-3xl">🎮</span>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { uploadStoreImage } from "@/lib/store-image-upload";
 
 const allowedProductTypes = [
   "GAME_TOPUP",
@@ -148,7 +149,7 @@ export async function createProduct(
     formData.get("description") ?? "",
   ).trim();
 
-  const imageUrl = String(
+  let imageUrl = String(
     formData.get("image_url") ?? "",
   ).trim();
 
@@ -695,6 +696,20 @@ export async function createProduct(
   ) {
     redirectWithError(
       "The same product option cannot be added twice.",
+    );
+  }
+
+  try {
+    imageUrl =
+      (await uploadStoreImage(
+        formData.get("image_file"),
+        "products",
+      )) ?? imageUrl;
+  } catch (error) {
+    redirectWithError(
+      error instanceof Error
+        ? error.message
+        : "Unable to upload product image.",
     );
   }
 

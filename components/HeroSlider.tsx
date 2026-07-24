@@ -41,7 +41,7 @@ export default function HeroSlider({
         <picture>
           {slide.mobileImageUrl && <source media="(max-width: 639px)" srcSet={slide.mobileImageUrl} />}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={slide.desktopImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={slide.desktopImageUrl} alt="" className="absolute inset-0 h-full w-full object-fill" />
         </picture>
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/55 to-slate-950/10" />
 

@@ -112,7 +112,7 @@ export default function PreorderPopup({
         <img
           src={popup.imageUrl}
           alt={popup.gameTitle}
-          className="h-48 w-full object-cover md:h-full md:min-h-[510px]"
+          className="h-48 w-full object-fill md:h-full md:min-h-[510px]"
         />
 
         <div className="flex flex-col justify-center p-5 text-center sm:p-8 md:p-10">

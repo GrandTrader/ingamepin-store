@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { deleteSlide, moveSlide, saveSlide, saveSliderSettings } from "@/app/admin/homepage-slider/actions";
+import ResponsiveImageField from "@/components/ResponsiveImageField";
 
 export type SliderProduct = {
   id: string;
@@ -93,7 +94,7 @@ export default function AdminHomepageSlider({
               <article key={slide.id} className={`rounded-xl border p-3 ${draft.id === slide.id ? "border-cyan-400 bg-cyan-50" : "border-slate-200"}`}>
                 <button type="button" onClick={() => setDraft(slide)} className="flex w-full items-center gap-3 text-left">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={slide.desktop_image_url} alt="" className="h-16 w-24 rounded-lg bg-slate-100 object-cover" />
+                  <img src={slide.desktop_image_url} alt="" className="h-16 w-24 rounded-lg bg-slate-100 object-fill" />
                   <span className="min-w-0">
                     <span className="block truncate font-black">{slide.title}</span>
                     <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${slide.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{slide.is_active ? "Active" : "Inactive"}</span>
@@ -127,8 +128,23 @@ export default function AdminHomepageSlider({
             <Field label="Eyebrow"><input name="eyebrow" value={draft.eyebrow} onChange={(e) => setDraft({ ...draft, eyebrow: e.target.value })} className={inputClass} /></Field>
             <Field label="Headline"><input name="title" required value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={inputClass} /></Field>
             <Field label="Description" wide><textarea name="description" rows={3} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} className={inputClass} /></Field>
-            <Field label="Desktop image URL" wide><input type="url" name="desktop_image_url" required value={draft.desktop_image_url} onChange={(e) => setDraft({ ...draft, desktop_image_url: e.target.value })} className={inputClass} placeholder="Recommended: 1920 × 700 px" /></Field>
-            <Field label="Mobile image URL" wide><input type="url" name="mobile_image_url" value={draft.mobile_image_url ?? ""} onChange={(e) => setDraft({ ...draft, mobile_image_url: e.target.value })} className={inputClass} placeholder="Recommended: 768 × 1200 px (optional)" /></Field>
+            <ResponsiveImageField
+              key={`desktop-${draft.id}-${draft.desktop_image_url}`}
+              label="Desktop slide image"
+              name="desktop_image_url"
+              fileName="desktop_image_file"
+              defaultValue={draft.desktop_image_url}
+              variant="slide"
+              required
+            />
+            <ResponsiveImageField
+              key={`mobile-${draft.id}-${draft.mobile_image_url ?? ""}`}
+              label="Mobile slide image (optional)"
+              name="mobile_image_url"
+              fileName="mobile_image_file"
+              defaultValue={draft.mobile_image_url}
+              variant="slide"
+            />
             <Field label="Button text"><input name="button_text" value={draft.button_text} onChange={(e) => setDraft({ ...draft, button_text: e.target.value })} className={inputClass} /></Field>
             <Field label="Button link"><input name="button_url" value={draft.button_url} readOnly={Boolean(draft.product_id)} onChange={(e) => setDraft({ ...draft, button_url: e.target.value })} className={`${inputClass} read-only:bg-slate-100`} placeholder="/products" /></Field>
             <Field label="Start date (India)"><input type="datetime-local" name="starts_at" defaultValue={localDate(draft.starts_at)} key={`start-${draft.id}`} className={inputClass} /></Field>
@@ -136,7 +152,16 @@ export default function AdminHomepageSlider({
             <label className="flex items-center gap-3 font-bold"><input type="checkbox" name="is_active" checked={draft.is_active} onChange={(e) => setDraft({ ...draft, is_active: e.target.checked })} className="h-6 w-6 accent-cyan-500" />Active</label>
             <div className="sm:col-span-2">
               <p className="mb-2 text-sm font-bold text-slate-700">Live preview</p>
-              <div className="relative min-h-56 overflow-hidden rounded-2xl bg-slate-900 bg-cover bg-center p-7 text-white" style={{ backgroundImage: draft.desktop_image_url ? `linear-gradient(90deg, rgba(2,6,23,.9), rgba(2,6,23,.15)), url("${draft.desktop_image_url}")` : undefined }}>
+              <div className="relative min-h-56 overflow-hidden rounded-2xl bg-slate-900 p-7 text-white">
+                {draft.desktop_image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={draft.desktop_image_url}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-fill"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 to-slate-950/15" />
                 <div className="relative max-w-lg">
                   <p className="text-xs font-black uppercase tracking-widest text-cyan-300">{draft.eyebrow}</p>
                   <h3 className="mt-3 text-3xl font-black">{draft.title || "Slide headline"}</h3>

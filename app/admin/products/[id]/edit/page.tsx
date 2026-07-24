@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import CountrySelect from "@/components/CountrySelect";
+import ResponsiveImageField from "@/components/ResponsiveImageField";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../../../AdminSidebar";
 import DeliveryInventoryField from "../../DeliveryInventoryField";
@@ -271,16 +272,13 @@ export default async function EditProductPage({
 
                 <CountrySelect defaultValue={product.region} />
 
-                <label>
-                  <span className="text-sm font-bold">Product image URL</span>
-                  <input
-                    name="image_url"
-                    type="url"
-                    defaultValue={product.image_url ?? ""}
-                    placeholder="https://example.com/product-image.jpg"
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
+                <ResponsiveImageField
+                  label="Product image"
+                  name="image_url"
+                  fileName="image_file"
+                  defaultValue={product.image_url}
+                  variant="product"
+                />
 
                 <label className="md:col-span-2">
                   <span className="text-sm font-bold">Description</span>

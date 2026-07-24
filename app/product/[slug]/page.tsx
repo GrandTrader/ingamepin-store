@@ -170,7 +170,7 @@ export default async function ProductPage({
                 <img
                   src={product.image_url}
                   alt={product.name}
-                  className="aspect-[16/10] w-full object-cover"
+                  className="aspect-[16/10] w-full object-fill"
                 />
               ) : (
                 <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">

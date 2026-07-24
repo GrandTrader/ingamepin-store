@@ -64,7 +64,7 @@ export default function ProductCard({ product }: Props) {
               alt={product.name}
               loading="lazy"
               onError={() => setShowImage(false)}
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              className="h-full w-full object-fill transition duration-500 group-hover:scale-105"
             />
           ) : (
             <div

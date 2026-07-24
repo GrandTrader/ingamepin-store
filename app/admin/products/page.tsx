@@ -254,7 +254,7 @@ export default async function AdminProductsPage({
                             <img
                               src={product.image_url}
                               alt=""
-                              className="h-12 w-12 rounded-xl border border-slate-200 object-cover"
+                              className="h-12 w-12 rounded-xl border border-slate-200 object-fill"
                             />
                           ) : (
                             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-sm font-black text-blue-600">

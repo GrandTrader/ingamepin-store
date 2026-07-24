@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { uploadStoreImage } from "@/lib/store-image-upload";
 
 async function requireAdministrator() {
   const supabase = await createClient();
@@ -57,9 +58,23 @@ export async function saveSlide(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   const productId = String(formData.get("product_id") ?? "").trim() || null;
   const title = String(formData.get("title") ?? "").trim();
-  const desktopImageUrl = String(formData.get("desktop_image_url") ?? "").trim();
-  const mobileImageUrl = String(formData.get("mobile_image_url") ?? "").trim();
+  let desktopImageUrl = String(formData.get("desktop_image_url") ?? "").trim();
+  let mobileImageUrl = String(formData.get("mobile_image_url") ?? "").trim();
   let buttonUrl = String(formData.get("button_url") ?? "").trim();
+
+  try {
+    desktopImageUrl =
+      (await uploadStoreImage(formData.get("desktop_image_file"), "slides")) ??
+      desktopImageUrl;
+    mobileImageUrl =
+      (await uploadStoreImage(formData.get("mobile_image_file"), "slides")) ??
+      mobileImageUrl;
+  } catch (error) {
+    sliderRedirect(
+      "error",
+      error instanceof Error ? error.message : "Unable to upload slide image.",
+    );
+  }
 
   if (!title || !desktopImageUrl) sliderRedirect("error", "Title and desktop image are required.");
   if (!validWebUrl(desktopImageUrl) || (mobileImageUrl && !validWebUrl(mobileImageUrl))) {
