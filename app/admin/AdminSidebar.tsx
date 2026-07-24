@@ -35,6 +35,11 @@ const links = [
     icon: "▤",
   },
   {
+    label: "Payment Settings",
+    href: "/admin/payment-settings",
+    icon: "₹",
+  },
+  {
     label: "Preorder Popup",
     href: "/admin/preorder-popup",
     icon: "P",

@@ -1369,7 +1369,7 @@ export default function CheckoutPage() {
 
               <label
                 className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
-                  paymentMethod === "card"
+                  paymentMethod === "pally"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
                 }`}
@@ -1377,8 +1377,8 @@ export default function CheckoutPage() {
                 <input
                   type="radio"
                   name="paymentMethod"
-                  value="card"
-                  checked={paymentMethod === "card"}
+                  value="pally"
+                  checked={paymentMethod === "pally"}
                   onChange={(event) =>
                     setPaymentMethod(event.target.value)
                   }
@@ -1386,76 +1386,14 @@ export default function CheckoutPage() {
                 />
 
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">💳</span>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500 text-sm font-black text-white">
+                    P
+                  </span>
 
                   <div>
-                    <p className="font-bold">
-                      Debit or Credit Card
-                    </p>
+                    <p className="font-bold">Pally Payment</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Visa, Mastercard and RuPay
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
-                  paymentMethod === "netbanking"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="netbanking"
-                  checked={paymentMethod === "netbanking"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🏦</span>
-
-                  <div>
-                    <p className="font-bold">Net Banking</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Pay through your bank
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
-                  paymentMethod === "cod"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cod"
-                  checked={paymentMethod === "cod"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">💵</span>
-
-                  <div>
-                    <p className="font-bold">
-                      Cash on Delivery
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Available for eligible orders
+                      Faster Payments System or USDT
                     </p>
                   </div>
                 </div>

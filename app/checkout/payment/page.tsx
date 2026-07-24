@@ -34,7 +34,7 @@ export default function PaymentPage() {
       if (
         !parsedOrder?.databaseId ||
         !parsedOrder.accessToken ||
-        !["binance", "nowpayments"].includes(
+        !["binance", "nowpayments", "pally"].includes(
           parsedOrder.paymentMethod?.toLowerCase() ?? "",
         ) ||
         Number(parsedOrder.totalAmount) <= 0
@@ -58,12 +58,13 @@ export default function PaymentPage() {
     setMessage("");
 
     try {
-      const isNowPayments =
-        order.paymentMethod?.toLowerCase() === "nowpayments";
+      const paymentMethod = order.paymentMethod?.toLowerCase();
       const response = await fetch(
-        isNowPayments
+        paymentMethod === "nowpayments"
           ? "/api/nowpayments/create-invoice"
-          : "/api/binance-pay/create-order",
+          : paymentMethod === "pally"
+            ? "/api/pally/create-invoice"
+            : "/api/binance-pay/create-order",
         {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,7 +107,7 @@ export default function PaymentPage() {
         <div className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-slate-900 p-8 text-center">
           <h1 className="text-3xl font-black">Payment unavailable</h1>
           <p className="mt-3 text-slate-400">
-            Return to checkout and select Binance Pay.
+            Return to checkout and select an available payment method.
           </p>
           <Link
             href="/checkout"
@@ -125,17 +126,21 @@ export default function PaymentPage() {
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">
           {order.paymentMethod?.toLowerCase() === "nowpayments"
             ? "NOWPayments"
-            : "Binance Pay"}
+            : order.paymentMethod?.toLowerCase() === "pally"
+              ? "Pally"
+              : "Binance Pay"}
         </p>
         <h1 className="mt-3 text-3xl font-black">
           Pay securely with{" "}
           {order.paymentMethod?.toLowerCase() === "nowpayments"
             ? "NOWPayments"
-            : "Binance"}
+            : order.paymentMethod?.toLowerCase() === "pally"
+              ? "Pally"
+              : "Binance"}
         </h1>
         <p className="mt-3 text-slate-400">
-          Choose a supported cryptocurrency and complete your USD-priced order
-          securely.
+          Choose an available payment method and complete your USD-priced order
+          securely. Pally will display the converted payment amount.
         </p>
         <div className="mt-6 rounded-2xl bg-slate-950 p-5">
           <p className="text-sm text-slate-500">Order total</p>
@@ -158,7 +163,9 @@ export default function PaymentPage() {
             ? "Opening payment gateway..."
             : order.paymentMethod?.toLowerCase() === "nowpayments"
               ? "Continue to NOWPayments"
-              : "Continue to Binance Pay"}
+              : order.paymentMethod?.toLowerCase() === "pally"
+                ? "Continue to Pally"
+                : "Continue to Binance Pay"}
         </button>
         <Link
           href="/checkout"
