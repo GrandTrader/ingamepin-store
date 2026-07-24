@@ -178,7 +178,7 @@ export default function Header() {
         <div className="mx-auto flex max-w-7xl items-center justify-center px-3 py-1.5 text-center text-[10px] text-slate-300 sm:justify-between sm:px-5 sm:py-2 sm:text-xs">
           <p>
             <span aria-hidden="true">{"\u26A1"}</span>{" "}
-            Manual delivery after successful payment verification
+            Digital Delivery
           </p>
 
           <div className="hidden flex-wrap items-center justify-center gap-4 sm:flex">
