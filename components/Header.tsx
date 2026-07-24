@@ -500,6 +500,32 @@ export default function Header() {
             className="absolute left-0 right-0 top-full max-h-[calc(100vh-3rem)] overflow-y-auto border-t border-white/10 bg-slate-900 px-3 py-4 shadow-2xl lg:hidden"
           >
             <div className="mx-auto grid max-w-7xl gap-1">
+              <div className="mb-3 grid grid-cols-2 gap-2 border-b border-white/10 pb-4">
+                <select
+                  aria-label="Language"
+                  value={language}
+                  onChange={(event) =>
+                    setLanguage(event.target.value === "ru" ? "ru" : "en")
+                  }
+                  className="h-11 rounded-xl border border-white/10 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition focus:border-cyan-400"
+                >
+                  <option value="en">🇺🇸 English</option>
+                  <option value="ru">🇷🇺 Русский</option>
+                </select>
+
+                <select
+                  aria-label="Currency"
+                  value={currency}
+                  onChange={(event) =>
+                    setCurrency(event.target.value === "RUB" ? "RUB" : "USD")
+                  }
+                  className="h-11 rounded-xl border border-white/10 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition focus:border-cyan-400"
+                >
+                  <option value="USD">$ USD</option>
+                  <option value="RUB">₽ RUB</option>
+                </select>
+              </div>
+
               <Link
                 href="/"
                 onClick={closeMenu}
@@ -598,39 +624,6 @@ export default function Header() {
                 {isAuthenticated ? t("myAccount") : t("login")}
               </Link>
 
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <label className="grid gap-1 text-xs font-bold text-slate-400">
-                  Language
-                  <select
-                    value={language}
-                    onChange={(event) =>
-                      setLanguage(
-                        event.target.value === "ru" ? "ru" : "en",
-                      )
-                    }
-                    className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm font-bold text-white outline-none"
-                  >
-                    <option value="en">🇺🇸 English</option>
-                    <option value="ru">🇷🇺 Русский</option>
-                  </select>
-                </label>
-
-                <label className="grid gap-1 text-xs font-bold text-slate-400">
-                  Currency
-                  <select
-                    value={currency}
-                    onChange={(event) =>
-                      setCurrency(
-                        event.target.value === "RUB" ? "RUB" : "USD",
-                      )
-                    }
-                    className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm font-bold text-white outline-none"
-                  >
-                    <option value="USD">$ USD</option>
-                    <option value="RUB">₽ RUB</option>
-                  </select>
-                </label>
-              </div>
             </div>
           </nav>
         )}
