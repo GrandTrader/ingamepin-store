@@ -23,6 +23,7 @@ type PopupSettings = {
   launch_date: string | null;
   preorder_price: number | string | null;
   ultimate_price: number | string | null;
+  sold_count: number;
   bonus_text: string;
   button_text: string;
 };
@@ -71,7 +72,7 @@ export default async function PreorderPopupPage({
   const settingsResult = await admin
     .from("preorder_popup_settings")
     .select(
-      "is_enabled, game_title, description, image_url, launch_date, preorder_price, ultimate_price, bonus_text, button_text",
+      "is_enabled, game_title, description, image_url, launch_date, preorder_price, ultimate_price, sold_count, bonus_text, button_text",
     )
     .eq("id", true)
     .maybeSingle();
@@ -214,6 +215,20 @@ export default async function PreorderPopupPage({
                     settings?.ultimate_price ?? ""
                   }
                   placeholder="89.99"
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Starting sold count">
+                <input
+                  type="number"
+                  name="sold_count"
+                  min="0"
+                  step="1"
+                  required
+                  defaultValue={
+                    settings?.sold_count ?? 279
+                  }
                   className={inputClass}
                 />
               </Field>

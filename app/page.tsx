@@ -73,6 +73,7 @@ type PreorderPopupRow = {
   image_url: string;
   launch_date: string | null;
   preorder_price: number | string | null;
+  sold_count: number;
   bonus_text: string;
   button_text: string;
 };
@@ -189,7 +190,7 @@ export default async function Home() {
     supabase
       .from("preorder_popup_settings")
       .select(
-        "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, bonus_text, button_text",
+        "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, sold_count, bonus_text, button_text",
       )
       .eq("id", true)
       .eq("is_enabled", true)
@@ -295,11 +296,15 @@ export default async function Home() {
             badge: "Preorder",
             stock: 999999,
             rating: 5,
-            sold: popupRow?.product_id
-              ? paidProductSales.get(
-                  popupRow.product_id,
-                ) ?? 0
-              : 0,
+            sold:
+              Number(
+                popupRow?.sold_count ?? 0,
+              ) +
+              (popupRow?.product_id
+                ? paidProductSales.get(
+                    popupRow.product_id,
+                  ) ?? 0
+                : 0),
             slug: "preorder",
             href: "/preorder",
           },

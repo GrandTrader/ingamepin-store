@@ -81,6 +81,11 @@ export async function savePreorderPopup(
     String(
       formData.get("button_text") ?? "",
     ).trim() || "PREORDER NOW";
+  const soldCount = Number(
+    String(
+      formData.get("sold_count") ?? "",
+    ).trim(),
+  );
   const standardPrice = readPrice(
     formData,
     "standard_price",
@@ -91,6 +96,16 @@ export async function savePreorderPopup(
     "ultimate_price",
     "Ultimate Edition",
   );
+
+  if (
+    !Number.isInteger(soldCount) ||
+    soldCount < 0
+  ) {
+    settingsRedirect(
+      "error",
+      "Enter a valid sold count.",
+    );
+  }
 
   if (
     !gameTitle ||
@@ -305,6 +320,7 @@ export async function savePreorderPopup(
         parsedLaunchDate.toISOString(),
       preorder_price: standardPrice,
       ultimate_price: ultimatePrice,
+      sold_count: soldCount,
       bonus_text: bonusText,
       button_text: buttonText,
     });
