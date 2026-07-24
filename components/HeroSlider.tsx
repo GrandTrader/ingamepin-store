@@ -36,7 +36,7 @@ export default function HeroSlider({
   const slide = slides[safeIndex];
 
   return (
-    <section className="mx-auto max-w-7xl px-3 pt-3 sm:px-5 sm:pt-8">
+    <section className="mx-auto hidden max-w-7xl px-3 pt-3 sm:block sm:px-5 sm:pt-8">
       <div className="relative min-h-[236px] overflow-hidden rounded-2xl bg-slate-900 sm:min-h-[430px] sm:rounded-3xl">
         <picture>
           {slide.mobileImageUrl && <source media="(max-width: 639px)" srcSet={slide.mobileImageUrl} />}
