@@ -84,9 +84,9 @@ export async function customerRegister(formData: FormData) {
   }
 
   accountRedirect(
-    "/account",
+    "/account/register",
     "success",
-    "Account created. Check your email to verify your account, then sign in.",
+    "Registration completed. Check your email and activate your account before signing in.",
   );
 }
 

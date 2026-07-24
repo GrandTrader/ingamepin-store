@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verify your iNgamePIN account</title>
+  </head>
+  <body style="margin:0;padding:0;background:#e8f5f8;color:#0f172a;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#e8f5f8;">
+      <tr>
+        <td align="center" style="padding:32px 12px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:620px;background:#ffffff;border:1px solid #cbd5e1;border-radius:20px;overflow:hidden;">
+            <tr>
+              <td style="height:6px;background:#22d3ee;font-size:0;line-height:0;">&nbsp;</td>
+            </tr>
+            <tr>
+              <td style="padding:22px 30px;border-bottom:1px solid #e2e8f0;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td width="56" valign="middle">
+                      <img
+                        src="https://www.ingamepin.com/icon.svg"
+                        width="44"
+                        height="44"
+                        alt="iNgamePIN"
+                        style="display:block;width:44px;height:44px;border:0;border-radius:12px;"
+                      >
+                    </td>
+                    <td valign="middle">
+                      <div style="font-size:18px;line-height:24px;font-weight:700;color:#0f172a;">iNgamePIN</div>
+                      <div style="font-size:12px;line-height:18px;color:#475569;">Digital Gaming Store</div>
+                    </td>
+                    <td align="right" valign="middle" style="font-size:12px;line-height:18px;color:#475569;">
+                      Account Verification
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:38px 42px 34px;background:#ecfeff;">
+                <div style="font-size:30px;line-height:36px;font-weight:700;color:#0f172a;">Verify your email address</div>
+                <p style="margin:20px 0 0;font-size:16px;line-height:26px;color:#0f172a;">
+                  Hello{{ if .Data.full_name }} {{ .Data.full_name }}{{ end }},
+                </p>
+                <p style="margin:10px 0 26px;font-size:15px;line-height:25px;color:#334155;">
+                  Thank you for creating your iNgamePIN account. Confirm your email address to activate your account and securely access orders, purchases, wallet features, and customer support.
+                </p>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td align="center" bgcolor="#22d3ee" style="border-radius:12px;">
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        style="display:inline-block;padding:14px 24px;font-size:15px;line-height:20px;font-weight:700;color:#082f49;text-decoration:none;border-radius:12px;"
+                      >
+                        Verify Email &amp; Activate Account
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <div style="margin-top:28px;padding:16px 0;border-top:1px solid #bae6fd;border-bottom:1px solid #bae6fd;font-size:13px;line-height:21px;color:#334155;">
+                  This secure verification link can be used only once. If you did not register with iNgamePIN, no action is required.
+                </div>
+                <p style="margin:24px 0 0;font-size:12px;line-height:19px;color:#475569;">
+                  If the button does not work, copy and paste this secure link into your browser:
+                </p>
+                <p style="margin:8px 0 0;word-break:break-all;font-size:12px;line-height:19px;color:#0e7490;">
+                  {{ .ConfirmationURL }}
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:22px 30px;background:#f1f5f9;font-size:12px;line-height:19px;color:#475569;">
+                This automated email was sent only to the customer who registered this account.<br>
+                Need assistance? <a href="mailto:support@ingamepin.com" style="color:#0e7490;text-decoration:none;font-weight:700;">support@ingamepin.com</a><br><br>
+                © 2026 iNgamePIN. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
