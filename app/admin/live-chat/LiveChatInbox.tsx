@@ -26,6 +26,7 @@ export default function LiveChatInbox() {
   const [reply, setReply] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [mobileConversationOpen, setMobileConversationOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async (requestedId?: string | null) => {
@@ -117,7 +118,11 @@ export default function LiveChatInbox() {
       )}
 
       <div className="grid h-[calc(100vh-220px)] min-h-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[340px_1fr]">
-        <aside className="border-b border-slate-200 lg:border-b-0 lg:border-r">
+        <aside
+          className={`border-b border-slate-200 lg:block lg:border-b-0 lg:border-r ${
+            mobileConversationOpen ? "hidden" : "block"
+          }`}
+        >
           <div className="border-b border-slate-200 p-4 font-black">
             Conversations ({conversations.length})
           </div>
@@ -134,6 +139,7 @@ export default function LiveChatInbox() {
                   type="button"
                   onClick={() => {
                     setSelectedId(entry.id);
+                    setMobileConversationOpen(true);
                     load(entry.id);
                   }}
                   className={`block w-full border-b border-slate-100 p-4 text-left ${
@@ -163,15 +169,28 @@ export default function LiveChatInbox() {
           </div>
         </aside>
 
-        <section className="flex min-h-0 flex-col">
+        <section
+          className={`min-h-0 flex-col lg:flex ${
+            mobileConversationOpen ? "flex" : "hidden"
+          }`}
+        >
           {selected ? (
             <>
               <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
-                <div>
-                  <p className="font-black">{selected.customer_name}</p>
-                  <p className="text-xs text-slate-500">
-                    {selected.customer_email || "Guest visitor"}
-                  </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMobileConversationOpen(false)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-black lg:hidden"
+                  >
+                    Back
+                  </button>
+                  <div className="min-w-0">
+                    <p className="truncate font-black">{selected.customer_name}</p>
+                    <p className="truncate text-xs text-slate-500">
+                      {selected.customer_email || "Guest visitor"}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"

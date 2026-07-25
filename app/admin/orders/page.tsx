@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
@@ -57,7 +57,7 @@ function formatMoney(
 
 function formatDate(date: string | null) {
   if (!date) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat("en-IN", {
@@ -170,7 +170,7 @@ export default async function AdminOrdersPage({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col md:flex-row">
+      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar
           orderCount={paymentReviewCount}
         />
@@ -348,7 +348,7 @@ export default async function AdminOrdersPage({
                                     <p className="font-bold">
                                       {item.product_name}
                                       {item.quantity > 1
-                                        ? ` × ${item.quantity}`
+                                        ? ` Ã— ${item.quantity}`
                                         : ""}
                                     </p>
 
@@ -445,7 +445,7 @@ export default async function AdminOrdersPage({
                                                 item.product_name
                                               }
                                               {item.player_id
-                                                ? ` · Player ID ${item.player_id}`
+                                                ? ` Â· Player ID ${item.player_id}`
                                                 : ""}
                                             </span>
                                           </span>
@@ -461,7 +461,7 @@ export default async function AdminOrdersPage({
                                             item.product_name
                                           }
                                           {item.option_name
-                                            ? ` · ${item.option_name}`
+                                            ? ` Â· ${item.option_name}`
                                             : ""}
                                           <span className="mt-1 block text-xs font-normal text-slate-500">
                                             Enter exactly{" "}
@@ -552,3 +552,4 @@ export default async function AdminOrdersPage({
     </div>
   );
 }
+

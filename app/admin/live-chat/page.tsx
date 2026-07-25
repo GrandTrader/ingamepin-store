@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import AdminSidebar from "../AdminSidebar";
 import LiveChatInbox from "./LiveChatInbox";
@@ -23,7 +23,7 @@ export default async function AdminLiveChatPage() {
   if (!check.data) redirect("/admin/login?error=Access denied");
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900 md:flex">
+    <main className="min-h-screen bg-slate-100 text-slate-900 lg:flex">
       <AdminSidebar />
       <section className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <LiveChatInbox />
@@ -31,4 +31,5 @@ export default async function AdminLiveChatPage() {
     </main>
   );
 }
+
 

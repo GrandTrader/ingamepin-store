@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -42,7 +42,7 @@ export default async function PaymentSettingsPage({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1700px] flex-col md:flex-row">
+      <div className="mx-auto flex min-h-screen max-w-[1700px] flex-col lg:flex-row">
         <AdminSidebar />
 
         <main className="min-w-0 flex-1 p-5 sm:p-8">
@@ -77,7 +77,7 @@ export default async function PaymentSettingsPage({
             </label>
 
             <div className="mt-2 flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-blue-500">
-              <span className="px-4 text-lg font-black text-slate-500">₽</span>
+              <span className="px-4 text-lg font-black text-slate-500">â‚½</span>
               <input
                 id="pally_usd_rub_rate"
                 name="pally_usd_rub_rate"
@@ -110,7 +110,7 @@ export default async function PaymentSettingsPage({
             </label>
 
             <div className="mt-2 flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-blue-500">
-              <span className="px-4 text-lg font-black text-slate-500">₽</span>
+              <span className="px-4 text-lg font-black text-slate-500">â‚½</span>
               <input
                 id="store_usd_rub_rate"
                 name="store_usd_rub_rate"
@@ -145,3 +145,4 @@ export default async function PaymentSettingsPage({
     </div>
   );
 }
+

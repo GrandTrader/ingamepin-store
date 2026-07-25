@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 import AdminHomepageSlider, { type AdminSlide, type SliderProduct } from "@/components/AdminHomepageSlider";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +29,7 @@ export default async function HomepageSliderPage({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1700px] flex-col md:flex-row">
+      <div className="mx-auto flex min-h-screen max-w-[1700px] flex-col lg:flex-row">
         <AdminSidebar />
         <main className="min-w-0 flex-1 p-5 sm:p-8">
           <h1 className="text-3xl font-black">Homepage Slider</h1>
@@ -46,3 +46,4 @@ export default async function HomepageSliderPage({
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
@@ -30,7 +30,7 @@ export default async function AdminWalletPage({ searchParams }: Props) {
   const pending = requests.filter((request) => request.status === "PENDING").length;
   const approved = requests.filter((request) => request.status === "APPROVED").reduce((sum, request) => sum + Number(request.amount), 0);
 
-  return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col md:flex-row">
+  return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
     <AdminSidebar walletCount={pending} />
     <main className="min-w-0 flex-1 p-5 sm:p-8">
       <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Customer funds</p><h1 className="mt-2 text-3xl font-black">Wallet top-ups</h1><p className="mt-1 text-sm text-slate-500">Verify payment references before crediting customer wallets.</p>
@@ -46,3 +46,4 @@ export default async function AdminWalletPage({ searchParams }: Props) {
     </main>
   </div></div>;
 }
+

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
@@ -201,7 +201,7 @@ export default async function AdminDashboard({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col md:flex-row">
+      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar
           orderCount={
             paymentsResult.count ?? 0
@@ -399,35 +399,35 @@ export default async function AdminDashboard({
                   href="/admin/products"
                   className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  ＋ Add product
+                  ï¼‹ Add product
                 </Link>
 
                 <Link
                   href="/admin/payments"
                   className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  ✓ Verify payments
+                  âœ“ Verify payments
                 </Link>
 
                 <Link
                   href="/admin/gift-codes"
                   className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  ⌘ Add gift codes
+                  âŒ˜ Add gift codes
                 </Link>
 
                 <Link
                   href="/admin/orders"
                   className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  ▣ Manage orders
+                  â–£ Manage orders
                 </Link>
               </div>
             </aside>
           </div>
 
           <footer className="mt-10 border-t border-slate-200 pt-5 text-xs text-slate-500">
-            Signed in as {user.email} ·{" "}
+            Signed in as {user.email} Â·{" "}
             {adminResult.data.role}
           </footer>
         </main>
@@ -435,3 +435,4 @@ export default async function AdminDashboard({
     </div>
   );
 }
+

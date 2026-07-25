@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
@@ -171,7 +171,7 @@ export default async function PaymentsPage({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col md:flex-row">
+      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar
           orderCount={reviews.length}
         />
@@ -425,3 +425,4 @@ function Detail({
     </div>
   );
 }
+

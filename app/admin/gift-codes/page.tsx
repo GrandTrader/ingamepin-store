@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import AdminSidebar from "../AdminSidebar";
 import { createClient } from "@/lib/supabase/server";
@@ -172,7 +172,7 @@ export default async function GiftCodesPage({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col md:flex-row">
+      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar />
 
         <main className="min-w-0 flex-1 p-5 sm:p-8">
@@ -368,3 +368,4 @@ function InventoryCard({
     </div>
   );
 }
+

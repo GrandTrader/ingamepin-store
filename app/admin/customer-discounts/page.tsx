@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -63,7 +63,7 @@ export default async function CustomerDiscountsPage({
   );
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900 md:flex">
+    <main className="min-h-screen bg-slate-100 text-slate-900 lg:flex">
       <AdminSidebar />
       <section className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
@@ -123,3 +123,4 @@ export default async function CustomerDiscountsPage({
     </main>
   );
 }
+

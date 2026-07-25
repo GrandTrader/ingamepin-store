@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import CountrySelect from "@/components/CountrySelect";
@@ -224,7 +224,7 @@ export default async function EditProductPage({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col md:flex-row">
+      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar />
 
         <main className="min-w-0 flex-1 p-5 sm:p-8">
@@ -241,7 +241,7 @@ export default async function EditProductPage({
               href="/admin/products"
               className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
             >
-              â† Product list
+              Ã¢â€ Â Product list
             </Link>
           </header>
 
@@ -283,7 +283,7 @@ export default async function EditProductPage({
                     defaultValue={product.name_ru ?? ""}
                     minLength={2}
                     maxLength={150}
-                    placeholder="Название товара на русском языке"
+                    placeholder="ÐÐ°Ð·Ð²Ð°Ð½Ð¸Ðµ Ñ‚Ð¾Ð²Ð°Ñ€Ð° Ð½Ð° Ñ€ÑƒÑÑÐºÐ¾Ð¼ ÑÐ·Ñ‹ÐºÐµ"
                     className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
@@ -316,7 +316,7 @@ export default async function EditProductPage({
                     rows={6}
                     maxLength={5000}
                     defaultValue={product.description_ru ?? ""}
-                    placeholder="Описание товара на русском языке"
+                    placeholder="ÐžÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ Ñ‚Ð¾Ð²Ð°Ñ€Ð° Ð½Ð° Ñ€ÑƒÑÑÐºÐ¾Ð¼ ÑÐ·Ñ‹ÐºÐµ"
                     className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
@@ -434,7 +434,7 @@ export default async function EditProductPage({
                     name="badge_ru"
                     defaultValue={product.badge_ru ?? ""}
                     maxLength={100}
-                    placeholder="Цифровая доставка"
+                    placeholder="Ð¦Ð¸Ñ„Ñ€Ð¾Ð²Ð°Ñ Ð´Ð¾ÑÑ‚Ð°Ð²ÐºÐ°"
                     className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
@@ -502,5 +502,6 @@ export default async function EditProductPage({
     </div>
   );
 }
+
 
 
