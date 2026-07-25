@@ -34,7 +34,7 @@ export default function PaymentPage() {
       if (
         !parsedOrder?.databaseId ||
         !parsedOrder.accessToken ||
-        !["binance", "nowpayments", "pally", "usdt"].includes(
+        !["binance", "nowpayments", "pally", "freekassa", "usdt"].includes(
           parsedOrder.paymentMethod?.toLowerCase() ?? "",
         ) ||
         Number(parsedOrder.totalAmount) <= 0
@@ -69,7 +69,9 @@ export default function PaymentPage() {
           ? "/api/nowpayments/create-invoice"
           : paymentMethod === "pally"
             ? "/api/pally/create-invoice"
-            : "/api/binance-pay/create-order",
+            : paymentMethod === "freekassa"
+              ? "/api/freekassa/create-invoice"
+              : "/api/binance-pay/create-order",
         {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,7 +135,9 @@ export default function PaymentPage() {
             ? "NOWPayments"
             : order.paymentMethod?.toLowerCase() === "pally"
               ? "Pally"
-              : "Binance Pay"}
+              : order.paymentMethod?.toLowerCase() === "freekassa"
+                ? "FreeKassa"
+                : "Binance Pay"}
         </p>
         <h1 className="mt-3 text-3xl font-black">
           Pay securely with{" "}
@@ -141,7 +145,9 @@ export default function PaymentPage() {
             ? "NOWPayments"
             : order.paymentMethod?.toLowerCase() === "pally"
               ? "Pally"
-              : "Binance"}
+              : order.paymentMethod?.toLowerCase() === "freekassa"
+                ? "FreeKassa"
+                : "Binance"}
         </h1>
         <p className="mt-3 text-slate-400">
           Choose an available payment method and complete your USD-priced order
@@ -170,7 +176,9 @@ export default function PaymentPage() {
               ? "Continue to NOWPayments"
               : order.paymentMethod?.toLowerCase() === "pally"
                 ? "Continue to Pally"
-                : "Continue to Binance Pay"}
+                : order.paymentMethod?.toLowerCase() === "freekassa"
+                  ? "Continue to FreeKassa"
+                  : "Continue to Binance Pay"}
         </button>
         <Link
           href="/checkout"

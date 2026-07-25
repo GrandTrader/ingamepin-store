@@ -1396,6 +1396,36 @@ export default function CheckoutPage() {
                     </p>
                   </div>
                 </div>
+              </label>              <label
+                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                  paymentMethod === "freekassa"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="freekassa"
+                  checked={paymentMethod === "freekassa"}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500 text-sm font-black text-white">
+                    F
+                  </span>
+
+                  <div>
+                    <p className="font-bold">FreeKassa</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Cards, SBP and supported payment methods
+                    </p>
+                  </div>
+                </div>
               </label>
             </div>
 
