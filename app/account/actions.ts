@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
@@ -9,12 +9,47 @@ import {
 } from "@/lib/customer-login-activity";
 import { createClient } from "@/lib/supabase/server";
 
+const PENDING_SIGNUP_COOKIE = "ingamepin_pending_signup";
+const PENDING_SIGNUP_MAX_AGE = 15 * 60;
+
 function accountRedirect(
   path: string,
   kind: "error" | "success",
   message: string,
 ): never {
   redirect(`${path}?${kind}=${encodeURIComponent(message)}`);
+}
+
+function verificationRedirect(
+  kind: "error" | "success",
+  message: string,
+): never {
+  redirect(
+    `/account/register?verify=1&${kind}=${encodeURIComponent(message)}`,
+  );
+}
+
+async function savePendingSignupEmail(email: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(PENDING_SIGNUP_COOKIE, email, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/account/register",
+    maxAge: PENDING_SIGNUP_MAX_AGE,
+  });
+}
+
+async function getPendingSignupEmail() {
+  const cookieStore = await cookies();
+  return cookieStore.get(PENDING_SIGNUP_COOKIE)?.value
+    .trim()
+    .toLowerCase();
+}
+
+async function clearPendingSignupEmail() {
+  const cookieStore = await cookies();
+  cookieStore.delete(PENDING_SIGNUP_COOKIE);
 }
 
 export async function customerLogin(formData: FormData) {
@@ -83,10 +118,87 @@ export async function customerRegister(formData: FormData) {
     accountRedirect("/account/register", "error", result.error.message);
   }
 
-  accountRedirect(
-    "/account/register",
+  await savePendingSignupEmail(email);
+  verificationRedirect(
     "success",
-    "Registration completed. Check your email and activate your account before signing in.",
+    "A six-digit verification code has been sent to your email.",
+  );
+}
+
+export async function customerVerifySignupOtp(formData: FormData) {
+  const token = String(formData.get("otp") ?? "").replace(/\D/g, "");
+  const email = await getPendingSignupEmail();
+
+  if (!email) {
+    accountRedirect(
+      "/account/register",
+      "error",
+      "Your verification session expired. Please register again.",
+    );
+  }
+
+  if (!/^\d{6}$/.test(token)) {
+    verificationRedirect("error", "Enter the complete six-digit code.");
+  }
+
+  const supabase = await createClient();
+  const result = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: "signup",
+  });
+
+  if (result.error) {
+    verificationRedirect(
+      "error",
+      "The verification code is incorrect or expired.",
+    );
+  }
+
+  await clearPendingSignupEmail();
+
+  if (result.data.user) {
+    const requestHeaders = await headers();
+    await recordCustomerLogin(
+      result.data.user.id,
+      getCountryCode(requestHeaders),
+    );
+  }
+
+  redirect("/account/dashboard");
+}
+
+export async function resendSignupOtp() {
+  const email = await getPendingSignupEmail();
+
+  if (!email) {
+    accountRedirect(
+      "/account/register",
+      "error",
+      "Your verification session expired. Please register again.",
+    );
+  }
+
+  const supabase = await createClient();
+  const result = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: "https://www.ingamepin.com/account/callback",
+    },
+  });
+
+  if (result.error) {
+    verificationRedirect(
+      "error",
+      "Please wait before requesting another verification code.",
+    );
+  }
+
+  await savePendingSignupEmail(email);
+  verificationRedirect(
+    "success",
+    "A new six-digit verification code has been sent.",
   );
 }
 
