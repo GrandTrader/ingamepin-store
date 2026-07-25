@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter, Roboto_Mono } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import LiveSupportWidget from "../components/LiveSupportWidget";
 import { StorePreferencesProvider } from "../components/StorePreferences";
 
 import "./globals.css";
@@ -57,8 +58,10 @@ export default function RootLayout({
           <Footer />
         </StorePreferencesProvider>
 
+        <LiveSupportWidget />
         <SpeedInsights />
       </body>
     </html>
   );
 }
+

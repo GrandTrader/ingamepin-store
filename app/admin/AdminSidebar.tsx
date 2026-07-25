@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,32 +12,32 @@ const links = [
   {
     label: "Overview",
     href: "/admin",
-    icon: "▦",
+    icon: "â–¦",
   },
   {
     label: "Products",
     href: "/admin/products",
-    icon: "◇",
+    icon: "â—‡",
   },
   {
     label: "Categories",
     href: "/admin/categories",
-    icon: "▧",
+    icon: "â–§",
   },
   {
     label: "Orders",
     href: "/admin/orders",
-    icon: "▣",
+    icon: "â–£",
   },
   {
     label: "Payments",
     href: "/admin/payments",
-    icon: "▤",
+    icon: "â–¤",
   },
   {
     label: "Payment Settings",
     href: "/admin/payment-settings",
-    icon: "₹",
+    icon: "â‚¹",
   },
   {
     label: "Preorder Popup",
@@ -47,7 +47,7 @@ const links = [
   {
     label: "Homepage Slider",
     href: "/admin/homepage-slider",
-    icon: "▣",
+    icon: "â–£",
   },
   {
     label: "Wallet",
@@ -57,7 +57,7 @@ const links = [
   {
     label: "Gift codes",
     href: "/admin/gift-codes",
-    icon: "⌘",
+    icon: "âŒ˜",
   },
   {
     label: "Customer Discounts",
@@ -68,6 +68,11 @@ const links = [
     label: "Customers",
     href: "/admin/customers",
     icon: "@",
+  },
+  {
+    label: "Live Chat",
+    href: "/admin/live-chat",
+    icon: "â—",
   },
 ];
 
@@ -153,7 +158,7 @@ export default function AdminSidebar({
             aria-hidden="true"
             className="w-5 text-center"
           >
-            ←
+            â†
           </span>
 
           Return to store
@@ -162,3 +167,4 @@ export default function AdminSidebar({
     </aside>
   );
 }
+
