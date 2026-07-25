@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callBinancePay } from "@/lib/binance-pay";
 import { sendEmail, sendOrderStatusEmails } from "@/lib/email";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
+import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -336,6 +337,7 @@ export async function POST(request: NextRequest) {
     );
 
     await sendBinanceDeliveryEmails(paymentResult.data.order_id);
+    await notifyPaidOrderInTelegram(paymentResult.data.order_id);
 
     return NextResponse.json({
       returnCode: "SUCCESS",

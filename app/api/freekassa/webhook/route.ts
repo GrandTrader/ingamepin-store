@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendOrderStatusEmails } from "@/lib/email";
 import { verifyFreeKassaNotification } from "@/lib/freekassa";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
+import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -146,6 +147,7 @@ export async function POST(request: NextRequest) {
 
     await prepareOrderForManualFulfillment(payment.order_id);
     await sendPaymentEmails(payment.order_id);
+    await notifyPaidOrderInTelegram(payment.order_id);
     return plainText("YES");
   } catch (error) {
     return plainText(

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { sendOrderStatusEmails } from "@/lib/email";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
+import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -182,6 +183,7 @@ export async function approvePayment(formData: FormData) {
   }
 
   await sendPaymentNotification(paymentId, "PAYMENT_APPROVED");
+  await notifyPaidOrderInTelegram(paymentResult.data.order_id);
 
   revalidatePath("/admin");
   revalidatePath("/admin/payments");

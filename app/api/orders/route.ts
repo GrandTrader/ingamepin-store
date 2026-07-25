@@ -7,6 +7,7 @@ import {
   sendWalletDebitEmails,
 } from "@/lib/email";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
+import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -356,6 +357,10 @@ export async function POST(request: NextRequest) {
           }
         });
       }
+    }
+
+    if (isWalletPayment && walletPaymentResult) {
+      await notifyPaidOrderInTelegram(orderResult.data.id);
     }
 
     return NextResponse.json({
