@@ -9,6 +9,7 @@ import {
   hashSupportToken,
   SUPPORT_COOKIE,
 } from "@/lib/support-chat";
+import { notifyNewSupportMessage } from "@/lib/telegram-chat-notification";
 
 export const dynamic = "force-dynamic";
 
@@ -235,6 +236,13 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", conversation.id);
 
+    await notifyNewSupportMessage({
+      conversationId: conversation.id,
+      customerName: conversation.customer_name,
+      customerEmail: conversation.customer_email,
+      message: body,
+    });
+
     return attachCookie(
       NextResponse.json({
         conversation: { ...conversation, status: "OPEN", last_message_at: now },
@@ -251,4 +259,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
