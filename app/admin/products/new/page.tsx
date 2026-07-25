@@ -6,7 +6,6 @@ import ResponsiveImageField from "@/components/ResponsiveImageField";
 import { createClient } from "@/lib/supabase/server";
 
 import AdminSidebar from "../../AdminSidebar";
-import DeliveryInventoryField from "../DeliveryInventoryField";
 import DeliveryTypeSwitch from "../DeliveryTypeSwitch";
 import { createProduct } from "./actions";
 import CategoryFields from "./CategoryFields";
@@ -22,13 +21,25 @@ type CategoryType =
   | "GAME_KEY";
 
 type AddProductPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+  }>;
 };
 
 type CategoryRow = {
   id: string;
   name: string;
   category_type: CategoryType;
+};
+
+const categoryLabels: Record<
+  CategoryType,
+  string
+> = {
+  GIFT_CARD: "Gift Cards",
+  GAME_TOPUP: "Game Top-up",
+  GAME_KEY: "Game Keys",
+  SUBSCRIPTION: "Subscriptions",
 };
 
 export default async function AddProductPage({
@@ -52,14 +63,18 @@ export default async function AddProductPage({
     .maybeSingle();
 
   if (!adminResult.data) {
-    redirect("/admin/login?error=Access denied");
+    redirect(
+      "/admin/login?error=Access denied",
+    );
   }
 
   const categoryResult = await supabase
     .from("categories")
     .select("id, name, category_type")
     .eq("is_active", true)
-    .order("sort_order", { ascending: true });
+    .order("sort_order", {
+      ascending: true,
+    });
 
   if (categoryResult.error) {
     throw new Error(
@@ -67,11 +82,40 @@ export default async function AddProductPage({
     );
   }
 
-  const categories = (categoryResult.data ?? []) as CategoryRow[];
-  const categoryChoices = categories.map((category) => ({
+  const categories =
+    (categoryResult.data ??
+      []) as CategoryRow[];
+  const firstCategoryByType = new Map<
+    CategoryType,
+    CategoryRow
+  >();
+
+  for (const category of categories) {
+    if (
+      categoryLabels[
+        category.category_type
+      ] &&
+      !firstCategoryByType.has(
+        category.category_type,
+      )
+    ) {
+      firstCategoryByType.set(
+        category.category_type,
+        category,
+      );
+    }
+  }
+
+  const categoryChoices = Array.from(
+    firstCategoryByType.values(),
+  ).map((category) => ({
     id: category.id,
-    name: category.name,
-    categoryType: category.category_type,
+    name:
+      categoryLabels[
+        category.category_type
+      ],
+    categoryType:
+      category.category_type,
   }));
 
   return (
@@ -82,9 +126,12 @@ export default async function AddProductPage({
         <main className="min-w-0 flex-1 p-5 sm:p-8">
           <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <h1 className="text-3xl font-black">Add new product</h1>
+              <h1 className="text-3xl font-black">
+                Add new product
+              </h1>
               <p className="mt-1 text-sm text-slate-500">
-                Create a product and control its options, price and delivery.
+                Add product information,
+                delivery and options.
               </p>
             </div>
 
@@ -92,7 +139,7 @@ export default async function AddProductPage({
               href="/admin/products"
               className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
             >
-              ← Products
+              Back to products
             </Link>
           </header>
 
@@ -102,43 +149,54 @@ export default async function AddProductPage({
             </div>
           )}
 
-          <form action={createProduct} className="mt-8 grid gap-6">
+          <form
+            action={createProduct}
+            className="mt-8 grid gap-6"
+          >
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-xl font-black">Basic information</h2>
+              <h2 className="text-xl font-black">
+                Product information
+              </h2>
 
               <div className="mt-5 grid gap-5 md:grid-cols-2">
                 <ProductNameSlugFields />
+                <CategoryFields
+                  categories={
+                    categoryChoices
+                  }
+                />
                 <CountrySelect defaultValue="India" />
 
-                <label className="md:col-span-2">
-                  <span className="text-sm font-bold">Product name (Russian)</span>
-                  <input
-                    name="name_ru"
-                    minLength={2}
-                    maxLength={150}
-                    placeholder="Название товара на русском языке"
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
+                <label>
+                  <span className="text-sm font-bold">
+                    Status
+                  </span>
+                  <select
+                    name="status"
+                    defaultValue="DRAFT"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="DRAFT">
+                      Draft
+                    </option>
+                    <option value="ACTIVE">
+                      Active
+                    </option>
+                    <option value="INACTIVE">
+                      Inactive
+                    </option>
+                  </select>
                 </label>
 
                 <label className="md:col-span-2">
-                  <span className="text-sm font-bold">Description</span>
+                  <span className="text-sm font-bold">
+                    Description
+                  </span>
                   <textarea
                     name="description"
                     rows={5}
                     maxLength={5000}
                     placeholder="Describe the product, supported region and redemption requirements."
-                    className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-
-                <label className="md:col-span-2">
-                  <span className="text-sm font-bold">Description (Russian)</span>
-                  <textarea
-                    name="description_ru"
-                    rows={5}
-                    maxLength={5000}
-                    placeholder="Описание товара на русском языке"
                     className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
@@ -149,22 +207,70 @@ export default async function AddProductPage({
                   fileName="image_file"
                   variant="product"
                 />
+
+                <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2">
+                  <input
+                    name="is_featured"
+                    type="checkbox"
+                    className="h-5 w-5 accent-blue-600"
+                  />
+                  <span className="text-sm font-bold">
+                    Show on homepage
+                  </span>
+                </label>
               </div>
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-xl font-black">Category and delivery</h2>
+              <h2 className="text-xl font-black">
+                Russian language
+              </h2>
               <p className="mt-1 text-sm text-slate-500">
-                The selected category automatically controls the product behavior.
+                Customer-facing Russian
+                product content.
               </p>
 
-              <div className="mt-5 grid gap-5 md:grid-cols-2">
-                <CategoryFields categories={categoryChoices} />
+              <div className="mt-5 grid gap-5">
+                <label>
+                  <span className="text-sm font-bold">
+                    Product name (Russian)
+                  </span>
+                  <input
+                    name="name_ru"
+                    minLength={2}
+                    maxLength={150}
+                    placeholder="Название товара на русском языке"
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
 
+                <label>
+                  <span className="text-sm font-bold">
+                    Description (Russian)
+                  </span>
+                  <textarea
+                    name="description_ru"
+                    rows={5}
+                    maxLength={5000}
+                    placeholder="Описание товара на русском языке"
+                    className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <h2 className="text-xl font-black">
+                Delivery
+              </h2>
+
+              <div className="mt-5 grid gap-5">
                 <DeliveryTypeSwitch />
 
-                <label className="md:col-span-2">
-                  <span className="text-sm font-bold">Delivery instructions</span>
+                <label>
+                  <span className="text-sm font-bold">
+                    Delivery instructions
+                  </span>
                   <textarea
                     name="delivery_instructions"
                     rows={4}
@@ -174,7 +280,7 @@ export default async function AddProductPage({
                   />
                 </label>
 
-                <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2">
+                <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <input
                     name="requires_customer_details"
                     type="checkbox"
@@ -182,100 +288,15 @@ export default async function AddProductPage({
                   />
                   <span>
                     <span className="block text-sm font-bold">
-                      Require additional customer details
+                      Require additional
+                      customer details
                     </span>
                     <span className="text-xs text-slate-500">
-                      Use for player ID, account ID or other delivery information.
+                      Use for player ID,
+                      account ID or other
+                      delivery information.
                     </span>
                   </span>
-                </label>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-xl font-black">Price and inventory</h2>
-
-              <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                <label>
-                  <span className="text-sm font-bold">Base price</span>
-                  <input
-                    name="price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    required
-                    defaultValue="0"
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-
-                <label>
-                  <span className="text-sm font-bold">Currency</span>
-                  <input
-                    name="currency"
-                    required
-                    minLength={3}
-                    maxLength={3}
-                    defaultValue="USD"
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 uppercase outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-
-                <DeliveryInventoryField />
-
-                <label>
-                  <span className="text-sm font-bold">Sort order</span>
-                  <input
-                    name="sort_order"
-                    type="number"
-                    min="0"
-                    step="1"
-                    required
-                    defaultValue="0"
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-
-                <label className="sm:col-span-2">
-                  <span className="text-sm font-bold">Product badge</span>
-                  <input
-                    name="badge"
-                    maxLength={100}
-                    placeholder="Secure Manual Delivery"
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-
-                <label className="sm:col-span-2">
-                  <span className="text-sm font-bold">Product badge (Russian)</span>
-                  <input
-                    name="badge_ru"
-                    maxLength={100}
-                    placeholder="Цифровая доставка"
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-
-                <label>
-                  <span className="text-sm font-bold">Status</span>
-                  <select
-                    name="status"
-                    defaultValue="DRAFT"
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  >
-                    <option value="DRAFT">Draft</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                  </select>
-                </label>
-
-                <label className="flex items-center gap-3 self-end rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <input
-                    name="is_featured"
-                    type="checkbox"
-                    className="h-5 w-5 accent-blue-600"
-                  />
-                  <span className="text-sm font-bold">Show on homepage</span>
                 </label>
               </div>
             </section>

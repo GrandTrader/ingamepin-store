@@ -6,7 +6,10 @@ import {
   useState,
 } from "react";
 
-import { saveCustomerDiscount } from "./actions";
+import {
+  deleteCustomerAccount,
+  saveCustomerDiscount,
+} from "./actions";
 
 export type CustomerProduct = {
   id: string;
@@ -512,6 +515,30 @@ export default function CustomersPanel({
             >
               View wallet activity
             </a>
+            <form
+              action={deleteCustomerAccount}
+              onSubmit={(event) => {
+                const confirmed = window.confirm(
+                  `Permanently delete ${selectedCustomer.email}? Their login, wallet, discounts, and notifications will be removed. Their order history will remain.`,
+                );
+
+                if (!confirmed) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              <input
+                type="hidden"
+                name="customer_id"
+                value={selectedCustomer.id}
+              />
+              <button
+                type="submit"
+                className="rounded-xl border border-red-300 bg-red-50 px-5 py-3 font-bold text-red-700 hover:bg-red-100"
+              >
+                Delete customer account
+              </button>
+            </form>
           </div>
 
           {discountEditorOpen && (

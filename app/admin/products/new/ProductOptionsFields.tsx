@@ -1,96 +1,142 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   DELIVERY_TYPE_EVENT,
   type ProductDeliveryType,
 } from "../DeliveryTypeSwitch";
 
-type OptionType =
-  | "CURRENCY"
-  | "IN_PLATFORM"
-  | "OTHER";
+type OptionType = "CURRENCY" | "OTHER";
+type ManualStockMode = "UNLIMITED" | "QUANTITY";
 
 type OptionRow = {
   id: number;
   type: OptionType;
   value: string;
-  unit: string;
   currency: string;
-  stockQuantity: number;
-  inStock: boolean;
+  sellingPrice: string;
+  stockMode: ManualStockMode;
+  stockQuantity: string;
 };
 
-function getOptionName(row: OptionRow) {
-  const value = row.value.trim();
-  const unit = row.unit.trim();
+const denominations = [
+  100, 200, 300, 400, 500, 750, 1000,
+  1500, 2000, 2500, 3000, 4000, 5000,
+  7500, 10000,
+];
 
+const currencies = [
+  "USD", "INR", "RUB", "TRY", "EUR", "GBP",
+  "AED", "SAR", "CAD", "AUD", "JPY", "SGD",
+];
+
+function newRow(id: number): OptionRow {
+  return {
+    id,
+    type: "CURRENCY",
+    value: "100",
+    currency: "USD",
+    sellingPrice: "",
+    stockMode: "UNLIMITED",
+    stockQuantity: "0",
+  };
+}
+
+function optionName(row: OptionRow) {
   if (row.type === "CURRENCY") {
-    return value
-      ? `${row.currency} ${value}`
-      : "";
+    return `${row.currency} ${row.value}`;
   }
 
-  if (row.type === "IN_PLATFORM") {
-    return value && unit
-      ? `${value} ${unit}`
-      : "";
-  }
-
-  return value;
+  return row.value.trim();
 }
 
 export default function ProductOptionsFields() {
   const [deliveryType, setDeliveryType] =
     useState<ProductDeliveryType>("MANUAL");
   const [rows, setRows] = useState<OptionRow[]>([
-    {
-      id: 1,
-      type: "CURRENCY",
-      value: "",
-      unit: "",
-      currency: "USD",
-      stockQuantity: 0,
-      inStock: false,
-    },
+    newRow(1),
   ]);
-
   const [nextId, setNextId] = useState(2);
 
   useEffect(() => {
     function updateDeliveryType(event: Event) {
       setDeliveryType(
-        (event as CustomEvent<ProductDeliveryType>).detail,
+        (event as CustomEvent<ProductDeliveryType>)
+          .detail,
       );
     }
-    window.addEventListener(DELIVERY_TYPE_EVENT, updateDeliveryType);
+
+    window.addEventListener(
+      DELIVERY_TYPE_EVENT,
+      updateDeliveryType,
+    );
+
     return () =>
-      window.removeEventListener(DELIVERY_TYPE_EVENT, updateDeliveryType);
+      window.removeEventListener(
+        DELIVERY_TYPE_EVENT,
+        updateDeliveryType,
+      );
   }, []);
 
-  function addRow() {
-    setRows((current) => [
-      ...current,
-      {
-        id: nextId,
-        type: "CURRENCY",
-        value: "",
-        unit: "",
-        currency: "USD",
-        stockQuantity: 0,
-        inStock: false,
-      },
-    ]);
+  const startingPrice = useMemo(() => {
+    const values = rows
+      .map((row) => Number(row.sellingPrice))
+      .filter(
+        (value) =>
+          Number.isFinite(value) && value >= 0,
+      );
 
-    setNextId((current) => current + 1);
-  }
+    return values.length > 0
+      ? Math.min(...values).toFixed(2)
+      : "Not set";
+  }, [rows]);
 
-  function removeRow(id: number) {
-    setRows((current) =>
-      current.filter((row) => row.id !== id),
+  const productCurrency = useMemo(() => {
+    const values = Array.from(
+      new Set(
+        rows
+          .filter(
+            (row) => row.type === "CURRENCY",
+          )
+          .map((row) => row.currency),
+      ),
     );
-  }
+
+    if (values.length === 0) {
+      return "USD";
+    }
+
+    return values.length === 1
+      ? values[0]
+      : "Multiple";
+  }, [rows]);
+
+  const stockSummary = useMemo(() => {
+    if (deliveryType === "AUTOMATIC") {
+      return "From available codes";
+    }
+
+    if (
+      rows.every(
+        (row) =>
+          row.stockMode === "UNLIMITED",
+      )
+    ) {
+      return "Unlimited";
+    }
+
+    return String(
+      rows.reduce(
+        (total, row) =>
+          row.stockMode === "QUANTITY"
+            ? total +
+              Number(row.stockQuantity || 0)
+            : total,
+        0,
+      ),
+    );
+  }, [deliveryType, rows]);
 
   function updateRow(
     id: number,
@@ -99,13 +145,18 @@ export default function ProductOptionsFields() {
     setRows((current) =>
       current.map((row) =>
         row.id === id
-          ? {
-              ...row,
-              ...changes,
-            }
+          ? { ...row, ...changes }
           : row,
       ),
     );
+  }
+
+  function addRow() {
+    setRows((current) => [
+      ...current,
+      newRow(nextId),
+    ]);
+    setNextId((current) => current + 1);
   }
 
   return (
@@ -115,10 +166,9 @@ export default function ProductOptionsFields() {
           <h2 className="text-xl font-black">
             Product options
           </h2>
-
           <p className="mt-1 text-sm text-slate-500">
-            Add denominations, in-game currency,
-            editions or subscription plans.
+            Base price, currency and stock are
+            calculated automatically.
           </p>
         </div>
 
@@ -133,8 +183,7 @@ export default function ProductOptionsFields() {
 
       <div className="mt-5 grid gap-5">
         {rows.map((row, index) => {
-          const optionName =
-            getOptionName(row);
+          const name = optionName(row);
 
           return (
             <div
@@ -146,15 +195,18 @@ export default function ProductOptionsFields() {
                   <span className="text-sm font-bold">
                     Option type
                   </span>
-
                   <select
                     value={row.type}
                     onChange={(event) =>
                       updateRow(row.id, {
-                        type: event.target
-                          .value as OptionType,
-                        value: "",
-                        unit: "",
+                        type:
+                          event.target
+                            .value as OptionType,
+                        value:
+                          event.target.value ===
+                          "CURRENCY"
+                            ? "100"
+                            : "",
                       })
                     }
                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -162,46 +214,44 @@ export default function ProductOptionsFields() {
                     <option value="CURRENCY">
                       Currency denomination
                     </option>
-
-                    <option value="IN_PLATFORM">
-                      In-platform currency
-                    </option>
-
                     <option value="OTHER">
                       Edition or other
                     </option>
                   </select>
                 </label>
 
-                {row.type === "CURRENCY" && (
+                {row.type === "CURRENCY" ? (
                   <>
                     <label>
                       <span className="text-sm font-bold">
                         Denomination
                       </span>
-
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        required
+                      <select
                         value={row.value}
                         onChange={(event) =>
                           updateRow(row.id, {
-                            value:
-                              event.target.value,
+                            value: event.target.value,
                           })
                         }
-                        placeholder="1000"
                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
+                      >
+                        {denominations.map(
+                          (denomination) => (
+                            <option
+                              key={denomination}
+                              value={denomination}
+                            >
+                              {denomination}
+                            </option>
+                          ),
+                        )}
+                      </select>
                     </label>
 
                     <label>
                       <span className="text-sm font-bold">
                         Denomination currency
                       </span>
-
                       <select
                         value={row.currency}
                         onChange={(event) =>
@@ -212,103 +262,24 @@ export default function ProductOptionsFields() {
                         }
                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       >
-                        <option value="USD">
-                          USD
-                        </option>
-
-                        <option value="USD">
-                          USD
-                        </option>
-
-                        <option value="EUR">
-                          EUR
-                        </option>
-
-                        <option value="GBP">
-                          GBP
-                        </option>
-
-                        <option value="AED">
-                          AED
-                        </option>
-
-                        <option value="SAR">
-                          SAR
-                        </option>
-
-                        <option value="CAD">
-                          CAD
-                        </option>
-
-                        <option value="AUD">
-                          AUD
-                        </option>
-
-                        <option value="JPY">
-                          JPY
-                        </option>
-
-                        <option value="SGD">
-                          SGD
-                        </option>
+                        {currencies.map(
+                          (currency) => (
+                            <option
+                              key={currency}
+                              value={currency}
+                            >
+                              {currency}
+                            </option>
+                          ),
+                        )}
                       </select>
                     </label>
                   </>
-                )}
-
-                {row.type === "IN_PLATFORM" && (
-                  <>
-                    <label>
-                      <span className="text-sm font-bold">
-                        Amount
-                      </span>
-
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        required
-                        value={row.value}
-                        onChange={(event) =>
-                          updateRow(row.id, {
-                            value:
-                              event.target.value,
-                          })
-                        }
-                        placeholder="1000"
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </label>
-
-                    <label>
-                      <span className="text-sm font-bold">
-                        Unit name
-                      </span>
-
-                      <input
-                        type="text"
-                        required
-                        maxLength={60}
-                        value={row.unit}
-                        onChange={(event) =>
-                          updateRow(row.id, {
-                            unit:
-                              event.target.value,
-                          })
-                        }
-                        placeholder="V-Bucks"
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </label>
-                  </>
-                )}
-
-                {row.type === "OTHER" && (
+                ) : (
                   <label className="md:col-span-2">
                     <span className="text-sm font-bold">
                       Option name
                     </span>
-
                     <input
                       type="text"
                       required
@@ -316,8 +287,7 @@ export default function ProductOptionsFields() {
                       value={row.value}
                       onChange={(event) =>
                         updateRow(row.id, {
-                          value:
-                            event.target.value,
+                          value: event.target.value,
                         })
                       }
                       placeholder="Standard Edition"
@@ -328,85 +298,126 @@ export default function ProductOptionsFields() {
 
                 <label>
                   <span className="text-sm font-bold">
-                    Selling price
+                    Selling price (USD)
                   </span>
-
                   <input
                     name="option_selling_price"
                     type="number"
                     min="0"
                     step="0.01"
                     required
-                    placeholder="950"
+                    value={row.sellingPrice}
+                    onChange={(event) =>
+                      updateRow(row.id, {
+                        sellingPrice:
+                          event.target.value,
+                      })
+                    }
+                    placeholder="11.50"
                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
 
-                <div>
-                  <input
-                    type="hidden"
-                    name="option_stock_quantity"
-                    value={
-                      deliveryType === "MANUAL"
-                        ? row.inStock
-                          ? 1
-                          : 0
-                        : row.stockQuantity
-                    }
-                  />
-                  <span className="text-sm font-bold">
-                    {deliveryType === "MANUAL"
-                      ? "Stock status"
-                      : "Initial code stock"}
-                  </span>
-                  {deliveryType === "MANUAL" ? (
-                    <label className="mt-2 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={row.inStock}
+                {deliveryType === "MANUAL" && (
+                  <>
+                    <label>
+                      <span className="text-sm font-bold">
+                        Stock
+                      </span>
+                      <select
+                        name="option_stock_mode"
+                        value={row.stockMode}
                         onChange={(event) =>
                           updateRow(row.id, {
-                            inStock: event.target.checked,
+                            stockMode:
+                              event.target
+                                .value as ManualStockMode,
                           })
                         }
-                        className="h-5 w-5 accent-blue-600"
-                      />
-                      <span className="font-bold">
-                        {row.inStock ? "In Stock" : "Out of Stock"}
-                      </span>
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      >
+                        <option value="UNLIMITED">
+                          Unlimited
+                        </option>
+                        <option value="QUANTITY">
+                          Mentioned quantity
+                        </option>
+                      </select>
                     </label>
-                  ) : (
+
+                    {row.stockMode ===
+                      "QUANTITY" && (
+                      <label>
+                        <span className="text-sm font-bold">
+                          Available quantity
+                        </span>
+                        <input
+                          name="option_stock_quantity"
+                          type="number"
+                          min="0"
+                          step="1"
+                          required
+                          value={row.stockQuantity}
+                          onChange={(event) =>
+                            updateRow(row.id, {
+                              stockQuantity:
+                                event.target.value,
+                            })
+                          }
+                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        />
+                      </label>
+                    )}
+
+                    {row.stockMode ===
+                      "UNLIMITED" && (
+                      <input
+                        type="hidden"
+                        name="option_stock_quantity"
+                        value="0"
+                      />
+                    )}
+                  </>
+                )}
+
+                {deliveryType === "AUTOMATIC" && (
+                  <>
                     <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      required
-                      value={row.stockQuantity}
-                      onChange={(event) =>
-                        updateRow(row.id, {
-                          stockQuantity: Number(event.target.value),
-                        })
-                      }
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      type="hidden"
+                      name="option_stock_mode"
+                      value="CODES"
                     />
-                  )}
-                </div>
+                    <input
+                      type="hidden"
+                      name="option_stock_quantity"
+                      value="0"
+                    />
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                      Stock will come from available
+                      codes.
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="mt-4 flex flex-col justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center">
                 <p className="text-sm text-slate-500">
                   Customer will see:{" "}
                   <span className="font-bold text-slate-900">
-                    {optionName ||
+                    {name ||
                       "Complete the option details"}
                   </span>
                 </p>
-
                 <button
                   type="button"
                   disabled={rows.length === 1}
                   onClick={() =>
-                    removeRow(row.id)
+                    setRows((current) =>
+                      current.filter(
+                        (item) =>
+                          item.id !== row.id,
+                      ),
+                    )
                   }
                   className="rounded-xl border border-red-200 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
                 >
@@ -419,13 +430,11 @@ export default function ProductOptionsFields() {
                 name="option_type"
                 value={row.type}
               />
-
               <input
                 type="hidden"
                 name="option_name"
-                value={optionName}
+                value={name}
               />
-
               <input
                 type="hidden"
                 name="option_denomination"
@@ -435,7 +444,6 @@ export default function ProductOptionsFields() {
                     : ""
                 }
               />
-
               <input
                 type="hidden"
                 name="option_denomination_currency"
@@ -445,7 +453,6 @@ export default function ProductOptionsFields() {
                     : ""
                 }
               />
-
               <input
                 type="hidden"
                 name="option_sort_order"
@@ -454,6 +461,35 @@ export default function ProductOptionsFields() {
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-5 grid gap-3 border-t border-slate-200 pt-5 sm:grid-cols-3">
+        <div>
+          <p className="text-xs text-slate-500">
+            Starting price
+          </p>
+          <p className="mt-1 font-black">
+            {startingPrice === "Not set"
+              ? startingPrice
+              : `$${startingPrice}`}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">
+            Product currency
+          </p>
+          <p className="mt-1 font-black">
+            {productCurrency}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">
+            Stock
+          </p>
+          <p className="mt-1 font-black">
+            {stockSummary}
+          </p>
+        </div>
       </div>
     </section>
   );

@@ -5,6 +5,7 @@ import {
   adminLogout,
   sendTestEmail,
 } from "./actions";
+import AdminOrderLink from "./AdminOrderLink";
 import AdminSidebar from "./AdminSidebar";
 import { createClient } from "@/lib/supabase/server";
 
@@ -306,8 +307,11 @@ export default async function AdminDashboard({
                       {recentOrders.map(
                         (order) => (
                           <tr key={order.id}>
-                            <td className="px-5 py-4 font-bold">
-                              {order.order_number}
+                            <td className="px-5 py-4">
+                              <AdminOrderLink
+                                orderId={order.id}
+                                orderNumber={order.order_number}
+                              />
                             </td>
 
                             <td className="px-5 py-4">

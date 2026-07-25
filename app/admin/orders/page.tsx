@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import { completeManualOrder } from "./actions";
 import { createClient } from "@/lib/supabase/server";
@@ -40,6 +41,7 @@ type AdminOrdersPageProps = {
   searchParams: Promise<{
     error?: string;
     success?: string;
+    order?: string;
   }>;
 };
 
@@ -88,8 +90,11 @@ function statusStyle(status: string) {
 export default async function AdminOrdersPage({
   searchParams,
 }: AdminOrdersPageProps) {
-  const { error: actionError, success } =
-    await searchParams;
+  const {
+    error: actionError,
+    success,
+    order: selectedOrderId,
+  } = await searchParams;
 
   const supabase = await createClient();
 
@@ -300,12 +305,18 @@ export default async function AdminOrdersPage({
                       {orders.map((order) => (
                         <tr
                           key={order.id}
-                          className="transition hover:bg-blue-50/40"
+                          id={`order-${order.id}`}
+                          className={`scroll-mt-32 transition hover:bg-blue-50/40 ${
+                            selectedOrderId === order.id
+                              ? "bg-cyan-50 ring-2 ring-inset ring-cyan-400"
+                              : ""
+                          }`}
                         >
                           <td className="px-5 py-5">
-                            <p className="font-bold text-blue-600">
-                              {order.order_number}
-                            </p>
+                            <AdminOrderLink
+                              orderId={order.id}
+                              orderNumber={order.order_number}
+                            />
 
                             <p className="mt-1 max-w-40 truncate text-xs text-slate-400">
                               {order.id}

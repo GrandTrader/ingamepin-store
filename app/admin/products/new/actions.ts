@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 
@@ -95,6 +96,8 @@ export async function createProduct(
     );
   }
 
+  const admin = createAdminClient();
+
   const categoryId = String(
     formData.get("category_id") ?? "",
   ).trim();
@@ -181,7 +184,7 @@ export async function createProduct(
 
   const badgeRu = String(formData.get("badge_ru") ?? "").trim();
 
-  const currency = String(
+  let currency = String(
     formData.get("currency") ?? "USD",
   )
     .trim()
@@ -191,11 +194,11 @@ export async function createProduct(
     formData.get("status") ?? "DRAFT",
   );
 
-  const price = Number(
+  let price = Number(
     formData.get("price"),
   );
 
-  const stockQuantity = Number(
+  let stockQuantity = Number(
     formData.get("stock_quantity"),
   );
 
@@ -307,6 +310,12 @@ export async function createProduct(
 
   const optionStockValues = formData
     .getAll("option_stock_quantity")
+    .map((value) =>
+      String(value).trim(),
+    );
+
+  const optionStockModes = formData
+    .getAll("option_stock_mode")
     .map((value) =>
       String(value).trim(),
     );
@@ -496,6 +505,7 @@ export async function createProduct(
     denominationCurrencyValues.length,
     sellingPriceValues.length,
     optionStockValues.length,
+    optionStockModes.length,
     optionSortValues.length,
   ];
 
@@ -526,6 +536,9 @@ export async function createProduct(
 
       const stockValue =
         optionStockValues[index];
+
+      const stockMode =
+        optionStockModes[index];
 
       const optionSortValue =
         optionSortValues[index];
@@ -623,8 +636,31 @@ export async function createProduct(
         sellingPriceValue,
       );
 
-      const optionStockQuantity =
-        Number(stockValue);
+      let optionStockQuantity = 0;
+
+      if (deliveryType === "MANUAL") {
+        if (stockMode === "UNLIMITED") {
+          optionStockQuantity =
+            2147483647;
+        } else if (
+          stockMode === "QUANTITY"
+        ) {
+          optionStockQuantity =
+            Number(stockValue);
+        } else {
+          redirectWithError(
+            `Select a valid stock option in row ${
+              index + 1
+            }.`,
+          );
+        }
+      } else if (stockMode !== "CODES") {
+        redirectWithError(
+          `Automatic stock configuration is invalid in row ${
+            index + 1
+          }.`,
+        );
+      }
 
       const optionSortOrder = Number(
         optionSortValue,
@@ -692,6 +728,50 @@ export async function createProduct(
     },
   );
 
+  price = Math.min(
+    ...options.map(
+      (option) =>
+        option.selling_price,
+    ),
+  );
+
+  const optionCurrencies = Array.from(
+    new Set(
+      options
+        .map(
+          (option) =>
+            option.denomination_currency,
+        )
+        .filter(
+          (
+            value,
+          ): value is string =>
+            Boolean(value),
+        ),
+    ),
+  );
+
+  currency =
+    optionCurrencies.length === 1
+      ? optionCurrencies[0]
+      : "USD";
+
+  stockQuantity =
+    deliveryType === "AUTOMATIC"
+      ? 0
+      : options.some(
+            (option) =>
+              option.stock_quantity ===
+              2147483647,
+          )
+        ? 2147483647
+        : options.reduce(
+            (total, option) =>
+              total +
+              option.stock_quantity,
+            0,
+          );
+
   const normalizedOptionNames =
     options.map((option) =>
       option.option_name.toLowerCase(),
@@ -735,7 +815,7 @@ export async function createProduct(
     redirectWithError("Russian product badge is too long.");
   }
 
-  const productResult = await supabase
+  const productResult = await admin
     .from("products")
     .insert({
       category_id: categoryId,
@@ -830,12 +910,12 @@ export async function createProduct(
     }),
   );
 
-  const optionsResult = await supabase
+  const optionsResult = await admin
     .from("product_options")
     .insert(optionRows);
 
   if (optionsResult.error) {
-    await supabase
+    await admin
       .from("products")
       .delete()
       .eq("id", productId);

@@ -3,7 +3,69 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+async function syncAvailableCodeStock(
+  admin: ReturnType<typeof createAdminClient>,
+  productId: string,
+  productOptionId: string,
+) {
+  const countResult = await admin
+    .from("gift_card_codes")
+    .select("id", {
+      count: "exact",
+      head: true,
+    })
+    .eq("product_option_id", productOptionId)
+    .eq("status", "AVAILABLE");
+
+  if (countResult.error) {
+    throw new Error(countResult.error.message);
+  }
+
+  const optionUpdate = await admin
+    .from("product_options")
+    .update({
+      stock_quantity: countResult.count ?? 0,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productOptionId);
+
+  if (optionUpdate.error) {
+    throw new Error(optionUpdate.error.message);
+  }
+
+  const optionsResult = await admin
+    .from("product_options")
+    .select("stock_quantity")
+    .eq("product_id", productId)
+    .eq("is_active", true);
+
+  if (optionsResult.error) {
+    throw new Error(optionsResult.error.message);
+  }
+
+  const totalStock = (
+    optionsResult.data ?? []
+  ).reduce(
+    (total, option) =>
+      total + Number(option.stock_quantity ?? 0),
+    0,
+  );
+
+  const productUpdate = await admin
+    .from("products")
+    .update({
+      stock_quantity: totalStock,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productId);
+
+  if (productUpdate.error) {
+    throw new Error(productUpdate.error.message);
+  }
+}
 
 function redirectWithError(message: string): never {
   redirect(
@@ -47,6 +109,7 @@ export async function addGiftCodes(
 ) {
   const { supabase, user } =
     await getAdminContext();
+  const admin = createAdminClient();
 
   const productId = String(
     formData.get("product_id") ?? "",
@@ -166,7 +229,7 @@ export async function addGiftCodes(
     }),
   );
 
-  const insertResult = await supabase
+  const insertResult = await admin
     .from("gift_card_codes")
     .insert(giftCodes);
 
@@ -184,8 +247,24 @@ export async function addGiftCodes(
     );
   }
 
+  try {
+    await syncAvailableCodeStock(
+      admin,
+      productId,
+      productOptionId,
+    );
+  } catch (error) {
+    redirectWithError(
+      error instanceof Error
+        ? `Codes were added, but stock synchronization failed: ${error.message}`
+        : "Codes were added, but stock synchronization failed.",
+    );
+  }
+
   revalidatePath("/admin");
   revalidatePath("/admin/gift-codes");
+  revalidatePath("/");
+  revalidatePath("/products");
 
   redirect(
     `/admin/gift-codes?success=${encodeURIComponent(
@@ -197,8 +276,8 @@ export async function addGiftCodes(
 export async function changeGiftCodeStatus(
   formData: FormData,
 ) {
-  const { supabase } =
-    await getAdminContext();
+  await getAdminContext();
+  const admin = createAdminClient();
 
   const id = String(
     formData.get("id") ?? "",
@@ -223,7 +302,22 @@ export async function changeGiftCodeStatus(
     );
   }
 
-  const updateResult = await supabase
+  const codeResult = await admin
+    .from("gift_card_codes")
+    .select("product_id, product_option_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (
+    codeResult.error ||
+    !codeResult.data?.product_option_id
+  ) {
+    redirectWithError(
+      "Gift-card code was not found.",
+    );
+  }
+
+  const updateResult = await admin
     .from("gift_card_codes")
     .update({
       status: requestedStatus,
@@ -240,8 +334,24 @@ export async function changeGiftCodeStatus(
     );
   }
 
+  try {
+    await syncAvailableCodeStock(
+      admin,
+      codeResult.data.product_id,
+      codeResult.data.product_option_id,
+    );
+  } catch (error) {
+    redirectWithError(
+      error instanceof Error
+        ? `Code status changed, but stock synchronization failed: ${error.message}`
+        : "Code status changed, but stock synchronization failed.",
+    );
+  }
+
   revalidatePath("/admin");
   revalidatePath("/admin/gift-codes");
+  revalidatePath("/");
+  revalidatePath("/products");
 
   redirect(
     "/admin/gift-codes?success=Code status updated",

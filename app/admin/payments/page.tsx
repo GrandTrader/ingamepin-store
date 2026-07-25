@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -223,8 +224,15 @@ export default async function PaymentsPage({
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-2xl font-black">
-                          {order?.order_number ??
-                            "Unknown order"}
+                          {order ? (
+                            <AdminOrderLink
+                              orderId={order.id}
+                              orderNumber={order.order_number}
+                              className="text-2xl"
+                            />
+                          ) : (
+                            "Unknown order"
+                          )}
                         </h2>
 
                         <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">

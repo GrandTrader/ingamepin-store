@@ -38,6 +38,89 @@ async function requireAdministrator() {
   if (!adminResult.data) {
     redirect("/admin/login?error=Access denied");
   }
+
+  return user;
+}
+
+export async function deleteCustomerAccount(
+  formData: FormData,
+) {
+  const administrator =
+    await requireAdministrator();
+  const customerId = String(
+    formData.get("customer_id") ?? "",
+  ).trim();
+
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      customerId,
+    )
+  ) {
+    redirect(
+      "/admin/customers?error=The selected customer is invalid.",
+    );
+  }
+
+  if (customerId === administrator.id) {
+    redirect(
+      "/admin/customers?error=You cannot delete your own administrator account.",
+    );
+  }
+
+  const admin = createAdminClient();
+  const protectedAdminResult = await admin
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", customerId)
+    .maybeSingle();
+
+  if (protectedAdminResult.error) {
+    redirect(
+      `/admin/customers?error=${encodeURIComponent(
+        protectedAdminResult.error.message,
+      )}`,
+    );
+  }
+
+  if (protectedAdminResult.data) {
+    redirect(
+      "/admin/customers?error=Administrator accounts cannot be deleted here.",
+    );
+  }
+
+  const customerResult =
+    await admin.auth.admin.getUserById(
+      customerId,
+    );
+
+  if (
+    customerResult.error ||
+    !customerResult.data.user
+  ) {
+    redirect(
+      "/admin/customers?error=Registered customer was not found.",
+    );
+  }
+
+  const deleteResult =
+    await admin.auth.admin.deleteUser(
+      customerId,
+    );
+
+  if (deleteResult.error) {
+    redirect(
+      `/admin/customers?error=${encodeURIComponent(
+        deleteResult.error.message,
+      )}`,
+    );
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/customers");
+  revalidatePath("/admin/orders");
+  redirect(
+    "/admin/customers?success=Customer account deleted successfully. Order history was preserved.",
+  );
 }
 
 export async function saveCustomerDiscount(
