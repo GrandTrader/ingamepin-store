@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import UsdtQrCode from "@/components/UsdtQrCode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PendingOrder = {
@@ -235,6 +236,10 @@ export default function DirectUsdtPaymentPage() {
               </span>
             </div>
 
+            <UsdtQrCode
+              address={invoice.address}
+              network={invoice.network}
+            />
             <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-5 text-center">
               <p className="text-sm text-slate-400">Send exactly</p>
               <p className="mt-2 break-all text-3xl font-black text-cyan-300">
