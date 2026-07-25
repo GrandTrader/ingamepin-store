@@ -34,12 +34,17 @@ export default function PaymentPage() {
       if (
         !parsedOrder?.databaseId ||
         !parsedOrder.accessToken ||
-        !["binance", "nowpayments", "pally"].includes(
+        !["binance", "nowpayments", "pally", "usdt"].includes(
           parsedOrder.paymentMethod?.toLowerCase() ?? "",
         ) ||
         Number(parsedOrder.totalAmount) <= 0
       ) {
         setOrder(null);
+        return;
+      }
+
+      if (parsedOrder.paymentMethod?.toLowerCase() === "usdt") {
+        window.location.replace("/checkout/usdt");
         return;
       }
 

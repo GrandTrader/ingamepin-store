@@ -739,7 +739,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    window.location.href = "/checkout/payment";
+    window.location.href = paymentMethod === "usdt" ? "/checkout/usdt" : "/checkout/payment";
   } catch (error) {
     setMessage(
       error instanceof Error
@@ -1367,6 +1367,36 @@ export default function CheckoutPage() {
                 </div>
               </label>
 
+              <label
+                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                  paymentMethod === "usdt"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="usdt"
+                  checked={paymentMethod === "usdt"}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500 text-sm font-black text-white">
+                    T</span>
+
+                  <div>
+                    <p className="font-bold">Direct USDT</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Pay with USDT on TRC20 or BEP20
+                    </p>
+                  </div>
+                </div>
+              </label>
               <label
                 className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
                   paymentMethod === "pally"
