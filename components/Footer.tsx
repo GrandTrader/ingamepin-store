@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useStorePreferences } from "./StorePreferences";
+import PaymentMethodsBanner from "./PaymentMethodsBanner";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -9,6 +10,10 @@ export default function Footer() {
 
   return (
     <footer className="mt-auto border-t border-white/10 bg-slate-950 text-white">
+      <div className="mx-auto max-w-7xl px-3 pt-5 sm:px-5 sm:pt-8">
+        <PaymentMethodsBanner variant="footer" />
+      </div>
+
       <div className="px-3 py-6 sm:hidden">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400 font-black text-slate-950">
@@ -51,6 +56,8 @@ export default function Footer() {
 
           <MobileFooterSection title={t("paymentDelivery")}>
             <span>Binance Pay</span>
+            <span>Direct USDT: TRC20 &amp; BEP20</span>
+            <span>Pally - SBP</span>
             <Link href="/track-order">{t("checkOrderStatus")}</Link>
           </MobileFooterSection>
         </div>
@@ -211,9 +218,7 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {[
-              "Binance Pay",
-            ].map((method) => (
+            {["InGamePin Wallet", "Binance Pay", "USDT TRC20", "USDT BEP20", "Pally - SBP"].map((method) => (
               <span
                 key={method}
                 className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300"

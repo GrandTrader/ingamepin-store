@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
 
 type CartItem = {
   id: string;
@@ -1337,38 +1338,6 @@ export default function CheckoutPage() {
 
               <label
                 className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
-                  paymentMethod === "nowpayments"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="nowpayments"
-                  checked={paymentMethod === "nowpayments"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500 text-sm font-black text-white">
-                    N
-                  </span>
-
-                  <div>
-                    <p className="font-bold">NOWPayments</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Pay with supported cryptocurrencies
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
                   paymentMethod === "usdt"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
@@ -1429,6 +1398,8 @@ export default function CheckoutPage() {
                 </div>
               </label>
             </div>
+
+            <PaymentMethodsBanner className="mt-4 sm:mt-5" />
           </section>
 
           {/* Order note */}
