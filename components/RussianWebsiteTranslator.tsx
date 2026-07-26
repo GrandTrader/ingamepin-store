@@ -17,8 +17,6 @@ const russianText: Record<string, string> = {
     "Пополняйте баланс через любой доступный способ оплаты.",
   "Your balance is credited automatically after verified payment.":
     "Баланс пополняется автоматически после подтверждения платежа.",
-  "Your balance is credited automatically after verified payment.":
-    "Баланс пополняется автоматически после подтверждения платежа.",
   "Top-up amount (USD)": "Сумма пополнения (USD)",
   "Minimum amount: $10": "Минимальная сумма: $10",
   "Payment method": "Способ оплаты",
