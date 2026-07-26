@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -25,45 +25,77 @@ export default function HeroSlider({
 
   useEffect(() => {
     if (slides.length < 2) return;
+
     const slider = setInterval(() => {
-      setCurrentSlide((previous) => previous === slides.length - 1 ? 0 : previous + 1);
+      setCurrentSlide((previous) =>
+        previous === slides.length - 1 ? 0 : previous + 1,
+      );
     }, autoplayMs);
+
     return () => clearInterval(slider);
   }, [autoplayMs, slides.length]);
 
   if (slides.length === 0) return null;
+
   const safeIndex = Math.min(currentSlide, slides.length - 1);
   const slide = slides[safeIndex];
 
   return (
-    <section className="mx-auto hidden max-w-7xl px-3 pt-3 sm:block sm:px-5 sm:pt-8">
-      <div className="relative min-h-[236px] overflow-hidden rounded-2xl bg-slate-900 sm:min-h-[430px] sm:rounded-3xl">
-        <picture>
-          {slide.mobileImageUrl && <source media="(max-width: 639px)" srcSet={slide.mobileImageUrl} />}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={slide.desktopImageUrl} alt="" className="absolute inset-0 h-full w-full object-fill" />
-        </picture>
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/55 to-slate-950/10" />
+    <section className="mx-auto hidden max-w-7xl px-5 pt-8 sm:block">
+      <div className="relative aspect-[1920/700] w-full overflow-hidden rounded-3xl bg-slate-900">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={slide.desktopImageUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-fill"
+        />
 
-        <div className="relative z-10 grid min-h-[236px] items-center gap-6 px-6 py-7 sm:min-h-[430px] sm:gap-10 sm:px-12 sm:py-14 md:grid-cols-2 md:px-20">
-          <div className="max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300 sm:text-sm sm:tracking-[0.3em]">{slide.eyebrow}</p>
-            <h1 className="mt-2 max-w-[290px] text-[27px] font-black leading-[1.08] text-white sm:mt-5 sm:max-w-none sm:text-4xl md:text-6xl">{slide.title}</h1>
-            <p className="mt-2 line-clamp-2 max-w-[300px] text-xs leading-5 text-white/80 sm:mt-5 sm:line-clamp-none sm:max-w-2xl sm:text-lg">{slide.description}</p>
-            <div className="mt-4 flex gap-2 sm:mt-8 sm:flex-wrap sm:gap-4">
-              <Link href={slide.buttonUrl} className="rounded-lg bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-300 sm:rounded-xl sm:px-6 sm:py-3 sm:text-base">{slide.buttonText}</Link>
-              <Link href="/products" className="rounded-lg border border-white/50 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/10 sm:rounded-xl sm:px-6 sm:py-3 sm:text-base">View All Products</Link>
-            </div>
-          </div>
-        </div>
+        <Link
+          href={slide.buttonUrl}
+          className="absolute bottom-6 right-6 z-10 rounded-xl bg-cyan-400 px-6 py-3 text-base font-black text-slate-950 shadow-lg transition hover:bg-cyan-300 md:bottom-8 md:right-8"
+        >
+          Buy Now
+        </Link>
 
         {slides.length > 1 && (
           <>
-            <button type="button" onClick={() => setCurrentSlide(safeIndex === 0 ? slides.length - 1 : safeIndex - 1)} aria-label="Previous slide" className="absolute left-2 top-1/2 z-20 hidden -translate-y-1/2 rounded-full bg-slate-950/40 px-2.5 py-2 text-lg text-white hover:bg-slate-950/70 sm:block sm:left-4 sm:px-4 sm:py-3 sm:text-2xl">‹</button>
-            <button type="button" onClick={() => setCurrentSlide(safeIndex === slides.length - 1 ? 0 : safeIndex + 1)} aria-label="Next slide" className="absolute right-2 top-1/2 z-20 hidden -translate-y-1/2 rounded-full bg-slate-950/40 px-2.5 py-2 text-lg text-white hover:bg-slate-950/70 sm:block sm:right-4 sm:px-4 sm:py-3 sm:text-2xl">›</button>
-            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-2 sm:bottom-6">
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentSlide(
+                  safeIndex === 0 ? slides.length - 1 : safeIndex - 1,
+                )
+              }
+              aria-label="Previous slide"
+              className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-slate-950/45 px-4 py-3 text-2xl text-white transition hover:bg-slate-950/75"
+            >
+              {"\u2039"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentSlide(
+                  safeIndex === slides.length - 1 ? 0 : safeIndex + 1,
+                )
+              }
+              aria-label="Next slide"
+              className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-slate-950/45 px-4 py-3 text-2xl text-white transition hover:bg-slate-950/75"
+            >
+              {"\u203a"}
+            </button>
+
+            <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
               {slides.map((item, index) => (
-                <button key={item.id} type="button" onClick={() => setCurrentSlide(index)} aria-label={`Open slide ${index + 1}`} className={`h-2 rounded-full transition-all sm:h-3 ${safeIndex === index ? "w-9 bg-white" : "w-3 bg-white/50"}`} />
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setCurrentSlide(index)}
+                  aria-label={`Open slide ${index + 1}`}
+                  className={`h-3 rounded-full transition-all ${
+                    safeIndex === index ? "w-9 bg-white" : "w-3 bg-white/50"
+                  }`}
+                />
               ))}
             </div>
           </>
@@ -72,3 +104,4 @@ export default function HeroSlider({
     </section>
   );
 }
+
