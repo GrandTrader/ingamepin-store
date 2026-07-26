@@ -10,7 +10,7 @@ import DeliveryTypeSwitch from "../../DeliveryTypeSwitch";
 import { updateProduct } from "../../actions";
 import DeleteProductButton from "./DeleteProductButton";
 import EditCategoryFields from "./EditCategoryFields";
-import EditProductOptionsFields from "./EditProductOptionsFields";
+import ProductOptionsInventorySection from "./ProductOptionsInventorySection";
 
 export const dynamic = "force-dynamic";
 
@@ -441,7 +441,7 @@ export default async function EditProductPage({
               </div>
             </section>
 
-            <EditProductOptionsFields
+            <ProductOptionsInventorySection
               productId={product.id}
               initialOptions={editableOptions}
               initialDeliveryType={product.delivery_type}
@@ -502,6 +502,10 @@ export default async function EditProductPage({
     </div>
   );
 }
+
+
+
+
 
 
 
