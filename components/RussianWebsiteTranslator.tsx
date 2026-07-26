@@ -7,6 +7,7 @@ import { useStorePreferences } from "./StorePreferences";
 
 const russianText: Record<string, string> = {
   "Return to dashboard": "Вернуться в личный кабинет",
+  "← Return to dashboard": "← Вернуться в личный кабинет",
   "Available balance": "Доступный баланс",
   "USD wallet": "USD-кошелёк",
   "Add money": "Пополнить кошелёк",
@@ -14,6 +15,8 @@ const russianText: Record<string, string> = {
     "Выберите сумму и оплатите через любой доступный способ.",
   "Add money through any available payment gateway.":
     "Пополняйте баланс через любой доступный способ оплаты.",
+  "Your balance is credited automatically after verified payment.":
+    "Баланс пополняется автоматически после подтверждения платежа.",
   "Your balance is credited automatically after verified payment.":
     "Баланс пополняется автоматически после подтверждения платежа.",
   "Top-up amount (USD)": "Сумма пополнения (USD)",
@@ -24,6 +27,8 @@ const russianText: Record<string, string> = {
   "Available payment methods": "Доступные способы оплаты",
   "Add amount": "Сумма пополнения",
   "New balance": "Новый баланс",
+  "Minimum wallet top-up: $10. New configured gateway adapters appear here automatically.":
+    "Минимальное пополнение кошелька: $10. Новые способы оплаты появляются здесь автоматически.",
   "Continue to payment": "Перейти к оплате",
   "Opening payment gateway...": "Открываем платёжную систему...",
   "Recent top-ups": "Недавние пополнения",
@@ -173,11 +178,12 @@ const translatedAttributes = ["placeholder", "title", "aria-label"];
 function translateValue(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return value;
+  const normalized = trimmed.replace(/\s+/g, " ");
 
-  let translated = russianText[trimmed];
+  let translated = russianText[normalized];
   if (!translated) {
     for (const [pattern, formatter] of russianPatterns) {
-      const match = trimmed.match(pattern);
+      const match = normalized.match(pattern);
       if (match) {
         translated = formatter(...match.slice(1));
         break;
@@ -186,7 +192,9 @@ function translateValue(value: string) {
   }
 
   if (!translated) return value;
-  return value.replace(trimmed, translated);
+  const leadingSpace = value.match(/^\s*/)?.[0] ?? "";
+  const trailingSpace = value.match(/\s*$/)?.[0] ?? "";
+  return `${leadingSpace}${translated}${trailingSpace}`;
 }
 
 function isExcluded(node: Node) {

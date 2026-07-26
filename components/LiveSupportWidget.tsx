@@ -186,7 +186,7 @@ export default function LiveSupportWidget() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="ml-auto flex h-14 items-center gap-2 rounded-full bg-cyan-400 px-5 font-black text-slate-950 shadow-xl shadow-black/30 transition hover:scale-105"
+        className="ml-auto flex h-12 items-center gap-2 rounded-full bg-cyan-400 px-4 text-sm font-black text-slate-950 shadow-xl shadow-black/30 transition hover:scale-105 sm:h-14 sm:px-5 sm:text-base"
         aria-label="Open live support chat"
       >
         <span className="text-xl" aria-hidden="true">●</span>
@@ -195,4 +195,3 @@ export default function LiveSupportWidget() {
     </div>
   );
 }
-

@@ -230,7 +230,7 @@ export default function Header() {
                 iNgame<span className="text-cyan-400">PIN</span>
               </p>
 
-              <p className="mt-1 hidden text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 min-[380px]:block">
+              <p className="mt-1 hidden text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 lg:block">
                 {t("storeTagline")}
               </p>
             </div>
@@ -239,7 +239,7 @@ export default function Header() {
           {/* Desktop navigation */}
           <nav
             aria-label="Main navigation"
-            className="hidden items-center gap-1 lg:flex"
+            className="hidden items-center gap-1 xl:flex"
           >
             <Link
               href="/"
@@ -345,7 +345,7 @@ export default function Header() {
                 <path d="M16 13h5" />
                 <circle cx="16" cy="13" r=".5" fill="currentColor" />
               </svg>
-              <span className="hidden text-sm sm:inline">Wallet</span>
+              <span className="sr-only">Wallet</span>
             </Link>
 
             <Link
@@ -360,7 +360,7 @@ export default function Header() {
                 {"\uD83D\uDED2"}
               </span>
 
-              <span className="hidden text-sm sm:inline">
+              <span className="sr-only">
                 {t("cart")}
               </span>
 
@@ -377,9 +377,26 @@ export default function Header() {
                   ? "/account/dashboard"
                   : "/account"
               }
-              className="hidden h-11 items-center justify-center rounded-xl bg-cyan-400 px-4 text-sm font-black text-slate-950 transition hover:bg-cyan-300 sm:flex"
+              aria-label={isAuthenticated ? t("myAccount") : t("login")}
+              title={isAuthenticated ? t("myAccount") : t("login")}
+              className="hidden h-11 w-11 items-center justify-center rounded-xl bg-cyan-400 text-slate-950 transition hover:bg-cyan-300 xl:flex"
             >
-              {isAuthenticated ? t("myAccount") : t("login")}
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21a8 8 0 0 1 16 0" />
+              </svg>
+              <span className="sr-only">
+                {isAuthenticated ? t("myAccount") : t("login")}
+              </span>
             </Link>
 
             <button
@@ -394,7 +411,7 @@ export default function Header() {
               }
               aria-expanded={isMenuOpen}
               aria-controls="mobile-navigation"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl transition hover:border-cyan-400 sm:h-11 sm:w-11 lg:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl transition hover:border-cyan-400 sm:h-11 sm:w-11 xl:hidden"
             >
               <span aria-hidden="true">
                 {isMenuOpen ? "\u2715" : "\u2630"}
@@ -520,7 +537,7 @@ export default function Header() {
           <nav
             id="mobile-navigation"
             aria-label="Mobile navigation"
-            className="absolute left-0 right-0 top-full max-h-[calc(100vh-3rem)] overflow-y-auto border-t border-white/10 bg-slate-900 px-3 py-4 shadow-2xl lg:hidden"
+            className="absolute left-0 right-0 top-full max-h-[calc(100vh-3rem)] overflow-y-auto border-t border-white/10 bg-slate-900 px-3 py-4 shadow-2xl xl:hidden"
           >
             <div className="mx-auto grid max-w-7xl gap-1">
               <div className="mb-3 grid grid-cols-2 gap-2 border-b border-white/10 pb-4">
