@@ -14,6 +14,7 @@ type CartItem = {
   email: string;
   unitPrice: number;
   totalPrice: number;
+  isBulkOrder?: boolean;
 };
 
 const MAXIMUM_QUANTITY = 10;
@@ -105,7 +106,7 @@ export default function CartPage() {
       }
 
       const newQuantity =
-        item.quantity < MAXIMUM_QUANTITY
+        item.isBulkOrder || item.quantity < MAXIMUM_QUANTITY
           ? item.quantity + 1
           : item.quantity;
 
@@ -325,6 +326,7 @@ export default function CartPage() {
                                 )
                               }
                               disabled={
+                                !item.isBulkOrder &&
                                 item.quantity >=
                                 MAXIMUM_QUANTITY
                               }
@@ -335,9 +337,11 @@ export default function CartPage() {
                             </button>
                           </div>
 
-                          <p className="mt-2 text-xs text-slate-500">
-                            Maximum 10 per product
-                          </p>
+                          {!item.isBulkOrder && (
+                            <p className="mt-2 text-xs text-slate-500">
+                              Maximum 10 per product
+                            </p>
+                          )}
                         </div>
 
                         <div className="text-right">

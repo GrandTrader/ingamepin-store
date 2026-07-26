@@ -31,7 +31,8 @@ export default function ProductCard({ product }: Props) {
   const [showImage, setShowImage] = useState(
     Boolean(product.image),
   );
-  const isOutOfStock = product.stock <= 0;
+  const isOutOfStock =
+    !product.isBulkOrder && product.stock <= 0;
 
   const stockLabel = isOutOfStock
     ? t("outOfStock")

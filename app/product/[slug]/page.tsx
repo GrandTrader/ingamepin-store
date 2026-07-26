@@ -323,6 +323,7 @@ export default async function ProductPage({
                 playerIdLabel:
                   product.player_id_label,
                 customerDiscountPercent,
+                isBulkOrder: product.is_bulk_order,
               }}
               options={options.map((option) => ({
                 id: option.id,

@@ -39,6 +39,7 @@ type ProductPurchaseFormProps = {
     allowsGamingVoucher: boolean;
     playerIdLabel: string | null;
     customerDiscountPercent: number;
+    isBulkOrder?: boolean;
   };
   options: ProductOption[];
 };
@@ -66,6 +67,7 @@ type StoredCartItem = {
   quantity: number;
   minQuantity: number;
   maxQuantity: number;
+  isBulkOrder?: boolean;
   productType: string;
   deliveryType: string;
   email: string;
@@ -99,13 +101,13 @@ export default function ProductPurchaseForm({
   const firstAvailableFixedOption =
     fixedOptions.find(
       (option) =>
-        option.stockQuantity > 0 &&
+        (product.isBulkOrder || option.stockQuantity > 0) &&
         option.optionName
           .toLowerCase()
           .includes("standard"),
     ) ??
     fixedOptions.find(
-      (option) => option.stockQuantity > 0,
+      (option) => product.isBulkOrder || option.stockQuantity > 0,
     ) ??
     fixedOptions[0];
 
@@ -167,9 +169,11 @@ export default function ProductPurchaseForm({
     valueMode === "CUSTOM" ||
     (isGamingTopup && fulfillmentMode === "PLAYER_ID_TOPUP");
 
-  const maximumQuantity = requiresSingleQuantity
-    ? 1
-    : Math.min(10, selectedFixedOption?.stockQuantity ?? 0);
+  const maximumQuantity = product.isBulkOrder
+    ? Number.MAX_SAFE_INTEGER
+    : requiresSingleQuantity
+      ? 1
+      : Math.min(10, selectedFixedOption?.stockQuantity ?? 0);
 
   const totalPrice = selectedUnitPrice * quantity;
   const customerDiscountAmount =
@@ -221,6 +225,7 @@ export default function ProductPurchaseForm({
 
     if (
       valueMode === "FIXED" &&
+      !product.isBulkOrder &&
       selectedOption.stockQuantity < 1
     ) {
       return showError("The selected option is out of stock.");
@@ -290,7 +295,11 @@ export default function ProductPurchaseForm({
       );
     }
 
-    if (quantity < 1 || quantity > maximumQuantity) {
+    if (
+      !Number.isSafeInteger(quantity) ||
+      quantity < 1 ||
+      (!product.isBulkOrder && quantity > maximumQuantity)
+    ) {
       return showError("Please select a valid quantity.");
     }
 
@@ -362,6 +371,7 @@ export default function ProductPurchaseForm({
       quantity,
       minQuantity: 1,
       maxQuantity: maximumQuantity,
+      isBulkOrder: Boolean(product.isBulkOrder),
       productType: product.productType,
       deliveryType:
         valueMode === "CUSTOM" ||
@@ -500,7 +510,8 @@ export default function ProductPurchaseForm({
           <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
             {fixedOptions.map((option) => {
               const isSelected = selectedOptionId === option.id;
-              const isUnavailable = option.stockQuantity < 1;
+              const isUnavailable =
+                !product.isBulkOrder && option.stockQuantity < 1;
 
               return (
                 <button
@@ -526,9 +537,11 @@ export default function ProductPurchaseForm({
                     ) : formatPrice(option.sellingPrice)}
                   </span>
                   <span className="mt-1 block text-xs opacity-70">
-                    {isUnavailable
-                      ? t("outOfStock")
-                      : t("inStock")}
+                    {product.isBulkOrder
+                      ? "Bulk quantity available"
+                      : isUnavailable
+                        ? t("outOfStock")
+                        : t("inStock")}
                   </span>
                 </button>
               );
@@ -626,9 +639,16 @@ export default function ProductPurchaseForm({
           <button
             type="button"
             onClick={() =>
-              setQuantity((current) => Math.min(maximumQuantity, current + 1))
+              setQuantity((current) =>
+                product.isBulkOrder
+                  ? current + 1
+                  : Math.min(maximumQuantity, current + 1),
+              )
             }
-            disabled={maximumQuantity < 1 || quantity >= maximumQuantity}
+            disabled={
+              !product.isBulkOrder &&
+              (maximumQuantity < 1 || quantity >= maximumQuantity)
+            }
             className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl disabled:opacity-40"
           >
             +

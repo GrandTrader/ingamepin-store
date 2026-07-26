@@ -19,6 +19,7 @@ type CartItem = {
   quantity: number;
   minQuantity?: number;
   maxQuantity?: number;
+  isBulkOrder?: boolean;
   productType?: string;
   deliveryType?: string;
   email?: string;
@@ -48,6 +49,7 @@ type RawCartItem = {
   quantity?: number | string;
   minQuantity?: number;
   maxQuantity?: number;
+  isBulkOrder?: boolean;
   productType?: string;
   deliveryType?: string;
   email?: string;
@@ -121,6 +123,7 @@ function normalizeCartItem(
     quantity,
     minQuantity: item.minQuantity ?? 1,
     maxQuantity: item.maxQuantity ?? 10,
+    isBulkOrder: Boolean(item.isBulkOrder),
     productType: item.productType || "digital",
     deliveryType: item.deliveryType || "digital",
     email: item.email,
@@ -447,7 +450,9 @@ export default function CheckoutPage() {
         }
 
         const minimum = item.minQuantity ?? 1;
-        const maximum = item.maxQuantity ?? 10;
+        const maximum = item.isBulkOrder
+          ? Number.MAX_SAFE_INTEGER
+          : item.maxQuantity ?? 10;
         const productName = item.name || item.title || "this product";
 
         if (requestedQuantity > maximum) {
@@ -488,6 +493,9 @@ export default function CheckoutPage() {
             email: item.email || "",
             unitPrice: item.price,
             totalPrice: item.price * item.quantity,
+            minQuantity: item.minQuantity,
+            maxQuantity: item.maxQuantity,
+            isBulkOrder: item.isBulkOrder,
           }));
 
           localStorage.setItem(
@@ -1567,6 +1575,7 @@ export default function CheckoutPage() {
                               )
                             }
                             disabled={
+                              !item.isBulkOrder &&
                               Number(item.quantity || 1) >=
                               (item.maxQuantity ?? 10)
                             }
@@ -1579,10 +1588,10 @@ export default function CheckoutPage() {
                           </button>
                         </div>
 
-                        <p className="mt-1.5 text-[10px] text-slate-600">
+                        {!item.isBulkOrder && <p className="mt-1.5 text-[10px] text-slate-600">
                           Limit: {item.minQuantity ?? 1}–
                           {item.maxQuantity ?? 10}
-                        </p>
+                        </p>}
                       </div>
 
                       <div className="text-right">
