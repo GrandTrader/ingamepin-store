@@ -119,8 +119,50 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     const payment = paymentResult.data;
 
+    if (paymentResult.error) {
+      return NextResponse.json(
+        { error: paymentResult.error.message },
+        { status: 400 },
+      );
+    }
+
     if (!payment) {
-      return NextResponse.json({ error: "Payment was not found." }, { status: 404 });
+      const topupResult = await admin
+        .from("wallet_topup_requests")
+        .select("id, status, gateway_order_id")
+        .eq("id", body.orderId)
+        .eq("gateway_order_id", body.invoiceId)
+        .eq("payment_method", "USDT_DIRECT")
+        .maybeSingle();
+      const topup = topupResult.data;
+
+      if (topupResult.error || !topup) {
+        return NextResponse.json(
+          { error: "Payment was not found." },
+          { status: 404 },
+        );
+      }
+      if (topup.status === "APPROVED") {
+        return NextResponse.json({
+          received: true,
+          alreadyCompleted: true,
+        });
+      }
+
+      const walletCompletion = await admin.rpc(
+        "complete_wallet_gateway_topup",
+        {
+          p_request_id: topup.id,
+          p_gateway_order_id: body.invoiceId,
+          p_transaction_id: body.transactionHash,
+        },
+      );
+      return walletCompletion.error
+        ? NextResponse.json(
+            { error: walletCompletion.error.message },
+            { status: 400 },
+          )
+        : NextResponse.json({ received: true });
     }
     if (payment.status === "VERIFIED") {
       return NextResponse.json({ received: true, alreadyCompleted: true });

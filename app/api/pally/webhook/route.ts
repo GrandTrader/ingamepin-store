@@ -106,8 +106,64 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     const payment = paymentResult.data;
 
+    if (paymentResult.error) {
+      return NextResponse.json(
+        { error: paymentResult.error.message },
+        { status: 400 },
+      );
+    }
+
     if (!payment) {
-      return NextResponse.json({ error: "Payment was not found." }, { status: 404 });
+      const topupResult = await admin
+        .from("wallet_topup_requests")
+        .select("id, status, gateway_order_id, payment_reference")
+        .eq("id", orderId)
+        .eq("payment_method", "PALLY")
+        .maybeSingle();
+      const topup = topupResult.data;
+
+      if (topupResult.error || !topup?.gateway_order_id) {
+        return NextResponse.json(
+          { error: "Payment was not found." },
+          { status: 404 },
+        );
+      }
+      if (topup.status === "APPROVED") {
+        return NextResponse.json({
+          received: true,
+          alreadyCompleted: true,
+        });
+      }
+
+      const bill = await getPallyBillStatus(topup.gateway_order_id);
+      if (
+        String(bill.id ?? "") !== topup.gateway_order_id ||
+        String(bill.order_id ?? "") !== orderId ||
+        String(bill.status ?? "").toUpperCase() !== "SUCCESS" ||
+        String(bill.currency_in ?? "").toUpperCase() !== currency ||
+        Math.abs(Number(bill.amount) - Number(amount)) > 0.005 ||
+        Math.abs(Number(topup.payment_reference) - Number(amount)) > 0.005
+      ) {
+        return NextResponse.json(
+          { error: "PayPalych wallet verification failed." },
+          { status: 400 },
+        );
+      }
+
+      const walletCompletion = await admin.rpc(
+        "complete_wallet_gateway_topup",
+        {
+          p_request_id: topup.id,
+          p_gateway_order_id: topup.gateway_order_id,
+          p_transaction_id: transactionId,
+        },
+      );
+      return walletCompletion.error
+        ? NextResponse.json(
+            { error: walletCompletion.error.message },
+            { status: 400 },
+          )
+        : NextResponse.json({ received: true });
     }
 
     if (payment.status === "VERIFIED") {
@@ -115,7 +171,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!payment.gateway_order_id) {
-      return NextResponse.json({ error: "Pally bill was not found." }, { status: 400 });
+      return NextResponse.json(
+        { error: "PayPalych bill was not found." },
+        { status: 400 },
+      );
     }
 
     const bill = await getPallyBillStatus(payment.gateway_order_id);
@@ -127,7 +186,7 @@ export async function POST(request: NextRequest) {
       Math.abs(Number(bill.amount) - Number(amount)) > 0.005
     ) {
       return NextResponse.json(
-        { error: "Pally bill verification failed." },
+        { error: "PayPalych bill verification failed." },
         { status: 400 },
       );
     }
@@ -152,7 +211,7 @@ export async function POST(request: NextRequest) {
         error:
           error instanceof Error
             ? error.message
-            : "Unable to process the Pally notification.",
+            : "Unable to process the PayPalych notification.",
       },
       { status: 500 },
     );

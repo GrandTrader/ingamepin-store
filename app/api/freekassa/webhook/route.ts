@@ -120,8 +120,43 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     const payment = paymentResult.data;
 
-    if (paymentResult.error || !payment) {
-      return plainText("Payment was not found.", 404);
+    if (paymentResult.error) {
+      return plainText(paymentResult.error.message, 400);
+    }
+
+    if (!payment) {
+      const topupResult = await admin
+        .from("wallet_topup_requests")
+        .select("id, status, gateway_order_id, payment_reference")
+        .eq("id", orderId)
+        .eq("payment_method", "FREEKASSA")
+        .maybeSingle();
+      const topup = topupResult.data;
+
+      if (topupResult.error || !topup) {
+        return plainText("Payment was not found.", 404);
+      }
+      if (topup.status === "APPROVED") {
+        return plainText("YES");
+      }
+      if (
+        topup.gateway_order_id !== orderId ||
+        Math.abs(Number(topup.payment_reference) - Number(amount)) > 0.005
+      ) {
+        return plainText("Wallet payment verification failed.", 400);
+      }
+
+      const walletCompletion = await admin.rpc(
+        "complete_wallet_gateway_topup",
+        {
+          p_request_id: topup.id,
+          p_gateway_order_id: orderId,
+          p_transaction_id: transactionId,
+        },
+      );
+      return walletCompletion.error
+        ? plainText(walletCompletion.error.message, 400)
+        : plainText("YES");
     }
 
     if (payment.status === "VERIFIED") {

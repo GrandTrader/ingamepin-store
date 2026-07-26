@@ -326,6 +326,29 @@ export default function Header() {
             </div>
 
             <Link
+              href={isAuthenticated ? "/account/wallet" : "/account"}
+              aria-label="Wallet"
+              className="relative flex h-10 items-center gap-2 rounded-xl border border-emerald-300/70 bg-emerald-400 px-3 font-black text-slate-950 shadow-[0_0_18px_rgba(52,211,153,0.3)] transition hover:bg-emerald-300 sm:h-11"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H18a2 2 0 0 1 2 2v2" />
+                <path d="M3 6.5v11A2.5 2.5 0 0 0 5.5 20H20a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H5.5A2.5 2.5 0 0 1 3 5.5" />
+                <path d="M16 13h5" />
+                <circle cx="16" cy="13" r=".5" fill="currentColor" />
+              </svg>
+              <span className="hidden text-sm sm:inline">Wallet</span>
+            </Link>
+
+            <Link
               href="/cart"
               aria-label={`${t("cart")}: ${cartQuantity}`}
               className="relative flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950 px-3 font-bold transition hover:border-cyan-400 sm:h-11"
@@ -587,6 +610,31 @@ export default function Header() {
               </Link>
 
               <div className="my-2 border-t border-white/10" />
+
+              <Link
+                href={isAuthenticated ? "/account/wallet" : "/account"}
+                onClick={closeMenu}
+                className="flex items-center justify-between rounded-xl border border-emerald-300/50 bg-emerald-400 px-4 py-3 font-black text-slate-950 transition hover:bg-emerald-300"
+              >
+                <span className="flex items-center gap-3">
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H18a2 2 0 0 1 2 2v2" />
+                    <path d="M3 6.5v11A2.5 2.5 0 0 0 5.5 20H20a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H5.5A2.5 2.5 0 0 1 3 5.5" />
+                    <path d="M16 13h5" />
+                  </svg>
+                  Wallet
+                </span>
+                <span aria-hidden="true">{"\u203A"}</span>
+              </Link>
 
               <Link
                 href="/track-order"

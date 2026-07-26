@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { startBinanceWalletTopup } from "./actions";
+import { getWalletPaymentGateways } from "@/lib/wallet-payment-gateways";
+import WalletTopupForm from "./WalletTopupForm";
 
 export const dynamic = "force-dynamic";
 type WalletPageProps = {
@@ -61,6 +62,7 @@ export default async function CustomerWalletPage({
   const wallet = walletResult.data ?? { balance: 0, currency: "USD" };
   const transactions = transactionResult.data ?? [];
   const requests = requestResult.data ?? [];
+  const gateways = getWalletPaymentGateways();
   const hasPendingRequest = requests.some(
     (request) => request.status === "PENDING",
   );
@@ -87,8 +89,8 @@ export default async function CustomerWalletPage({
             <div className="mt-8 rounded-2xl bg-white p-5">
               <h2 className="font-black">USD wallet</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Add money securely with Binance Pay. Your balance is credited
-                automatically after payment confirmation.
+                Add money through any available payment gateway. Your balance
+                is credited automatically after verified payment.
               </p>
             </div>
           </section>
@@ -96,7 +98,7 @@ export default async function CustomerWalletPage({
           <section className="p-7 sm:p-9">
             <h1 className="text-3xl font-black">Add money</h1>
             <p className="mt-2 text-slate-500">
-              Top up your USD wallet using Binance Pay.
+              Choose an amount and pay using any available gateway.
             </p>
 
             {error && (
@@ -119,36 +121,10 @@ export default async function CustomerWalletPage({
                 </p>
               </div>
             ) : (
-              <form
-                action={startBinanceWalletTopup}
-                className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5"
-              >
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-700">
-                  Automatic payment
-                </p>
-                <h2 className="mt-2 text-xl font-black">
-                  Pay with Binance Pay
-                </h2>
-                <label className="mt-5 block text-sm font-bold">
-                  Amount (USD)
-                  <input
-                    name="amount"
-                    type="number"
-                    min="1"
-                    max="10000"
-                    step="0.01"
-                    required
-                    placeholder="25.00"
-                    className="mt-2 w-full rounded-xl border border-amber-200 bg-white px-4 py-3 outline-none focus:border-amber-500"
-                  />
-                </label>
-                <button
-                  type="submit"
-                  className="mt-5 w-full rounded-xl bg-amber-300 px-5 py-3 font-black text-slate-950"
-                >
-                  Continue to Binance Pay
-                </button>
-              </form>
+              <WalletTopupForm
+                gateways={gateways}
+                currentBalance={Number(wallet.balance)}
+              />
             )}
           </section>
         </div>
@@ -167,7 +143,8 @@ export default async function CustomerWalletPage({
                   <div>
                     <p className="font-black">{formatMoney(request.amount)}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Binance Pay · {formatDate(request.created_at)}
+                      {request.payment_method.replaceAll("_", " ")} ·{" "}
+                      {formatDate(request.created_at)}
                     </p>
                     {request.rejection_reason && (
                       <p className="mt-2 text-sm text-red-600">
