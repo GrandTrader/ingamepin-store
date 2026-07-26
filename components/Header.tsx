@@ -202,12 +202,6 @@ export default function Header() {
               {t("securePayment")}
             </span>
 
-            <Link
-              href="/support"
-              className="transition hover:text-cyan-400"
-            >
-              {t("customerSupport")}
-            </Link>
           </div>
         </div>
       </div>
@@ -274,13 +268,6 @@ export default function Header() {
               className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
             >
               {t("allProducts")}
-            </Link>
-
-            <Link
-              href="/support"
-              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
-            >
-              {t("support")}
             </Link>
 
             <Link
@@ -661,18 +648,6 @@ export default function Header() {
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\u2315"}</span>
                   {t("trackOrder")}
-                </span>
-                <span aria-hidden="true">{"\u203A"}</span>
-              </Link>
-
-              <Link
-                href="/support"
-                onClick={closeMenu}
-                className="flex items-center justify-between rounded-xl px-4 py-3 font-bold text-slate-200 transition hover:bg-white/5 hover:text-cyan-400"
-              >
-                <span className="flex items-center gap-3">
-                  <span aria-hidden="true">?</span>
-                  {t("customerSupport")}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
