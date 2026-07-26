@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import LiveSupportWidget from "../components/LiveSupportWidget";
+import RussianWebsiteTranslator from "../components/RussianWebsiteTranslator";
 import { StorePreferencesProvider } from "../components/StorePreferences";
 
 import "./globals.css";
@@ -49,6 +50,7 @@ export default function RootLayout({
         className={`${inter.variable} ${robotoMono.variable} flex min-h-screen flex-col bg-slate-950 antialiased`}
       >
         <StorePreferencesProvider>
+          <RussianWebsiteTranslator />
           <Header />
 
           <main className="flex flex-1 flex-col">
@@ -56,9 +58,9 @@ export default function RootLayout({
           </main>
 
           <Footer />
+          <LiveSupportWidget />
         </StorePreferencesProvider>
 
-        <LiveSupportWidget />
         <SpeedInsights />
       </body>
     </html>
