@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, type ReactNode } from "react";
 import {
@@ -108,8 +108,8 @@ export default function AdminHomepageSlider({
         </button>
       </form>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mt-5 grid min-w-0 gap-5">
+        <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-black">Slides</h2>
@@ -200,7 +200,7 @@ export default function AdminHomepageSlider({
                     }}
                   >
                     <input type="hidden" name="id" value={slide.id} />
-                    <button className="rounded-lg px-3 py-1 text-sm font-bold text-red-600">
+                    <button className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-sm font-bold text-red-600 hover:bg-red-100">
                       Delete
                     </button>
                   </form>
@@ -216,7 +216,7 @@ export default function AdminHomepageSlider({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-xl font-black">
             {draft.id ? "Edit slide" : "Add new slide"}
           </h2>
@@ -321,7 +321,7 @@ export default function AdminHomepageSlider({
                   </div>
                 )}
 
-                <span className="absolute bottom-4 left-4 rounded-lg bg-cyan-500 px-4 py-2 font-black text-slate-950 shadow-lg">
+                <span className="absolute bottom-4 right-4 rounded-lg bg-cyan-500 px-4 py-2 font-black text-slate-950 shadow-lg">
                   Buy Now
                 </span>
               </div>
@@ -356,3 +356,5 @@ function Field({
     </label>
   );
 }
+
+

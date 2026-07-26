@@ -41,7 +41,7 @@ export default function HeroSlider({
   const slide = slides[safeIndex];
 
   return (
-    <section className="mx-auto hidden max-w-7xl px-5 pt-8 sm:block">
+    <section className="mx-auto hidden max-w-6xl px-5 pt-6 sm:block">
       <div className="relative aspect-[1920/700] w-full overflow-hidden rounded-3xl bg-slate-900">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -104,4 +104,5 @@ export default function HeroSlider({
     </section>
   );
 }
+
 
