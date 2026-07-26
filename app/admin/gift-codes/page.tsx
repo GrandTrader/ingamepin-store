@@ -1,6 +1,7 @@
 ﻿import { redirect } from "next/navigation";
 
 import AdminSidebar from "../AdminSidebar";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AddGiftCodesSection from "./AddGiftCodesSection";
 import ExportCodes from "./ExportCodes";
@@ -107,15 +108,17 @@ export default async function GiftCodesPage({
     redirect("/admin/login?error=Access denied");
   }
 
+  const admin = createAdminClient();
+
   const [productResult, codeResult] =
     await Promise.all([
-      supabase
+      admin
         .from("products")
         .select("id, name")
         .eq("status", "ACTIVE")
         .order("name"),
 
-      supabase
+      admin
         .from("gift_card_codes")
         .select(
           `
@@ -368,4 +371,5 @@ function InventoryCard({
     </div>
   );
 }
+
 
