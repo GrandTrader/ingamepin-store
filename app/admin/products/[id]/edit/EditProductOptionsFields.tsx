@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -361,8 +361,8 @@ export default function EditProductOptionsFields({
                   <div>
                     <p className="font-black">Voucher / code inventory</p>
                     <p className="text-sm text-slate-500">
-                      {initialCodes.filter((code) => code.productOptionId === row.id && code.status === "AVAILABLE").length} available Â·{" "}
-                      {initialCodes.filter((code) => code.productOptionId === row.id && code.status === "SOLD").length} sold Â·{" "}
+                      {initialCodes.filter((code) => code.productOptionId === row.id && code.status === "AVAILABLE").length} available ·{" "}
+                      {initialCodes.filter((code) => code.productOptionId === row.id && code.status === "SOLD").length} sold ·{" "}
                       {initialCodes.filter((code) => code.productOptionId === row.id && code.status === "RESERVED").length} reserved
                     </p>
                   </div>

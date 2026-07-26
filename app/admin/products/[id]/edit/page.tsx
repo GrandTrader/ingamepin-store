@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import CountrySelect from "@/components/CountrySelect";
@@ -241,7 +241,7 @@ export default async function EditProductPage({
               href="/admin/products"
               className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
             >
-              Ã¢â€ Â Product list
+              ← Product list
             </Link>
           </header>
 

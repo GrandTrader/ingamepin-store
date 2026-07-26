@@ -173,8 +173,47 @@ export async function addProductCodes(formData: FormData) {
     );
   }
 
-  const insertResult = await admin.from("gift_card_codes").insert(
-    uniqueCodes.map((code) => ({
+  const existingResult = await admin
+    .from("gift_card_codes")
+    .select("id, code, product_id, product_option_id, status, note")
+    .in("code", uniqueCodes);
+
+  if (existingResult.error) {
+    redirectWithMessage(
+      productId,
+      "error",
+      `Unable to check existing codes: ${existingResult.error.message}`,
+    );
+  }
+
+  const existingCodes = existingResult.data ?? [];
+  const blockedExisting = existingCodes.find(
+    (code) =>
+      code.product_id !== productId ||
+      (code.status !== "AVAILABLE" && code.status !== "DISABLED"),
+  );
+
+  if (blockedExisting) {
+    redirectWithMessage(
+      productId,
+      "error",
+      blockedExisting.product_id !== productId
+        ? "One or more codes belong to another product and cannot be moved."
+        : "One or more codes are sold or reserved and cannot be moved.",
+    );
+  }
+
+  const existingCodeValues = new Set(
+    existingCodes.map((code) => code.code),
+  );
+  const newCodes = uniqueCodes.filter(
+    (code) => !existingCodeValues.has(code),
+  );
+
+  const insertResult =
+    newCodes.length > 0
+      ? await admin.from("gift_card_codes").insert(
+          newCodes.map((code) => ({
       product_id: productId,
       product_option_id: verifiedOption.id,
       denomination: verifiedOption.denomination ?? null,
@@ -182,8 +221,9 @@ export async function addProductCodes(formData: FormData) {
       note: note || null,
       status: "AVAILABLE",
       created_by: user.id,
-    })),
-  );
+          })),
+        )
+      : { error: null };
 
   if (insertResult.error) {
     const message =
@@ -193,8 +233,41 @@ export async function addProductCodes(formData: FormData) {
     redirectWithMessage(productId, "error", message);
   }
 
+  const previousOptionIds = new Set<string>();
+
+  for (const existingCode of existingCodes) {
+    if (
+      existingCode.product_option_id &&
+      existingCode.product_option_id !== verifiedOption.id
+    ) {
+      previousOptionIds.add(existingCode.product_option_id);
+    }
+
+    const updateResult = await admin
+      .from("gift_card_codes")
+      .update({
+        product_option_id: verifiedOption.id,
+        denomination: verifiedOption.denomination ?? null,
+        note: note || existingCode.note || null,
+      })
+      .eq("id", existingCode.id)
+      .eq("product_id", productId)
+      .in("status", ["AVAILABLE", "DISABLED"]);
+
+    if (updateResult.error) {
+      redirectWithMessage(
+        productId,
+        "error",
+        `Unable to attach an existing code: ${updateResult.error.message}`,
+      );
+    }
+  }
+
   try {
     await syncAvailableCodeStock(admin, productId, productOptionId);
+    for (const previousOptionId of previousOptionIds) {
+      await syncAvailableCodeStock(admin, productId, previousOptionId);
+    }
   } catch (error) {
     redirectWithMessage(
       productId,
@@ -214,7 +287,9 @@ export async function addProductCodes(formData: FormData) {
   redirectWithMessage(
     productId,
     "success",
-    `${uniqueCodes.length} voucher code(s) uploaded successfully.`,
+    existingCodes.length > 0
+      ? `${newCodes.length} new code(s) uploaded and ${existingCodes.length} existing code(s) attached successfully.`
+      : `${newCodes.length} voucher code(s) uploaded successfully.`,
   );
 }
 
