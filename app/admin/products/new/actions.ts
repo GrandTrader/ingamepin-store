@@ -209,6 +209,25 @@ export async function createProduct(
   const isFeatured =
     formData.get("is_featured") === "on";
 
+  const isBulkOrder =
+    formData.get("is_bulk_order") === "true";
+
+  const bulkDeliveryInstructions = String(
+    formData.get("bulk_delivery_instructions") ?? "",
+  ).trim();
+
+  if (
+    isBulkOrder &&
+    (
+      bulkDeliveryInstructions.length < 2 ||
+      bulkDeliveryInstructions.length > 2000
+    )
+  ) {
+    redirectWithError(
+      "Bulk delivery instructions must contain between 2 and 2000 characters.",
+    );
+  }
+
   const initialSoldCount =
     Math.floor(Math.random() * 701) + 300;
 
@@ -857,6 +876,11 @@ export async function createProduct(
         stockQuantity,
       status,
       is_featured: isFeatured,
+      is_bulk_order: isBulkOrder,
+      bulk_delivery_instructions:
+        isBulkOrder
+          ? bulkDeliveryInstructions
+          : null,
       sort_order: sortOrder,
       sold_count: initialSoldCount,
     })
@@ -939,4 +963,3 @@ export async function createProduct(
     "/admin/products?success=Product created successfully",
   );
 }
-

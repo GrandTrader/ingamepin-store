@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../../../AdminSidebar";
 import DeliveryInventoryField from "../../DeliveryInventoryField";
 import DeliveryTypeSwitch from "../../DeliveryTypeSwitch";
+import OrderModeSwitch from "../../OrderModeSwitch";
 import { updateProduct } from "../../actions";
 import DeleteProductButton from "./DeleteProductButton";
 import EditCategoryFields from "./EditCategoryFields";
@@ -69,6 +70,8 @@ type ProductRow = {
   stock_quantity: number;
   status: ProductStatus;
   is_featured: boolean;
+  is_bulk_order: boolean;
+  bulk_delivery_instructions: string | null;
   delivery_type: DeliveryType;
   delivery_instructions: string | null;
   requires_customer_details: boolean;
@@ -132,6 +135,8 @@ export default async function EditProductPage({
           stock_quantity,
           status,
           is_featured,
+          is_bulk_order,
+          bulk_delivery_instructions,
           delivery_type,
           delivery_instructions,
           requires_customer_details,
@@ -318,6 +323,22 @@ export default async function EditProductPage({
                     className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <h2 className="text-xl font-black">Order mode</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Normal keeps the current product design. Bulk adds a clear customer-facing label.
+              </p>
+
+              <div className="mt-5">
+                <OrderModeSwitch
+                  initialBulkOrder={product.is_bulk_order}
+                  initialBulkDeliveryInstructions={
+                    product.bulk_delivery_instructions
+                  }
+                />
               </div>
             </section>
 

@@ -28,6 +28,7 @@ type ProductRow = {
   stock_quantity: number;
   rating: number | string;
   sold_count: number;
+  is_bulk_order: boolean;
   categories:
     | {
         name: string;
@@ -171,6 +172,7 @@ export default async function ProductsPage({
         stock_quantity,
         rating,
         sold_count,
+        is_bulk_order,
         categories (
           name,
           short_name
@@ -216,6 +218,7 @@ export default async function ProductsPage({
           (paidProductSales.get(product.id) ?? 0),
         category: getCategory(product),
         discountPercent: customerDiscounts.get(product.id) ?? 0,
+        isBulkOrder: product.is_bulk_order,
       }),
     );
   const details = collections[collection];

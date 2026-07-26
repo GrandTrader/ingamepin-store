@@ -19,6 +19,7 @@ export type ProductCardData = {
   slug: string;
   href?: string;
   discountPercent?: number;
+  isBulkOrder?: boolean;
 };
 
 type Props = {
@@ -56,6 +57,13 @@ export default function ProductCard({ product }: Props) {
     >
       <article className="group h-full overflow-hidden rounded-xl border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-2 hover:border-cyan-400 sm:rounded-2xl">
         <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-gradient-to-br from-slate-800 to-slate-700">
+          {product.isBulkOrder && (
+            <span className="absolute bottom-3 left-3 z-20 inline-flex items-center gap-1.5 rounded-lg border border-amber-300/50 bg-amber-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-xl sm:bottom-4 sm:left-4 sm:text-xs">
+              <span aria-hidden="true">▦</span>
+              {language === "ru" ? "Оптовый заказ" : "Bulk Order"}
+            </span>
+          )}
+
           <span className="absolute left-2 top-2 z-20 hidden rounded-full border border-white/10 bg-slate-950/85 px-2 py-1 text-[10px] font-bold text-cyan-300 shadow-lg backdrop-blur-sm sm:left-3 sm:top-3 sm:inline-flex sm:px-3 sm:text-xs">
             {localizedBadge}
           </span>

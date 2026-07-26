@@ -35,6 +35,7 @@ type ProductRow = {
   stock_quantity: number;
   rating: number | string;
   sold_count: number;
+  is_bulk_order: boolean;
   product_options:
     | {
         selling_price: number | string;
@@ -108,6 +109,7 @@ export default async function CategoryPage({
         stock_quantity,
         rating,
         sold_count,
+        is_bulk_order,
         product_options (
           selling_price,
           stock_quantity,
@@ -148,6 +150,7 @@ export default async function CategoryPage({
         (paidProductSales.get(product.id) ?? 0),
       category: category.short_name ?? category.name,
       discountPercent: customerDiscounts.get(product.id) ?? 0,
+      isBulkOrder: product.is_bulk_order,
     }),
   );
 

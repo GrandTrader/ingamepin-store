@@ -166,6 +166,27 @@ export async function updateProduct(
   const isFeatured =
     formData.get("is_featured") === "on";
 
+  const isBulkOrder =
+    formData.get("is_bulk_order") === "true";
+
+  const bulkDeliveryInstructions = String(
+    formData.get("bulk_delivery_instructions") ?? "",
+  ).trim();
+
+  if (
+    isBulkOrder &&
+    (
+      bulkDeliveryInstructions.length < 2 ||
+      bulkDeliveryInstructions.length > 2000
+    )
+  ) {
+    productRedirect(
+      id,
+      "error",
+      "Bulk delivery instructions must contain between 2 and 2000 characters.",
+    );
+  }
+
   const requiresCustomerDetails =
     formData.get(
       "requires_customer_details",
@@ -813,6 +834,11 @@ export async function updateProduct(
       stock_quantity: stockQuantity,
       status,
       is_featured: isFeatured,
+      is_bulk_order: isBulkOrder,
+      bulk_delivery_instructions:
+        isBulkOrder
+          ? bulkDeliveryInstructions
+          : null,
     })
     .eq("id", id)
     .select("id, slug")

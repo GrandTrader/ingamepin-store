@@ -37,6 +37,8 @@ type ProductRow = {
   currency: string;
   badge: string | null;
   badge_ru: string | null;
+  is_bulk_order: boolean;
+  bulk_delivery_instructions: string | null;
   product_type: string;
   delivery_type: string;
   delivery_instructions: string | null;
@@ -90,6 +92,8 @@ export default async function ProductPage({
         currency,
         badge,
         badge_ru,
+        is_bulk_order,
+        bulk_delivery_instructions,
         product_type,
         delivery_type,
         delivery_instructions,
@@ -176,7 +180,17 @@ export default async function ProductPage({
 
         <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
           <div className="contents">
-            <div className="order-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
+            <div className="relative order-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
+              {product.is_bulk_order && (
+                <span className="absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm">
+                  <span aria-hidden="true">▦</span>
+                  <LocalizedProductText
+                    english="Bulk Order"
+                    russian="Оптовый заказ"
+                  />
+                </span>
+              )}
+
               {product.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -225,6 +239,31 @@ export default async function ProductPage({
                   russian={product.description_ru}
                 />
               </div>
+
+              {product.is_bulk_order &&
+                product.bulk_delivery_instructions && (
+                  <div className="mt-5 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 sm:mt-7 sm:p-5">
+                    <div className="flex items-start gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-300 font-black text-slate-950"
+                      >
+                        ▦
+                      </span>
+                      <span>
+                        <span className="block text-sm font-black text-amber-200 sm:text-base">
+                          <LocalizedProductText
+                            english="Bulk delivery information"
+                            russian="Информация об оптовой доставке"
+                          />
+                        </span>
+                        <span className="mt-1 block whitespace-pre-line text-sm leading-6 text-slate-300">
+                          {product.bulk_delivery_instructions}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
 
               {product.delivery_instructions && (
                 <div className="mt-5 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 sm:mt-7 sm:p-5">

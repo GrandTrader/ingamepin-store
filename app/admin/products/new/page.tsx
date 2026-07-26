@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import AdminSidebar from "../../AdminSidebar";
 import DeliveryTypeSwitch from "../DeliveryTypeSwitch";
+import OrderModeSwitch from "../OrderModeSwitch";
 import { createProduct } from "./actions";
 import CategoryFields from "./CategoryFields";
 import ProductNameSlugFields from "./ProductNameSlugFields";
@@ -218,6 +219,19 @@ export default async function AddProductPage({
                     Show on homepage
                   </span>
                 </label>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <h2 className="text-xl font-black">
+                Order mode
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Choose how this product is presented to customers.
+              </p>
+
+              <div className="mt-5">
+                <OrderModeSwitch />
               </div>
             </section>
 

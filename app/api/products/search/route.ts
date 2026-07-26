@@ -43,6 +43,7 @@ export async function GET(
         image_url,
         price,
         badge,
+        is_bulk_order,
         categories (
           short_name
         )
@@ -90,6 +91,7 @@ export async function GET(
         image: product.image_url,
         price: Number(product.price),
         badge: product.badge,
+        isBulkOrder: product.is_bulk_order,
         category:
           category?.short_name ??
           "Digital Product",
