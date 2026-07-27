@@ -1,7 +1,8 @@
-import { cookies } from "next/headers";
+﻿import { cookies } from "next/headers";
 import Link from "next/link";
 
 import OtpVerificationForm from "@/components/OtpVerificationForm";
+import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 
 import { customerRegister } from "../actions";
 
@@ -39,7 +40,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
         {showVerification ? (
           <section className="text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-cyan-100 text-3xl text-cyan-700">
-              ✉
+              âœ‰
             </div>
             <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-cyan-600">
               Email verification
@@ -146,6 +147,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
                   className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
                 />
               </label>
+              <RegistrationTurnstile />
               <button
                 type="submit"
                 className="rounded-xl bg-cyan-500 px-5 py-3 font-black text-slate-950 sm:col-span-2"
@@ -165,3 +167,4 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
     </main>
   );
 }
+

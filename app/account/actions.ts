@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -84,6 +84,15 @@ export async function customerRegister(formData: FormData) {
   const phone = String(formData.get("phone") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirm_password") ?? "");
+  const captchaToken = String(formData.get("captcha_token") ?? "").trim();
+
+  if (!captchaToken) {
+    accountRedirect(
+      "/account/register",
+      "error",
+      "Complete the security check before creating your account.",
+    );
+  }
 
   if (fullName.length < 2 || fullName.length > 100) {
     accountRedirect("/account/register", "error", "Enter your full name.");
@@ -106,6 +115,7 @@ export async function customerRegister(formData: FormData) {
     email,
     password,
     options: {
+      captchaToken,
       emailRedirectTo: "https://www.ingamepin.com/account/callback",
       data: {
         full_name: fullName,
@@ -258,3 +268,4 @@ export async function updateCustomerPassword(formData: FormData) {
   await supabase.auth.signOut();
   accountRedirect("/account", "success", "Password updated. Sign in with your new password.");
 }
+
