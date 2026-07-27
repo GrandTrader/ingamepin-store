@@ -143,20 +143,20 @@ export async function POST(request: NextRequest) {
       usdSubtotal > 0 ? Number(order.total) / usdSubtotal : 1;
     const usdRubRate = await getUsdRubRate();
     const pallyItems = itemResult.data.map((item) => {
-      const account = String(item.player_id ?? "").trim();
+      const account =
+        String(item.player_id ?? "").trim() ||
+        String(order.customer_email).trim().toLowerCase();
       const category = String(
         categoryByProduct.get(item.product_id) ?? "digital/games",
       );
       const extra: Record<string, string> = {};
 
-      if (account) {
-        if (/telegram|stars/i.test(`${item.product_name} ${category}`)) {
-          extra.telegram_username = account;
-        } else if (/steam/i.test(`${item.product_name} ${category}`)) {
-          extra.steam_account = account;
-        } else {
-          extra.account = account;
-        }
+      if (/telegram|stars/i.test(`${item.product_name} ${category}`)) {
+        extra.telegram_username = account;
+      } else if (/steam/i.test(`${item.product_name} ${category}`)) {
+        extra.steam_account = account;
+      } else {
+        extra.account = account;
       }
       if (item.platform) extra.platform = String(item.platform);
 
