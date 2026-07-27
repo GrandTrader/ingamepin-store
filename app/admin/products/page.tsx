@@ -161,6 +161,32 @@ export default async function AdminProductsPage({
   }
 
   const products = (productResult.data ?? []) as ProductRow[];
+  const twentyFourHoursAgo = new Date(
+    Date.now() - 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const viewResult = await supabase
+    .from("product_views")
+    .select("product_id")
+    .gte("last_viewed_at", twentyFourHoursAgo);
+
+  if (viewResult.error) {
+    throw new Error(
+      `Unable to load product views: ${viewResult.error.message}`,
+    );
+  }
+
+  const viewsByProduct = new Map<string, number>();
+  for (const view of viewResult.data ?? []) {
+    viewsByProduct.set(
+      view.product_id,
+      (viewsByProduct.get(view.product_id) ?? 0) + 1,
+    );
+  }
+  const totalViews24h = Array.from(viewsByProduct.values()).reduce(
+    (total, count) => total + count,
+    0,
+  );
+
   const activeCount = products.filter(
     (product) => product.status === "ACTIVE",
   ).length;
@@ -202,7 +228,7 @@ export default async function AdminProductsPage({
             </div>
           )}
 
-          <section className="mt-7 grid gap-4 sm:grid-cols-3">
+          <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl bg-slate-100 p-5">
               <p className="text-sm text-slate-500">Total products</p>
               <p className="mt-2 text-3xl font-black">{products.length}</p>
@@ -219,6 +245,12 @@ export default async function AdminProductsPage({
               <p className="text-sm text-slate-500">Low stock</p>
               <p className="mt-2 text-3xl font-black text-amber-600">
                 {lowStockCount}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-slate-100 p-5">
+              <p className="text-sm text-slate-500">Visitors (24h)</p>
+              <p className="mt-2 text-3xl font-black text-blue-600">
+                {totalViews24h}
               </p>
             </div>
           </section>
@@ -239,6 +271,7 @@ export default async function AdminProductsPage({
                     <th className="px-5 py-4 font-bold">Category</th>
                     <th className="px-5 py-4 text-right font-bold">Price</th>
                     <th className="px-5 py-4 text-center font-bold">Stock</th>
+                    <th className="px-5 py-4 text-center font-bold">Views (24h)</th>
                     <th className="px-5 py-4 font-bold">Status</th>
                     <th className="px-5 py-4 text-right font-bold">Actions</th>
                   </tr>
@@ -290,6 +323,9 @@ export default async function AdminProductsPage({
                           {product.stock_quantity}
                         </span>
                       </td>
+                      <td className="px-5 py-4 text-center font-bold text-blue-600">
+                        {viewsByProduct.get(product.id) ?? 0}
+                      </td>
 
                       <td className="px-5 py-4">
                         <span
@@ -323,7 +359,7 @@ export default async function AdminProductsPage({
 
                   {products.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-5 py-12 text-center text-slate-500">
+                      <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
                         No products were found.
                       </td>
                     </tr>
@@ -337,4 +373,5 @@ export default async function AdminProductsPage({
     </div>
   );
 }
+
 

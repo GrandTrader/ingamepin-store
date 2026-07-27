@@ -1,10 +1,11 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import ProductPurchaseForm from "./ProductPurchaseForm";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import LocalizedProductText from "@/components/LocalizedProductText";
+import ProductViewTracker from "@/components/ProductViewTracker";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +158,7 @@ export default async function ProductPage({
 
   return (
     <main className="min-h-screen bg-slate-950 px-3 py-5 text-white sm:px-5 sm:py-10">
+      <ProductViewTracker productId={product.id} />
       <div className="mx-auto max-w-6xl">
         <nav className="flex flex-nowrap items-center gap-1.5 overflow-hidden text-xs text-slate-400 sm:flex-wrap sm:gap-2 sm:text-sm">
           <Link href="/" className="transition hover:text-cyan-400">
@@ -183,10 +185,10 @@ export default async function ProductPage({
             <div className="relative order-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
               {product.is_bulk_order && (
                 <span className="absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm">
-                  <span aria-hidden="true">▦</span>
+                  <span aria-hidden="true">â–¦</span>
                   <LocalizedProductText
                     english="Bulk Order"
-                    russian="Оптовый заказ"
+                    russian="ÐžÐ¿Ñ‚Ð¾Ð²Ñ‹Ð¹ Ð·Ð°ÐºÐ°Ð·"
                   />
                 </span>
               )}
@@ -219,7 +221,7 @@ export default async function ProductPage({
 
               <div className="mt-4 flex flex-wrap gap-2 text-xs sm:mt-5 sm:gap-3 sm:text-sm">
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
-                  <LocalizedProductText english="Region" russian="Регион" />:{" "}
+                  <LocalizedProductText english="Region" russian="Ð ÐµÐ³Ð¸Ð¾Ð½" />:{" "}
                   {product.region}
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
@@ -248,13 +250,13 @@ export default async function ProductPage({
                         aria-hidden="true"
                         className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-300 font-black text-slate-950"
                       >
-                        ▦
+                        â–¦
                       </span>
                       <span>
                         <span className="block text-sm font-black text-amber-200 sm:text-base">
                           <LocalizedProductText
                             english="Bulk delivery information"
-                            russian="Информация об оптовой доставке"
+                            russian="Ð˜Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸Ñ Ð¾Ð± Ð¾Ð¿Ñ‚Ð¾Ð²Ð¾Ð¹ Ð´Ð¾ÑÑ‚Ð°Ð²ÐºÐµ"
                           />
                         </span>
                         <span className="mt-1 block whitespace-pre-line text-sm leading-6 text-slate-300">
@@ -270,7 +272,7 @@ export default async function ProductPage({
                   <h2 className="font-black text-cyan-300">
                     <LocalizedProductText
                       english="Delivery instructions"
-                      russian="Инструкции по доставке"
+                      russian="Ð˜Ð½ÑÑ‚Ñ€ÑƒÐºÑ†Ð¸Ð¸ Ð¿Ð¾ Ð´Ð¾ÑÑ‚Ð°Ð²ÐºÐµ"
                     />
                   </h2>
                   <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-300">
@@ -285,13 +287,13 @@ export default async function ProductPage({
             <p className="text-xs font-bold text-cyan-400 sm:text-sm">
               <LocalizedProductText
                 english="Secure checkout"
-                russian="Безопасное оформление"
+                russian="Ð‘ÐµÐ·Ð¾Ð¿Ð°ÑÐ½Ð¾Ðµ Ð¾Ñ„Ð¾Ñ€Ð¼Ð»ÐµÐ½Ð¸Ðµ"
               />
             </p>
             <h2 className="mt-1 text-xl font-black sm:mt-2 sm:text-2xl">
               <LocalizedProductText
                 english="Choose your product option"
-                russian="Выберите вариант товара"
+                russian="Ð’Ñ‹Ð±ÐµÑ€Ð¸Ñ‚Ðµ Ð²Ð°Ñ€Ð¸Ð°Ð½Ñ‚ Ñ‚Ð¾Ð²Ð°Ñ€Ð°"
               />
             </h2>
 
@@ -344,5 +346,6 @@ export default async function ProductPage({
     </main>
   );
 }
+
 
 
