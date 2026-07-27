@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import LiveSupportWidget from "../components/LiveSupportWidget";
+import YandexMetrica from "../components/YandexMetrica";
 import RussianWebsiteTranslator from "../components/RussianWebsiteTranslator";
 import { StorePreferencesProvider } from "../components/StorePreferences";
 
@@ -61,9 +62,12 @@ export default function RootLayout({
           <LiveSupportWidget />
         </StorePreferencesProvider>
 
+        <YandexMetrica />
+
         <SpeedInsights />
       </body>
     </html>
   );
 }
+
 
