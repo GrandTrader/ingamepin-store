@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -40,3 +40,79 @@ body {
   }
 }
 
+/* InGamePin customer-selectable light theme */
+html {
+  color-scheme: dark;
+}
+
+html[data-store-theme="light"] {
+  color-scheme: light;
+  --background: #f4f7fb;
+  --foreground: #0f172a;
+}
+
+html[data-store-theme="light"] body {
+  background: #f4f7fb;
+  color: #0f172a;
+}
+
+html[data-store-theme="light"] [class*="bg-slate-950"] {
+  background-color: #f8fafc !important;
+}
+
+html[data-store-theme="light"] [class*="bg-slate-900"] {
+  background-color: #ffffff !important;
+}
+
+html[data-store-theme="light"] [class*="bg-slate-800"] {
+  background-color: #e9eff7 !important;
+}
+
+html[data-store-theme="light"] [class*="bg-slate-700"] {
+  background-color: #dbe5f1 !important;
+}
+
+html[data-store-theme="light"] [class~="text-white"],
+html[data-store-theme="light"] [class~="text-slate-100"],
+html[data-store-theme="light"] [class~="text-slate-200"],
+html[data-store-theme="light"] [class~="text-slate-300"] {
+  color: #1e293b !important;
+}
+
+html[data-store-theme="light"] [class~="text-slate-400"] {
+  color: #64748b !important;
+}
+
+html[data-store-theme="light"] [class*="border-white/"],
+html[data-store-theme="light"] [class~="border-slate-700"] {
+  border-color: #d7e0eb !important;
+}
+
+html[data-store-theme="light"] [class*="bg-white/"] {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+html[data-store-theme="light"] [class*="bg-black/"] {
+  background-color: rgba(226, 232, 240, 0.7) !important;
+}
+
+html[data-store-theme="light"] [class~="from-slate-900"],
+html[data-store-theme="light"] [class~="from-slate-800"] {
+  --tw-gradient-from: #ffffff var(--tw-gradient-from-position) !important;
+}
+
+html[data-store-theme="light"] [class~="to-slate-700"] {
+  --tw-gradient-to: #e2e8f0 var(--tw-gradient-to-position) !important;
+}
+
+html[data-store-theme="light"] .theme-mode-switch {
+  background: #eef3f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html[data-store-theme="light"] input,
+html[data-store-theme="light"] select,
+html[data-store-theme="light"] textarea {
+  color-scheme: light;
+}

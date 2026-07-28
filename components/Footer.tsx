@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useStorePreferences } from "./StorePreferences";
 import PaymentMethodsBanner from "./PaymentMethodsBanner";
+import ThemeModeSwitch from "./ThemeModeSwitch";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -60,6 +61,10 @@ export default function Footer() {
             <span>Pally - SBP</span>
             <Link href="/track-order">{t("checkOrderStatus")}</Link>
           </MobileFooterSection>
+        </div>
+
+        <div className="mt-5 flex justify-center">
+          <ThemeModeSwitch />
         </div>
 
         <p className="mt-5 text-center text-[11px] text-slate-500">
@@ -236,9 +241,12 @@ export default function Footer() {
             {"\u00A9"} {currentYear} InGamePin, operated by AMAN G. {t("rightsReserved")}
           </p>
 
-          <p>
-            {t("trademarkNotice")}
-          </p>
+          <div className="flex flex-col items-center gap-3 sm:items-end">
+            <ThemeModeSwitch />
+            <p>
+              {t("trademarkNotice")}
+            </p>
+          </div>
         </div>
       </div>
     </footer>
