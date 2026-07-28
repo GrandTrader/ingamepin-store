@@ -2,6 +2,7 @@
 
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
+import AdminOrdersTableScroller from "./AdminOrdersTableScroller";
 import { completeManualOrder } from "./actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -269,36 +270,32 @@ export default async function AdminOrdersPage({
               </div>
 
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1250px] text-left">
+                <AdminOrdersTableScroller>
+                  <table className="w-full min-w-[780px] table-fixed text-left">
                     <thead className="border-b border-slate-200 bg-slate-50">
                       <tr className="text-sm text-slate-500">
-                        <th className="px-5 py-4">
+                        <th className="px-3 py-4">
                           Order
                         </th>
 
-                        <th className="px-5 py-4">
+                        <th className="px-3 py-4">
                           Customer
                         </th>
 
-                        <th className="px-5 py-4">
+                        <th className="px-3 py-4">
                           Product and fulfillment
                         </th>
 
-                        <th className="px-5 py-4">
+                        <th className="px-3 py-4">
                           Amount
                         </th>
 
-                        <th className="px-5 py-4">
+                        <th className="px-3 py-4">
                           Status
                         </th>
 
-                        <th className="px-5 py-4">
-                          Ordered
-                        </th>
-
-                        <th className="px-5 py-4">
-                          Completed
+                        <th className="px-3 py-4">
+                          Timeline
                         </th>
                       </tr>
                     </thead>
@@ -314,7 +311,7 @@ export default async function AdminOrdersPage({
                               : ""
                           }`}
                         >
-                          <td className="px-5 py-5">
+                          <td className="break-words px-3 py-5 align-top">
                             <AdminOrderLink
                               orderId={order.id}
                               orderNumber={order.order_number}
@@ -325,13 +322,13 @@ export default async function AdminOrdersPage({
                             </p>
                           </td>
 
-                          <td className="px-5 py-5">
+                          <td className="break-words px-3 py-5 align-top">
                             <p className="font-bold">
                               {order.customer_name ||
                                 "Customer"}
                             </p>
 
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-1 break-all text-sm text-slate-500">
                               {order.customer_email}
                             </p>
 
@@ -342,7 +339,7 @@ export default async function AdminOrdersPage({
                             )}
                           </td>
 
-                          <td className="px-5 py-5">
+                          <td className="break-words px-3 py-5 align-top">
                             <div className="grid gap-3">
                               {order.order_items.map(
                                 (item) => (
@@ -512,14 +509,14 @@ export default async function AdminOrdersPage({
                             </div>
                           </td>
 
-                          <td className="px-5 py-5 font-bold">
+                          <td className="break-words px-3 py-5 align-top font-bold">
                             {formatMoney(
                               order.total,
                               order.currency,
                             )}
                           </td>
 
-                          <td className="px-5 py-5">
+                          <td className="break-words px-3 py-5 align-top">
                             <span
                               className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusStyle(
                                 order.status,
@@ -535,22 +532,29 @@ export default async function AdminOrdersPage({
                             </span>
                           </td>
 
-                          <td className="px-5 py-5 text-sm text-slate-600">
-                            {formatDate(
-                              order.created_at,
-                            )}
-                          </td>
-
-                          <td className="px-5 py-5 text-sm text-slate-600">
-                            {formatDate(
-                              order.delivered_at,
+                          <td className="break-words px-3 py-5 align-top text-xs text-slate-600">
+                            <span className="block font-bold text-slate-500">
+                              Ordered
+                            </span>
+                            <span className="mt-1 block">
+                              {formatDate(order.created_at)}
+                            </span>
+                            {order.delivered_at && (
+                              <>
+                                <span className="mt-3 block font-bold text-slate-500">
+                                  Completed
+                                </span>
+                                <span className="mt-1 block">
+                                  {formatDate(order.delivered_at)}
+                                </span>
+                              </>
                             )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </AdminOrdersTableScroller>
               </div>
             </section>
           )}
@@ -559,4 +563,7 @@ export default async function AdminOrdersPage({
     </div>
   );
 }
+
+
+
 
