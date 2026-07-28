@@ -30,6 +30,7 @@ type OrderItem = {
   platform: string | null;
   fulfillment_mode: string | null;
   player_id: string | null;
+  customer_information: Array<{ fieldId: string; label: string; value: string }>;
   quantity: number;
   products:
     | { delivery_type: "MANUAL" | "AUTOMATIC" }
@@ -140,6 +141,7 @@ export default async function AdminOrdersPage({
           platform,
           fulfillment_mode,
           player_id,
+          customer_information,
           quantity,
           products (
             delivery_type
@@ -379,6 +381,11 @@ export default async function AdminOrdersPage({
                                         Player ID: {item.player_id}
                                       </p>
                                     )}
+                                    {(item.customer_information ?? []).map((field) => (
+                                      <p key={field.fieldId} className="mt-1 break-all rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-800">
+                                        {field.label}: <span className="font-bold">{field.value}</span>
+                                      </p>
+                                    ))}
                                   </div>
                                 ),
                               )}

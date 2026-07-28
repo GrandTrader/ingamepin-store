@@ -53,6 +53,14 @@ type ProductRow = {
   categories: CategoryRelation;
 };
 
+type ProductCustomerFieldRow = {
+  id: string;
+  label: string;
+  placeholder: string | null;
+  field_type: "TEXT" | "EMAIL" | "NUMBER" | "TEXTAREA";
+  is_required: boolean;
+};
+
 type ProductOptionRow = {
   id: string;
   option_name: string;
@@ -151,6 +159,17 @@ export default async function ProductPage({
     );
   }
 
+  const customerFieldResult = await supabase
+    .from("product_customer_fields")
+    .select("id, label, placeholder, field_type, is_required")
+    .eq("product_id", product.id)
+    .order("sort_order", { ascending: true });
+
+  if (customerFieldResult.error) {
+    throw new Error(`Unable to load customer fields: ${customerFieldResult.error.message}`);
+  }
+
+  const customerFields = (customerFieldResult.data ?? []) as ProductCustomerFieldRow[];
   const options = (optionResult.data ?? []) as ProductOptionRow[];
   const category = getCategory(product.categories);
   const customerDiscounts = await getSignedInCustomerDiscounts();
@@ -185,10 +204,10 @@ export default async function ProductPage({
             <div className="relative order-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
               {product.is_bulk_order && (
                 <span className="absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm">
-                  <span aria-hidden="true">â–¦</span>
+                  <span aria-hidden="true">◆</span>
                   <LocalizedProductText
                     english="Bulk Order"
-                    russian="ÐžÐ¿Ñ‚Ð¾Ð²Ñ‹Ð¹ Ð·Ð°ÐºÐ°Ð·"
+                    russian="Оптовый заказ"
                   />
                 </span>
               )}
@@ -221,7 +240,7 @@ export default async function ProductPage({
 
               <div className="mt-4 flex flex-wrap gap-2 text-xs sm:mt-5 sm:gap-3 sm:text-sm">
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
-                  <LocalizedProductText english="Region" russian="Ð ÐµÐ³Ð¸Ð¾Ð½" />:{" "}
+                  <LocalizedProductText english="Region" russian="Регион" />:{" "}
                   {product.region}
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
@@ -250,13 +269,13 @@ export default async function ProductPage({
                         aria-hidden="true"
                         className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-300 font-black text-slate-950"
                       >
-                        â–¦
+                        ◆
                       </span>
                       <span>
                         <span className="block text-sm font-black text-amber-200 sm:text-base">
                           <LocalizedProductText
                             english="Bulk delivery information"
-                            russian="Ð˜Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸Ñ Ð¾Ð± Ð¾Ð¿Ñ‚Ð¾Ð²Ð¾Ð¹ Ð´Ð¾ÑÑ‚Ð°Ð²ÐºÐµ"
+                            russian="Информация об оптовой доставке"
                           />
                         </span>
                         <span className="mt-1 block whitespace-pre-line text-sm leading-6 text-slate-300">
@@ -272,7 +291,7 @@ export default async function ProductPage({
                   <h2 className="font-black text-cyan-300">
                     <LocalizedProductText
                       english="Delivery instructions"
-                      russian="Ð˜Ð½ÑÑ‚Ñ€ÑƒÐºÑ†Ð¸Ð¸ Ð¿Ð¾ Ð´Ð¾ÑÑ‚Ð°Ð²ÐºÐµ"
+                      russian="Инструкции по доставке"
                     />
                   </h2>
                   <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-300">
@@ -283,17 +302,17 @@ export default async function ProductPage({
             </div>
           </div>
 
-          <aside className="order-2 h-fit rounded-2xl border border-white/10 bg-slate-900 p-5 sm:rounded-3xl sm:p-8 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <aside className="order-2 h-fit rounded-2xl border border-white/10 bg-slate-900 p-5 sm:rounded-3xl sm:p-8 lg:col-start-2 lg:row-span-2 lg:row-start-1">
             <p className="text-xs font-bold text-cyan-400 sm:text-sm">
               <LocalizedProductText
                 english="Secure checkout"
-                russian="Ð‘ÐµÐ·Ð¾Ð¿Ð°ÑÐ½Ð¾Ðµ Ð¾Ñ„Ð¾Ñ€Ð¼Ð»ÐµÐ½Ð¸Ðµ"
+                russian="Безопасное оформление"
               />
             </p>
             <h2 className="mt-1 text-xl font-black sm:mt-2 sm:text-2xl">
               <LocalizedProductText
                 english="Choose your product option"
-                russian="Ð’Ñ‹Ð±ÐµÑ€Ð¸Ñ‚Ðµ Ð²Ð°Ñ€Ð¸Ð°Ð½Ñ‚ Ñ‚Ð¾Ð²Ð°Ñ€Ð°"
+                russian="Выберите вариант товара"
               />
             </h2>
 
@@ -327,6 +346,13 @@ export default async function ProductPage({
                 customerDiscountPercent,
                 isBulkOrder: product.is_bulk_order,
               }}
+              customerFields={customerFields.map((field) => ({
+                id: field.id,
+                label: field.label,
+                placeholder: field.placeholder,
+                fieldType: field.field_type,
+                isRequired: field.is_required,
+              }))}
               options={options.map((option) => ({
                 id: option.id,
                 optionName: option.option_name,

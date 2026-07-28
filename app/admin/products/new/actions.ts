@@ -26,6 +26,43 @@ const allowedStatuses = [
   "DRAFT",
 ] as const;
 
+
+const allowedCustomerFieldTypes = ["TEXT", "EMAIL", "NUMBER", "TEXTAREA"] as const;
+
+function readCustomerFields(formData: FormData) {
+  const ids = formData.getAll("customer_field_id").map((value) => String(value).trim());
+  const labels = formData.getAll("customer_field_label").map((value) => String(value).trim());
+  const placeholders = formData.getAll("customer_field_placeholder").map((value) => String(value).trim());
+  const types = formData.getAll("customer_field_type").map((value) => String(value).trim());
+  const requiredIndexes = new Set(
+    formData.getAll("customer_field_required").map((value) => Number(value)),
+  );
+
+  if (labels.length > 20 || placeholders.length !== labels.length || types.length !== labels.length) {
+    throw new Error("Customer information fields are invalid.");
+  }
+
+  return labels.map((label, index) => {
+    if (label.length < 1 || label.length > 80) {
+      throw new Error("Every customer field needs a name of 1 to 80 characters.");
+    }
+    if (placeholders[index].length > 150) {
+      throw new Error("A customer field placeholder is too long.");
+    }
+    if (!allowedCustomerFieldTypes.includes(types[index] as (typeof allowedCustomerFieldTypes)[number])) {
+      throw new Error("A customer field type is invalid.");
+    }
+    return {
+      id: ids[index] || null,
+      label,
+      placeholder: placeholders[index] || null,
+      field_type: types[index],
+      is_required: requiredIndexes.has(index),
+      sort_order: index,
+    };
+  });
+}
+
 const allowedOptionTypes = [
   "CURRENCY",
   "IN_PLATFORM",
@@ -834,6 +871,13 @@ export async function createProduct(
     redirectWithError("Russian product badge is too long.");
   }
 
+  let customerFields;
+  try {
+    customerFields = readCustomerFields(formData);
+  } catch (error) {
+    redirectWithError(error instanceof Error ? error.message : "Customer fields are invalid.");
+  }
+
   const productResult = await admin
     .from("products")
     .insert({
@@ -947,6 +991,16 @@ export async function createProduct(
     redirectWithError(
       `Unable to save product options: ${optionsResult.error.message}`,
     );
+  }
+
+  if (customerFields.length > 0) {
+    const fieldResult = await admin.from("product_customer_fields").insert(
+      customerFields.map(({ id: _fieldId, ...field }) => ({ ...field, product_id: productId })),
+    );
+    if (fieldResult.error) {
+      await admin.from("products").delete().eq("id", productId);
+      redirectWithError(`Unable to save customer fields: ${fieldResult.error.message}`);
+    }
   }
 
   revalidatePath("/");

@@ -1,8 +1,11 @@
 ﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import AdminProductBackToTop from "@/components/AdminProductBackToTop";
 import CountrySelect from "@/components/CountrySelect";
 import ResponsiveImageField from "@/components/ResponsiveImageField";
+import ProductCustomerFieldsEditor from "@/components/ProductCustomerFieldsEditor";
+import ProductFormTabs from "@/components/ProductFormTabs";
 import { createClient } from "@/lib/supabase/server";
 
 import AdminSidebar from "../../AdminSidebar";
@@ -154,7 +157,8 @@ export default async function AddProductPage({
             action={createProduct}
             className="mt-8 grid gap-6"
           >
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <ProductFormTabs />
+            <section id="general" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-xl font-black">
                 Product information
               </h2>
@@ -273,10 +277,11 @@ export default async function AddProductPage({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-xl font-black">
-                Delivery
-              </h2>
+            <section
+              id="delivery"
+              className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            >
+              <h2 className="text-xl font-black">Delivery</h2>
 
               <div className="mt-5 grid gap-5">
                 <DeliveryTypeSwitch />
@@ -293,29 +298,16 @@ export default async function AddProductPage({
                     className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
-
-                <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <input
-                    name="requires_customer_details"
-                    type="checkbox"
-                    className="h-5 w-5 accent-blue-600"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold">
-                      Require additional
-                      customer details
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      Use for player ID,
-                      account ID or other
-                      delivery information.
-                    </span>
-                  </span>
-                </label>
               </div>
             </section>
 
-            <ProductOptionsFields />
+            <ProductCustomerFieldsEditor />
+
+            <div id="pricing" className="scroll-mt-24">
+              <ProductOptionsFields />
+            </div>
+            <div id="stock" className="scroll-mt-24" />
+            <div id="preview" className="scroll-mt-24" />
 
             <div className="flex justify-end">
               <button
@@ -326,6 +318,7 @@ export default async function AddProductPage({
               </button>
             </div>
           </form>
+          <AdminProductBackToTop />
         </main>
       </div>
     </div>

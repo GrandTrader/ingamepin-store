@@ -20,6 +20,20 @@ type FulfillmentMode =
 
 type ValueMode = "FIXED" | "CUSTOM";
 
+type CustomerField = {
+  id: string;
+  label: string;
+  placeholder: string | null;
+  fieldType: "TEXT" | "EMAIL" | "NUMBER" | "TEXTAREA";
+  isRequired: boolean;
+};
+
+type CustomerInformation = {
+  fieldId: string;
+  label: string;
+  value: string;
+};
+
 type ProductPurchaseFormProps = {
   product: {
     id: string;
@@ -42,6 +56,7 @@ type ProductPurchaseFormProps = {
     isBulkOrder?: boolean;
   };
   options: ProductOption[];
+  customerFields?: CustomerField[];
 };
 
 type StoredCartItem = {
@@ -70,12 +85,17 @@ type StoredCartItem = {
   isBulkOrder?: boolean;
   productType: string;
   deliveryType: string;
-  email: string;
+  customerInformation: CustomerInformation[];
 };
+
+function hasBrokenProductText(value: string) {
+  return /(?:Ã|Â|Ð|Ñ|â€|â€“|â€”|â†)/.test(value);
+}
 
 export default function ProductPurchaseForm({
   product,
   options,
+  customerFields = [],
 }: ProductPurchaseFormProps) {
   const router = useRouter();
   const {
@@ -84,7 +104,7 @@ export default function ProductPurchaseForm({
     formatPrice: formatStorePrice,
   } = useStorePreferences();
   const localizedProductName =
-    language === "ru" && product.nameRu ? product.nameRu : product.name;
+    language === "ru" && product.nameRu && !hasBrokenProductText(product.nameRu) ? product.nameRu : product.name;
   const isGiftCard = product.productType === "GIFT_CARD";
   const isGamingTopup = product.productType === "GAME_TOPUP";
 
@@ -138,7 +158,7 @@ export default function ProductPurchaseForm({
   const [customValue, setCustomValue] = useState("");
   const [playerId, setPlayerId] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [email, setEmail] = useState("");
+  const [customerValues, setCustomerValues] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] =
     useState<"success" | "error">("success");
@@ -303,12 +323,16 @@ export default function ProductPurchaseForm({
       return showError("Please select a valid quantity.");
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      return showError(
-        "Please enter a valid delivery email address.",
-      );
+    for (const field of customerFields) {
+      const value = (customerValues[field.id] ?? "").trim();
+      if (field.isRequired && !value) return showError(`${field.label} is required.`);
+      if (value.length > 500) return showError(`${field.label} is too long.`);
+      if (value && field.fieldType === "EMAIL" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        return showError(`Enter a valid ${field.label}.`);
+      }
+      if (value && field.fieldType === "NUMBER" && !/^-?[0-9]+([.][0-9]+)?$/.test(value)) {
+        return showError(`Enter a valid ${field.label}.`);
+      }
     }
 
     return true;
@@ -378,7 +402,13 @@ export default function ProductPurchaseForm({
         selectedFulfillmentMode === "PLAYER_ID_TOPUP"
           ? "MANUAL"
           : product.deliveryType,
-      email: email.trim().toLowerCase(),
+      customerInformation: customerFields
+        .map((field) => ({
+          fieldId: field.id,
+          label: field.label,
+          value: (customerValues[field.id] ?? "").trim(),
+        }))
+        .filter((field) => field.value),
     };
   }
 
@@ -604,23 +634,57 @@ export default function ProductPurchaseForm({
         </section>
       )}
 
-      <section className="mt-5 sm:mt-7">
-        <label htmlFor="deliveryEmail" className="text-sm font-bold">
-          {t("deliveryEmail")}
-        </label>
-        <input
-          id="deliveryEmail"
-          type="email"
-          required
-          value={email}
-          onChange={(event) => {
-            setEmail(event.target.value);
-            clearMessage();
-          }}
-          placeholder="customer@example.com"
-          className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-        />
-      </section>
+      {customerFields.length > 0 && (
+        <section className="mt-5 grid gap-4 sm:mt-7">
+          {customerFields.map((field) => (
+            <label key={field.id}>
+              <span className="text-sm font-bold">
+                {field.label}
+                {field.isRequired && <span className="ml-1 text-red-300">*</span>}
+              </span>
+              {field.fieldType === "TEXTAREA" ? (
+                <textarea
+                  rows={3}
+                  required={field.isRequired}
+                  maxLength={500}
+                  value={customerValues[field.id] ?? ""}
+                  onChange={(event) => {
+                    setCustomerValues((current) => ({
+                      ...current,
+                      [field.id]: event.target.value,
+                    }));
+                    clearMessage();
+                  }}
+                  placeholder={field.placeholder ?? ""}
+                  className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                />
+              ) : (
+                <input
+                  type={
+                    field.fieldType === "EMAIL"
+                      ? "email"
+                      : field.fieldType === "NUMBER"
+                        ? "number"
+                        : "text"
+                  }
+                  required={field.isRequired}
+                  maxLength={field.fieldType === "NUMBER" ? undefined : 500}
+                  value={customerValues[field.id] ?? ""}
+                  onChange={(event) => {
+                    setCustomerValues((current) => ({
+                      ...current,
+                      [field.id]: event.target.value,
+                    }));
+                    clearMessage();
+                  }}
+                  placeholder={field.placeholder ?? ""}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                />
+              )}
+            </label>
+          ))}
+        </section>
+      )}
 
       <section className="mt-5 sm:mt-7">
         <p className="text-sm font-bold">{t("quantity")}</p>

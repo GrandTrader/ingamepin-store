@@ -11,7 +11,8 @@ type CartItem = {
   productName: string;
   amount: number;
   quantity: number;
-  email: string;
+  email?: string;
+  customerInformation?: Array<{ fieldId: string; label: string; value: string }>;
   unitPrice: number;
   totalPrice: number;
   isBulkOrder?: boolean;
@@ -269,12 +270,12 @@ export default function CartPage() {
                             </span>
                           </p>
 
-                          <p className="mt-1 break-all text-sm text-slate-400">
-                            Delivery email:{" "}
-                            <span className="text-white">
-                              {item.email}
-                            </span>
-                          </p>
+                          {(item.customerInformation ?? []).map((field) => (
+                            <p key={field.fieldId} className="mt-1 break-all text-sm text-slate-400">
+                              {field.label}:{" "}
+                              <span className="text-white">{field.value}</span>
+                            </p>
+                          ))}
                           {item.productId && Number(customerDiscounts[item.productId] ?? 0) > 0 && (
                             <p className="mt-2 inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-300">
                               Your {customerDiscounts[item.productId]}% discount

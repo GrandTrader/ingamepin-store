@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import AdminProductBackToTop from "@/components/AdminProductBackToTop";
 import CountrySelect from "@/components/CountrySelect";
 import ResponsiveImageField from "@/components/ResponsiveImageField";
+import ProductCustomerFieldsEditor from "@/components/ProductCustomerFieldsEditor";
+import ProductFormTabs from "@/components/ProductFormTabs";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../../../AdminSidebar";
 import DeliveryInventoryField from "../../DeliveryInventoryField";
@@ -114,6 +117,7 @@ export default async function EditProductPage({
     productResult,
     categoryResult,
     optionResult,
+    customerFieldResult,
   ] = await Promise.all([
     supabase
       .from("products")
@@ -176,6 +180,12 @@ export default async function EditProductPage({
       .eq("product_id", id)
       .eq("is_custom_value", false)
       .order("sort_order", { ascending: true }),
+
+    supabase
+      .from("product_customer_fields")
+      .select("id, label, placeholder, field_type, is_required, sort_order")
+      .eq("product_id", id)
+      .order("sort_order", { ascending: true }),
   ]);
 
   if (productResult.error) {
@@ -194,6 +204,10 @@ export default async function EditProductPage({
     throw new Error(
       `Unable to load product options: ${optionResult.error.message}`,
     );
+  }
+
+  if (customerFieldResult.error) {
+    throw new Error(`Unable to load customer fields: ${customerFieldResult.error.message}`);
   }
 
   if (!productResult.data) {
@@ -262,8 +276,9 @@ export default async function EditProductPage({
 
           <form action={updateProduct} className="mt-8 grid gap-6">
             <input type="hidden" name="id" value={product.id} />
+            <ProductFormTabs />
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <section id="general" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-xl font-black">Basic information</h2>
 
               <div className="mt-5 grid gap-5 md:grid-cols-2">
@@ -371,7 +386,10 @@ export default async function EditProductPage({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <section
+              id="delivery"
+              className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            >
               <h2 className="text-xl font-black">Delivery</h2>
 
               <div className="mt-5 grid gap-5 md:grid-cols-2">
@@ -379,23 +397,6 @@ export default async function EditProductPage({
                   initialType={product.delivery_type}
                   productId={product.id}
                 />
-
-                <label className="flex items-center gap-3 self-end rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <input
-                    name="requires_customer_details"
-                    type="checkbox"
-                    defaultChecked={product.requires_customer_details}
-                    className="h-5 w-5 accent-blue-600"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold">
-                      Require customer details
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      Player ID, account ID or other delivery information.
-                    </span>
-                  </span>
-                </label>
 
                 <label className="md:col-span-2">
                   <span className="text-sm font-bold">
@@ -460,11 +461,25 @@ export default async function EditProductPage({
               </div>
             </section>
 
+            <ProductCustomerFieldsEditor
+              initialFields={(customerFieldResult.data ?? []).map((field) => ({
+                id: field.id,
+                label: field.label,
+                placeholder: field.placeholder ?? "",
+                fieldType: field.field_type as "TEXT" | "EMAIL" | "NUMBER" | "TEXTAREA",
+                isRequired: field.is_required,
+              }))}
+            />
+
+            <div id="pricing" className="scroll-mt-24">
             <ProductOptionsInventorySection
               productId={product.id}
               initialOptions={editableOptions}
               initialDeliveryType={product.delivery_type}
             />
+            </div>
+            <div id="stock" className="scroll-mt-24" />
+            <div id="preview" className="scroll-mt-24" />
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-xl font-black">Visibility</h2>
@@ -516,6 +531,7 @@ export default async function EditProductPage({
             productId={product.id}
             productName={product.name}
           />
+          <AdminProductBackToTop />
         </main>
       </div>
     </div>

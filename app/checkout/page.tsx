@@ -23,6 +23,7 @@ type CartItem = {
   productType?: string;
   deliveryType?: string;
   email?: string;
+  customerInformation?: Array<{ fieldId: string; label: string; value: string }>;
   categorySlug?: string;
   fulfillmentMode?: "PLAYER_ID_TOPUP" | "GAMING_VOUCHER";
   playerId?: string;
@@ -53,6 +54,7 @@ type RawCartItem = {
   productType?: string;
   deliveryType?: string;
   email?: string;
+  customerInformation?: Array<{ fieldId?: unknown; label?: unknown; value?: unknown }>;
   fulfillmentMode?: string;
   playerId?: string;
 };
@@ -127,6 +129,15 @@ function normalizeCartItem(
     productType: item.productType || "digital",
     deliveryType: item.deliveryType || "digital",
     email: item.email,
+    customerInformation: Array.isArray(item.customerInformation)
+      ? item.customerInformation
+          .map((field) => ({
+            fieldId: String(field.fieldId ?? ""),
+            label: String(field.label ?? ""),
+            value: String(field.value ?? "").trim(),
+          }))
+          .filter((field) => field.fieldId && field.value)
+      : [],
     fulfillmentMode:
       item.fulfillmentMode === "PLAYER_ID_TOPUP" ||
       item.fulfillmentMode === "GAMING_VOUCHER"
@@ -491,6 +502,7 @@ export default function CheckoutPage() {
             customValue: item.customValue,
             quantity: item.quantity,
             email: item.email || "",
+            customerInformation: item.customerInformation ?? [],
             unitPrice: item.price,
             totalPrice: item.price * item.quantity,
             minQuantity: item.minQuantity,
@@ -644,6 +656,8 @@ export default function CheckoutPage() {
       fulfillmentMode: item.fulfillmentMode,
 
       playerId: item.playerId,
+
+      customerInformation: item.customerInformation ?? [],
 
       quantity: Number(item.quantity),
     }));
