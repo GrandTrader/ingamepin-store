@@ -40,7 +40,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
         {showVerification ? (
           <section className="text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-cyan-100 text-3xl text-cyan-700">
-              âœ‰
+              ✉
             </div>
             <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-cyan-600">
               Email verification

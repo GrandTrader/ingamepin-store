@@ -406,28 +406,28 @@ export default async function AdminDashboard({
                   href="/admin/payments"
                   className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  âœ“ Verify payments
+                  ✓ Verify payments
                 </Link>
 
                 <Link
                   href="/admin/gift-codes"
                   className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  âŒ˜ Add gift codes
+                  ⌘ Add gift codes
                 </Link>
 
                 <Link
                   href="/admin/orders"
                   className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  â–£ Manage orders
+                  ▣ Manage orders
                 </Link>
               </div>
             </aside>
           </div>
 
           <footer className="mt-10 border-t border-slate-200 pt-5 text-xs text-slate-500">
-            Signed in as {user.email} Â·{" "}
+            Signed in as {user.email} ·{" "}
             {adminResult.data.role}
           </footer>
         </main>

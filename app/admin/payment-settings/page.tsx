@@ -77,7 +77,7 @@ export default async function PaymentSettingsPage({
             </label>
 
             <div className="mt-2 flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-blue-500">
-              <span className="px-4 text-lg font-black text-slate-500">â‚½</span>
+              <span className="px-4 text-lg font-black text-slate-500">₽</span>
               <input
                 id="pally_usd_rub_rate"
                 name="pally_usd_rub_rate"
@@ -110,7 +110,7 @@ export default async function PaymentSettingsPage({
             </label>
 
             <div className="mt-2 flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-blue-500">
-              <span className="px-4 text-lg font-black text-slate-500">â‚½</span>
+              <span className="px-4 text-lg font-black text-slate-500">₽</span>
               <input
                 id="store_usd_rub_rate"
                 name="store_usd_rub_rate"
