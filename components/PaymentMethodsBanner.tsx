@@ -9,29 +9,32 @@ type PaymentMethodsBannerProps = {
 
 const paymentMethods = [
   {
-    name: "InGamePin Wallet",
-    shortName: "Wallet",
+    name: "Wallet",
     image: "/icon.svg",
   },
   {
     name: "Binance Pay",
-    shortName: "Binance Pay",
     image: "/payment-methods/binance-pay.svg",
   },
   {
     name: "USDT TRC20",
-    shortName: "USDT TRC20",
     image: "/payment-methods/usdt-trc20.svg",
   },
   {
     name: "USDT BEP20",
-    shortName: "USDT BEP20",
     image: "/payment-methods/usdt-bep20.svg",
   },
   {
-    name: "Pally - SBP",
-    shortName: "Pally - SBP",
-    image: "/payment-methods/pally-sbp.svg",
+    name: "PayPalych",
+    image: "/payment-methods/paypalych.png",
+  },
+  {
+    name: "Faster Payment System",
+    image: "/payment-methods/faster-payment-system.png",
+  },
+  {
+    name: "FreeKassa",
+    image: "/payment-methods/freekassa.png",
   },
 ] as const;
 
@@ -51,13 +54,13 @@ export default function PaymentMethodsBanner({
       <div
         className={
           isFooter
-            ? "flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+            ? "grid gap-4 lg:grid-cols-[minmax(170px,0.7fr)_minmax(0,2.3fr)] lg:items-center"
             : "space-y-3"
         }
       >
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/10 text-base text-cyan-300">
-            ✓
+            {"\u2713"}
           </span>
 
           <div>
@@ -65,17 +68,24 @@ export default function PaymentMethodsBanner({
               Accepted payment methods
             </h2>
             <p className="mt-0.5 text-[11px] text-slate-400 sm:text-xs">
-              Secure payments <span aria-hidden="true">•</span> Automatic verification
+              Secure payments <span aria-hidden="true">{"\u2022"}</span>{" "}
+              Automatic verification
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div
+          className={
+            isFooter
+              ? "grid grid-cols-2 gap-2 sm:grid-cols-4"
+              : "grid grid-cols-2 gap-2 sm:grid-cols-4"
+          }
+        >
           {paymentMethods.map((method) => (
             <div
               key={method.name}
               title={method.name}
-              className="flex min-h-9 items-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-2.5 py-2 text-[11px] font-bold text-slate-200 shadow-sm sm:text-xs"
+              className="flex min-h-10 min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-2.5 py-2 text-[11px] font-bold text-slate-200 shadow-sm sm:text-xs"
             >
               <Image
                 src={method.image}
@@ -85,7 +95,9 @@ export default function PaymentMethodsBanner({
                 height={24}
                 className="h-6 w-6 shrink-0 rounded-md object-contain"
               />
-              <span>{isFooter ? method.name : method.shortName}</span>
+              <span className="min-w-0 leading-tight">
+                {method.name}
+              </span>
             </div>
           ))}
         </div>
