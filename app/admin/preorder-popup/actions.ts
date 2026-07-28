@@ -6,6 +6,59 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+const allowedCustomerFieldTypes = ["TEXT", "EMAIL", "NUMBER", "TEXTAREA"] as const;
+
+function readCustomerFields(formData: FormData) {
+  const labels = formData
+    .getAll("customer_field_label")
+    .map((value) => String(value).trim());
+  const placeholders = formData
+    .getAll("customer_field_placeholder")
+    .map((value) => String(value).trim());
+  const types = formData
+    .getAll("customer_field_type")
+    .map((value) => String(value).trim());
+  const requiredIndexes = new Set(
+    formData
+      .getAll("customer_field_required")
+      .map((value) => Number(value)),
+  );
+
+  if (
+    labels.length > 20 ||
+    placeholders.length !== labels.length ||
+    types.length !== labels.length
+  ) {
+    throw new Error("Customer information fields are invalid.");
+  }
+
+  return labels.map((label, index) => {
+    if (label.length < 1 || label.length > 80) {
+      throw new Error(
+        "Every customer field needs a name of 1 to 80 characters.",
+      );
+    }
+    if (placeholders[index].length > 150) {
+      throw new Error("A customer field placeholder is too long.");
+    }
+    if (
+      !allowedCustomerFieldTypes.includes(
+        types[index] as (typeof allowedCustomerFieldTypes)[number],
+      )
+    ) {
+      throw new Error("A customer field type is invalid.");
+    }
+
+    return {
+      label,
+      placeholder: placeholders[index] || null,
+      field_type: types[index],
+      is_required: requiredIndexes.has(index),
+      sort_order: index,
+    };
+  });
+}
+
 async function requireAdministrator() {
   const supabase = await createClient();
   const {
@@ -86,6 +139,18 @@ export async function savePreorderPopup(
       formData.get("sold_count") ?? "",
     ).trim(),
   );
+  let customerFields;
+  try {
+    customerFields = readCustomerFields(formData);
+  } catch (error) {
+    settingsRedirect(
+      "error",
+      error instanceof Error
+        ? error.message
+        : "Customer fields are invalid.",
+    );
+  }
+
   const standardPrice = readPrice(
     formData,
     "standard_price",
@@ -303,6 +368,40 @@ export async function savePreorderPopup(
       settingsRedirect(
         "error",
         editionResult.error.message,
+      );
+    }
+  }
+
+  if (!preorderProductId) {
+    settingsRedirect("error", "The preorder product could not be created.");
+  }
+
+  const deleteFieldsResult = await admin
+    .from("product_customer_fields")
+    .delete()
+    .eq("product_id", preorderProductId);
+
+  if (deleteFieldsResult.error) {
+    settingsRedirect(
+      "error",
+      `Unable to update preorder customer fields: ${deleteFieldsResult.error.message}`,
+    );
+  }
+
+  if (customerFields.length > 0) {
+    const insertFieldsResult = await admin
+      .from("product_customer_fields")
+      .insert(
+        customerFields.map((field) => ({
+          ...field,
+          product_id: preorderProductId,
+        })),
+      );
+
+    if (insertFieldsResult.error) {
+      settingsRedirect(
+        "error",
+        `Unable to save preorder customer fields: ${insertFieldsResult.error.message}`,
       );
     }
   }

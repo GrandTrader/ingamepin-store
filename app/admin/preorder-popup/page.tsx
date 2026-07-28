@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 
 import AdminSidebar from "../AdminSidebar";
+import ProductCustomerFieldsEditor from "@/components/ProductCustomerFieldsEditor";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { savePreorderPopup } from "./actions";
@@ -15,7 +16,16 @@ type PageProps = {
   }>;
 };
 
+type CustomerFieldRow = {
+  id: string;
+  label: string;
+  placeholder: string | null;
+  field_type: "TEXT" | "EMAIL" | "NUMBER" | "TEXTAREA";
+  is_required: boolean;
+};
+
 type PopupSettings = {
+  product_id: string | null;
   is_enabled: boolean;
   game_title: string;
   description: string;
@@ -72,7 +82,7 @@ export default async function PreorderPopupPage({
   const settingsResult = await admin
     .from("preorder_popup_settings")
     .select(
-      "is_enabled, game_title, description, image_url, launch_date, preorder_price, ultimate_price, sold_count, bonus_text, button_text",
+      "product_id, is_enabled, game_title, description, image_url, launch_date, preorder_price, ultimate_price, sold_count, bonus_text, button_text",
     )
     .eq("id", true)
     .maybeSingle();
@@ -85,6 +95,25 @@ export default async function PreorderPopupPage({
 
   const settings =
     settingsResult.data as PopupSettings | null;
+
+  let customerFields: CustomerFieldRow[] = [];
+  const preorderProductId = settings?.product_id ?? null;
+
+  if (preorderProductId) {
+    const customerFieldResult = await admin
+      .from("product_customer_fields")
+      .select("id, label, placeholder, field_type, is_required")
+      .eq("product_id", preorderProductId)
+      .order("sort_order", { ascending: true });
+
+    if (customerFieldResult.error) {
+      throw new Error(
+        `Unable to load preorder customer fields: ${customerFieldResult.error.message}`,
+      );
+    }
+
+    customerFields = (customerFieldResult.data ?? []) as CustomerFieldRow[];
+  }
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -256,6 +285,18 @@ export default async function PreorderPopupPage({
                   className={inputClass}
                 />
               </Field>
+            </div>
+
+            <div className="mt-7">
+              <ProductCustomerFieldsEditor
+                initialFields={customerFields.map((field) => ({
+                  id: field.id,
+                  label: field.label,
+                  placeholder: field.placeholder ?? "",
+                  fieldType: field.field_type,
+                  isRequired: field.is_required,
+                }))}
+              />
             </div>
 
             <button

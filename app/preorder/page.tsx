@@ -22,6 +22,14 @@ type ProductRow = {
   delivery_type: string;
 };
 
+type ProductCustomerFieldRow = {
+  id: string;
+  label: string;
+  placeholder: string | null;
+  field_type: "TEXT" | "EMAIL" | "NUMBER" | "TEXTAREA";
+  is_required: boolean;
+};
+
 type ProductOptionRow = {
   id: string;
   option_name: string;
@@ -56,7 +64,7 @@ export default async function PreorderPage() {
     notFound();
   }
 
-  const [productResult, optionResult] =
+  const [productResult, optionResult, customerFieldResult] =
     await Promise.all([
       supabase
         .from("products")
@@ -77,6 +85,11 @@ export default async function PreorderPage() {
         .order("sort_order", {
           ascending: true,
         }),
+      supabase
+        .from("product_customer_fields")
+        .select("id, label, placeholder, field_type, is_required")
+        .eq("product_id", settings.product_id)
+        .order("sort_order", { ascending: true }),
     ]);
 
   if (productResult.error) {
@@ -91,6 +104,12 @@ export default async function PreorderPage() {
     );
   }
 
+  if (customerFieldResult.error) {
+    throw new Error(
+      `Unable to load preorder customer fields: ${customerFieldResult.error.message}`,
+    );
+  }
+
   if (!productResult.data) {
     notFound();
   }
@@ -99,6 +118,8 @@ export default async function PreorderPage() {
     productResult.data as ProductRow;
   const options =
     (optionResult.data ?? []) as ProductOptionRow[];
+  const customerFields =
+    (customerFieldResult.data ?? []) as ProductCustomerFieldRow[];
 
   return (
     <main className="min-h-screen bg-slate-950 px-3 py-6 text-white sm:px-5 sm:py-10">
@@ -199,6 +220,13 @@ export default async function PreorderPage() {
                 playerIdLabel: null,
                 customerDiscountPercent: 0,
               }}
+              customerFields={customerFields.map((field) => ({
+                id: field.id,
+                label: field.label,
+                placeholder: field.placeholder,
+                fieldType: field.field_type,
+                isRequired: field.is_required,
+              }))}
               options={options.map((option) => ({
                 id: option.id,
                 optionName: option.option_name,
