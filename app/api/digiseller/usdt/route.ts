@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+﻿import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
@@ -32,9 +32,13 @@ export async function POST(request: NextRequest) {
     const paymentId = String(form.get("payment_id") ?? "").trim();
     const returnUrl = String(form.get("return_url") ?? "").trim();
     const signature = String(form.get("signature") ?? "").trim();
+    const isValidationTest = String(form.get("test") ?? "").trim() === "1";
 
-    if (!invoiceId || !amount || currency !== "USD" || !paymentId) {
-      return NextResponse.json({ error: "Invalid Digiseller payment request." }, { status: 400 });
+    if (!invoiceId || !amount || !currency || !paymentId) {
+      return NextResponse.json(
+        { error: "Invalid Digiseller payment request." },
+        { status: 400 },
+      );
     }
     if (
       !verifyDigiseller(
@@ -47,10 +51,30 @@ export async function POST(request: NextRequest) {
         signature,
       )
     ) {
-      return NextResponse.json({ error: "Invalid Digiseller signature." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid Digiseller signature." },
+        { status: 401 },
+      );
     }
-    const network = networkForPaymentId(paymentId);
 
+    // Digiseller validates URLs with a signed fake order and test=1.
+    // Confirm the signed request without creating a gateway invoice or DB row.
+    if (isValidationTest) {
+      return NextResponse.json({
+        success: true,
+        test: true,
+        invoice_id: invoiceId,
+      });
+    }
+
+    if (currency !== "USD") {
+      return NextResponse.json(
+        { error: "This payment method currently accepts USD orders only." },
+        { status: 400 },
+      );
+    }
+
+    const network = networkForPaymentId(paymentId);
     const admin = createAdminClient();
     const existingResult = await admin
       .from("digiseller_usdt_payments")
@@ -91,7 +115,12 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to initialize payment." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to initialize payment.",
+      },
       { status: 500 },
     );
   }
@@ -101,26 +130,74 @@ export async function GET(request: NextRequest) {
   try {
     const invoiceId = request.nextUrl.searchParams.get("invoice_id")?.trim() ?? "";
     const sellerId = request.nextUrl.searchParams.get("seller_id")?.trim() ?? "";
-    const requestedAmount = money(request.nextUrl.searchParams.get("amount") ?? "");
+    const requestedAmount = money(
+      request.nextUrl.searchParams.get("amount") ?? "",
+    );
     const requestedCurrency =
       request.nextUrl.searchParams.get("currency")?.trim().toUpperCase() ?? "";
     const signature = request.nextUrl.searchParams.get("signature")?.trim() ?? "";
     const token = request.nextUrl.searchParams.get("token")?.trim() ?? "";
+    const isValidationTest =
+      request.nextUrl.searchParams.get("test")?.trim() === "1";
+
+    if (isValidationTest) {
+      if (
+        !invoiceId ||
+        !sellerId ||
+        !requestedAmount ||
+        !requestedCurrency ||
+        !verifyDigiseller(
+          {
+            invoice_id: invoiceId,
+            amount: requestedAmount,
+            currency: requestedCurrency,
+            seller_id: sellerId,
+          },
+          signature,
+        )
+      ) {
+        return NextResponse.json(
+          { error: "Invalid status signature." },
+          { status: 401 },
+        );
+      }
+
+      const testResponse = {
+        invoice_id: invoiceId,
+        amount: requestedAmount,
+        currency: requestedCurrency,
+        status: "wait",
+      };
+      return NextResponse.json({
+        ...testResponse,
+        signature: signDigiseller(testResponse),
+        error: "",
+        integrator: "InGamePin Direct USDT",
+      });
+    }
 
     const admin = createAdminClient();
     const result = await admin
       .from("digiseller_usdt_payments")
-      .select("invoice_id, gateway_invoice_id, public_token, amount, currency, status, return_url, network")
+      .select(
+        "invoice_id, gateway_invoice_id, public_token, amount, currency, status, return_url, network",
+      )
       .eq("invoice_id", invoiceId)
       .maybeSingle();
     if (result.error || !result.data) {
-      return NextResponse.json({ error: "Payment was not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Payment was not found." },
+        { status: 404 },
+      );
     }
     const payment = result.data;
 
     if (token) {
       if (token !== payment.public_token) {
-        return NextResponse.json({ error: "Payment access denied." }, { status: 403 });
+        return NextResponse.json(
+          { error: "Payment access denied." },
+          { status: 403 },
+        );
       }
       const invoice = await getUsdtInvoice(payment.gateway_invoice_id);
       return NextResponse.json({
@@ -144,7 +221,10 @@ export async function GET(request: NextRequest) {
         signature,
       )
     ) {
-      return NextResponse.json({ error: "Invalid status signature." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid status signature." },
+        { status: 401 },
+      );
     }
 
     const responseValues = {
@@ -161,7 +241,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to check payment." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to check payment.",
+      },
       { status: 500 },
     );
   }
