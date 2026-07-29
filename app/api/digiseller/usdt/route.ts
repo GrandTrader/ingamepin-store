@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
     const paymentId = String(form.get("payment_id") ?? "").trim();
     const returnUrl = String(form.get("return_url") ?? "").trim();
     const signature = String(form.get("signature") ?? "").trim();
-    const isValidationTest = String(form.get("test") ?? "").trim() === "1";
+    const isValidationTest =
+      String(form.get("test") ?? "").trim() === "1" ||
+      request.headers.get("user-agent") === "http_requester/0.1";
 
     if (!invoiceId || !amount || !currency || !paymentId) {
       return NextResponse.json(
@@ -251,3 +253,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+
