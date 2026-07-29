@@ -36,6 +36,16 @@ export async function POST(request: NextRequest) {
       String(form.get("test") ?? "").trim() === "1" ||
       request.headers.get("user-agent") === "http_requester/0.1";
 
+    if (
+      (!invoiceId || !amount || !currency || !paymentId) &&
+      request.headers.get("user-agent") === "http_requester/0.1"
+    ) {
+      return NextResponse.json({
+        success: true,
+        test: true,
+      });
+    }
+
     if (!invoiceId || !amount || !currency || !paymentId) {
       return NextResponse.json(
         { error: "Invalid Digiseller payment request." },
@@ -253,6 +263,7 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 
 
 
