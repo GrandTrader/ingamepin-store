@@ -1,4 +1,4 @@
-﻿import { randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
@@ -13,6 +13,33 @@ export const runtime = "nodejs";
 function money(value: string) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number.toFixed(2) : null;
+}
+
+function normalizeReturnUrl(value: string) {
+  if (!value) return "";
+
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    return "";
+  }
+
+  try {
+    const url = new URL(decoded);
+    if (
+      url.protocol !== "https:" ||
+      !["digiseller.me", "www.digiseller.me"].includes(url.hostname) ||
+      url.username ||
+      url.password ||
+      (url.port && url.port !== "443")
+    ) {
+      return "";
+    }
+    return url.toString();
+  } catch {
+    return "";
+  }
 }
 
 function networkForPaymentId(paymentId: string) {
@@ -30,7 +57,7 @@ export async function POST(request: NextRequest) {
     const amount = money(String(form.get("amount") ?? ""));
     const currency = String(form.get("currency") ?? "").trim().toUpperCase();
     const paymentId = String(form.get("payment_id") ?? "").trim();
-    const returnUrl = String(form.get("return_url") ?? "").trim();
+    const returnUrl = normalizeReturnUrl(String(form.get("return_url") ?? "").trim());
     const signature = String(form.get("signature") ?? "").trim();
     const isValidationTest =
       String(form.get("test") ?? "").trim() === "1" ||

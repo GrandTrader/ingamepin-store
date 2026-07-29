@@ -41,7 +41,18 @@ export default function DigisellerUsdtPayment({
     setInvoice(result.invoice);
     setReturnUrl(result.returnUrl ?? "");
     if (result.invoice.status === "PAID" && result.returnUrl) {
-      window.location.replace(result.returnUrl);
+      try {
+        const decodedReturnUrl = decodeURIComponent(result.returnUrl);
+        const destination = new URL(decodedReturnUrl);
+        if (
+          destination.protocol === "https:" &&
+          ["digiseller.me", "www.digiseller.me"].includes(destination.hostname)
+        ) {
+          window.location.replace(destination.toString());
+        }
+      } catch {
+        setError("The Digiseller return address is invalid.");
+      }
     }
   }, [invoiceId, token]);
 
@@ -93,7 +104,7 @@ export default function DigisellerUsdtPayment({
             </p>
             {invoice.status === "PAID" && returnUrl ? (
               <a
-                href={returnUrl}
+                href={decodeURIComponent(returnUrl)}
                 className="block rounded-xl bg-cyan-400 px-5 py-3 text-center font-black text-slate-950"
               >
                 Return to Digiseller
