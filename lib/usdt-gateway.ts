@@ -54,6 +54,7 @@ export function createUsdtInvoice(input: {
   orderId: string;
   network: UsdtNetwork;
   amount: number;
+  callbackUrl?: string;
 }) {
   return gatewayRequest("/v1/invoices", {
     method: "POST",
@@ -61,7 +62,8 @@ export function createUsdtInvoice(input: {
       orderId: input.orderId,
       network: input.network,
       amount: input.amount.toFixed(2),
-      callbackUrl: "https://www.ingamepin.com/api/usdt/webhook",
+      callbackUrl:
+        input.callbackUrl ?? "https://www.ingamepin.com/api/usdt/webhook",
     }),
   });
 }
