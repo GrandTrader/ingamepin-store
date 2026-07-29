@@ -25,7 +25,7 @@ function networkForPaymentId(paymentId: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const form = await request.formData();
+    const form = new URLSearchParams(await request.text());
     const invoiceId = String(form.get("invoice_id") ?? "").trim();
     const amount = money(String(form.get("amount") ?? ""));
     const currency = String(form.get("currency") ?? "").trim().toUpperCase();
@@ -253,5 +253,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 
 
