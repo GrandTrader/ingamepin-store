@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(
       new URL(
         `/digiseller/usdt/${encodeURIComponent(invoiceId)}?token=${publicToken}`,
-        request.url,
+        "https://www.ingamepin.com",
       ),
       303,
     );
