@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (
       !orderId ||
       accessToken.length < 40 ||
-      !["TRC20", "BEP20"].includes(network)
+      !["TRC20", "BEP20", "SOLANA"].includes(network)
     ) {
       return NextResponse.json({ error: "Invalid payment request." }, { status: 400 });
     }

@@ -99,6 +99,7 @@ const russianText: Record<string, string> = {
   "Your payment is verified automatically on the blockchain.":
     "Платёж автоматически проверяется в блокчейне.",
   "Select the network you will send from": "Выберите сеть отправки",
+  "Solana network": "\u0421\u0435\u0442\u044c Solana",
   Network: "Сеть",
   "Send exactly": "Отправьте точно",
   "Receiving address": "Адрес получателя",
@@ -206,7 +207,7 @@ const russianText: Record<string, string> = {
   "Delivery instructions will be sent to your email.": "Инструкции по доставке будут отправлены на ваш email.",
   "FREE": "БЕСПЛАТНО",
   "Pay securely with Binance": "Безопасная оплата через Binance",
-  "Pay with USDT on TRC20 or BEP20": "Оплата USDT в сети TRC20 или BEP20",
+  "Pay with USDT on TRC20, BEP20, or Solana": "\u041e\u043f\u043b\u0430\u0442\u0430 USDT \u0432 \u0441\u0435\u0442\u044f\u0445 TRC20, BEP20 \u0438\u043b\u0438 Solana",
   "Cards and other payment methods": "Карты и другие способы оплаты",
   "Faster Payments System or USDT": "Система быстрых платежей или USDT",
   "Insufficient wallet balance": "Недостаточно средств в кошельке",

@@ -15,7 +15,7 @@ type PendingOrder = {
 type Invoice = {
   invoiceId: string;
   orderId: string;
-  network: "TRC20" | "BEP20";
+  network: "TRC20" | "BEP20" | "SOLANA";
   token: "USDT";
   address: string;
   amount: string;
@@ -110,7 +110,7 @@ export default function DirectUsdtPaymentPage() {
     return () => window.clearInterval(timer);
   }, [checkPayment, invoice]);
 
-  async function createInvoice(network: "TRC20" | "BEP20") {
+  async function createInvoice(network: "TRC20" | "BEP20" | "SOLANA") {
     if (!order?.databaseId || !order.accessToken) return;
     setIsSubmitting(true);
     setMessage("");
@@ -197,7 +197,7 @@ export default function DirectUsdtPaymentPage() {
             <p className="text-center text-sm font-bold text-slate-300">
               Select the network you will send from
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <button
                 type="button"
                 disabled={isSubmitting}
@@ -220,7 +220,17 @@ export default function DirectUsdtPaymentPage() {
                   BNB Smart Chain
                 </span>
               </button>
-            </div>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => void createInvoice("SOLANA")}
+                className="rounded-2xl border border-violet-400/30 bg-violet-400/10 p-5 text-left transition hover:border-violet-300 disabled:opacity-50"
+              >
+                <span className="block text-lg font-black">USDT - Solana</span>
+                <span className="mt-1 block text-xs text-slate-400">
+                  Solana network
+                </span>
+              </button>            </div>
             {isSubmitting && (
               <p className="mt-4 text-center text-sm text-cyan-300">
                 Creating secure invoice…

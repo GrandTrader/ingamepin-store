@@ -9,7 +9,7 @@ export default function UsdtQrCode({
   network,
 }: {
   address: string;
-  network: "TRC20" | "BEP20";
+  network: "TRC20" | "BEP20" | "SOLANA";
 }) {
   const [dataUrl, setDataUrl] = useState("");
 

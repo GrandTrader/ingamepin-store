@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     if (
       gateway === "USDT_DIRECT" &&
-      !["TRC20", "BEP20"].includes(network)
+      !["TRC20", "BEP20", "SOLANA"].includes(network)
     ) {
       return NextResponse.json(
         { error: "Select a supported USDT network." },

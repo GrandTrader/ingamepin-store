@@ -57,7 +57,7 @@ export default function Footer() {
 
           <MobileFooterSection title={t("paymentDelivery")}>
             <span>Binance Pay</span>
-            <span>Direct USDT: TRC20 &amp; BEP20</span>
+            <span>Direct USDT: TRC20, BEP20 &amp; Solana</span>
             <span>Pally - SBP</span>
             <Link href="/track-order">{t("checkOrderStatus")}</Link>
           </MobileFooterSection>
@@ -223,7 +223,7 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {["InGamePin Wallet", "Binance Pay", "USDT TRC20", "USDT BEP20", "Pally - SBP"].map((method) => (
+            {["InGamePin Wallet", "Binance Pay", "USDT TRC20", "USDT BEP20", "USDT Solana", "Pally - SBP"].map((method) => (
               <span
                 key={method}
                 className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300"

@@ -18,7 +18,7 @@ export default function WalletTopupForm({
   const [gateway, setGateway] = useState<WalletGatewayId>(
     gateways[0]?.id ?? "BINANCE_PAY",
   );
-  const [network, setNetwork] = useState<"TRC20" | "BEP20">("TRC20");
+  const [network, setNetwork] = useState<"TRC20" | "BEP20" | "SOLANA">("TRC20");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const amountNumber = Math.max(0, Number(amount) || 0);
@@ -120,8 +120,8 @@ export default function WalletTopupForm({
       {gateway === "USDT_DIRECT" && (
         <div>
           <p className="text-sm font-bold text-slate-700">USDT network</p>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {(["TRC20", "BEP20"] as const).map((item) => (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {(["TRC20", "BEP20", "SOLANA"] as const).map((item) => (
               <button
                 key={item}
                 type="button"

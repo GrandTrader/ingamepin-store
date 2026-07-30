@@ -1383,7 +1383,7 @@ export default function CheckoutPage() {
                   <div>
                     <p className="font-bold">Direct USDT</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Pay with USDT on TRC20 or BEP20
+                      Pay with USDT on TRC20, BEP20, or Solana
                     </p>
                   </div>
                 </div>

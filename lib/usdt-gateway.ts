@@ -1,4 +1,4 @@
-export type UsdtNetwork = "TRC20" | "BEP20";
+export type UsdtNetwork = "TRC20" | "BEP20" | "SOLANA";
 
 export type UsdtInvoice = {
   invoiceId: string;

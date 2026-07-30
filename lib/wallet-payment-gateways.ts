@@ -38,7 +38,7 @@ export function getWalletPaymentGateways(): WalletGateway[] {
     {
       id: "USDT_DIRECT",
       name: "Direct USDT",
-      description: "TRC20 or BEP20",
+      description: "TRC20, BEP20, or Solana",
       icon: "T",
       enabled: configured(
         "USDT_GATEWAY_URL",

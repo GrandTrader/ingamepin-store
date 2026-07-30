@@ -7,7 +7,7 @@ import UsdtQrCode from "@/components/UsdtQrCode";
 
 type Invoice = {
   invoiceId: string;
-  network: "TRC20" | "BEP20";
+  network: "TRC20" | "BEP20" | "SOLANA";
   address: string;
   amount: string;
   status: "PENDING" | "PAID" | "EXPIRED";

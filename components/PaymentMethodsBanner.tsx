@@ -25,6 +25,10 @@ const paymentMethods = [
     image: "/payment-methods/usdt-bep20.svg",
   },
   {
+    name: "USDT Solana",
+    image: "/payment-methods/usdt-solana.svg",
+  },
+  {
     name: "PayPalych",
     image: "/payment-methods/paypalych.png",
   },
