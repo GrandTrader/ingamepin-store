@@ -45,9 +45,17 @@ function normalizeReturnUrl(value: string) {
 function networkForPaymentId(paymentId: string) {
   const trc20Id = process.env.DIGISELLER_TRC20_PAYMENT_ID?.trim();
   const bep20Id = process.env.DIGISELLER_BEP20_PAYMENT_ID?.trim();
+  const solanaId = process.env.DIGISELLER_SOLANA_PAYMENT_ID?.trim();
   if (trc20Id && paymentId === trc20Id) return "TRC20" as const;
   if (bep20Id && paymentId === bep20Id) return "BEP20" as const;
-  throw new Error("This Digiseller payment method is not configured.");
+  if (solanaId && paymentId === solanaId) return "SOLANA" as const;
+
+  throw new Error(
+    `Digiseller payment ID ${paymentId || "(empty)"} is not configured. ` +
+      `Loaded IDs: TRC20=${trc20Id ? "yes" : "no"}, ` +
+      `BEP20=${bep20Id ? "yes" : "no"}, ` +
+      `SOLANA=${solanaId ? "yes" : "no"}.`,
+  );
 }
 
 export async function POST(request: NextRequest) {
