@@ -15,9 +15,13 @@ export async function adminLogin(
     formData.get("password") ?? ""
   );
 
-  if (!email || !password) {
+  const captchaToken = String(
+    formData.get("captcha_token") ?? ""
+  ).trim();
+
+  if (!email || !password || !captchaToken) {
     redirect(
-      "/admin/login?error=Email and password are required"
+      "/admin/login?error=Email, password and security check are required"
     );
   }
 
@@ -27,6 +31,9 @@ export async function adminLogin(
     await supabase.auth.signInWithPassword({
       email,
       password,
+      options: {
+        captchaToken,
+      },
     });
 
   if (loginResult.error || !loginResult.data.user) {

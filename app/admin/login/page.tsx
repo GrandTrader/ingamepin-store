@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { adminLogin } from "../actions";
 import { createClient } from "@/lib/supabase/server";
+import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 
 type AdminLoginPageProps = {
   searchParams: Promise<{
@@ -105,6 +106,8 @@ export default async function AdminLoginPage({
               className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none transition focus:border-cyan-400"
             />
           </div>
+
+          <RegistrationTurnstile message="Complete the security check to sign in." />
 
           <button
             type="submit"

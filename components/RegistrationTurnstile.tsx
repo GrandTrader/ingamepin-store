@@ -12,7 +12,7 @@ declare global {
           sitekey: string;
           callback: (token: string) => void;
           "expired-callback": () => void;
-          "error-callback": () => void;
+          "error-callback": (errorCode?: string) => void;
           theme: "light";
         },
       ) => string;
@@ -23,11 +23,16 @@ declare global {
 
 const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
-export default function RegistrationTurnstile() {
+export default function RegistrationTurnstile({
+  message = "Complete the security check to create your account.",
+}: {
+  message?: string;
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
   const [token, setToken] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (
@@ -43,9 +48,19 @@ export default function RegistrationTurnstile() {
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
       theme: "light",
-      callback: setToken,
+      callback: (value) => {
+        setToken(value);
+        setError("");
+      },
       "expired-callback": () => setToken(""),
-      "error-callback": () => setToken(""),
+      "error-callback": (errorCode) => {
+        setToken("");
+        setError(
+          errorCode === "110200"
+            ? "Security check cannot load because this hostname is not authorized in Cloudflare Turnstile."
+            : "Security check could not load. Refresh the page and try again.",
+        );
+      },
     });
 
     return () => {
@@ -76,8 +91,13 @@ export default function RegistrationTurnstile() {
         ref={containerRef}
         className="flex min-h-16 justify-center overflow-hidden"
       />
+      {error && (
+        <p className="mt-2 rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-center text-xs text-red-300">
+          {error}
+        </p>
+      )}
       <p className="mt-2 text-center text-xs text-slate-500">
-        Complete the security check to create your account.
+        {message}
       </p>
     </div>
   );
