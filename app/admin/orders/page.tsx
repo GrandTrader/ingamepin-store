@@ -3,7 +3,7 @@
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import AdminOrdersTableScroller from "./AdminOrdersTableScroller";
-import { completeManualOrder } from "./actions";
+import ManualDeliveryItemCard from "./ManualDeliveryItemCard";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -175,7 +175,7 @@ export default async function AdminOrdersPage({
     <div className="min-h-screen bg-white text-slate-900">
       <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar
-          orderCount={paymentReviewCount}
+          orderCount={processingCount}
         />
 
         <main className="min-w-0 flex-1 p-5 sm:p-8">
@@ -271,7 +271,15 @@ export default async function AdminOrdersPage({
 
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <AdminOrdersTableScroller>
-                  <table className="w-full min-w-[780px] table-fixed text-left">
+                  <table className="w-full min-w-[980px] table-fixed text-left">
+                    <colgroup>
+                      <col className="w-[16%]" />
+                      <col className="w-[17%]" />
+                      <col className="w-[36%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[11%]" />
+                    </colgroup>
                     <thead className="border-b border-slate-200 bg-slate-50">
                       <tr className="text-sm text-slate-500">
                         <th className="px-3 py-4">
@@ -397,19 +405,10 @@ export default async function AdminOrdersPage({
                                     : item.products;
                                   return product?.delivery_type === "MANUAL";
                                 }) && (
-                                <form
-                                  action={
-                                    completeManualOrder
-                                  }
-                                  className="mt-3 grid gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4"
+                                <div
+                                  className="mt-3 grid gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 sm:grid-cols-2"
                                 >
-                                  <input
-                                    type="hidden"
-                                    name="order_id"
-                                    value={order.id}
-                                  />
-
-                                  <p className="text-sm font-black text-blue-800">
+                                  <p className="text-sm font-black text-blue-800 sm:col-span-2">
                                     Manual fulfillment
                                   </p>
 
@@ -454,57 +453,9 @@ export default async function AdminOrdersPage({
                                             </span>
                                           </span>
                                         </label>
-                                      ) : (
-                                        <label
-                                          key={
-                                            item.id
-                                          }
-                                          className="text-sm font-bold text-slate-700"
-                                        >
-                                          {
-                                            item.product_name
-                                          }
-                                          {item.option_name
-                                            ? ` · ${item.option_name}`
-                                            : ""}
-                                          <span className="mt-1 block text-xs font-normal text-slate-500">
-                                            Enter exactly{" "}
-                                            {
-                                              item.quantity
-                                            }{" "}
-                                            code
-                                            {item.quantity ===
-                                            1
-                                              ? ""
-                                              : "s"}
-                                            , one per line.
-                                          </span>
-                                          <textarea
-                                            name={`codes_${item.id}`}
-                                            rows={Math.min(
-                                              Math.max(
-                                                item.quantity +
-                                                  1,
-                                                3,
-                                              ),
-                                              8,
-                                            )}
-                                            required
-                                            placeholder="Enter one delivery code per line"
-                                            className="mt-2 w-full resize-y rounded-lg border border-blue-200 bg-white px-3 py-2 font-mono text-sm outline-none focus:border-blue-500"
-                                          />
-                                        </label>
-                                      ),
+                                      ) : <ManualDeliveryItemCard key={item.id} orderId={order.id} item={item} />,
                                   )}
-
-                                  <button
-                                    type="submit"
-                                    className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-500"
-                                  >
-                                    Send Products &amp;
-                                    Complete Order
-                                  </button>
-                                </form>
+                                </div>
                               )}
                             </div>
                           </td>

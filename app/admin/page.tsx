@@ -94,7 +94,7 @@ export default async function AdminDashboard({
     productsResult,
     ordersResult,
     paymentsResult,
-    codesResult,
+    processingOrdersResult,
     recentOrdersResult,
     revenueResult,
   ] = await Promise.all([
@@ -121,12 +121,12 @@ export default async function AdminDashboard({
       .eq("status", "SUBMITTED"),
 
     supabase
-      .from("gift_card_codes")
+      .from("orders")
       .select("*", {
         count: "exact",
         head: true,
       })
-      .eq("status", "AVAILABLE"),
+      .in("status", ["PAID", "PROCESSING"]),
 
     supabase
       .from("orders")
@@ -192,10 +192,10 @@ export default async function AdminDashboard({
       href: "/admin/payments",
     },
     {
-      label: "Available codes",
-      value: codesResult.count ?? 0,
-      description: "Ready for delivery",
-      href: "/admin/gift-codes",
+      label: "Processing orders",
+      value: processingOrdersResult.count ?? 0,
+      description: "Waiting for delivery",
+      href: "/admin/orders",
     },
   ];
 
@@ -204,7 +204,7 @@ export default async function AdminDashboard({
       <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar
           orderCount={
-            paymentsResult.count ?? 0
+            processingOrdersResult.count ?? 0
           }
         />
 
@@ -230,6 +230,13 @@ export default async function AdminDashboard({
               </button>
             </form>
           </header>
+
+          {(processingOrdersResult.count ?? 0) > 0 && (
+            <Link href="/admin/orders" className="mt-5 flex items-center justify-between gap-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-4 font-bold text-amber-900 shadow-sm">
+              <span>⚠ {processingOrdersResult.count} processing order{processingOrdersResult.count === 1 ? "" : "s"} waiting for delivery</span>
+              <span className="shrink-0 rounded-lg bg-amber-500 px-4 py-2 text-sm text-white">View orders</span>
+            </Link>
+          )}
 
           {emailSuccess && (
             <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
@@ -410,13 +417,6 @@ export default async function AdminDashboard({
                 </Link>
 
                 <Link
-                  href="/admin/gift-codes"
-                  className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  ⌘ Add gift codes
-                </Link>
-
-                <Link
                   href="/admin/orders"
                   className="rounded-xl border border-slate-200 px-4 py-3 font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
@@ -435,4 +435,3 @@ export default async function AdminDashboard({
     </div>
   );
 }
-

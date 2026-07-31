@@ -40,6 +40,42 @@ async function requireAdministrator() {
   return user;
 }
 
+export async function sendManualOrderItem(formData: FormData) {
+  const administrator = await requireAdministrator();
+  const orderId = String(formData.get("order_id") ?? ""); const itemId = String(formData.get("item_id") ?? "");
+  const codes = String(formData.get("codes") ?? "").split(/\r?\n/).map((code) => code.trim()).filter(Boolean);
+  if (!orderId || !itemId) ordersRedirect("error", "Order item is invalid.");
+  if (new Set(codes).size !== codes.length) ordersRedirect("error", "Duplicate delivery codes are not allowed.");
+  const admin = createAdminClient();
+  const itemResult = await admin.from("order_items").select("id, order_id, product_id, product_option_id, product_name, option_name, denomination, quantity, fulfillment_mode, products!inner(delivery_type)").eq("id", itemId).eq("order_id", orderId).eq("products.delivery_type", "MANUAL").maybeSingle();
+  const item = itemResult.data; if (!item || item.fulfillment_mode === "PLAYER_ID_TOPUP") ordersRedirect("error", "This denomination cannot be sent as codes.");
+  if (codes.length !== item.quantity) ordersRedirect("error", `${item.product_name} requires exactly ${item.quantity} code(s).`);
+  const existing = await admin.from("gift_card_codes").select("id, code, product_id, product_option_id, status").in("code", codes);
+  if (existing.error) ordersRedirect("error", existing.error.message);
+  for (const code of codes) {
+    const row = (existing.data ?? []).find((entry) => entry.code === code);
+    if (row && (row.status !== "AVAILABLE" || row.product_id !== item.product_id || (item.product_option_id && row.product_option_id !== item.product_option_id))) ordersRedirect("error", `Code ${code} is unavailable or belongs to another denomination.`);
+  }
+  for (const code of codes) {
+    const row = (existing.data ?? []).find((entry) => entry.code === code);
+    const result = row ? await admin.from("gift_card_codes").update({ status: "SOLD", order_item_id: item.id, reserved_at: new Date().toISOString(), sold_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", row.id) : await admin.from("gift_card_codes").insert({ product_id: item.product_id, product_option_id: item.product_option_id, order_item_id: item.id, denomination: item.denomination, code, status: "SOLD", reserved_at: new Date().toISOString(), sold_at: new Date().toISOString(), created_by: administrator.id });
+    if (result.error) ordersRedirect("error", result.error.message);
+  }
+  const orderResult = await admin.from("orders").select("order_number, customer_name, customer_email, total, currency, status").eq("id", orderId).single();
+  if (orderResult.data) await sendOrderStatusEmails({ event: "PRODUCT_SENT", orderNumber: orderResult.data.order_number, customerName: orderResult.data.customer_name ?? "Customer", customerEmail: orderResult.data.customer_email, total: Number(orderResult.data.total), currency: orderResult.data.currency, orderStatus: orderResult.data.status, deliveredItems: [{ productName: item.product_name, optionName: item.option_name, codes }] });
+  revalidatePath("/admin/orders"); ordersRedirect("success", `${item.option_name ?? item.product_name} sent successfully.`);
+}
+
+export async function completeManualOrderItem(formData: FormData) {
+  await requireAdministrator(); const orderId = String(formData.get("order_id") ?? ""); const itemId = String(formData.get("item_id") ?? ""); const admin = createAdminClient();
+  const itemResult = await admin.from("order_items").select("id, quantity, option_name, product_name").eq("id", itemId).eq("order_id", orderId).maybeSingle(); if (!itemResult.data) ordersRedirect("error", "Order item was not found.");
+  const sent = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("order_item_id", itemId).eq("status", "SOLD"); if ((sent.count ?? 0) < itemResult.data.quantity) ordersRedirect("error", "Send all required codes before completing this denomination.");
+  const items = await admin.from("order_items").select("id, quantity, fulfillment_mode, products!inner(delivery_type)").eq("order_id", orderId).eq("products.delivery_type", "MANUAL");
+  let allComplete = true; for (const item of items.data ?? []) { if (item.fulfillment_mode === "PLAYER_ID_TOPUP") { allComplete = false; continue; } const count = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("order_item_id", item.id).eq("status", "SOLD"); if ((count.count ?? 0) < item.quantity) allComplete = false; }
+  if (allComplete) await admin.from("orders").update({ status: "DELIVERED", delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", orderId);
+  revalidatePath("/admin/orders"); ordersRedirect("success", allComplete ? "All denominations completed. Order completed." : `${itemResult.data.option_name ?? itemResult.data.product_name} completed.`);
+}
+
 export async function completeManualOrder(
   formData: FormData,
 ) {

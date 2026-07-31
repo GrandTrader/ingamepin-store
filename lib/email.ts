@@ -31,7 +31,7 @@ type OrderCreatedEmailInput = {
 };
 
 type OrderStatusEmailInput = {
-  event: "PAYMENT_APPROVED" | "PAYMENT_REJECTED" | "ORDER_DELIVERED";
+  event: "PAYMENT_APPROVED" | "PAYMENT_REJECTED" | "PRODUCT_SENT" | "ORDER_DELIVERED";
   orderNumber: string;
   customerName: string;
   customerEmail: string;
@@ -251,6 +251,11 @@ export async function sendOrderStatusEmails({
       customerTitle: "Your payment could not be approved",
       customerMessage: `Your payment proof was rejected.${reason ? ` Reason: ${reason}` : ""}`,
       adminTitle: "Payment rejected",
+    },
+    PRODUCT_SENT: {
+      customerTitle: "Your digital product has been sent",
+      customerMessage: "Your selected digital product is ready. Keep the delivery codes private.",
+      adminTitle: "Product sent",
     },
     ORDER_DELIVERED: {
       customerTitle: "Your order is complete",

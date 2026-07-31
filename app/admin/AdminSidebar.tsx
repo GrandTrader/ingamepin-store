@@ -19,7 +19,6 @@ const links = [
   { label: "Preorder Popup", href: "/admin/preorder-popup", icon: "PP" },
   { label: "Homepage Slider", href: "/admin/homepage-slider", icon: "HS" },
   { label: "Wallet", href: "/admin/wallet", icon: "WA" },
-  { label: "Gift codes", href: "/admin/gift-codes", icon: "GC" },
   { label: "Customer Discounts", href: "/admin/customer-discounts", icon: "CD" },
   { label: "Customers", href: "/admin/customers", icon: "CU" },
   { label: "Live Chat", href: "/admin/live-chat", icon: "CH" },
