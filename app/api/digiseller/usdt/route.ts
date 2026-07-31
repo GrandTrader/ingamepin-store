@@ -23,21 +23,33 @@ function money(value: string) {
   return Number.isFinite(number) && number > 0 ? number.toFixed(2) : null;
 }
 
+const DIGISELLER_RETURN_HOSTS = new Set([
+  "digiseller.me",
+  "www.digiseller.me",
+  "oplata.info",
+  "www.oplata.info",
+]);
+
 function normalizeReturnUrl(value: string) {
   if (!value) return "";
 
-  let decoded = value;
-  try {
-    decoded = decodeURIComponent(value);
-  } catch {
-    return "";
+  let decoded = value.trim();
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) break;
+      decoded = next;
+    } catch {
+      return "";
+    }
   }
 
   try {
     const url = new URL(decoded);
+    const hostname = url.hostname.toLowerCase();
     if (
       url.protocol !== "https:" ||
-      !["digiseller.me", "www.digiseller.me"].includes(url.hostname) ||
+      !DIGISELLER_RETURN_HOSTS.has(hostname) ||
       url.username ||
       url.password ||
       (url.port && url.port !== "443")
