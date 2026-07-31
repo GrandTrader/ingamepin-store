@@ -8,6 +8,7 @@ const tabs = [
   ["customer-information", "Customer information"],
   ["sold-products", "Sold products"],
   ["visibility", "Visibility"],
+  ["restrictions", "Restrictions"],
 ] as const;
 
 export default function ProductEditPageTabs({

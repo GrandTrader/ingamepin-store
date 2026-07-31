@@ -74,6 +74,28 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+    const customerEmailForLimit = String(customer.email ?? "").trim().toLowerCase();
+    const customerIp = (request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
+    const submittedItems = body.items as Array<{ productOptionId?: string; quantity?: number; customValue?: number }>;
+    const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
+    if (optionIds.length) {
+      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price").in("id", optionIds);
+      const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
+      const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("product_id, weekly_limit, limit_currency, identity_mode, reset_mode, notification_message").in("product_id", productIds).eq("is_enabled", true) : { data: [] };
+      for (const rule of restrictionsResult.data ?? []) {
+        const currentValue = submittedItems.reduce((sum, item) => { const option = options.find((entry) => entry.id === item.productOptionId && entry.product_id === rule.product_id); if (!option) return sum; const quantity = Math.max(1, Number(item.quantity ?? 1)); return sum + (rule.limit_currency === "INR" ? Number(item.customValue ?? option.denomination ?? 0) : Number(option.selling_price ?? 0)) * quantity; }, 0);
+        const since = new Date(); if (rule.reset_mode === "CALENDAR_WEEK") { const day = (since.getUTCDay() + 6) % 7; since.setUTCDate(since.getUTCDate() - day); since.setUTCHours(0, 0, 0, 0); } else since.setUTCDate(since.getUTCDate() - 7);
+        const orderIds = new Set<string>();
+        const identityQueries = [];
+        if (rule.identity_mode !== "IP") identityQueries.push(admin.from("orders").select("id").eq("customer_email", customerEmailForLimit).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
+        if (rule.identity_mode !== "IP" && signedInUser) identityQueries.push(admin.from("orders").select("id").eq("customer_id", signedInUser.id).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
+        if (rule.identity_mode !== "ACCOUNT_EMAIL" && customerIp) identityQueries.push(admin.from("orders").select("id").eq("customer_ip", customerIp).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
+        for (const query of await Promise.all(identityQueries)) for (const order of query.data ?? []) orderIds.add(order.id);
+        let previousValue = 0;
+        if (orderIds.size) { const previous = await admin.from("order_items").select("denomination, quantity, total_price").eq("product_id", rule.product_id).in("order_id", [...orderIds]); previousValue = (previous.data ?? []).reduce((sum, item) => sum + (rule.limit_currency === "INR" ? Number(item.denomination ?? 0) * Number(item.quantity ?? 1) : Number(item.total_price ?? 0)), 0); }
+        const limit = Number(rule.weekly_limit); if (previousValue + currentValue > limit) return NextResponse.json({ error: rule.notification_message, weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
+      }
+    }
     const orderResult = await admin.rpc("create_store_order", {
       p_customer_name: String(customer.fullName ?? ""),
       p_customer_email: String(customer.email ?? ""),
@@ -95,6 +117,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (customerIp) await admin.from("orders").update({ customer_ip: customerIp }).eq("id", orderResult.data.id);
 
     const customerEmail = String(customer.email ?? "").trim().toLowerCase();
     const discountEligibleUser =
