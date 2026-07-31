@@ -1,5 +1,6 @@
 ﻿import { redirect } from "next/navigation";
 
+import Link from "next/link";
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import AdminOrdersTableScroller from "./AdminOrdersTableScroller";
@@ -44,6 +45,7 @@ type AdminOrdersPageProps = {
     error?: string;
     success?: string;
     order?: string;
+    page?: string;
   }>;
 };
 
@@ -96,6 +98,7 @@ export default async function AdminOrdersPage({
     error: actionError,
     success,
     order: selectedOrderId,
+    page: requestedPage,
   } = await searchParams;
 
   const supabase = await createClient();
@@ -155,6 +158,9 @@ export default async function AdminOrdersPage({
     });
 
   const orders = (data ?? []) as Order[];
+  const totalPages = Math.max(1, Math.ceil(orders.length / 10));
+  const page = Math.min(Math.max(Number.parseInt(requestedPage ?? "1", 10) || 1, 1), totalPages);
+  const visibleOrders = orders.slice((page - 1) * 10, page * 10);
 
   const paymentReviewCount = orders.filter(
     (order) =>
@@ -309,7 +315,7 @@ export default async function AdminOrdersPage({
                     </thead>
 
                     <tbody className="divide-y divide-slate-200">
-                      {orders.map((order) => (
+                      {visibleOrders.map((order) => (
                         <tr
                           key={order.id}
                           id={`order-${order.id}`}
@@ -507,6 +513,13 @@ export default async function AdminOrdersPage({
                   </table>
                 </AdminOrdersTableScroller>
               </div>
+              {totalPages > 1 && (
+                <nav className="mt-5 flex flex-wrap justify-center gap-2" aria-label="Order pages">
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                    <Link key={pageNumber} href={`/admin/orders?page=${pageNumber}`} className={`rounded-lg border px-3 py-2 text-sm font-bold ${pageNumber === page ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}>{pageNumber}</Link>
+                  ))}
+                </nav>
+              )}
             </section>
           )}
         </main>
