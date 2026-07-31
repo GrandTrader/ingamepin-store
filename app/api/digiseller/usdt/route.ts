@@ -1,10 +1,14 @@
-﻿import { randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
   signDigiseller,
   verifyDigiseller,
 } from "@/lib/digiseller-usdt";
+import {
+  convertDigisellerAmountToUsd,
+  isSupportedDigisellerCurrency,
+} from "@/lib/digiseller-currency";
 import {
   BinanceCreateOrderResult,
   callBinancePay,
@@ -129,9 +133,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (currency !== "USD") {
+    if (!isSupportedDigisellerCurrency(currency)) {
       return NextResponse.json(
-        { error: "This payment method currently accepts USD orders only." },
+        { error: "This payment method accepts USD, RUB, and EUR only." },
         { status: 400 },
       );
     }
@@ -162,6 +166,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.redirect(existingResult.data.checkout_url, 303);
       }
 
+      const conversion = await convertDigisellerAmountToUsd(amount, currency);
       publicToken = randomBytes(32).toString("hex");
       const siteUrl = (
         process.env.NEXT_PUBLIC_SITE_URL || "https://www.ingamepin.com"
@@ -182,7 +187,7 @@ export async function POST(request: NextRequest) {
         {
           env: { terminalType: "WEB" },
           merchantTradeNo,
-          fiatAmount: Number(amount),
+          fiatAmount: conversion.usdAmount,
           fiatCurrency: "USD",
           description: `Digiseller invoice ${invoiceId}`,
           goodsDetails: [
@@ -214,6 +219,9 @@ export async function POST(request: NextRequest) {
         public_token: publicToken,
         amount,
         currency,
+        gateway_amount: conversion.usdAmount.toFixed(2),
+        gateway_currency: "USD",
+        exchange_rate: conversion.originalUnitsPerUsd,
         payment_method_id: paymentId,
         network: paymentKind,
         return_url: returnUrl || null,
@@ -226,11 +234,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!publicToken) {
+      const conversion = await convertDigisellerAmountToUsd(amount, currency);
       publicToken = randomBytes(32).toString("hex");
       const invoice = await createUsdtInvoice({
         orderId: `digiseller:${invoiceId}`,
         network: paymentKind,
-        amount: Number(amount),
+        amount: conversion.usdAmount,
         callbackUrl: "https://www.ingamepin.com/api/digiseller/usdt/webhook",
       });
       const insertResult = await admin.from("digiseller_usdt_payments").insert({
@@ -239,6 +248,9 @@ export async function POST(request: NextRequest) {
         public_token: publicToken,
         amount,
         currency,
+        gateway_amount: conversion.usdAmount.toFixed(2),
+        gateway_currency: "USD",
+        exchange_rate: conversion.originalUnitsPerUsd,
         payment_method_id: paymentId,
         network: paymentKind,
         return_url: returnUrl || null,
