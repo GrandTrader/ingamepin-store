@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function productEditPath(productId: string) {
-  return `/admin/products/${productId}/edit`;
+  return `/admin/products/${productId}/edit/stock`;
 }
 
 function redirectWithMessage(
@@ -16,7 +16,7 @@ function redirectWithMessage(
   message: string,
 ): never {
   redirect(
-    `${productEditPath(productId)}?${type}=${encodeURIComponent(message)}#code-inventory`,
+    `${productEditPath(productId)}?${type}=${encodeURIComponent(message)}`,
   );
 }
 

@@ -29,6 +29,7 @@ type ProductRow = {
   rating: number | string;
   sold_count: number;
   is_bulk_order: boolean;
+  delivery_type: string;
   categories:
     | {
         name: string;
@@ -173,6 +174,7 @@ export default async function ProductsPage({
         rating,
         sold_count,
         is_bulk_order,
+        delivery_type,
         categories (
           name,
           short_name
@@ -219,6 +221,7 @@ export default async function ProductsPage({
         category: getCategory(product),
         discountPercent: customerDiscounts.get(product.id) ?? 0,
         isBulkOrder: product.is_bulk_order,
+        isInstantDelivery: product.delivery_type === "AUTOMATIC",
       }),
     );
   const details = collections[collection];

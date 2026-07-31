@@ -36,6 +36,7 @@ type ProductRow = {
   rating: number | string;
   sold_count: number;
   is_bulk_order: boolean;
+  delivery_type: string;
   product_options:
     | {
         selling_price: number | string;
@@ -110,6 +111,7 @@ export default async function CategoryPage({
         rating,
         sold_count,
         is_bulk_order,
+        delivery_type,
         product_options (
           selling_price,
           stock_quantity,
@@ -151,6 +153,7 @@ export default async function CategoryPage({
       category: category.short_name ?? category.name,
       discountPercent: customerDiscounts.get(product.id) ?? 0,
       isBulkOrder: product.is_bulk_order,
+      isInstantDelivery: product.delivery_type === "AUTOMATIC",
     }),
   );
 

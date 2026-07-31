@@ -47,6 +47,7 @@ type ProductRow = {
   product_type: ProductType;
   is_featured: boolean;
   is_bulk_order: boolean;
+  delivery_type: string;
   product_options:
     | {
         stock_quantity: number;
@@ -180,6 +181,7 @@ export default async function Home() {
           product_type,
           is_featured,
           is_bulk_order,
+          delivery_type,
           product_options (
             stock_quantity,
             is_active
@@ -283,6 +285,8 @@ export default async function Home() {
         product.is_featured,
       isBulkOrder:
         product.is_bulk_order,
+      isInstantDelivery:
+        product.delivery_type === "AUTOMATIC",
       discountPercent: customerDiscounts.get(product.id) ?? 0,
     }));
 

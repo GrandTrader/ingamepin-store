@@ -20,6 +20,7 @@ export type ProductCardData = {
   href?: string;
   discountPercent?: number;
   isBulkOrder?: boolean;
+  isInstantDelivery?: boolean;
 };
 
 type Props = {
@@ -62,6 +63,13 @@ export default function ProductCard({ product }: Props) {
             <span className="absolute bottom-3 left-3 z-20 inline-flex items-center gap-1.5 rounded-lg border border-amber-300/50 bg-amber-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-xl sm:bottom-4 sm:left-4 sm:text-xs">
               <span aria-hidden="true">▦</span>
               {language === "ru" ? "Оптовый заказ" : "Bulk Order"}
+            </span>
+          )}
+
+          {product.isInstantDelivery && !product.isBulkOrder && (
+            <span className="absolute bottom-3 left-3 z-20 inline-flex items-center gap-1.5 rounded-lg border-2 border-white bg-emerald-400 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-[0_4px_16px_rgba(0,0,0,0.75)] sm:bottom-4 sm:left-4 sm:text-xs">
+              <span aria-hidden="true">⚡</span>
+              {language === "ru" ? "Мгновенная доставка" : "Instant Delivery"}
             </span>
           )}
 
