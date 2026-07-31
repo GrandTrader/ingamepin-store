@@ -347,7 +347,7 @@ export default async function AdminProductsPage({
                           </Link>
 
                           <Link
-                            href={`/admin/products/${product.id}/edit`}
+                            href={`/admin/products/${product.id}/edit/general`}
                             className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                           >
                             Edit
