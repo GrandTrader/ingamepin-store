@@ -1,10 +1,14 @@
-import { randomBytes } from "node:crypto";
+﻿import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
   signDigiseller,
   verifyDigiseller,
 } from "@/lib/digiseller-usdt";
+import {
+  BinanceCreateOrderResult,
+  callBinancePay,
+} from "@/lib/binance-pay";
 import { createUsdtInvoice, getUsdtInvoice } from "@/lib/usdt-gateway";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -42,19 +46,30 @@ function normalizeReturnUrl(value: string) {
   }
 }
 
-function networkForPaymentId(paymentId: string) {
+type DigisellerPaymentKind =
+  | "TRC20"
+  | "BEP20"
+  | "SOLANA"
+  | "BINANCE_PAY";
+
+function paymentKindForPaymentId(paymentId: string): DigisellerPaymentKind {
   const trc20Id = process.env.DIGISELLER_TRC20_PAYMENT_ID?.trim();
   const bep20Id = process.env.DIGISELLER_BEP20_PAYMENT_ID?.trim();
   const solanaId = process.env.DIGISELLER_SOLANA_PAYMENT_ID?.trim();
-  if (trc20Id && paymentId === trc20Id) return "TRC20" as const;
-  if (bep20Id && paymentId === bep20Id) return "BEP20" as const;
-  if (solanaId && paymentId === solanaId) return "SOLANA" as const;
+  const binancePayId =
+    process.env.DIGISELLER_BINANCE_PAY_PAYMENT_ID?.trim();
+
+  if (trc20Id && paymentId === trc20Id) return "TRC20";
+  if (bep20Id && paymentId === bep20Id) return "BEP20";
+  if (solanaId && paymentId === solanaId) return "SOLANA";
+  if (binancePayId && paymentId === binancePayId) return "BINANCE_PAY";
 
   throw new Error(
     `Digiseller payment ID ${paymentId || "(empty)"} is not configured. ` +
       `Loaded IDs: TRC20=${trc20Id ? "yes" : "no"}, ` +
       `BEP20=${bep20Id ? "yes" : "no"}, ` +
-      `SOLANA=${solanaId ? "yes" : "no"}.`,
+      `SOLANA=${solanaId ? "yes" : "no"}, ` +
+      `BINANCE_PAY=${binancePayId ? "yes" : "no"}.`,
   );
 }
 
@@ -121,21 +136,100 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const network = networkForPaymentId(paymentId);
+    const paymentKind = paymentKindForPaymentId(paymentId);
     const admin = createAdminClient();
     const existingResult = await admin
       .from("digiseller_usdt_payments")
-      .select("public_token")
+      .select("public_token, network, checkout_url")
       .eq("invoice_id", invoiceId)
       .maybeSingle();
     if (existingResult.error) throw existingResult.error;
 
+    if (
+      existingResult.data &&
+      existingResult.data.network !== paymentKind
+    ) {
+      return NextResponse.json(
+        { error: "This invoice already uses a different payment method." },
+        { status: 409 },
+      );
+    }
+
     let publicToken = existingResult.data?.public_token ?? "";
+
+    if (paymentKind === "BINANCE_PAY") {
+      if (existingResult.data?.checkout_url) {
+        return NextResponse.redirect(existingResult.data.checkout_url, 303);
+      }
+
+      publicToken = randomBytes(32).toString("hex");
+      const siteUrl = (
+        process.env.NEXT_PUBLIC_SITE_URL || "https://www.ingamepin.com"
+      ).replace(/\/$/, "");
+      const merchantTradeNo = `DS${invoiceId}`
+        .replace(/[^A-Za-z0-9]/g, "")
+        .slice(0, 32);
+      const webhookUrl = process.env.BINANCE_PAY_WEBHOOK_URL;
+      const internalReturnUrl = new URL(
+        "/api/digiseller/binance-pay/return",
+        siteUrl,
+      );
+      internalReturnUrl.searchParams.set("invoice_id", invoiceId);
+      internalReturnUrl.searchParams.set("token", publicToken);
+
+      const binanceOrder = await callBinancePay<BinanceCreateOrderResult>(
+        "/binancepay/openapi/v3/order",
+        {
+          env: { terminalType: "WEB" },
+          merchantTradeNo,
+          fiatAmount: Number(amount),
+          fiatCurrency: "USD",
+          description: `Digiseller invoice ${invoiceId}`,
+          goodsDetails: [
+            {
+              goodsType: "02",
+              goodsCategory: "6000",
+              referenceGoodsId: invoiceId,
+              goodsName: "InGamePin Digital Product",
+            },
+          ],
+          returnUrl: internalReturnUrl.toString(),
+          cancelUrl: returnUrl || "https://digiseller.me/",
+          orderExpireTime: Date.now() + 30 * 60 * 1000,
+          passThroughInfo: `digiseller:${invoiceId}`,
+          ...(webhookUrl && !/localhost|your-domain|example/i.test(webhookUrl)
+            ? { webhookUrl }
+            : {}),
+        },
+      );
+      const checkoutUrl =
+        binanceOrder.universalUrl || binanceOrder.checkoutUrl;
+      if (!checkoutUrl) {
+        throw new Error("Binance Pay did not return a checkout URL.");
+      }
+
+      const insertResult = await admin.from("digiseller_usdt_payments").insert({
+        invoice_id: invoiceId,
+        gateway_invoice_id: binanceOrder.prepayId,
+        public_token: publicToken,
+        amount,
+        currency,
+        payment_method_id: paymentId,
+        network: paymentKind,
+        return_url: returnUrl || null,
+        checkout_url: checkoutUrl,
+        status: "wait",
+      });
+      if (insertResult.error) throw insertResult.error;
+
+      return NextResponse.redirect(checkoutUrl, 303);
+    }
+
     if (!publicToken) {
       publicToken = randomBytes(32).toString("hex");
       const invoice = await createUsdtInvoice({
         orderId: `digiseller:${invoiceId}`,
-        network,
+        network: paymentKind,
         amount: Number(amount),
         callbackUrl: "https://www.ingamepin.com/api/digiseller/usdt/webhook",
       });
@@ -146,7 +240,7 @@ export async function POST(request: NextRequest) {
         amount,
         currency,
         payment_method_id: paymentId,
-        network,
+        network: paymentKind,
         return_url: returnUrl || null,
         status: "wait",
       });
@@ -298,6 +392,7 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 
 
 

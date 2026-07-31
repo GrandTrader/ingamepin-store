@@ -1,7 +1,8 @@
-import { verify } from "node:crypto";
+﻿import { verify } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { callBinancePay } from "@/lib/binance-pay";
+import { completeDigisellerBinancePayment } from "@/lib/digiseller-binance-pay";
 import { sendEmail, sendOrderStatusEmails } from "@/lib/email";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
 import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
@@ -275,6 +276,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (!paymentResult.data) {
+      const digisellerCompleted =
+        await completeDigisellerBinancePayment(
+          binanceOrder.prepayId,
+          binanceOrder.transactionId,
+        );
+
+      if (digisellerCompleted) {
+        return NextResponse.json({
+          returnCode: "SUCCESS",
+          returnMessage: null,
+        });
+      }
+
       const walletResult = await admin
         .from("wallet_topup_requests")
         .select("id, user_id, amount")
@@ -347,3 +361,4 @@ export async function POST(request: NextRequest) {
     return failure("Unable to process Binance Pay notification.", 500);
   }
 }
+
