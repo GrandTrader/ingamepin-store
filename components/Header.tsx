@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +24,7 @@ type SearchProduct = {
 };
 
 export default function Header() {
+  const pathname = usePathname();
   const {
     language,
     currency,
@@ -407,7 +409,8 @@ export default function Header() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 bg-slate-950/70 px-3 py-2.5 sm:px-5 sm:py-3">
+        {!pathname.startsWith("/digiseller/usdt/") && (
+          <div className="border-t border-white/10 bg-slate-950/70 px-3 py-2.5 sm:px-5 sm:py-3">
           <div className="relative mx-auto max-w-3xl">
             <form
               action="/products"
@@ -518,6 +521,8 @@ export default function Header() {
               )}
           </div>
         </div>
+
+        )}
 
         {/* Mobile navigation */}
         {isMenuOpen && (
