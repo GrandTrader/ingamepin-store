@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#0f172a" };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  return <><AdminPwaRegister />{children}</>;
+  return <><AdminPwaRegister /><div className="w-full min-w-0 max-w-full overflow-x-hidden">{children}</div></>;
 }

@@ -201,8 +201,8 @@ export default async function AdminDashboard({
   ];
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden bg-white text-slate-900">
+      <div className="mx-auto flex min-h-screen w-full min-w-0 max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar
           orderCount={
             processingOrdersResult.count ?? 0
@@ -288,8 +288,8 @@ export default async function AdminDashboard({
                 </Link>
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-                <div className="overflow-x-auto">
+              <div className="mt-4 min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200">
+                <div className="w-full max-w-full overflow-x-scroll pb-2" aria-label="Slide recent orders left or right">
                   <table className="w-full min-w-[650px] text-left">
                     <thead className="border-b border-slate-200 bg-slate-50 text-sm text-slate-500">
                       <tr>
