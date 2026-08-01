@@ -140,11 +140,11 @@ export default async function CustomerDashboardPage() {
           </div>
           <nav className="mt-3 flex gap-2 overflow-x-auto md:grid md:overflow-visible">
             <Link href="#overview" className="whitespace-nowrap rounded-xl bg-cyan-50 px-4 py-3 text-sm font-bold text-cyan-700">Overview</Link>
-            <Link href="#orders" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">My orders</Link>
-            <Link href="#codes" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">My codes</Link>
+            <Link href="/account/orders" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">My orders</Link>
+            <Link href="/account/codes" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">My codes</Link>
             <Link href="/account/wallet" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Wallet</Link>
-            <Link href="#notifications" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Notifications {unreadCount > 0 ? `(${unreadCount})` : ""}</Link>
-            <Link href="#profile" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Profile</Link>
+            <Link href="/account/notifications" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Notifications {unreadCount > 0 ? `(${unreadCount})` : ""}</Link>
+            <Link href="/account/profile" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Profile</Link>
           </nav>
         </aside>
 
