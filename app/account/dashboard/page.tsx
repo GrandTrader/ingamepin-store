@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import { customerLogout } from "../actions";
+import InstallCustomerAppButton from "@/components/InstallCustomerAppButton";
 
 export const dynamic = "force-dynamic";
 
@@ -152,7 +153,7 @@ export default async function CustomerDashboardPage() {
           <section id="overview" className="scroll-mt-40">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div><p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-600">My account</p><h1 className="mt-2 text-3xl font-black">Hello, {displayName}</h1><p className="mt-2 text-slate-500">Manage purchases, codes, notifications and wallet balance.</p></div>
-              <form action={customerLogout}><button className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold" type="submit">Sign out</button></form>
+              <div className="flex flex-wrap gap-3"><InstallCustomerAppButton /><form action={customerLogout}><button className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold" type="submit">Sign out</button></form></div>
             </div>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-3">
