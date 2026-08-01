@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getWalletPaymentGateways } from "@/lib/wallet-payment-gateways";
 import WalletTopupForm from "./WalletTopupForm";
+import { expireStaleWalletTopups } from "@/lib/wallet-topup-expiry";
 
 export const dynamic = "force-dynamic";
 type WalletPageProps = {
@@ -35,6 +36,8 @@ export default async function CustomerWalletPage({
 
   if (!user) redirect("/account?error=Please sign in to continue.");
 
+  await expireStaleWalletTopups(user.id);
+
   const [walletResult, transactionResult, requestResult] = await Promise.all([
     supabase
       .from("customer_wallets")
@@ -63,9 +66,6 @@ export default async function CustomerWalletPage({
   const transactions = transactionResult.data ?? [];
   const requests = requestResult.data ?? [];
   const gateways = getWalletPaymentGateways();
-  const hasPendingRequest = requests.some(
-    (request) => request.status === "PENDING",
-  );
 
   return (
     <main className="bg-slate-100 px-4 py-10 text-slate-950">
@@ -112,20 +112,10 @@ export default async function CustomerWalletPage({
               </p>
             )}
 
-            {hasPendingRequest ? (
-              <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-800">
-                <p className="font-black">Top-up pending</p>
-                <p className="mt-2 text-sm">
-                  Complete or wait for your existing wallet top-up before
-                  starting another.
-                </p>
-              </div>
-            ) : (
-              <WalletTopupForm
-                gateways={gateways}
-                currentBalance={Number(wallet.balance)}
-              />
-            )}
+            <WalletTopupForm
+              gateways={gateways}
+              currentBalance={Number(wallet.balance)}
+            />
           </section>
         </div>
 
@@ -152,7 +142,13 @@ export default async function CustomerWalletPage({
                       </p>
                     )}
                   </div>
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                    request.status === "EXPIRED"
+                      ? "bg-slate-200 text-slate-600"
+                      : request.status === "APPROVED"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-amber-100 text-amber-700"
+                  }`}>
                     {request.status}
                   </span>
                 </article>

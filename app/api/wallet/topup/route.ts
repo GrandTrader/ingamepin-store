@@ -13,6 +13,7 @@ import {
   getWalletPaymentGateways,
   isWalletGatewayId,
 } from "@/lib/wallet-payment-gateways";
+import { expireStaleWalletTopups } from "@/lib/wallet-topup-expiry";
 
 export const runtime = "nodejs";
 
@@ -72,22 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pending = await supabase
-      .from("wallet_topup_requests")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("status", "PENDING")
-      .limit(1);
-
-    if (pending.data?.length) {
-      return NextResponse.json(
-        {
-          error:
-            "Complete or wait for your pending wallet top-up before starting another.",
-        },
-        { status: 409 },
-      );
-    }
+    await expireStaleWalletTopups(user.id);
 
     const reference = `${gateway}-${crypto.randomUUID()}`;
     const createResult = await supabase.rpc("create_wallet_topup_request", {
