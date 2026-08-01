@@ -305,11 +305,18 @@ export default function Header() {
                 id="store-currency"
                 value={currency}
                 onChange={(event) =>
-                  setCurrency(event.target.value === "RUB" ? "RUB" : "USD")
+                  setCurrency(
+                    event.target.value === "RUB"
+                      ? "RUB"
+                      : event.target.value === "INR"
+                        ? "INR"
+                        : "USD",
+                  )
                 }
                 className="h-10 rounded-xl border border-white/10 bg-slate-950 px-2 text-xs font-bold text-white outline-none transition hover:border-cyan-400"
               >
                 <option value="USD">$ USD</option>
+                <option value="INR">₹ INR</option>
                 <option value="RUB">₽ RUB</option>
               </select>
             </div>
@@ -549,11 +556,18 @@ export default function Header() {
                   aria-label="Currency"
                   value={currency}
                   onChange={(event) =>
-                    setCurrency(event.target.value === "RUB" ? "RUB" : "USD")
+                    setCurrency(
+                      event.target.value === "RUB"
+                        ? "RUB"
+                        : event.target.value === "INR"
+                          ? "INR"
+                          : "USD",
+                    )
                   }
                   className="h-11 rounded-xl border border-white/10 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition focus:border-cyan-400"
                 >
                   <option value="USD">$ USD</option>
+                  <option value="INR">₹ INR</option>
                   <option value="RUB">₽ RUB</option>
                 </select>
               </div>

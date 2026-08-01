@@ -32,6 +32,7 @@ export async function savePaymentSettings(formData: FormData) {
 
   const pallyUsdRubRate = Number(formData.get("pally_usd_rub_rate"));
   const storeUsdRubRate = Number(formData.get("store_usd_rub_rate"));
+  const storeUsdInrRate = Number(formData.get("store_usd_inr_rate"));
 
   if (
     !Number.isFinite(pallyUsdRubRate) ||
@@ -52,12 +53,24 @@ export async function savePaymentSettings(formData: FormData) {
     );
   }
 
+  if (
+    !Number.isFinite(storeUsdInrRate) ||
+    storeUsdInrRate < 1 ||
+    storeUsdInrRate > 1000
+  ) {
+    settingsRedirect(
+      "error",
+      "Enter a valid INR storefront exchange rate from 1 to 1000.",
+    );
+  }
+
   const result = await createAdminClient()
     .from("payment_gateway_settings")
     .upsert({
       id: true,
       pally_usd_rub_rate: Number(pallyUsdRubRate.toFixed(4)),
       store_usd_rub_rate: Number(storeUsdRubRate.toFixed(4)),
+      store_usd_inr_rate: Number(storeUsdInrRate.toFixed(4)),
     });
 
   if (result.error) {

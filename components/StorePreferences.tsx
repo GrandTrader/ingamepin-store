@@ -11,7 +11,7 @@ import {
 } from "react";
 
 export type StoreLanguage = "en" | "ru";
-export type StoreCurrency = "USD" | "RUB";
+export type StoreCurrency = "USD" | "INR" | "RUB";
 
 const translations = {
   en: {
@@ -182,6 +182,7 @@ type StorePreferencesValue = {
   language: StoreLanguage;
   currency: StoreCurrency;
   usdRubRate: number;
+  usdInrRate: number;
   setLanguage: (language: StoreLanguage) => void;
   setCurrency: (currency: StoreCurrency) => void;
   t: (key: TranslationKey, values?: Record<string, string | number>) => string;
@@ -204,6 +205,7 @@ export function StorePreferencesProvider({
   const [language, setLanguageState] = useState<StoreLanguage>("en");
   const [currency, setCurrencyState] = useState<StoreCurrency>("USD");
   const [usdRubRate, setUsdRubRate] = useState(85);
+  const [usdInrRate, setUsdInrRate] = useState(102);
 
   useEffect(() => {
     const savedLanguage = window.localStorage.getItem("storeLanguage");
@@ -213,15 +215,21 @@ export function StorePreferencesProvider({
       setLanguageState(savedLanguage);
     }
 
-    if (savedCurrency === "USD" || savedCurrency === "RUB") {
+    if (
+      savedCurrency === "USD" ||
+      savedCurrency === "INR" ||
+      savedCurrency === "RUB"
+    ) {
       setCurrencyState(savedCurrency);
     }
 
     fetch("/api/store-settings")
       .then((response) => (response.ok ? response.json() : null))
-      .then((result: { usdRubRate?: number } | null) => {
-        const rate = Number(result?.usdRubRate);
-        if (Number.isFinite(rate) && rate > 0) setUsdRubRate(rate);
+      .then((result: { usdRubRate?: number; usdInrRate?: number } | null) => {
+        const rubRate = Number(result?.usdRubRate);
+        const inrRate = Number(result?.usdInrRate);
+        if (Number.isFinite(rubRate) && rubRate > 0) setUsdRubRate(rubRate);
+        if (Number.isFinite(inrRate) && inrRate > 0) setUsdInrRate(inrRate);
       })
       .catch(() => {
         // Keep the safe default when the public setting is temporarily unavailable.
@@ -259,9 +267,12 @@ export function StorePreferencesProvider({
   );
 
   const convertFromUsd = useCallback(
-    (usdAmount: number) =>
-      currency === "RUB" ? usdAmount * usdRubRate : usdAmount,
-    [currency, usdRubRate],
+    (usdAmount: number) => {
+      if (currency === "RUB") return usdAmount * usdRubRate;
+      if (currency === "INR") return usdAmount * usdInrRate;
+      return usdAmount;
+    },
+    [currency, usdInrRate, usdRubRate],
   );
 
   const formatPrice = useCallback(
@@ -272,7 +283,7 @@ export function StorePreferencesProvider({
       new Intl.NumberFormat(language === "ru" ? "ru-RU" : "en-US", {
         style: "currency",
         currency,
-        minimumFractionDigits: currency === "RUB" ? 0 : 2,
+        minimumFractionDigits: currency === "USD" ? 2 : 0,
         maximumFractionDigits: currency === "RUB" ? 2 : 2,
         ...options,
       }).format(convertFromUsd(usdAmount)),
@@ -284,6 +295,7 @@ export function StorePreferencesProvider({
       language,
       currency,
       usdRubRate,
+      usdInrRate,
       setLanguage,
       setCurrency,
       t,
@@ -294,6 +306,7 @@ export function StorePreferencesProvider({
       language,
       currency,
       usdRubRate,
+      usdInrRate,
       setLanguage,
       setCurrency,
       t,

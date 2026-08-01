@@ -30,7 +30,7 @@ export default async function PaymentSettingsPage({
 
   const settings = await createAdminClient()
     .from("payment_gateway_settings")
-    .select("pally_usd_rub_rate, store_usd_rub_rate")
+    .select("pally_usd_rub_rate, store_usd_rub_rate, store_usd_inr_rate")
     .eq("id", true)
     .maybeSingle();
 
@@ -133,6 +133,18 @@ export default async function PaymentSettingsPage({
               This rate controls RUB prices displayed to customers.
             </p>
 
+            <label htmlFor="store_usd_inr_rate" className="mt-6 block text-sm font-bold text-slate-700">
+              1 USD displays as
+            </label>
+            <div className="mt-2 flex items-center overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-blue-500">
+              <span className="px-4 text-lg font-black text-slate-500">₹</span>
+              <input id="store_usd_inr_rate" name="store_usd_inr_rate" type="number" min="1" max="1000" step="0.0001" required defaultValue={Number(settings.data?.store_usd_inr_rate ?? 102)} className="min-w-0 flex-1 border-0 px-2 py-3 text-lg font-bold outline-none" />
+              <span className="px-4 text-sm font-bold text-slate-500">INR</span>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              This rate controls INR prices displayed to customers.
+            </p>
+
             <button
               type="submit"
               className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-black text-white transition hover:bg-blue-700"
@@ -145,4 +157,3 @@ export default async function PaymentSettingsPage({
     </div>
   );
 }
-
