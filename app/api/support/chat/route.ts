@@ -237,6 +237,7 @@ export async function POST(request: NextRequest) {
       .eq("id", conversation.id);
 
     await notifyNewSupportMessage({
+      messageId: messageResult.data.id,
       conversationId: conversation.id,
       customerName: conversation.customer_name,
       customerEmail: conversation.customer_email,

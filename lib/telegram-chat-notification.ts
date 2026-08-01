@@ -1,4 +1,5 @@
 import "server-only";
+import { notifyAdminsByPush } from "@/lib/admin-push";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -9,11 +10,18 @@ function escapeHtml(value: unknown) {
 }
 
 export async function notifyNewSupportMessage(input: {
+  messageId: string;
   conversationId: string;
   customerName: string;
   customerEmail: string | null;
   message: string;
 }) {
+  await notifyAdminsByPush(`chat:${input.messageId}`, {
+    title: "New live-chat message",
+    body: `${input.customerName}: ${input.message.slice(0, 140)}`,
+    url: "/admin/live-chat",
+    tag: `chat-${input.conversationId}`,
+  });
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
 
@@ -69,4 +77,3 @@ export async function notifyNewSupportMessage(input: {
     console.error("Telegram live-chat notification failed:", error);
   }
 }
-

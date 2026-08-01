@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyAdminsByPush } from "@/lib/admin-push";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -20,6 +21,16 @@ function formatMoney(amount: unknown, currency: unknown) {
 }
 
 export async function notifyPaidOrderInTelegram(orderId: string) {
+  const pushAdmin = createAdminClient();
+  const pushOrder = await pushAdmin.from("orders").select("order_number, customer_name, total, currency").eq("id", orderId).maybeSingle();
+  if (pushOrder.data) {
+    await notifyAdminsByPush(`paid-order:${orderId}`, {
+      title: "New paid order",
+      body: `${pushOrder.data.order_number} · ${pushOrder.data.customer_name || "Customer"} · ${formatMoney(pushOrder.data.total, pushOrder.data.currency)}`,
+      url: `/admin/orders?order=${encodeURIComponent(orderId)}#order-${encodeURIComponent(orderId)}`,
+      tag: `order-${orderId}`,
+    });
+  }
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
 
