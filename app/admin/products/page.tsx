@@ -281,7 +281,10 @@ export default async function AdminProductsPage({
                   {products.map((product) => (
                     <tr key={product.id} className="transition hover:bg-slate-50">
                       <td className="px-5 py-4">
-                        <div className="flex min-w-[230px] items-center gap-3">
+                        <Link
+                          href={`/admin/products/${product.id}/edit/general`}
+                          className="group flex min-w-[230px] items-center gap-3 rounded-xl transition hover:text-blue-600"
+                        >
                           {product.image_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -296,10 +299,10 @@ export default async function AdminProductsPage({
                           )}
 
                           <div>
-                            <p className="font-bold text-slate-900">{product.name}</p>
+                            <p className="font-bold text-slate-900 transition group-hover:text-blue-600">{product.name}</p>
                             <p className="mt-1 text-xs text-slate-400">{product.slug}</p>
                           </div>
-                        </div>
+                        </Link>
                       </td>
 
                       <td className="px-5 py-4">
