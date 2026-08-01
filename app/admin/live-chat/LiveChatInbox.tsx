@@ -27,7 +27,7 @@ export default function LiveChatInbox() {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [mobileConversationOpen, setMobileConversationOpen] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async (requestedId?: string | null) => {
     try {
@@ -59,7 +59,9 @@ export default function LiveChatInbox() {
   }, [load]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
   }, [messages]);
 
   async function submit(event: FormEvent) {
@@ -170,8 +172,8 @@ export default function LiveChatInbox() {
         </aside>
 
         <section
-          className={`min-h-0 flex-col lg:flex ${
-            mobileConversationOpen ? "flex" : "hidden"
+          className={`min-h-0 flex-col bg-white lg:static lg:z-auto lg:flex ${
+            mobileConversationOpen ? "fixed inset-0 z-[110] flex" : "hidden"
           }`}
         >
           {selected ? (
@@ -203,7 +205,7 @@ export default function LiveChatInbox() {
                 </button>
               </header>
 
-              <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">
+              <div ref={messagesRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-slate-50 p-4">
                 {messages.map((entry) => (
                   <div
                     key={entry.id}
@@ -225,10 +227,9 @@ export default function LiveChatInbox() {
                     </div>
                   </div>
                 ))}
-                <div ref={endRef} />
               </div>
 
-              <form onSubmit={submit} className="flex gap-2 border-t border-slate-200 p-4">
+              <form onSubmit={submit} className="flex shrink-0 gap-2 border-t border-slate-200 bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4">
                 <textarea
                   value={reply}
                   onChange={(event) => setReply(event.target.value)}
