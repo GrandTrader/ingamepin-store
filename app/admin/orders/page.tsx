@@ -5,6 +5,7 @@ import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import AdminOrdersTableScroller from "./AdminOrdersTableScroller";
 import ManualDeliveryItemCard from "./ManualDeliveryItemCard";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -161,6 +162,24 @@ export default async function AdminOrdersPage({
   const totalPages = Math.max(1, Math.ceil(orders.length / 10));
   const page = Math.min(Math.max(Number.parseInt(requestedPage ?? "1", 10) || 1, 1), totalPages);
   const visibleOrders = orders.slice((page - 1) * 10, page * 10);
+  const visibleItemIds = visibleOrders.flatMap((order) =>
+    order.order_items.map((item) => item.id),
+  );
+  const soldCodesResult = visibleItemIds.length
+    ? await createAdminClient()
+        .from("gift_card_codes")
+        .select("order_item_id")
+        .in("order_item_id", visibleItemIds)
+        .eq("status", "SOLD")
+    : { data: [] };
+  const soldCodeCounts = new Map<string, number>();
+  for (const code of soldCodesResult.data ?? []) {
+    if (!code.order_item_id) continue;
+    soldCodeCounts.set(
+      code.order_item_id,
+      (soldCodeCounts.get(code.order_item_id) ?? 0) + 1,
+    );
+  }
 
   const paymentReviewCount = orders.filter(
     (order) =>
@@ -459,6 +478,15 @@ export default async function AdminOrdersPage({
                                             </span>
                                           </span>
                                         </label>
+                                      ) : (soldCodeCounts.get(item.id) ?? 0) >= item.quantity ? (
+                                        <article key={item.id} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                                          <p className="font-black text-slate-800">
+                                            {item.product_name}{item.option_name ? ` · ${item.option_name}` : ""}
+                                          </p>
+                                          <p className="mt-2 inline-flex rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white">
+                                            COMPLETED
+                                          </p>
+                                        </article>
                                       ) : <ManualDeliveryItemCard key={item.id} orderId={order.id} item={item} />,
                                   )}
                                 </div>
