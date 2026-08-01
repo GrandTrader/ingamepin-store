@@ -124,6 +124,9 @@ export default function TrackOrderPage() {
   const items = result?.items ?? [];
   const delivered =
     order?.status === "DELIVERED";
+  const completedItemCount = items.filter(
+    (item) => item.codes.length >= item.quantity,
+  ).length;
 
   return (
     <main className="min-h-screen bg-slate-950 px-5 py-12 text-white">
@@ -258,23 +261,26 @@ export default function TrackOrderPage() {
               />
             </div>
 
-            {!delivered && (
+            {!delivered && completedItemCount === 0 && (
               <p className="mt-6 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm leading-6 text-amber-200">
                 Your order is not completed yet. Activation codes will appear here after successful payment verification and manual delivery.
               </p>
             )}
 
-            {delivered && (
+            {items.length > 0 && (
               <div className="mt-7 space-y-5">
                 <h3 className="text-xl font-black text-emerald-300">
-                  Secure digital delivery
+                  Denomination delivery status
                 </h3>
 
-                {items.map((item, index) => (
-                  <article
-                    key={`${item.productName}-${index}`}
-                    className="rounded-2xl border border-emerald-400/20 bg-slate-950 p-5"
+                {items.map((item, index) => {
+                  const itemCompleted = item.codes.length >= item.quantity;
+                  return <article
+                    key={`${item.productName}-${item.optionName ?? index}`}
+                    className={`rounded-2xl border bg-slate-950 p-5 ${itemCompleted ? "border-emerald-400/20" : "border-amber-400/20"}`}
                   >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
                     <h4 className="text-lg font-black">
                       {item.productName}
                     </h4>
@@ -284,6 +290,11 @@ export default function TrackOrderPage() {
                         Edition / option: {item.optionName}
                       </p>
                     )}
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-black ${itemCompleted ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>
+                        {itemCompleted ? "COMPLETED" : "PROCESSING"}
+                      </span>
+                    </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
                       {item.platform && (
@@ -325,12 +336,12 @@ export default function TrackOrderPage() {
 
                       {item.codes.length === 0 && (
                         <p className="text-sm text-amber-300">
-                          This item requires manual delivery processing.
+                          This denomination is waiting for delivery.
                         </p>
                       )}
                     </div>
-                  </article>
-                ))}
+                  </article>;
+                })}
               </div>
             )}
           </section>

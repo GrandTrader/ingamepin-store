@@ -87,28 +87,6 @@ export async function POST(
       return lookupDenied();
     }
 
-    if (order.status !== "DELIVERED") {
-      return NextResponse.json(
-        {
-          order: {
-            orderNumber: order.order_number,
-            status: order.status,
-            total: order.total,
-            currency: order.currency,
-            orderedAt: order.created_at,
-            paidAt: order.paid_at,
-            deliveredAt: order.delivered_at,
-          },
-          items: [],
-        },
-        {
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        },
-      );
-    }
-
     const itemResult = await admin
       .from("order_items")
       .select(
