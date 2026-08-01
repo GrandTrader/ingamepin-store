@@ -18,7 +18,7 @@ const extensions: Record<string, string> = {
 
 export async function uploadStoreImage(
   value: FormDataEntryValue | null,
-  folder: "products" | "slides",
+  folder: "products" | "slides" | "categories",
 ) {
   if (!(value instanceof File) || value.size === 0) {
     return null;

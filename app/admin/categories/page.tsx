@@ -1,5 +1,7 @@
 ﻿import { redirect } from "next/navigation";
 
+import Link from "next/link";
+
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
 import { createCategory } from "./actions";
@@ -155,6 +157,11 @@ export default async function CategoriesPage({
                 </label>
 
                 <label className="block">
+                  <span className="text-sm font-bold">Or upload category image</span>
+                  <input name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="mt-2 block w-full rounded-xl border border-dashed border-blue-300 bg-blue-50 px-4 py-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-bold file:text-white" />
+                </label>
+
+                <label className="block">
                   <span className="text-sm font-bold">
                     Sort order
                   </span>
@@ -223,7 +230,9 @@ export default async function CategoriesPage({
                       className="rounded-xl border border-slate-200 p-5"
                     >
                       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                        <div>
+                        <div className="flex min-w-0 gap-4">
+                          {category.image_url && <img src={category.image_url} alt="" className="h-16 w-16 shrink-0 rounded-xl border border-slate-200 object-cover" />}
+                          <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-black">
                               {category.name}
@@ -251,10 +260,12 @@ export default async function CategoriesPage({
                               {category.description}
                             </p>
                           )}
+                          </div>
                         </div>
 
-                        <div className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">
-                          Sort: {category.sort_order}
+                        <div className="flex shrink-0 items-center gap-2">
+                          <div className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">Sort: {category.sort_order}</div>
+                          <Link href={`/admin/categories/${category.id}/edit`} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-black text-white hover:bg-blue-700">Edit</Link>
                         </div>
                       </div>
                     </article>
