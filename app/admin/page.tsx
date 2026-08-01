@@ -7,6 +7,7 @@ import {
 } from "./actions";
 import AdminOrderLink from "./AdminOrderLink";
 import AdminSidebar from "./AdminSidebar";
+import InstallAdminAppButton from "@/components/InstallAdminAppButton";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -221,14 +222,14 @@ export default async function AdminDashboard({
               </p>
             </div>
 
-            <form action={adminLogout}>
+            <div className="flex flex-wrap gap-3"><InstallAdminAppButton /><form action={adminLogout}>
               <button
                 type="submit"
                 className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold transition hover:border-red-300 hover:bg-red-50 hover:text-red-600"
               >
                 Sign out
               </button>
-            </form>
+            </form></div>
           </header>
 
           {(processingOrdersResult.count ?? 0) > 0 && (

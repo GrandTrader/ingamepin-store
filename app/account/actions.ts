@@ -55,13 +55,18 @@ async function clearPendingSignupEmail() {
 export async function customerLogin(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const captchaToken = String(formData.get("captcha_token") ?? "").trim();
+
+  if (!captchaToken) {
+    accountRedirect("/account", "error", "Complete the security check before signing in.");
+  }
 
   if (!email || password.length < 8) {
     accountRedirect("/account", "error", "Enter a valid email and password.");
   }
 
   const supabase = await createClient();
-  const result = await supabase.auth.signInWithPassword({ email, password });
+  const result = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } });
 
   if (result.error) {
     accountRedirect("/account", "error", "Email or password is incorrect.");

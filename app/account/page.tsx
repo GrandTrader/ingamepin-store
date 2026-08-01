@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 
 import { customerLogin } from "./actions";
 
@@ -44,6 +45,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             <label className="block text-sm font-bold">Password
               <input name="password" type="password" required minLength={8} autoComplete="current-password" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500" placeholder="Enter your password" />
             </label>
+            <RegistrationTurnstile message="Complete the security check to sign in." />
             <button className="w-full rounded-xl bg-cyan-500 px-5 py-3 font-black text-slate-950 transition hover:bg-cyan-400" type="submit">Sign in</button>
           </form>
 
