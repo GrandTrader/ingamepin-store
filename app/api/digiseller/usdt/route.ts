@@ -370,7 +370,7 @@ export async function GET(request: NextRequest) {
       // Reconcile paid invoices during browser polling as a fallback for a
       // delayed gateway webhook. Digiseller can then release the order as
       // soon as the gateway reports the payment as paid.
-      if (invoice.status === "PAID" && payment.status !== "paid") {
+      if (invoice.status === "PAID") {
         await notifyDigiseller({
           invoiceId: payment.invoice_id,
           amount: Number(payment.amount).toFixed(2),
@@ -379,17 +379,19 @@ export async function GET(request: NextRequest) {
           transactionHash: invoice.transactionHash,
         });
 
-        const updateResult = await admin
-          .from("digiseller_usdt_payments")
-          .update({
-            status: "paid",
-            transaction_hash: invoice.transactionHash,
-            paid_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("invoice_id", payment.invoice_id)
-          .neq("status", "paid");
-        if (updateResult.error) throw updateResult.error;
+        if (payment.status !== "paid") {
+          const updateResult = await admin
+            .from("digiseller_usdt_payments")
+            .update({
+              status: "paid",
+              transaction_hash: invoice.transactionHash,
+              paid_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("invoice_id", payment.invoice_id)
+            .neq("status", "paid");
+          if (updateResult.error) throw updateResult.error;
+        }
       }
 
       return NextResponse.json({
@@ -443,6 +445,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 
 
