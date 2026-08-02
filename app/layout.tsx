@@ -9,6 +9,7 @@ import LiveSupportWidget from "../components/LiveSupportWidget";
 import YandexMetrica from "../components/YandexMetrica";
 import RussianWebsiteTranslator from "../components/RussianWebsiteTranslator";
 import { StorePreferencesProvider } from "../components/StorePreferences";
+import GoogleAdsTag from "../components/GoogleAdsTag";
 
 import "./globals.css";
 
@@ -63,6 +64,7 @@ export default function RootLayout({
         </StorePreferencesProvider>
 
         <YandexMetrica />
+        <GoogleAdsTag />
 
         <SpeedInsights />
       </body>
