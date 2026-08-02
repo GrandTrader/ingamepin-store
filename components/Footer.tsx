@@ -1,13 +1,48 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useStorePreferences } from "./StorePreferences";
 import PaymentMethodsBanner from "./PaymentMethodsBanner";
 import ThemeModeSwitch from "./ThemeModeSwitch";
 
 export default function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
   const { t } = useStorePreferences();
+
+  if (pathname === "/checkout" || pathname.startsWith("/checkout/")) {
+    return (
+      <footer className="mt-auto border-t border-white/10 bg-slate-950 text-white">
+        <div className="border-b border-white/10">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-4 py-5 sm:px-5 md:flex-row">
+            <div className="text-center md:text-left">
+              <p className="text-sm font-bold text-white">{t("secureCheckout")}</p>
+              <p className="mt-1 text-xs text-slate-500">{t("confirmBeforePayment")}</p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {["InGamePin Wallet", "Binance Pay", "USDT TRC20", "USDT BEP20", "USDT Solana", "Pally - SBP"].map((method) => (
+                <span key={method} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300">
+                  {method}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-black/20">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-center text-xs text-slate-500 sm:flex-row sm:px-5 sm:text-left">
+            <p>{"\u00A9"} {currentYear} InGamePin, operated by AMAN G. {t("rightsReserved")}</p>
+            <div className="flex flex-col items-center gap-3 sm:items-end">
+              <ThemeModeSwitch />
+              <p>{t("trademarkNotice")}</p>
+            </div>
+          </div>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="mt-auto border-t border-white/10 bg-slate-950 text-white">

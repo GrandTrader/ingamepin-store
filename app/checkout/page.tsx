@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
+import { countryCallingCodes } from "../../lib/countryCallingCodes";
 
 type CartItem = {
   id: string;
@@ -153,6 +154,7 @@ function normalizeCartItem(
 type CheckoutForm = {
   fullName: string;
   email: string;
+  countryCode: string;
   phone: string;
   addressLine1: string;
   addressLine2: string;
@@ -180,6 +182,7 @@ type CustomerDiscountDetails = {
 const initialForm: CheckoutForm = {
   fullName: "",
   email: "",
+  countryCode: "+91",
   phone: "",
   addressLine1: "",
   addressLine2: "",
@@ -583,8 +586,8 @@ export default function CheckoutPage() {
       return "Please enter your mobile number.";
     }
 
-    if (!/^[6-9]\d{9}$/.test(form.phone.trim())) {
-      return "Please enter a valid 10-digit Indian mobile number.";
+    if (!/^\d{6,15}$/.test(form.phone.trim())) {
+      return "Please enter a valid mobile number.";
     }
 
     if (requiresShipping) {
@@ -680,7 +683,7 @@ export default function CheckoutPage() {
         customer: {
           fullName: form.fullName.trim(),
           email: form.email.trim(),
-          phone: form.phone.trim(),
+          phone: `${form.countryCode}${form.phone.trim()}`,
           orderNote: form.orderNote.trim(),
         },
 
@@ -721,7 +724,7 @@ export default function CheckoutPage() {
       customer: {
         fullName: form.fullName.trim(),
         email: form.email.trim(),
-        phone: form.phone.trim(),
+        phone: `${form.countryCode}${form.phone.trim()}`,
       },
 
       items: cartItems,
@@ -949,9 +952,18 @@ export default function CheckoutPage() {
                 </label>
 
                 <div className="flex overflow-hidden rounded-xl border border-white/10 bg-slate-950 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-400/10">
-                  <span className="flex items-center border-r border-white/10 px-4 text-sm text-slate-400">
-                    +91
-                  </span>
+                  <select
+                    aria-label="Country calling code"
+                    value={form.countryCode}
+                    onChange={(event) => updateField("countryCode", event.target.value)}
+                    className="max-w-[150px] border-r border-white/10 bg-slate-950 px-3 text-sm text-slate-200 outline-none"
+                  >
+                    {countryCallingCodes.map(([country, code]) => (
+                      <option key={`${country}-${code}`} value={code}>
+                        {country} ({code})
+                      </option>
+                    ))}
+                  </select>
 
                   <input
                     id="phone"
@@ -962,10 +974,10 @@ export default function CheckoutPage() {
                         "phone",
                         event.target.value
                           .replace(/\D/g, "")
-                          .slice(0, 10)
+                          .slice(0, 15)
                       )
                     }
-                    placeholder="10-digit number"
+                    placeholder="Mobile number"
                     autoComplete="tel"
                     className="w-full bg-transparent px-4 py-3.5 text-white outline-none placeholder:text-slate-600"
                   />
