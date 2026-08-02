@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
 
 type CartItem = {
@@ -218,6 +218,8 @@ export default function CheckoutPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBulkPaymentConfirmation, setShowBulkPaymentConfirmation] = useState(false);
+  const bulkPaymentConfirmed = useRef(false);
   const [wallet, setWallet] = useState<WalletDetails>({
     authenticated: false,
     balance: 0,
@@ -638,6 +640,11 @@ export default function CheckoutPage() {
     return;
   }
 
+  if (cartItems.some((item) => item.isBulkOrder) && !bulkPaymentConfirmed.current) {
+    setShowBulkPaymentConfirmation(true);
+    return;
+  }
+
   setIsSubmitting(true);
 
   try {
@@ -864,6 +871,7 @@ export default function CheckoutPage() {
       </section>
 
       <form
+        id="checkout-form"
         onSubmit={handleSubmit}
         className="mx-auto grid max-w-7xl gap-4 px-3 py-5 sm:gap-7 sm:px-5 sm:py-8 lg:grid-cols-[minmax(0,1fr)_420px]"
       >
@@ -1738,7 +1746,19 @@ export default function CheckoutPage() {
           </div>
         </aside>
       </form>
+      {showBulkPaymentConfirmation && (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-payment-confirmation-title">
+          <div className="w-full max-w-md rounded-2xl border border-amber-300/40 bg-slate-900 p-6 text-white shadow-2xl">
+            <h2 id="bulk-payment-confirmation-title" className="text-xl font-black text-amber-200">Bulk delivery information</h2>
+            <p className="mt-3 text-sm font-bold text-slate-200">Bulk Delivery Time: 1-15 Working Days</p>
+            <p className="mt-3 text-sm text-slate-400">Your cart contains a bulk delivery product. Confirm before continuing to payment.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setShowBulkPaymentConfirmation(false)} className="rounded-xl border border-white/15 px-4 py-3 font-black">Cancel</button>
+              <button type="button" onClick={() => { bulkPaymentConfirmed.current = true; setShowBulkPaymentConfirmation(false); (document.getElementById("checkout-form") as HTMLFormElement | null)?.requestSubmit(); }} className="rounded-xl bg-amber-300 px-4 py-3 font-black text-slate-950">Continue to payment</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
-

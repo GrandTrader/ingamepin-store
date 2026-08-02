@@ -54,6 +54,7 @@ type ProductPurchaseFormProps = {
     playerIdLabel: string | null;
     customerDiscountPercent: number;
     isBulkOrder?: boolean;
+    bulkDeliveryInstructions?: string | null;
   };
   options: ProductOption[];
   customerFields?: CustomerField[];
@@ -162,6 +163,7 @@ export default function ProductPurchaseForm({
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] =
     useState<"success" | "error">("success");
+  const [bulkConfirmationAction, setBulkConfirmationAction] = useState<"cart" | "buy" | null>(null);
 
   const selectedFixedOption = useMemo(
     () =>
@@ -412,9 +414,7 @@ export default function ProductPurchaseForm({
     };
   }
 
-  function addToCart() {
-    if (!validateSelection()) return;
-
+  function completeAddToCart() {
     try {
       const newItem = createCartItem();
       const savedCart = localStorage.getItem("shoppingCart");
@@ -432,15 +432,31 @@ export default function ProductPurchaseForm({
     }
   }
 
-  function buyNow() {
-    if (!validateSelection()) return;
-
+  function completeBuyNow() {
     try {
       localStorage.setItem("buyNowItem", JSON.stringify(createCartItem()));
       router.push("/checkout");
     } catch {
       showError("Unable to continue to checkout.");
     }
+  }
+
+  function addToCart() {
+    if (!validateSelection()) return;
+    if (product.isBulkOrder) {
+      setBulkConfirmationAction("cart");
+      return;
+    }
+    completeAddToCart();
+  }
+
+  function buyNow() {
+    if (!validateSelection()) return;
+    if (product.isBulkOrder) {
+      setBulkConfirmationAction("buy");
+      return;
+    }
+    completeBuyNow();
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -775,6 +791,20 @@ export default function ProductPurchaseForm({
           {t("buyNow")}
         </button>
       </div>
+
+      {bulkConfirmationAction && (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-confirmation-title">
+          <div className="w-full max-w-md rounded-2xl border border-amber-300/40 bg-slate-900 p-6 shadow-2xl">
+            <h2 id="bulk-confirmation-title" className="text-xl font-black text-amber-200">Bulk delivery information</h2>
+            <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-200">{product.bulkDeliveryInstructions || "Bulk Delivery Time: 1-15 Working Days"}</p>
+            <p className="mt-3 text-sm text-slate-400">Please confirm that you understand the delivery time.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setBulkConfirmationAction(null)} className="rounded-xl border border-white/15 px-4 py-3 font-black">Cancel</button>
+              <button type="button" onClick={() => { const action = bulkConfirmationAction; setBulkConfirmationAction(null); if (action === "cart") completeAddToCart(); else completeBuyNow(); }} className="rounded-xl bg-amber-300 px-4 py-3 font-black text-slate-950">I understand</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {message && (
         <p

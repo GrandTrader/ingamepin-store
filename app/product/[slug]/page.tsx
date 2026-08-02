@@ -251,18 +251,7 @@ export default async function ProductPage({
                 </span>
               </div>
 
-              <div className="mt-5 whitespace-pre-line text-sm leading-6 text-slate-300 sm:mt-7 sm:text-base sm:leading-7">
-                <LocalizedProductText
-                  english={
-                    product.description ??
-                    "Product details and delivery information will be provided with your order."
-                  }
-                  russian={product.description_ru}
-                />
-              </div>
-
-              {product.is_bulk_order &&
-                product.bulk_delivery_instructions && (
+              {product.is_bulk_order && (
                   <div className="mt-5 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 sm:mt-7 sm:p-5">
                     <div className="flex items-start gap-3">
                       <span
@@ -279,12 +268,22 @@ export default async function ProductPage({
                           />
                         </span>
                         <span className="mt-1 block whitespace-pre-line text-sm leading-6 text-slate-300">
-                          {product.bulk_delivery_instructions}
+                          {product.bulk_delivery_instructions || "Bulk Delivery Time: 1-15 Working Days"}
                         </span>
                       </span>
                     </div>
                   </div>
                 )}
+
+              <div className="mt-5 whitespace-pre-line text-sm leading-6 text-slate-300 sm:mt-7 sm:text-base sm:leading-7">
+                <LocalizedProductText
+                  english={
+                    product.description ??
+                    "Product details and delivery information will be provided with your order."
+                  }
+                  russian={product.description_ru}
+                />
+              </div>
 
               {product.delivery_instructions && (
                 <div className="mt-5 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 sm:mt-7 sm:p-5">
@@ -345,6 +344,7 @@ export default async function ProductPage({
                   product.player_id_label,
                 customerDiscountPercent,
                 isBulkOrder: product.is_bulk_order,
+                bulkDeliveryInstructions: product.bulk_delivery_instructions,
               }}
               customerFields={customerFields.map((field) => ({
                 id: field.id,
@@ -372,6 +372,5 @@ export default async function ProductPage({
     </main>
   );
 }
-
 
 
