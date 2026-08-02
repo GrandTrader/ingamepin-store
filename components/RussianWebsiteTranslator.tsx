@@ -28,6 +28,14 @@ const russianText: Record<string, string> = {
   "Minimum wallet top-up: $10. New configured gateway adapters appear here automatically.":
     "Минимальное пополнение кошелька: $10. Новые способы оплаты появляются здесь автоматически.",
   "Continue to payment": "Перейти к оплате",
+  "Bulk delivery information": "Информация об оптовой доставке",
+  "Bulk Delivery Time: 1-15 Working Days": "Срок оптовой доставки: 1–15 рабочих дней",
+  "Please confirm that you understand the delivery time.":
+    "Подтвердите, что вы понимаете срок доставки.",
+  "I understand": "Понятно",
+  "Your cart contains a bulk delivery product. Confirm before continuing to payment.":
+    "В вашей корзине есть товар с оптовой доставкой. Подтвердите это перед переходом к оплате.",
+  "Cancel": "Отмена",
   "Opening payment gateway...": "Открываем платёжную систему...",
   "Recent top-ups": "Недавние пополнения",
   "No top-ups yet.": "Пополнений пока нет.",
