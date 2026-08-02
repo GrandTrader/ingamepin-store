@@ -55,7 +55,7 @@ export default function DigisellerUsdtPayment({
     if (!invoice || invoice.status !== "PENDING") return;
     const timer = window.setInterval(() => {
       void refresh().catch(() => undefined);
-    }, 5000);
+    }, 3000);
     return () => window.clearInterval(timer);
   }, [invoice, refresh]);
 
