@@ -11,8 +11,11 @@ type AdminProductsPageProps = {
   searchParams: Promise<{
     success?: string;
     error?: string;
+    page?: string;
   }>;
 };
+
+const PRODUCTS_PER_PAGE = 10;
 
 type ProductStatus = "ACTIVE" | "INACTIVE" | "DRAFT";
 
@@ -108,7 +111,7 @@ function readableStatus(status: ProductStatus) {
 export default async function AdminProductsPage({
   searchParams,
 }: AdminProductsPageProps) {
-  const { success, error } = await searchParams;
+  const { success, error, page: requestedPage } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -162,6 +165,16 @@ export default async function AdminProductsPage({
   }
 
   const products = (productResult.data ?? []) as ProductRow[];
+  const totalPages = Math.max(1, Math.ceil(products.length / PRODUCTS_PER_PAGE));
+  const parsedPage = Number.parseInt(requestedPage ?? "1", 10);
+  const currentPage = Math.min(
+    totalPages,
+    Math.max(1, Number.isFinite(parsedPage) ? parsedPage : 1),
+  );
+  const visibleProducts = products.slice(
+    (currentPage - 1) * PRODUCTS_PER_PAGE,
+    currentPage * PRODUCTS_PER_PAGE,
+  );
   const twentyFourHoursAgo = new Date(
     Date.now() - 24 * 60 * 60 * 1000,
   ).toISOString();
@@ -278,7 +291,7 @@ export default async function AdminProductsPage({
                 </thead>
 
                 <tbody className="divide-y divide-slate-100">
-                  {products.map((product) => (
+                  {visibleProducts.map((product) => (
                     <tr key={product.id} className="transition hover:bg-slate-50">
                       <td className="px-5 py-4">
                         <Link
@@ -370,6 +383,25 @@ export default async function AdminProductsPage({
                 </tbody>
               </table>
             </div>
+
+            {totalPages > 1 && (
+              <nav aria-label="Product list pages" className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                  <Link
+                    key={pageNumber}
+                    href={`/admin/products?page=${pageNumber}`}
+                    aria-current={pageNumber === currentPage ? "page" : undefined}
+                    className={`flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-black transition ${
+                      pageNumber === currentPage
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-600"
+                    }`}
+                  >
+                    {pageNumber}
+                  </Link>
+                ))}
+              </nav>
+            )}
           </section>
         </main>
       </div>
