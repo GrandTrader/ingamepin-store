@@ -8,6 +8,7 @@ import CompletedManualDeliveryCard from "./CompletedManualDeliveryCard";
 import ManualDeliveryItemCard from "./ManualDeliveryItemCard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { finalizeManualOrderFromCodes } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -493,6 +494,7 @@ export default async function AdminOrdersPage({
                                         />
                                       ) : <ManualDeliveryItemCard key={item.id} orderId={order.id} item={item} />,
                                   )}
+                                  {order.order_items.filter((item) => { const product = Array.isArray(item.products) ? item.products[0] : item.products; return product?.delivery_type === "MANUAL" && item.fulfillment_mode !== "PLAYER_ID_TOPUP"; }).every((item) => (soldCodeCounts.get(item.id) ?? 0) >= item.quantity) && <form action={finalizeManualOrderFromCodes} className="sm:col-span-2"><input type="hidden" name="order_id" value={order.id} /><button className="w-full rounded-lg bg-emerald-600 px-4 py-3 font-black text-white">Finalize completed order</button></form>}
                                 </div>
                               )}
                             </div>

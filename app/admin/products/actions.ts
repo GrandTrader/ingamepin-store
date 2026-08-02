@@ -132,6 +132,41 @@ async function getAdminClient() {
   return supabase;
 }
 
+export async function createDraftProduct() {
+  await getAdminClient();
+  const admin = createAdminClient();
+  const draftKey = crypto.randomUUID();
+
+  const result = await admin
+    .from("products")
+    .insert({
+      name: "New Product Draft",
+      slug: `new-product-${draftKey}`,
+      description: null,
+      region: "Global",
+      product_type: "GIFT_CARD",
+      delivery_type: "MANUAL",
+      currency: "USD",
+      price: 0,
+      stock_quantity: 0,
+      status: "DRAFT",
+      is_featured: false,
+    })
+    .select("id")
+    .single();
+
+  if (result.error || !result.data) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        `Unable to start a new product: ${result.error?.message ?? "Unknown error"}`,
+      )}`,
+    );
+  }
+
+  revalidatePath("/admin/products");
+  redirect(`/admin/products/${result.data.id}/edit/general`);
+}
+
 export async function updateProduct(
   formData: FormData,
 ) {
@@ -1239,5 +1274,4 @@ export async function deleteProductOption(
 
   productRedirect(productId, "success", `Option "${optionResult.data.option_name}" deleted permanently`);
 }
-
 

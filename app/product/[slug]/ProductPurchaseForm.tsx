@@ -12,6 +12,8 @@ type ProductOption = {
   sellingPrice: number;
   stockQuantity: number;
   isCustomValue: boolean;
+  minimumQuantity: number | null;
+  maximumQuantity: number | null;
 };
 
 type FulfillmentMode =
@@ -55,6 +57,8 @@ type ProductPurchaseFormProps = {
     customerDiscountPercent: number;
     isBulkOrder?: boolean;
     bulkDeliveryInstructions?: string | null;
+    minimumQuantity: number;
+    maximumQuantity: number;
   };
   options: ProductOption[];
   customerFields?: CustomerField[];
@@ -195,7 +199,8 @@ export default function ProductPurchaseForm({
     ? Number.MAX_SAFE_INTEGER
     : requiresSingleQuantity
       ? 1
-      : Math.min(10, selectedFixedOption?.stockQuantity ?? 0);
+      : Math.min(selectedFixedOption?.maximumQuantity ?? product.maximumQuantity, selectedFixedOption?.stockQuantity ?? 0);
+  const minimumQuantity = requiresSingleQuantity ? 1 : selectedFixedOption?.minimumQuantity ?? product.minimumQuantity;
 
   const totalPrice = selectedUnitPrice * quantity;
   const customerDiscountAmount =
@@ -319,10 +324,10 @@ export default function ProductPurchaseForm({
 
     if (
       !Number.isSafeInteger(quantity) ||
-      quantity < 1 ||
+      quantity < minimumQuantity ||
       (!product.isBulkOrder && quantity > maximumQuantity)
     ) {
-      return showError("Please select a valid quantity.");
+      return showError(`Allowed quantity for ${localizedProductName}: ${minimumQuantity}-${maximumQuantity}.`);
     }
 
     for (const field of customerFields) {
@@ -734,6 +739,7 @@ export default function ProductPurchaseForm({
             +
           </button>
         </div>
+        {!product.isBulkOrder && <p className="mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">{language === "ru" ? `Допустимое количество: ${minimumQuantity}–${maximumQuantity}` : `Allowed quantity: ${minimumQuantity}-${maximumQuantity}`}</p>}
       </section>
 
       <section className="mt-5 rounded-2xl border border-white/10 bg-slate-950 p-4 sm:mt-7 sm:p-5">

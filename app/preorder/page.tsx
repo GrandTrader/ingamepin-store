@@ -219,6 +219,8 @@ export default async function PreorderPage() {
                 allowsGamingVoucher: true,
                 playerIdLabel: null,
                 customerDiscountPercent: 0,
+                minimumQuantity: 1,
+                maximumQuantity: 1,
               }}
               customerFields={customerFields.map((field) => ({
                 id: field.id,
@@ -244,6 +246,8 @@ export default async function PreorderPage() {
                   option.stock_quantity,
                 isCustomValue:
                   option.is_custom_value,
+                minimumQuantity: null,
+                maximumQuantity: null,
               }))}
             />
           </aside>

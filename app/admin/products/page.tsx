@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
+import { createDraftProduct } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -208,12 +209,11 @@ export default async function AdminProductsPage({
               </p>
             </div>
 
-            <Link
-              href="/admin/products/new"
-              className="rounded-xl bg-slate-900 px-5 py-3 text-center font-bold text-white transition hover:bg-blue-600"
-            >
-              + Add New Product
-            </Link>
+            <form action={createDraftProduct}>
+              <button className="w-full rounded-xl bg-slate-900 px-5 py-3 text-center font-bold text-white transition hover:bg-blue-600 sm:w-auto">
+                + Add New Product
+              </button>
+            </form>
           </header>
 
           {success && (

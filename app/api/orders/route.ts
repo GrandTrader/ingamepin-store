@@ -79,8 +79,19 @@ export async function POST(request: NextRequest) {
     const submittedItems = body.items as Array<{ productOptionId?: string; quantity?: number; customValue?: number }>;
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
     if (optionIds.length) {
-      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price").in("id", optionIds);
+      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price, minimum_quantity, maximum_quantity").in("id", optionIds);
       const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
+      const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order").in("id", productIds) : { data: [] };
+      for (const item of submittedItems) {
+        const option = options.find((entry) => entry.id === item.productOptionId);
+        const product = (productsResult.data ?? []).find((entry) => entry.id === option?.product_id);
+        const quantity = Number(item.quantity ?? 1);
+        const minimum = option?.minimum_quantity ?? product?.minimum_quantity;
+        const maximum = option?.maximum_quantity ?? product?.maximum_quantity;
+        if (product && !product.is_bulk_order && (!Number.isSafeInteger(quantity) || quantity < minimum || quantity > maximum)) {
+          return NextResponse.json({ error: `Allowed quantity for ${product.name}: ${minimum}-${maximum}.`, minimumQuantity: minimum, maximumQuantity: maximum }, { status: 400 });
+        }
+      }
       const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("product_id, weekly_limit, limit_currency, identity_mode, reset_mode, notification_message").in("product_id", productIds).eq("is_enabled", true) : { data: [] };
       for (const rule of restrictionsResult.data ?? []) {
         const currentValue = submittedItems.reduce((sum, item) => { const option = options.find((entry) => entry.id === item.productOptionId && entry.product_id === rule.product_id); if (!option) return sum; const quantity = Math.max(1, Number(item.quantity ?? 1)); return sum + (rule.limit_currency === "INR" ? Number(item.customValue ?? option.denomination ?? 0) : Number(option.selling_price ?? 0)) * quantity; }, 0);

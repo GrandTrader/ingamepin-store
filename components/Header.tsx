@@ -221,7 +221,7 @@ export default function Header() {
               iP
             </div>
 
-            <div>
+            <div className="max-[359px]:hidden">
               <p className="text-lg font-black leading-none sm:text-xl">
                 iNgame<span className="text-cyan-400">PIN</span>
               </p>
@@ -281,7 +281,7 @@ export default function Header() {
           </nav>
 
           {/* Header actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="hidden items-center gap-1 xl:flex">
               <label htmlFor="store-language" className="sr-only">
                 Language
@@ -324,7 +324,7 @@ export default function Header() {
             <Link
               href={isAuthenticated ? "/account/wallet" : "/account"}
               aria-label="Wallet"
-              className="relative flex h-10 items-center gap-2 rounded-xl border border-emerald-300/70 bg-emerald-400 px-3 font-black text-slate-950 shadow-[0_0_18px_rgba(52,211,153,0.3)] transition hover:bg-emerald-300 sm:h-11"
+              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-300/70 bg-emerald-400 font-black text-slate-950 shadow-[0_0_18px_rgba(52,211,153,0.3)] transition hover:bg-emerald-300 sm:h-11 sm:w-11"
             >
               <svg
                 aria-hidden="true"
@@ -347,7 +347,7 @@ export default function Header() {
             <Link
               href="/cart"
               aria-label={`${t("cart")}: ${cartQuantity}`}
-              className="relative flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950 px-3 font-bold transition hover:border-cyan-400 sm:h-11"
+              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-slate-950 font-bold transition hover:border-cyan-400 sm:h-11 sm:w-11"
             >
               <span
                 aria-hidden="true"

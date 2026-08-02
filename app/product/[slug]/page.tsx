@@ -50,6 +50,8 @@ type ProductRow = {
   allows_player_id_topup: boolean;
   allows_gaming_voucher: boolean;
   player_id_label: string | null;
+  minimum_quantity: number;
+  maximum_quantity: number;
   categories: CategoryRelation;
 };
 
@@ -69,6 +71,8 @@ type ProductOptionRow = {
   selling_price: number | string;
   stock_quantity: number;
   is_custom_value: boolean;
+  minimum_quantity: number | null;
+  maximum_quantity: number | null;
 };
 
 function getCategory(category: CategoryRelation) {
@@ -113,6 +117,8 @@ export default async function ProductPage({
         allows_player_id_topup,
         allows_gaming_voucher,
         player_id_label,
+        minimum_quantity,
+        maximum_quantity,
         categories (
           name,
           slug
@@ -147,6 +153,8 @@ export default async function ProductPage({
         selling_price,
         stock_quantity,
         is_custom_value
+        ,minimum_quantity,
+        maximum_quantity
       `,
     )
     .eq("product_id", product.id)
@@ -345,6 +353,8 @@ export default async function ProductPage({
                 customerDiscountPercent,
                 isBulkOrder: product.is_bulk_order,
                 bulkDeliveryInstructions: product.bulk_delivery_instructions,
+                minimumQuantity: product.minimum_quantity,
+                maximumQuantity: product.maximum_quantity,
               }}
               customerFields={customerFields.map((field) => ({
                 id: field.id,
@@ -364,6 +374,8 @@ export default async function ProductPage({
                 sellingPrice: Number(option.selling_price),
                 stockQuantity: option.stock_quantity,
                 isCustomValue: option.is_custom_value,
+                minimumQuantity: option.minimum_quantity,
+                maximumQuantity: option.maximum_quantity,
               }))}
             />
           </aside>
@@ -372,5 +384,3 @@ export default async function ProductPage({
     </main>
   );
 }
-
-

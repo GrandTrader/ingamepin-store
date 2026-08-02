@@ -60,6 +60,17 @@ export default function ProductOptionsFields() {
   const [nextId, setNextId] = useState(2);
 
   useEffect(() => {
+    function clearRestoredOptions(event: PageTransitionEvent) {
+      if (!event.persisted) return;
+      setRows([newRow(1)]);
+      setNextId(2);
+    }
+
+    window.addEventListener("pageshow", clearRestoredOptions);
+    return () => window.removeEventListener("pageshow", clearRestoredOptions);
+  }, []);
+
+  useEffect(() => {
     function updateDeliveryType(event: Event) {
       setDeliveryType(
         (event as CustomEvent<ProductDeliveryType>)

@@ -116,3 +116,19 @@ html[data-store-theme="light"] select,
 html[data-store-theme="light"] textarea {
   color-scheme: light;
 }
+@media (max-width: 639px) {
+  .admin-responsive-shell main > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-responsive-shell main > header > a {
+    text-align: center;
+    width: 100%;
+  }
+
+  .admin-responsive-shell main > header h1,
+  .admin-responsive-shell main > header p {
+    overflow-wrap: anywhere;
+  }
+}
