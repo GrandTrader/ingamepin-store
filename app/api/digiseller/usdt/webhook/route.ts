@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     const paymentResult = await admin
       .from("digiseller_usdt_payments")
-      .select("invoice_id, amount, currency, status, network")
+      .select("invoice_id, amount, currency, status, network, digiseller_notified_at")
       .eq("gateway_invoice_id", body.invoiceId)
       .maybeSingle();
     if (paymentResult.error || !paymentResult.data) {
@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
         .neq("status", "paid");
       if (updateResult.error) throw updateResult.error;
 
+    }
+
+    if (!payment.digiseller_notified_at) {
       await notifyDigiseller({
         invoiceId: payment.invoice_id,
         amount: Number(payment.amount).toFixed(2),
@@ -82,6 +85,16 @@ export async function POST(request: NextRequest) {
         status: "paid",
         transactionHash: body.transactionHash,
       });
+
+      const notificationResult = await admin
+        .from("digiseller_usdt_payments")
+        .update({
+          digiseller_notified_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("invoice_id", payment.invoice_id)
+        .is("digiseller_notified_at", null);
+      if (notificationResult.error) throw notificationResult.error;
     }
 
     return NextResponse.json({ received: true });
