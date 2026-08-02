@@ -46,6 +46,13 @@ type DeliveryResult = {
   error?: string;
 };
 
+declare global {
+  interface Window {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
 function formatPrice(value: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -237,6 +244,32 @@ export default function CheckoutSuccessPage() {
       setIsLoaded(true);
     }
   }, [checkDelivery]);
+
+  useEffect(() => {
+    const status = delivery?.order?.status ?? order?.status;
+    const orderNumber = delivery?.order?.orderNumber ?? order?.orderNumber ?? order?.id;
+
+    if (!orderNumber || !["PAID", "PROCESSING", "DELIVERED"].includes(status ?? "")) {
+      return;
+    }
+
+    const conversionKey = `googleAdsPurchase:${orderNumber}`;
+    if (localStorage.getItem(conversionKey)) return;
+
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function gtag(...args: unknown[]) {
+      window.dataLayer?.push(args);
+    };
+
+    window.gtag("event", "conversion", {
+      send_to: "AW-621401578/8SxHCIXE4PEZEOqrp6gC",
+      value: Number(delivery?.order?.total ?? order?.totalAmount ?? 0),
+      currency: delivery?.order?.currency ?? "USD",
+      transaction_id: orderNumber,
+    });
+
+    localStorage.setItem(conversionKey, "sent");
+  }, [delivery, order]);
 
   async function copyCode(code: string) {
     await navigator.clipboard.writeText(
