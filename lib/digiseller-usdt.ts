@@ -82,4 +82,6 @@ export async function notifyDigiseller(input: {
       throw error;
     }
   }
+
+  return normalizedResponse;
 }
