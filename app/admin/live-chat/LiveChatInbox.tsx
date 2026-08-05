@@ -119,16 +119,16 @@ export default function LiveChatInbox() {
         </p>
       )}
 
-      <div className="grid h-[calc(100vh-220px)] min-h-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[340px_1fr]">
+      <div className="grid h-[calc(100dvh-220px)] min-h-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[340px_1fr]">
         <aside
-          className={`border-b border-slate-200 lg:block lg:border-b-0 lg:border-r ${
+          className={`min-h-0 overflow-hidden border-b border-slate-200 lg:flex lg:h-full lg:flex-col lg:border-b-0 lg:border-r ${
             mobileConversationOpen ? "hidden" : "block"
           }`}
         >
           <div className="border-b border-slate-200 p-4 font-black">
             Conversations ({conversations.length})
           </div>
-          <div className="max-h-[590px] overflow-y-auto">
+          <div className="min-h-0 overflow-y-auto lg:flex-1">
             {conversations.map((entry) => {
               const unread =
                 !entry.admin_last_read_at ||
@@ -172,7 +172,7 @@ export default function LiveChatInbox() {
         </aside>
 
         <section
-          className={`min-h-0 flex-col bg-white lg:static lg:z-auto lg:flex ${
+          className={`h-full min-h-0 flex-col overflow-hidden bg-white lg:static lg:z-auto lg:flex ${
             mobileConversationOpen ? "fixed inset-0 z-[110] flex" : "hidden"
           }`}
         >
