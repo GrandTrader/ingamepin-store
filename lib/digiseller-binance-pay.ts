@@ -39,7 +39,6 @@ export async function completeDigisellerBinancePayment(
       amount: Number(payment.amount).toFixed(2),
       currency: payment.currency,
       status: "paid",
-      transactionHash: transactionId,
     });
 
     const notificationResult = await admin

@@ -376,7 +376,6 @@ export async function GET(request: NextRequest) {
           amount: Number(payment.amount).toFixed(2),
           currency: payment.currency,
           status: "paid",
-          transactionHash: invoice.transactionHash,
         });
 
         if (payment.status !== "paid") {
@@ -455,4 +454,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

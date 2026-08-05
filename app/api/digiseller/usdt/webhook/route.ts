@@ -83,7 +83,6 @@ export async function POST(request: NextRequest) {
         amount: Number(payment.amount).toFixed(2),
         currency: payment.currency,
         status: "paid",
-        transactionHash: body.transactionHash,
       });
 
       const notificationResult = await admin
