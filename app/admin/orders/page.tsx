@@ -4,11 +4,7 @@ import Link from "next/link";
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import AdminOrdersTableScroller from "./AdminOrdersTableScroller";
-import CompletedManualDeliveryCard from "./CompletedManualDeliveryCard";
-import ManualDeliveryItemCard from "./ManualDeliveryItemCard";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { finalizeManualOrderFromCodes } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -37,17 +33,12 @@ type OrderItem = {
   player_id: string | null;
   customer_information: Array<{ fieldId: string; label: string; value: string }>;
   quantity: number;
-  products:
-    | { delivery_type: "MANUAL" | "AUTOMATIC" }
-    | { delivery_type: "MANUAL" | "AUTOMATIC" }[]
-    | null;
 };
 
 type AdminOrdersPageProps = {
   searchParams: Promise<{
     error?: string;
     success?: string;
-    order?: string;
     page?: string;
   }>;
 };
@@ -100,7 +91,6 @@ export default async function AdminOrdersPage({
   const {
     error: actionError,
     success,
-    order: selectedOrderId,
     page: requestedPage,
   } = await searchParams;
 
@@ -149,10 +139,7 @@ export default async function AdminOrdersPage({
           fulfillment_mode,
           player_id,
           customer_information,
-          quantity,
-          products (
-            delivery_type
-          )
+          quantity
         )
       `,
     )
@@ -164,29 +151,6 @@ export default async function AdminOrdersPage({
   const totalPages = Math.max(1, Math.ceil(orders.length / 10));
   const page = Math.min(Math.max(Number.parseInt(requestedPage ?? "1", 10) || 1, 1), totalPages);
   const visibleOrders = orders.slice((page - 1) * 10, page * 10);
-  const visibleItemIds = visibleOrders.flatMap((order) =>
-    order.order_items.map((item) => item.id),
-  );
-  const soldCodesResult = visibleItemIds.length
-    ? await createAdminClient()
-        .from("gift_card_codes")
-        .select("order_item_id, code, sold_at")
-        .in("order_item_id", visibleItemIds)
-        .eq("status", "SOLD")
-    : { data: [] };
-  const soldCodeCounts = new Map<string, number>();
-  const deliveredCodes = new Map<string, Array<{ code: string; sold_at: string | null }>>();
-  for (const code of soldCodesResult.data ?? []) {
-    if (!code.order_item_id) continue;
-    soldCodeCounts.set(
-      code.order_item_id,
-      (soldCodeCounts.get(code.order_item_id) ?? 0) + 1,
-    );
-    deliveredCodes.set(code.order_item_id, [
-      ...(deliveredCodes.get(code.order_item_id) ?? []),
-      { code: code.code, sold_at: code.sold_at },
-    ]);
-  }
 
   const paymentReviewCount = orders.filter(
     (order) =>
@@ -345,11 +309,7 @@ export default async function AdminOrdersPage({
                         <tr
                           key={order.id}
                           id={`order-${order.id}`}
-                          className={`scroll-mt-32 transition hover:bg-blue-50/40 ${
-                            selectedOrderId === order.id
-                              ? "bg-cyan-50 ring-2 ring-inset ring-cyan-400"
-                              : ""
-                          }`}
+                          className="transition hover:bg-blue-50/40"
                         >
                           <td className="break-words px-3 py-5 align-top">
                             <AdminOrderLink
@@ -427,76 +387,6 @@ export default async function AdminOrdersPage({
                                 ),
                               )}
 
-                              {(order.status ===
-                                "PROCESSING" ||
-                                order.status ===
-                                  "PAID") &&
-                                order.order_items.some((item) => {
-                                  const product = Array.isArray(item.products)
-                                    ? item.products[0]
-                                    : item.products;
-                                  return product?.delivery_type === "MANUAL";
-                                }) && (
-                                <div
-                                  className="mt-3 grid gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 sm:grid-cols-2"
-                                >
-                                  <p className="text-sm font-black text-blue-800 sm:col-span-2">
-                                    Manual fulfillment
-                                  </p>
-
-                                  {order.order_items
-                                    .filter((item) => {
-                                      const product = Array.isArray(
-                                        item.products,
-                                      )
-                                        ? item.products[0]
-                                        : item.products;
-                                      return (
-                                        product?.delivery_type === "MANUAL"
-                                      );
-                                    })
-                                    .map(
-                                    (item) =>
-                                      item.fulfillment_mode ===
-                                      "PLAYER_ID_TOPUP" ? (
-                                        <label
-                                          key={
-                                            item.id
-                                          }
-                                          className="flex items-start gap-3 rounded-lg bg-white p-3 text-sm"
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            name={`completed_${item.id}`}
-                                            required
-                                            className="mt-1 h-4 w-4"
-                                          />
-                                          <span>
-                                            <span className="block font-bold">
-                                              Confirm top-up completed
-                                            </span>
-                                            <span className="mt-1 block text-xs text-slate-500">
-                                              {
-                                                item.product_name
-                                              }
-                                              {item.player_id
-                                                ? ` · Player ID ${item.player_id}`
-                                                : ""}
-                                            </span>
-                                          </span>
-                                        </label>
-                                      ) : (soldCodeCounts.get(item.id) ?? 0) >= item.quantity ? (
-                                        <CompletedManualDeliveryCard
-                                          key={item.id}
-                                          productName={item.product_name}
-                                          optionName={item.option_name}
-                                          codes={deliveredCodes.get(item.id) ?? []}
-                                        />
-                                      ) : <ManualDeliveryItemCard key={item.id} orderId={order.id} item={item} />,
-                                  )}
-                                  {order.order_items.filter((item) => { const product = Array.isArray(item.products) ? item.products[0] : item.products; return product?.delivery_type === "MANUAL" && item.fulfillment_mode !== "PLAYER_ID_TOPUP"; }).every((item) => (soldCodeCounts.get(item.id) ?? 0) >= item.quantity) && <form action={finalizeManualOrderFromCodes} className="sm:col-span-2"><input type="hidden" name="order_id" value={order.id} /><button className="w-full rounded-lg bg-emerald-600 px-4 py-3 font-black text-white">Finalize completed order</button></form>}
-                                </div>
-                              )}
                             </div>
                           </td>
 

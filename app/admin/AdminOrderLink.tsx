@@ -11,9 +11,9 @@ export default function AdminOrderLink({
   orderNumber,
   className = "",
 }: AdminOrderLinkProps) {
-  const destination = `/admin/orders?order=${encodeURIComponent(
+  const destination = `/admin/orders/${encodeURIComponent(
     orderId,
-  )}#order-${encodeURIComponent(orderId)}`;
+  )}/receipt`;
 
   return (
     <Link
