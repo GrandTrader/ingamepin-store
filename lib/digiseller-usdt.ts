@@ -47,6 +47,7 @@ export async function notifyDigiseller(input: {
 
   const response = await fetch(url, { cache: "no-store" });
   const responseText = await response.text();
+  const normalizedResponse = responseText.trim();
   if (!response.ok) {
     throw new Error(
       `Digiseller callback failed with HTTP ${response.status}${
@@ -55,7 +56,11 @@ export async function notifyDigiseller(input: {
     );
   }
 
-  if (responseText.trim().startsWith("{")) {
+  if (/^error\s*:/i.test(normalizedResponse)) {
+    throw new Error(`Digiseller rejected the callback: ${normalizedResponse}`);
+  }
+
+  if (normalizedResponse.startsWith("{")) {
     try {
       const result = JSON.parse(responseText) as {
         error?: unknown;
