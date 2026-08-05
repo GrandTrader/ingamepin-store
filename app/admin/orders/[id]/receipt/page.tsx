@@ -220,6 +220,13 @@ export default async function OrderReceipt({
     ]);
   }
 
+  const deliveredContentItems = items
+    .map((item) => ({
+      item,
+      codes: codesByItem.get(item.id) ?? [],
+    }))
+    .filter(({ codes }) => codes.length > 0);
+
   const manualItems = items.filter(
     (item) => getDeliveryType(item.products) === "MANUAL",
   );
@@ -405,6 +412,67 @@ export default async function OrderReceipt({
               </div>
             </div>
           </section>
+
+          {deliveredContentItems.length > 0 && (
+            <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm sm:p-6">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-emerald-700">
+                  Fulfilled products
+                </p>
+                <h2 className="mt-2 text-xl font-black text-emerald-950">
+                  Delivered content
+                </h2>
+                <p className="mt-2 text-sm text-emerald-800">
+                  These are the codes and digital contents delivered with this
+                  order.
+                </p>
+              </div>
+
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                {deliveredContentItems.map(({ item, codes }) => (
+                  <article
+                    key={item.id}
+                    className="rounded-xl border border-emerald-200 bg-white p-4"
+                  >
+                    <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                      <div>
+                        <h3 className="font-black text-slate-900">
+                          {item.product_name}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {item.option_name ??
+                            (item.denomination
+                              ? String(item.denomination)
+                              : "Standard option")}
+                        </p>
+                      </div>
+                      <span className="w-fit rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
+                        DELIVERED
+                      </span>
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      {codes.map((entry, index) => (
+                        <div
+                          key={`${entry.code}-${index}`}
+                          className="rounded-lg bg-slate-950 p-3"
+                        >
+                          <p className="break-all font-mono text-sm font-bold text-cyan-300">
+                            {entry.code}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {entry.sold_at
+                              ? `Delivered ${formatDate(entry.sold_at)}`
+                              : "Delivery date unavailable"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
 
           {manualCodeItems.length > 0 && (
             <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 sm:p-6">
