@@ -366,13 +366,12 @@ export async function GET(request: NextRequest) {
         );
       }
       const invoice = await getUsdtInvoice(payment.gateway_invoice_id);
-      let digisellerCallback: string | null = null;
 
       // Reconcile paid invoices during browser polling as a fallback for a
       // delayed gateway webhook. Digiseller can then release the order as
       // soon as the gateway reports the payment as paid.
       if (invoice.status === "PAID" && !payment.digiseller_notified_at) {
-        digisellerCallback = await notifyDigiseller({
+        await notifyDigiseller({
           invoiceId: payment.invoice_id,
           amount: Number(payment.amount).toFixed(2),
           currency: payment.currency,
@@ -407,7 +406,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         invoice,
         returnUrl: payment.return_url,
-        digisellerCallback,
       });
     }
 
