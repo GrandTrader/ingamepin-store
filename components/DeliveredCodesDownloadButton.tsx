@@ -39,46 +39,12 @@ function downloadTextFile(fileName: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function createFileContent(
-  orderNumber: string,
-  items: DownloadableCodeItem[],
-) {
-  const lines = [
-    "iNGamePIN - Delivered Digital Codes",
-    `Order: ${orderNumber}`,
-    "",
-  ];
-
-  items.forEach((item, itemIndex) => {
-    lines.push(`Product: ${item.productName}`);
-
-    if (item.optionName) {
-      lines.push(`Option: ${item.optionName}`);
-    }
-
-    if (item.denomination !== null && item.denomination !== undefined) {
-      lines.push(`Denomination: ${item.denomination}`);
-    }
-
-    if (item.platform) {
-      lines.push(`Platform: ${item.platform}`);
-    }
-
-    if (item.region) {
-      lines.push(`Region: ${item.region}`);
-    }
-
-    item.codes.forEach((code, codeIndex) => {
-      lines.push(`Code ${codeIndex + 1}: ${code}`);
-    });
-
-    if (itemIndex < items.length - 1) {
-      lines.push("", "----------------------------------------", "");
-    }
-  });
-
-  lines.push("", "Keep these codes private and redeem them only on the official platform.");
-  return lines.join("\r\n");
+function createFileContent(items: DownloadableCodeItem[]) {
+  return items
+    .flatMap((item) => item.codes)
+    .map((code) => code.trim())
+    .filter(Boolean)
+    .join("\r\n");
 }
 
 export default function DeliveredCodesDownloadButton({
@@ -101,7 +67,7 @@ export default function DeliveredCodesDownloadButton({
   function downloadCodes() {
     downloadTextFile(
       `${safeFileName(orderNumber)}-delivered-codes.txt`,
-      createFileContent(orderNumber, deliveredItems),
+      createFileContent(deliveredItems),
     );
   }
 

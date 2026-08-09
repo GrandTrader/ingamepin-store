@@ -307,34 +307,11 @@ export default function CheckoutSuccessPage() {
   }
 
   function createDeliveredCodesFile(items: DeliveredItem[]) {
-    const orderNumber =
-      delivery?.order?.orderNumber ?? order?.orderNumber ?? order?.id ?? "Unknown";
-    const lines = [
-      "InGamePIN Digital Delivery",
-      `Order: ${orderNumber}`,
-      `Status: ${liveStatus}`,
-      "",
-    ];
-
-    items.forEach((item, itemIndex) => {
-      lines.push(`Product ${itemIndex + 1}: ${item.productName}`);
-
-      if (item.optionName) lines.push(`Option: ${item.optionName}`);
-      if (item.denomination !== null) {
-        lines.push(`Denomination: ${item.denomination}`);
-      }
-      if (item.platform) lines.push(`Platform: ${item.platform}`);
-      if (item.region) lines.push(`Region: ${item.region}`);
-
-      item.codes.forEach((code, codeIndex) => {
-        lines.push(`Code ${codeIndex + 1}: ${code}`);
-      });
-
-      lines.push("");
-    });
-
-    lines.push("Keep these codes private. Each code can normally be redeemed only once.");
-    return lines.join("\r\n");
+    return items
+      .flatMap((item) => item.codes)
+      .map((code) => code.trim())
+      .filter(Boolean)
+      .join("\r\n");
   }
 
   function downloadProductCodes(item: DeliveredItem) {
