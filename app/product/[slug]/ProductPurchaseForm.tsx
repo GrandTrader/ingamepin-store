@@ -606,7 +606,9 @@ export default function ProductPurchaseForm({
                       ? "Bulk quantity available"
                       : isUnavailable
                         ? t("outOfStock")
-                        : t("inStock")}
+                        : product.deliveryType === "AUTOMATIC"
+                          ? `${option.stockQuantity.toLocaleString("en-IN")} available`
+                          : t("inStock")}
                   </span>
                 </button>
               );

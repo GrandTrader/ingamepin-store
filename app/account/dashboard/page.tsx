@@ -116,6 +116,7 @@ export default async function CustomerDashboardPage() {
       ...code,
       productName: item?.product_name ?? "Digital product",
       optionName: item?.option_name ?? null,
+      denomination: item?.denomination ?? null,
       orderNumber: order?.order_number ?? "Order",
     };
   });
@@ -188,6 +189,7 @@ export default async function CustomerDashboardPage() {
                   items={codes.map((code) => ({
                     productName: code.productName,
                     optionName: code.optionName,
+                    denomination: code.denomination,
                     codes: [code.code],
                   }))}
                   label="Download All Codes (.txt)"
@@ -216,6 +218,7 @@ export default async function CustomerDashboardPage() {
                         items={[{
                           productName: code.productName,
                           optionName: code.optionName,
+                          denomination: code.denomination,
                           codes: [code.code],
                         }]}
                         label="Download Code (.txt)"

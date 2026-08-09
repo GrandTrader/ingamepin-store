@@ -21,7 +21,33 @@ function safeFileName(value: string) {
     .trim()
     .replace(/[^a-zA-Z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 80) || "delivered-codes";
+    .toLowerCase() || "delivered-codes";
+}
+
+export function buildDeliveredCodesFileName(
+  orderNumber: string,
+  items: DownloadableCodeItem[],
+) {
+  const itemParts = items
+    .filter((item) => item.codes.some((code) => code.trim()))
+    .map((item) => {
+      const product = safeFileName(item.productName).slice(0, 55);
+      const denomination = safeFileName(
+        item.denomination !== null && item.denomination !== undefined
+          ? String(item.denomination)
+          : item.optionName || item.platform || "standard",
+      ).slice(0, 35);
+      const quantity = item.codes.filter((code) => code.trim()).length;
+
+      return `${product}-${denomination}_x_${quantity}`;
+    });
+  const readableItems = (itemParts.join("__") || "delivered-codes").slice(
+    0,
+    150,
+  );
+  const readableOrder = safeFileName(orderNumber).slice(0, 60);
+
+  return `${readableItems}_${readableOrder}.txt`;
 }
 
 function downloadTextFile(fileName: string, content: string) {
@@ -66,7 +92,7 @@ export default function DeliveredCodesDownloadButton({
 
   function downloadCodes() {
     downloadTextFile(
-      `${safeFileName(orderNumber)}-delivered-codes.txt`,
+      buildDeliveredCodesFileName(orderNumber, deliveredItems),
       createFileContent(deliveredItems),
     );
   }

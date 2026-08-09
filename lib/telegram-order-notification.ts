@@ -2,6 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdminsByPush } from "@/lib/admin-push";
+import { notifySoldOutInstantOptions } from "@/lib/instant-stock-notification";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -21,6 +22,8 @@ function formatMoney(amount: unknown, currency: unknown) {
 }
 
 export async function notifyPaidOrderInTelegram(orderId: string) {
+  await notifySoldOutInstantOptions(orderId);
+
   const pushAdmin = createAdminClient();
   const pushOrder = await pushAdmin.from("orders").select("order_number, customer_name, total, currency").eq("id", orderId).maybeSingle();
   if (pushOrder.data) {

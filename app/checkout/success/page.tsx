@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { buildDeliveredCodesFileName } from "@/components/DeliveredCodesDownloadButton";
 
 type LatestOrder = {
   id?: string;
@@ -283,14 +284,6 @@ export default function CheckoutSuccessPage() {
     }, 1500);
   }
 
-  function safeFileName(value: string) {
-    return value
-      .trim()
-      .replace(/[^a-zA-Z0-9-_]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 80) || "delivered-codes";
-  }
-
   function downloadTextFile(fileName: string, content: string) {
     const blob = new Blob([content], {
       type: "text/plain;charset=utf-8",
@@ -317,8 +310,11 @@ export default function CheckoutSuccessPage() {
   function downloadProductCodes(item: DeliveredItem) {
     if (item.codes.length === 0) return;
 
+    const orderNumber =
+      delivery?.order?.orderNumber ?? order?.orderNumber ?? order?.id ?? "order";
+
     downloadTextFile(
-      `${safeFileName(item.productName)}-codes.txt`,
+      buildDeliveredCodesFileName(orderNumber, [item]),
       createDeliveredCodesFile([item]),
     );
   }
@@ -332,7 +328,7 @@ export default function CheckoutSuccessPage() {
       delivery?.order?.orderNumber ?? order?.orderNumber ?? order?.id ?? "order";
 
     downloadTextFile(
-      `${safeFileName(orderNumber)}-delivered-codes.txt`,
+      buildDeliveredCodesFileName(orderNumber, itemsWithCodes),
       createDeliveredCodesFile(itemsWithCodes),
     );
   }
