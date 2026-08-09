@@ -146,10 +146,13 @@ export default function WalletUsdtPayment({
             <button
               type="button"
               onClick={() => void checkPayment()}
-              className="w-full rounded-xl bg-emerald-400 px-5 py-4 font-black text-slate-950"
+              className="w-full rounded-xl border border-white/15 bg-slate-950 px-5 py-3 font-black text-white transition hover:border-cyan-300 hover:text-cyan-300"
             >
-              I have sent the payment
+              Check payment status
             </button>
+            <p className="text-center text-xs text-slate-500">
+              Payment status is checked automatically every few seconds.
+            </p>
           </div>
         )}
 
