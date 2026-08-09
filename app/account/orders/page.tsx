@@ -73,8 +73,13 @@ export default async function CustomerOrdersPage({
 
                   return (
                     <tr key={order.id}>
-                      <td className="px-5 py-5 font-bold text-cyan-700">
-                        {order.order_number}
+                      <td className="px-5 py-5 font-bold">
+                        <Link
+                          href={`/account/orders/${order.id}`}
+                          className="text-cyan-700 underline decoration-cyan-300 underline-offset-4 transition hover:text-cyan-600"
+                        >
+                          {order.order_number}
+                        </Link>
                       </td>
                       <td className="px-5 py-5">
                         {order.order_items.map((item) => (
