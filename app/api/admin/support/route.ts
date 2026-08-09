@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { cleanSupportText } from "@/lib/support-chat";
+import { notifySupportCustomer } from "@/lib/support-customer-notification";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const conversationResult = await admin
+      .from("support_conversations")
+      .select(
+        "id, customer_id, customer_name, customer_email, customer_last_read_at",
+      )
+      .eq("id", conversationId)
+      .maybeSingle();
+
+    if (conversationResult.error) {
+      throw new Error(conversationResult.error.message);
+    }
+
+    if (!conversationResult.data) {
+      return NextResponse.json(
+        { error: "Conversation was not found." },
+        { status: 404 },
+      );
+    }
+
+    const conversation = conversationResult.data;
+
     if (action === "close" || action === "open") {
       const status = action === "close" ? "CLOSED" : "OPEN";
       const result = await admin
@@ -112,6 +134,16 @@ export async function POST(request: NextRequest) {
         .eq("id", conversationId);
 
       if (result.error) throw new Error(result.error.message);
+
+      if (action === "close") {
+        await notifySupportCustomer({
+          customerId: conversation.customer_id,
+          customerName: conversation.customer_name,
+          customerEmail: conversation.customer_email,
+          event: "CHAT_CLOSED",
+        });
+      }
+
       return NextResponse.json({ success: true, status });
     }
 
@@ -123,20 +155,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const conversationCheck = await admin
-      .from("support_conversations")
-      .select("id")
-      .eq("id", conversationId)
-      .maybeSingle();
-
-    if (!conversationCheck.data) {
-      return NextResponse.json(
-        { error: "Conversation was not found." },
-        { status: 404 },
-      );
-    }
-
     const now = new Date().toISOString();
+    const lastReadAt = conversation.customer_last_read_at
+      ? new Date(conversation.customer_last_read_at).getTime()
+      : 0;
+    const customerIsAway = Date.now() - lastReadAt > 15_000;
     const result = await admin.from("support_messages").insert({
       conversation_id: conversationId,
       sender_type: "ADMIN",
@@ -156,6 +179,16 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", conversationId);
 
+    if (customerIsAway) {
+      await notifySupportCustomer({
+        customerId: conversation.customer_id,
+        customerName: conversation.customer_name,
+        customerEmail: conversation.customer_email,
+        event: "ADMIN_REPLY",
+        message: body,
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Admin support reply failed:", error);
@@ -165,4 +198,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
