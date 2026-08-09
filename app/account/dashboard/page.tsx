@@ -132,14 +132,14 @@ export default async function CustomerDashboardPage() {
     .join("");
 
   return (
-    <main className="bg-slate-100 text-slate-950">
-      <div className="mx-auto grid min-h-[75vh] max-w-7xl md:grid-cols-[230px_1fr]">
-        <aside className="border-b border-slate-200 bg-white p-4 md:border-b-0 md:border-r md:p-5">
+    <main className="min-w-0 max-w-full overflow-x-hidden bg-slate-100 text-slate-950">
+      <div className="mx-auto grid min-h-[75vh] w-full min-w-0 max-w-7xl md:grid-cols-[230px_minmax(0,1fr)]">
+        <aside className="min-w-0 max-w-full overflow-hidden border-b border-slate-200 bg-white p-4 md:border-b-0 md:border-r md:p-5">
           <div className="flex items-center gap-3 px-2 py-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500 font-black text-slate-950">{initials}</div>
             <div className="min-w-0"><p className="truncate font-black">{displayName}</p><p className="truncate text-xs text-slate-500">Customer</p></div>
           </div>
-          <nav className="mt-3 flex gap-2 overflow-x-auto md:grid md:overflow-visible">
+          <nav className="mt-3 flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 md:grid md:overflow-visible md:pb-0">
             <Link href="#overview" className="whitespace-nowrap rounded-xl bg-cyan-50 px-4 py-3 text-sm font-bold text-cyan-700">Overview</Link>
             <Link href="/account/orders" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">My orders</Link>
             <Link href="/account/codes" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">My codes</Link>
@@ -149,7 +149,7 @@ export default async function CustomerDashboardPage() {
           </nav>
         </aside>
 
-        <div className="min-w-0 p-5 sm:p-8">
+        <div className="min-w-0 max-w-full overflow-hidden p-4 sm:p-8">
           <section id="overview" className="scroll-mt-40">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div><p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-600">My account</p><h1 className="mt-2 text-3xl font-black">Hello, {displayName}</h1><p className="mt-2 text-slate-500">Manage purchases, codes, notifications and wallet balance.</p></div>
