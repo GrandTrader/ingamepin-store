@@ -15,6 +15,8 @@ type CartItem = {
   customerInformation?: Array<{ fieldId: string; label: string; value: string }>;
   unitPrice: number;
   totalPrice: number;
+  minQuantity?: number;
+  maxQuantity?: number;
   isBulkOrder?: boolean;
 };
 
@@ -81,35 +83,18 @@ export default function CartPage() {
     window.dispatchEvent(new Event("cartUpdated"));
   }
 
-  function decreaseQuantity(cartId: string) {
+  function updateQuantity(cartId: string, requestedQuantity: number) {
     const updatedCart = cartItems.map((item) => {
       if (item.cartId !== cartId) {
         return item;
       }
 
-      const newQuantity =
-        item.quantity > 1 ? item.quantity - 1 : 1;
-
-      return {
-        ...item,
-        quantity: newQuantity,
-        totalPrice: item.unitPrice * newQuantity,
-      };
-    });
-
-    saveCart(updatedCart);
-  }
-
-  function increaseQuantity(cartId: string) {
-    const updatedCart = cartItems.map((item) => {
-      if (item.cartId !== cartId) {
-        return item;
-      }
-
-      const newQuantity =
-        item.isBulkOrder || item.quantity < MAXIMUM_QUANTITY
-          ? item.quantity + 1
-          : item.quantity;
+      const minimum = item.minQuantity ?? 1;
+      const maximum = item.maxQuantity ?? MAXIMUM_QUANTITY;
+      const newQuantity = Math.min(
+        maximum,
+        Math.max(minimum, requestedQuantity),
+      );
 
       return {
         ...item,
@@ -304,32 +289,49 @@ export default function CartPage() {
                             <button
                               type="button"
                               onClick={() =>
-                                decreaseQuantity(
-                                  item.cartId
+                                updateQuantity(
+                                  item.cartId,
+                                  item.quantity - 1,
                                 )
                               }
-                              disabled={item.quantity <= 1}
+                              disabled={
+                                item.quantity <= (item.minQuantity ?? 1)
+                              }
                               aria-label="Decrease quantity"
                               className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-slate-950 text-xl font-bold transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               −
                             </button>
 
-                            <div className="flex h-10 min-w-16 items-center justify-center rounded-lg border border-white/15 bg-slate-950 px-4 font-black">
-                              {item.quantity}
-                            </div>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={item.minQuantity ?? 1}
+                              max={item.maxQuantity ?? MAXIMUM_QUANTITY}
+                              step={1}
+                              value={item.quantity}
+                              onFocus={(event) => event.currentTarget.select()}
+                              onChange={(event) => {
+                                const requested = event.currentTarget.valueAsNumber;
+                                if (Number.isSafeInteger(requested)) {
+                                  updateQuantity(item.cartId, requested);
+                                }
+                              }}
+                              aria-label={`Enter quantity for ${item.productName}`}
+                              className="h-10 w-20 rounded-lg border border-white/15 bg-slate-950 px-2 text-center font-black outline-none focus:border-cyan-400"
+                            />
 
                             <button
                               type="button"
                               onClick={() =>
-                                increaseQuantity(
-                                  item.cartId
+                                updateQuantity(
+                                  item.cartId,
+                                  item.quantity + 1,
                                 )
                               }
                               disabled={
-                                !item.isBulkOrder &&
                                 item.quantity >=
-                                MAXIMUM_QUANTITY
+                                (item.maxQuantity ?? MAXIMUM_QUANTITY)
                               }
                               aria-label="Increase quantity"
                               className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-slate-950 text-xl font-bold transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
@@ -338,11 +340,9 @@ export default function CartPage() {
                             </button>
                           </div>
 
-                          {!item.isBulkOrder && (
-                            <p className="mt-2 text-xs text-slate-500">
-                              Maximum 10 per product
-                            </p>
-                          )}
+                          <p className="mt-2 text-xs text-slate-500">
+                            Allowed: {item.minQuantity ?? 1}–{item.maxQuantity ?? MAXIMUM_QUANTITY}
+                          </p>
                         </div>
 
                         <div className="text-right">

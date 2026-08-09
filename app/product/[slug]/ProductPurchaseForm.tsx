@@ -195,12 +195,24 @@ export default function ProductPurchaseForm({
     valueMode === "CUSTOM" ||
     (isGamingTopup && fulfillmentMode === "PLAYER_ID_TOPUP");
 
-  const maximumQuantity = product.isBulkOrder
-    ? Number.MAX_SAFE_INTEGER
-    : requiresSingleQuantity
-      ? 1
-      : Math.min(selectedFixedOption?.maximumQuantity ?? product.maximumQuantity, selectedFixedOption?.stockQuantity ?? 0);
-  const minimumQuantity = requiresSingleQuantity ? 1 : selectedFixedOption?.minimumQuantity ?? product.minimumQuantity;
+  const configuredMaximumQuantity = Math.max(
+    1,
+    selectedFixedOption?.maximumQuantity ?? product.maximumQuantity,
+  );
+  const maximumQuantity = requiresSingleQuantity
+    ? 1
+    : product.isBulkOrder
+      ? configuredMaximumQuantity
+      : Math.min(
+          configuredMaximumQuantity,
+          selectedFixedOption?.stockQuantity ?? 0,
+        );
+  const minimumQuantity = requiresSingleQuantity
+    ? 1
+    : Math.max(
+        1,
+        selectedFixedOption?.minimumQuantity ?? product.minimumQuantity,
+      );
 
   const totalPrice = selectedUnitPrice * quantity;
   const customerDiscountAmount =
@@ -325,7 +337,7 @@ export default function ProductPurchaseForm({
     if (
       !Number.isSafeInteger(quantity) ||
       quantity < minimumQuantity ||
-      (!product.isBulkOrder && quantity > maximumQuantity)
+      quantity > maximumQuantity
     ) {
       return showError(`Allowed quantity for ${localizedProductName}: ${minimumQuantity}-${maximumQuantity}.`);
     }
@@ -400,7 +412,7 @@ export default function ProductPurchaseForm({
       unitPrice: selectedUnitPrice,
       totalPrice,
       quantity,
-      minQuantity: 1,
+      minQuantity: minimumQuantity,
       maxQuantity: maximumQuantity,
       isBulkOrder: Boolean(product.isBulkOrder),
       productType: product.productType,
@@ -712,34 +724,54 @@ export default function ProductPurchaseForm({
         <div className="mt-3 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setQuantity((current) => Math.max(1, current - 1))}
-            disabled={quantity <= 1}
+            onClick={() =>
+              setQuantity((current) =>
+                Math.max(minimumQuantity, current - 1),
+              )
+            }
+            disabled={quantity <= minimumQuantity}
             className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl disabled:opacity-40"
           >
             -
           </button>
-          <div className="flex h-11 min-w-20 items-center justify-center rounded-xl border border-white/10 bg-slate-950 font-black">
-            {quantity}
-          </div>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={minimumQuantity}
+            max={maximumQuantity}
+            step={1}
+            value={quantity}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event) => {
+              const requestedQuantity = event.currentTarget.valueAsNumber;
+              if (!Number.isSafeInteger(requestedQuantity)) return;
+              setQuantity(
+                Math.min(
+                  maximumQuantity,
+                  Math.max(minimumQuantity, requestedQuantity),
+                ),
+              );
+              clearMessage();
+            }}
+            aria-label="Enter quantity"
+            className="h-11 w-24 rounded-xl border border-white/10 bg-slate-950 px-3 text-center font-black outline-none focus:border-cyan-400"
+          />
           <button
             type="button"
             onClick={() =>
               setQuantity((current) =>
-                product.isBulkOrder
-                  ? current + 1
-                  : Math.min(maximumQuantity, current + 1),
+                Math.min(maximumQuantity, current + 1),
               )
             }
             disabled={
-              !product.isBulkOrder &&
-              (maximumQuantity < 1 || quantity >= maximumQuantity)
+              maximumQuantity < 1 || quantity >= maximumQuantity
             }
             className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl disabled:opacity-40"
           >
             +
           </button>
         </div>
-        {!product.isBulkOrder && <p className="mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">{language === "ru" ? `Допустимое количество: ${minimumQuantity}–${maximumQuantity}` : `Allowed quantity: ${minimumQuantity}-${maximumQuantity}`}</p>}
+        <p className="mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">{language === "ru" ? `Допустимое количество: ${minimumQuantity}–${maximumQuantity}` : `Allowed quantity: ${minimumQuantity}-${maximumQuantity}`}</p>
       </section>
 
       <section className="mt-5 rounded-2xl border border-white/10 bg-slate-950 p-4 sm:mt-7 sm:p-5">

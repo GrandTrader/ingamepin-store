@@ -86,9 +86,9 @@ export async function POST(request: NextRequest) {
         const option = options.find((entry) => entry.id === item.productOptionId);
         const product = (productsResult.data ?? []).find((entry) => entry.id === option?.product_id);
         const quantity = Number(item.quantity ?? 1);
-        const minimum = option?.minimum_quantity ?? product?.minimum_quantity;
-        const maximum = option?.maximum_quantity ?? product?.maximum_quantity;
-        if (product && !product.is_bulk_order && (!Number.isSafeInteger(quantity) || quantity < minimum || quantity > maximum)) {
+        const minimum = Number(option?.minimum_quantity ?? product?.minimum_quantity ?? 1);
+        const maximum = Number(option?.maximum_quantity ?? product?.maximum_quantity ?? 10);
+        if (product && (!Number.isSafeInteger(quantity) || quantity < minimum || quantity > maximum)) {
           return NextResponse.json({ error: `Allowed quantity for ${product.name}: ${minimum}-${maximum}.`, minimumQuantity: minimum, maximumQuantity: maximum }, { status: 400 });
         }
       }

@@ -466,9 +466,7 @@ export default function CheckoutPage() {
         }
 
         const minimum = item.minQuantity ?? 1;
-        const maximum = item.isBulkOrder
-          ? Number.MAX_SAFE_INTEGER
-          : item.maxQuantity ?? 10;
+        const maximum = item.maxQuantity ?? 10;
         const productName = item.name || item.title || "this product";
 
         if (requestedQuantity > maximum) {
@@ -1596,9 +1594,23 @@ export default function CheckoutPage() {
                             −
                           </button>
 
-                          <span className="flex h-9 min-w-10 items-center justify-center border-x border-white/10 px-2 text-sm font-black text-white">
-                            {item.quantity || 1}
-                          </span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={item.minQuantity ?? 1}
+                            max={item.maxQuantity ?? 10}
+                            step={1}
+                            value={item.quantity || 1}
+                            onFocus={(event) => event.currentTarget.select()}
+                            onChange={(event) => {
+                              const requested = event.currentTarget.valueAsNumber;
+                              if (Number.isSafeInteger(requested)) {
+                                updateQuantity(item.id, requested);
+                              }
+                            }}
+                            aria-label={`Enter quantity of ${item.name || item.title || "product"}`}
+                            className="h-9 w-16 border-x border-white/10 bg-slate-950 px-2 text-center text-sm font-black text-white outline-none focus:bg-slate-900"
+                          />
 
                           <button
                             type="button"
@@ -1609,7 +1621,6 @@ export default function CheckoutPage() {
                               )
                             }
                             disabled={
-                              !item.isBulkOrder &&
                               Number(item.quantity || 1) >=
                               (item.maxQuantity ?? 10)
                             }
@@ -1622,10 +1633,10 @@ export default function CheckoutPage() {
                           </button>
                         </div>
 
-                        {!item.isBulkOrder && <p className="mt-1.5 text-[10px] text-slate-600">
+                        <p className="mt-1.5 text-[10px] text-slate-600">
                           Limit: {item.minQuantity ?? 1}–
                           {item.maxQuantity ?? 10}
-                        </p>}
+                        </p>
                       </div>
 
                       <div className="text-right">
