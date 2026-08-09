@@ -134,7 +134,13 @@ export async function POST(request: NextRequest) {
         const quantity = Number(item.quantity ?? 1);
         const minimum = Number(option?.minimum_quantity ?? product?.minimum_quantity ?? 1);
         const maximum = Number(option?.maximum_quantity ?? product?.maximum_quantity ?? 10);
-        if (product && (!Number.isSafeInteger(quantity) || quantity < minimum || quantity > maximum)) {
+        if (
+          product &&
+          (!Number.isSafeInteger(quantity) ||
+            quantity < 1 ||
+            (!product.is_bulk_order &&
+              (quantity < minimum || quantity > maximum)))
+        ) {
           return NextResponse.json({ error: `Allowed quantity for ${product.name}: ${minimum}-${maximum}.`, minimumQuantity: minimum, maximumQuantity: maximum }, { status: 400 });
         }
       }

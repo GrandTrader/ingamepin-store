@@ -90,7 +90,9 @@ export default function CartPage() {
       }
 
       const minimum = item.minQuantity ?? 1;
-      const maximum = item.maxQuantity ?? MAXIMUM_QUANTITY;
+      const maximum = item.isBulkOrder
+        ? Number.MAX_SAFE_INTEGER
+        : item.maxQuantity ?? MAXIMUM_QUANTITY;
       const newQuantity = Math.min(
         maximum,
         Math.max(minimum, requestedQuantity),
@@ -307,7 +309,11 @@ export default function CartPage() {
                               type="number"
                               inputMode="numeric"
                               min={item.minQuantity ?? 1}
-                              max={item.maxQuantity ?? MAXIMUM_QUANTITY}
+                              max={
+                                item.isBulkOrder
+                                  ? undefined
+                                  : item.maxQuantity ?? MAXIMUM_QUANTITY
+                              }
                               step={1}
                               value={item.quantity}
                               onFocus={(event) => event.currentTarget.select()}
@@ -330,8 +336,9 @@ export default function CartPage() {
                                 )
                               }
                               disabled={
+                                !item.isBulkOrder &&
                                 item.quantity >=
-                                (item.maxQuantity ?? MAXIMUM_QUANTITY)
+                                  (item.maxQuantity ?? MAXIMUM_QUANTITY)
                               }
                               aria-label="Increase quantity"
                               className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-slate-950 text-xl font-bold transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
@@ -341,7 +348,9 @@ export default function CartPage() {
                           </div>
 
                           <p className="mt-2 text-xs text-slate-500">
-                            Allowed: {item.minQuantity ?? 1}–{item.maxQuantity ?? MAXIMUM_QUANTITY}
+                            {item.isBulkOrder
+                              ? "No quantity limit"
+                              : `Allowed: ${item.minQuantity ?? 1}–${item.maxQuantity ?? MAXIMUM_QUANTITY}`}
                           </p>
                         </div>
 

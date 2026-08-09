@@ -23,8 +23,8 @@ type ReceiptPageProps = {
 };
 
 type ProductRelation =
-  | { delivery_type: "MANUAL" | "AUTOMATIC" }
-  | { delivery_type: "MANUAL" | "AUTOMATIC" }[]
+  | { delivery_type: "MANUAL" | "AUTOMATIC"; is_bulk_order: boolean }
+  | { delivery_type: "MANUAL" | "AUTOMATIC"; is_bulk_order: boolean }[]
   | null;
 
 type OrderItem = {
@@ -56,6 +56,12 @@ function getDeliveryType(products: ProductRelation) {
   return Array.isArray(products)
     ? products[0]?.delivery_type
     : products?.delivery_type;
+}
+
+function isBulkProduct(products: ProductRelation) {
+  return Array.isArray(products)
+    ? Boolean(products[0]?.is_bulk_order)
+    : Boolean(products?.is_bulk_order);
 }
 
 function formatMoney(amount: number | string, currency: string) {
@@ -162,7 +168,8 @@ export default async function OrderReceipt({
             unit_price,
             total_price,
             products (
-              delivery_type
+              delivery_type,
+              is_bulk_order
             )
           `,
         )
@@ -539,6 +546,7 @@ export default async function OrderReceipt({
                             ? String(item.denomination)
                             : null),
                         quantity: item.quantity,
+                        is_bulk_order: isBulkProduct(item.products),
                       }}
                     />
                   );

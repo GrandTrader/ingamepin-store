@@ -86,7 +86,7 @@ type StoredCartItem = {
   totalPrice: number;
   quantity: number;
   minQuantity: number;
-  maxQuantity: number;
+  maxQuantity?: number;
   isBulkOrder?: boolean;
   productType: string;
   deliveryType: string;
@@ -202,13 +202,15 @@ export default function ProductPurchaseForm({
   const maximumQuantity = requiresSingleQuantity
     ? 1
     : product.isBulkOrder
-      ? configuredMaximumQuantity
+      ? Number.MAX_SAFE_INTEGER
       : Math.min(
           configuredMaximumQuantity,
           selectedFixedOption?.stockQuantity ?? 0,
         );
   const minimumQuantity = requiresSingleQuantity
     ? 1
+    : product.isBulkOrder
+      ? 1
     : Math.max(
         1,
         selectedFixedOption?.minimumQuantity ?? product.minimumQuantity,
@@ -337,7 +339,7 @@ export default function ProductPurchaseForm({
     if (
       !Number.isSafeInteger(quantity) ||
       quantity < minimumQuantity ||
-      quantity > maximumQuantity
+      (!product.isBulkOrder && quantity > maximumQuantity)
     ) {
       return showError(`Allowed quantity for ${localizedProductName}: ${minimumQuantity}-${maximumQuantity}.`);
     }
@@ -413,7 +415,7 @@ export default function ProductPurchaseForm({
       totalPrice,
       quantity,
       minQuantity: minimumQuantity,
-      maxQuantity: maximumQuantity,
+      maxQuantity: product.isBulkOrder ? undefined : maximumQuantity,
       isBulkOrder: Boolean(product.isBulkOrder),
       productType: product.productType,
       deliveryType:
@@ -738,7 +740,7 @@ export default function ProductPurchaseForm({
             type="number"
             inputMode="numeric"
             min={minimumQuantity}
-            max={maximumQuantity}
+            max={product.isBulkOrder ? undefined : maximumQuantity}
             step={1}
             value={quantity}
             onFocus={(event) => event.currentTarget.select()}
@@ -746,10 +748,12 @@ export default function ProductPurchaseForm({
               const requestedQuantity = event.currentTarget.valueAsNumber;
               if (!Number.isSafeInteger(requestedQuantity)) return;
               setQuantity(
-                Math.min(
-                  maximumQuantity,
-                  Math.max(minimumQuantity, requestedQuantity),
-                ),
+                product.isBulkOrder
+                  ? Math.max(1, requestedQuantity)
+                  : Math.min(
+                      maximumQuantity,
+                      Math.max(minimumQuantity, requestedQuantity),
+                    ),
               );
               clearMessage();
             }}
@@ -760,18 +764,29 @@ export default function ProductPurchaseForm({
             type="button"
             onClick={() =>
               setQuantity((current) =>
-                Math.min(maximumQuantity, current + 1),
+                product.isBulkOrder
+                  ? current + 1
+                  : Math.min(maximumQuantity, current + 1),
               )
             }
             disabled={
-              maximumQuantity < 1 || quantity >= maximumQuantity
+              !product.isBulkOrder &&
+              (maximumQuantity < 1 || quantity >= maximumQuantity)
             }
             className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl disabled:opacity-40"
           >
             +
           </button>
         </div>
-        <p className="mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">{language === "ru" ? `Допустимое количество: ${minimumQuantity}–${maximumQuantity}` : `Allowed quantity: ${minimumQuantity}-${maximumQuantity}`}</p>
+        <p className="mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">
+          {product.isBulkOrder
+            ? language === "ru"
+              ? "Без ограничения количества"
+              : "No quantity limit for this bulk product"
+            : language === "ru"
+              ? `Допустимое количество: ${minimumQuantity}–${maximumQuantity}`
+              : `Allowed quantity: ${minimumQuantity}-${maximumQuantity}`}
+        </p>
       </section>
 
       <section className="mt-5 rounded-2xl border border-white/10 bg-slate-950 p-4 sm:mt-7 sm:p-5">

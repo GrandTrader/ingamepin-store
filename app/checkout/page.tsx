@@ -125,7 +125,9 @@ function normalizeCartItem(
     price: unitPrice,
     quantity,
     minQuantity: item.minQuantity ?? 1,
-    maxQuantity: item.maxQuantity ?? 10,
+    maxQuantity: Boolean(item.isBulkOrder)
+      ? undefined
+      : item.maxQuantity ?? 10,
     isBulkOrder: Boolean(item.isBulkOrder),
     productType: item.productType || "digital",
     deliveryType: item.deliveryType || "digital",
@@ -511,10 +513,12 @@ export default function CheckoutPage() {
         }
 
         const minimum = item.minQuantity ?? 1;
-        const maximum = item.maxQuantity ?? 10;
+        const maximum = item.isBulkOrder
+          ? Number.MAX_SAFE_INTEGER
+          : item.maxQuantity ?? 10;
         const productName = item.name || item.title || "this product";
 
-        if (requestedQuantity > maximum) {
+        if (!item.isBulkOrder && requestedQuantity > maximum) {
           quantityMessage = `Maximum allowed quantity for ${productName} is ${maximum}.`;
         }
 
@@ -1643,7 +1647,11 @@ export default function CheckoutPage() {
                             type="number"
                             inputMode="numeric"
                             min={item.minQuantity ?? 1}
-                            max={item.maxQuantity ?? 10}
+                            max={
+                              item.isBulkOrder
+                                ? undefined
+                                : item.maxQuantity ?? 10
+                            }
                             step={1}
                             value={item.quantity || 1}
                             onFocus={(event) => event.currentTarget.select()}
@@ -1666,8 +1674,9 @@ export default function CheckoutPage() {
                               )
                             }
                             disabled={
+                              !item.isBulkOrder &&
                               Number(item.quantity || 1) >=
-                              (item.maxQuantity ?? 10)
+                                (item.maxQuantity ?? 10)
                             }
                             aria-label={`Increase quantity of ${
                               item.name || item.title || "product"
@@ -1679,8 +1688,9 @@ export default function CheckoutPage() {
                         </div>
 
                         <p className="mt-1.5 text-[10px] text-slate-600">
-                          Limit: {item.minQuantity ?? 1}–
-                          {item.maxQuantity ?? 10}
+                          {item.isBulkOrder
+                            ? "No quantity limit"
+                            : `Limit: ${item.minQuantity ?? 1}–${item.maxQuantity ?? 10}`}
                         </p>
                       </div>
 
