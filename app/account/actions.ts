@@ -7,6 +7,7 @@ import {
   getCountryCode,
   recordCustomerLogin,
 } from "@/lib/customer-login-activity";
+import { countryCallingCodes } from "@/lib/countryCallingCodes";
 import { createClient } from "@/lib/supabase/server";
 
 const PENDING_SIGNUP_COOKIE = "ingamepin_pending_signup";
@@ -86,7 +87,9 @@ export async function customerLogin(formData: FormData) {
 export async function customerRegister(formData: FormData) {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const phone = String(formData.get("phone") ?? "").trim();
+  const countryCode = String(formData.get("country_code") ?? "").trim();
+  const localPhone = String(formData.get("phone") ?? "").trim();
+  const phone = localPhone ? `${countryCode} ${localPhone}` : "";
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirm_password") ?? "");
   const captchaToken = String(formData.get("captcha_token") ?? "").trim();
@@ -113,6 +116,21 @@ export async function customerRegister(formData: FormData) {
 
   if (password !== confirmPassword) {
     accountRedirect("/account/register", "error", "Passwords do not match.");
+  }
+
+  const validCountryCode = countryCallingCodes.some(
+    ([, callingCode]) => callingCode === countryCode,
+  );
+
+  if (
+    localPhone &&
+    (!validCountryCode || !/^[0-9 ()-]{6,18}$/.test(localPhone))
+  ) {
+    accountRedirect(
+      "/account/register",
+      "error",
+      "Select a country and enter a valid mobile number.",
+    );
   }
 
   const supabase = await createClient();

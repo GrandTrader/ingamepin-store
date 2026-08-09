@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import OtpVerificationForm from "@/components/OtpVerificationForm";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";
+import { countryCallingCodes } from "@/lib/countryCallingCodes";
 
 import { customerRegister } from "../actions";
 
@@ -116,15 +117,39 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
                   className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
                 />
               </label>
-              <label className="block text-sm font-bold sm:col-span-2">
-                Mobile number
-                <input
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
-                />
-              </label>
+              <fieldset className="sm:col-span-2">
+                <legend className="text-sm font-bold">Mobile number</legend>
+                <div className="mt-2 grid grid-cols-[minmax(130px,0.8fr)_minmax(0,1.2fr)] gap-3">
+                  <label className="sr-only" htmlFor="registration-country-code">
+                    Country code
+                  </label>
+                  <select
+                    id="registration-country-code"
+                    name="country_code"
+                    defaultValue="+91"
+                    aria-label="Country calling code"
+                    className="min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 outline-none focus:border-cyan-500"
+                  >
+                    {countryCallingCodes.map(([country, code]) => (
+                      <option key={`${country}-${code}`} value={code}>
+                        {country} ({code})
+                      </option>
+                    ))}
+                  </select>
+                  <label className="sr-only" htmlFor="registration-phone">
+                    Phone number
+                  </label>
+                  <input
+                    id="registration-phone"
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel-national"
+                    placeholder="98765 43210"
+                    className="min-w-0 rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </fieldset>
               <label className="block text-sm font-bold">
                 Password
                 <input
@@ -167,4 +192,3 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
     </main>
   );
 }
-
