@@ -26,6 +26,7 @@ type InvoiceBuilderProps = {
   categories: Category[];
   products: Product[];
   options: ProductOption[];
+  countryNames: string[];
   defaultInvoiceNumber: string;
   defaultInvoiceDate: string;
 };
@@ -36,6 +37,7 @@ type InvoiceData = {
   customerName: string;
   customerEmail: string;
   customerCountry: string;
+  customerTaxpayerId: string;
   customerAddress: string;
   categoryName: string;
   productName: string;
@@ -86,6 +88,7 @@ export default function InvoiceBuilder({
   categories,
   products,
   options,
+  countryNames,
   defaultInvoiceNumber,
   defaultInvoiceDate,
 }: InvoiceBuilderProps) {
@@ -130,6 +133,9 @@ export default function InvoiceBuilder({
       customerName: String(formData.get("customer_name") ?? "").trim(),
       customerEmail: String(formData.get("customer_email") ?? "").trim(),
       customerCountry: String(formData.get("customer_country") ?? "").trim(),
+      customerTaxpayerId: String(
+        formData.get("customer_taxpayer_id") ?? "",
+      ).trim(),
       customerAddress: String(formData.get("customer_address") ?? "").trim(),
       categoryName: selectedCategory?.name ?? "Uncategorized",
       productName: selectedProduct?.name ?? "Selected product",
@@ -228,7 +234,32 @@ export default function InvoiceBuilder({
               </label>
               <label className="block">
                 <span className="text-sm font-bold">Country</span>
-                <input name="customer_country" required className={inputClass} />
+                <select
+                  name="customer_country"
+                  required
+                  defaultValue=""
+                  className={inputClass}
+                >
+                  <option value="" disabled>
+                    Select country
+                  </option>
+                  {countryNames.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm font-bold">
+                  Taxpayer Identification Number
+                </span>
+                <input
+                  name="customer_taxpayer_id"
+                  maxLength={100}
+                  placeholder="Optional tax ID / TIN"
+                  className={inputClass}
+                />
               </label>
               <label className="block sm:col-span-2">
                 <span className="text-sm font-bold">Billing address</span>
@@ -441,6 +472,11 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
             </p>
             <p className="mt-3 text-lg font-black">{invoice.customerName}</p>
             <p className="mt-1 text-sm text-slate-600">{invoice.customerEmail}</p>
+            {invoice.customerTaxpayerId && (
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                Taxpayer ID: {invoice.customerTaxpayerId}
+              </p>
+            )}
             <p className="mt-1 whitespace-pre-line text-sm text-slate-600">
               {[invoice.customerAddress, invoice.customerCountry]
                 .filter(Boolean)

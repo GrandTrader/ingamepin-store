@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import countries from "i18n-iso-countries";
+import englishCountries from "i18n-iso-countries/langs/en.json";
 
 import AdminSidebar from "../AdminSidebar";
 import InvoiceBuilder from "./InvoiceBuilder";
@@ -6,6 +8,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+countries.registerLocale(englishCountries);
 
 type CategoryRow = {
   id: string;
@@ -108,6 +112,9 @@ export default async function InvoicesPage() {
   const categories = (categoryResult.data ?? []) as CategoryRow[];
   const products = (productResult.data ?? []) as ProductRow[];
   const options = (optionResult.data ?? []) as ProductOptionRow[];
+  const countryNames = Object.values(
+    countries.getNames("en", { select: "official" }),
+  ).sort((first, second) => first.localeCompare(second, "en"));
   const now = new Date();
 
   return (
@@ -122,6 +129,7 @@ export default async function InvoicesPage() {
             categories={categories}
             products={products}
             options={options}
+            countryNames={countryNames}
             defaultInvoiceNumber={createInvoiceNumber(now)}
             defaultInvoiceDate={createDateValue(now)}
           />
