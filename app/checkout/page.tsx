@@ -339,7 +339,10 @@ export default function CheckoutPage() {
         const response = await fetch("/api/customer-discounts", { cache: "no-store" });
         const result = (await response.json()) as {
           authenticated?: boolean;
+          fullName?: string | null;
           email?: string | null;
+          countryCode?: string | null;
+          phone?: string | null;
           discounts?: Record<string, number>;
         };
 
@@ -350,10 +353,17 @@ export default function CheckoutPage() {
             discounts: result.discounts ?? {},
             loading: false,
           });
-          if (result.email) {
-            setForm((current) =>
-              current.email ? current : { ...current, email: result.email ?? "" },
-            );
+          if (result.authenticated) {
+            setForm((current) => ({
+              ...current,
+              fullName: current.fullName || result.fullName || "",
+              email: current.email || result.email || "",
+              countryCode:
+                current.phone || !result.phone
+                  ? current.countryCode
+                  : result.countryCode || current.countryCode,
+              phone: current.phone || result.phone || "",
+            }));
           }
         }
       } catch {
