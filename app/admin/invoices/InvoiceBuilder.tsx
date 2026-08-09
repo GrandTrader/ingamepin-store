@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type Category = {
@@ -31,7 +32,7 @@ type InvoiceBuilderProps = {
   defaultInvoiceDate: string;
 };
 
-type InvoiceData = {
+export type InvoiceData = {
   invoiceNumber: string;
   invoiceDate: string;
   customerName: string;
@@ -104,6 +105,9 @@ export default function InvoiceBuilder({
     [options, productId],
   );
   const [preview, setPreview] = useState<InvoiceData | null>(null);
+  const [savedInvoiceId, setSavedInvoiceId] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   function handleCategoryChange(value: string) {
     setCategoryId(value);
@@ -127,6 +131,8 @@ export default function InvoiceBuilder({
       (option) => option.id === String(formData.get("product_option_id") ?? ""),
     );
 
+    setSavedInvoiceId("");
+    setSaveError("");
     setPreview({
       invoiceNumber: String(formData.get("invoice_number") ?? "").trim(),
       invoiceDate: String(formData.get("invoice_date") ?? ""),
@@ -149,17 +155,65 @@ export default function InvoiceBuilder({
     });
   }
 
+  async function saveAndPrint() {
+    if (!preview || isSaving) return;
+
+    setIsSaving(true);
+    setSaveError("");
+
+    try {
+      let invoiceId = savedInvoiceId;
+
+      if (!invoiceId) {
+        const response = await fetch("/api/admin/invoices", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(preview),
+        });
+        const result = (await response.json()) as {
+          id?: string;
+          error?: string;
+        };
+
+        if (!response.ok || !result.id) {
+          throw new Error(result.error ?? "Unable to save the invoice.");
+        }
+
+        invoiceId = result.id;
+        setSavedInvoiceId(invoiceId);
+      }
+
+      window.print();
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "Unable to save the invoice.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <>
       <div className="print:hidden">
-        <header>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-            Direct sales
-          </p>
-          <h1 className="mt-2 text-3xl font-black">Create invoice</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Select an existing product and enter the agreed USDT price manually.
-          </p>
+        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+              Direct sales
+            </p>
+            <h1 className="mt-2 text-3xl font-black">Create invoice</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Select an existing product and enter the agreed USDT price manually.
+            </p>
+          </div>
+          <Link
+            href="/admin/invoices/history"
+            className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-700 transition hover:border-blue-300 hover:text-blue-600"
+          >
+            Invoice history
+          </Link>
         </header>
 
         <form
@@ -397,15 +451,27 @@ export default function InvoiceBuilder({
               <div>
                 <h2 className="text-xl font-black text-blue-950">Invoice ready</h2>
                 <p className="mt-1 text-sm text-blue-700">
-                  Review the preview below, then print or save it as PDF.
+                  Save the invoice permanently, then print or download its PDF.
                 </p>
+                {savedInvoiceId && (
+                  <Link
+                    href={`/admin/invoices/${savedInvoiceId}`}
+                    className="mt-2 inline-block text-sm font-black text-emerald-700 underline"
+                  >
+                    Saved successfully — open invoice record
+                  </Link>
+                )}
+                {saveError && (
+                  <p className="mt-2 text-sm font-bold text-red-600">{saveError}</p>
+                )}
               </div>
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={() => void saveAndPrint()}
+                disabled={isSaving}
                 className="rounded-xl bg-slate-950 px-6 py-3 font-black text-white hover:bg-blue-600"
               >
-                Print / Save PDF
+                {isSaving ? "Saving…" : "Save Invoice & Print / PDF"}
               </button>
             </div>
           </section>
@@ -417,7 +483,7 @@ export default function InvoiceBuilder({
   );
 }
 
-function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
+export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
   const total = invoice.quantity * invoice.unitPrice;
 
   return (
