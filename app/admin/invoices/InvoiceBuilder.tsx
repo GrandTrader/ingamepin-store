@@ -13,9 +13,19 @@ type Product = {
   category_id: string;
 };
 
+type ProductOption = {
+  id: string;
+  product_id: string;
+  option_name: string;
+  denomination: number | string | null;
+  denomination_currency: string | null;
+  sort_order: number;
+};
+
 type InvoiceBuilderProps = {
   categories: Category[];
   products: Product[];
+  options: ProductOption[];
   defaultInvoiceNumber: string;
   defaultInvoiceDate: string;
 };
@@ -29,6 +39,7 @@ type InvoiceData = {
   customerAddress: string;
   categoryName: string;
   productName: string;
+  optionName: string;
   quantity: number;
   unitPrice: number;
   paymentStatus: string;
@@ -57,9 +68,24 @@ function formatDate(value: string) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+function formatOption(option: ProductOption) {
+  const amount =
+    option.denomination === null
+      ? ""
+      : Number(option.denomination).toLocaleString("en-US");
+  const denomination = [amount, option.denomination_currency]
+    .filter(Boolean)
+    .join(" ");
+
+  return denomination
+    ? `${option.option_name} — ${denomination}`
+    : option.option_name;
+}
+
 export default function InvoiceBuilder({
   categories,
   products,
+  options,
   defaultInvoiceNumber,
   defaultInvoiceDate,
 }: InvoiceBuilderProps) {
@@ -69,11 +95,22 @@ export default function InvoiceBuilder({
     [categoryId, products],
   );
   const [productId, setProductId] = useState("");
+  const [optionId, setOptionId] = useState("");
+  const availableOptions = useMemo(
+    () => options.filter((option) => option.product_id === productId),
+    [options, productId],
+  );
   const [preview, setPreview] = useState<InvoiceData | null>(null);
 
   function handleCategoryChange(value: string) {
     setCategoryId(value);
     setProductId("");
+    setOptionId("");
+  }
+
+  function handleProductChange(value: string) {
+    setProductId(value);
+    setOptionId("");
   }
 
   function generatePreview(formData: FormData) {
@@ -82,6 +119,9 @@ export default function InvoiceBuilder({
     );
     const selectedProduct = products.find(
       (product) => product.id === String(formData.get("product_id") ?? ""),
+    );
+    const selectedOption = options.find(
+      (option) => option.id === String(formData.get("product_option_id") ?? ""),
     );
 
     setPreview({
@@ -93,6 +133,7 @@ export default function InvoiceBuilder({
       customerAddress: String(formData.get("customer_address") ?? "").trim(),
       categoryName: selectedCategory?.name ?? "Uncategorized",
       productName: selectedProduct?.name ?? "Selected product",
+      optionName: selectedOption ? formatOption(selectedOption) : "Standard option",
       quantity: Math.max(1, Number(formData.get("quantity") ?? 1)),
       unitPrice: Math.max(0, Number(formData.get("unit_price") ?? 0)),
       paymentStatus: String(formData.get("payment_status") ?? "PAID"),
@@ -206,7 +247,7 @@ export default function InvoiceBuilder({
               The product comes from your store, but this invoice price is entered manually.
             </p>
 
-            <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
               <label className="block">
                 <span className="text-sm font-bold">Category</span>
                 <select
@@ -230,13 +271,38 @@ export default function InvoiceBuilder({
                   name="product_id"
                   required
                   value={productId}
-                  onChange={(event) => setProductId(event.target.value)}
+                  onChange={(event) => handleProductChange(event.target.value)}
                   className={inputClass}
                 >
                   <option value="">Select product</option>
                   {availableProducts.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-bold">Denomination / option</span>
+                <select
+                  name="product_option_id"
+                  required
+                  value={optionId}
+                  onChange={(event) => setOptionId(event.target.value)}
+                  disabled={!productId || availableOptions.length === 0}
+                  className={inputClass}
+                >
+                  <option value="">
+                    {!productId
+                      ? "Select product first"
+                      : availableOptions.length === 0
+                        ? "No denomination available"
+                        : "Select denomination"}
+                  </option>
+                  {availableOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {formatOption(option)}
                     </option>
                   ))}
                 </select>
@@ -281,7 +347,12 @@ export default function InvoiceBuilder({
 
             <button
               type="submit"
-              disabled={categories.length === 0 || availableProducts.length === 0}
+              disabled={
+                categories.length === 0 ||
+                availableProducts.length === 0 ||
+                !productId ||
+                availableOptions.length === 0
+              }
               className="mt-6 w-full rounded-xl bg-blue-600 px-6 py-3 font-black text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
             >
               Preview Invoice
@@ -392,7 +463,7 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-100 text-slate-600">
               <tr>
-                <th className="px-4 py-3">Product</th>
+                <th className="px-4 py-3">Product / denomination</th>
                 <th className="hidden px-4 py-3 sm:table-cell">Category</th>
                 <th className="px-4 py-3 text-center">Qty</th>
                 <th className="px-4 py-3 text-right">Rate</th>
@@ -401,7 +472,12 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
             </thead>
             <tbody>
               <tr className="border-t border-slate-200">
-                <td className="px-4 py-5 font-bold">{invoice.productName}</td>
+                <td className="px-4 py-5">
+                  <p className="font-bold">{invoice.productName}</p>
+                  <p className="mt-1 text-xs font-semibold text-blue-600">
+                    {invoice.optionName}
+                  </p>
+                </td>
                 <td className="hidden px-4 py-5 text-slate-600 sm:table-cell">
                   {invoice.categoryName}
                 </td>

@@ -18,6 +18,15 @@ type ProductRow = {
   category_id: string;
 };
 
+type ProductOptionRow = {
+  id: string;
+  product_id: string;
+  option_name: string;
+  denomination: number | string | null;
+  denomination_currency: string | null;
+  sort_order: number;
+};
+
 function createInvoiceNumber(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -57,7 +66,7 @@ export default async function InvoicesPage() {
   }
 
   const admin = createAdminClient();
-  const [categoryResult, productResult] = await Promise.all([
+  const [categoryResult, productResult, optionResult] = await Promise.all([
     admin
       .from("categories")
       .select("id, name")
@@ -69,6 +78,13 @@ export default async function InvoicesPage() {
       .select("id, name, category_id")
       .eq("status", "ACTIVE")
       .order("name"),
+    admin
+      .from("product_options")
+      .select(
+        "id, product_id, option_name, denomination, denomination_currency, sort_order",
+      )
+      .eq("is_active", true)
+      .order("sort_order"),
   ]);
 
   if (categoryResult.error) {
@@ -83,8 +99,15 @@ export default async function InvoicesPage() {
     );
   }
 
+  if (optionResult.error) {
+    throw new Error(
+      `Unable to load invoice denominations: ${optionResult.error.message}`,
+    );
+  }
+
   const categories = (categoryResult.data ?? []) as CategoryRow[];
   const products = (productResult.data ?? []) as ProductRow[];
+  const options = (optionResult.data ?? []) as ProductOptionRow[];
   const now = new Date();
 
   return (
@@ -98,6 +121,7 @@ export default async function InvoicesPage() {
           <InvoiceBuilder
             categories={categories}
             products={products}
+            options={options}
             defaultInvoiceNumber={createInvoiceNumber(now)}
             defaultInvoiceDate={createDateValue(now)}
           />
