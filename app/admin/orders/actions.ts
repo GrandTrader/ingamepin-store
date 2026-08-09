@@ -58,7 +58,7 @@ async function finalizeOrderWhenAllCodesSent(orderId: string) {
     if (item.fulfillment_mode === "PLAYER_ID_TOPUP") return { completed: false, error: null };
     const count = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("order_item_id", item.id).eq("status", "SOLD");
     if (count.error) return { completed: false, error: count.error.message };
-    if ((count.count ?? 0) < item.quantity) return { completed: false, error: null };
+    if ((count.count ?? 0) !== item.quantity) return { completed: false, error: null };
   }
   const update = await admin.from("orders").update({ status: "DELIVERED", delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", orderId).in("status", ["PAID", "PROCESSING"]);
   return { completed: !update.error, error: update.error?.message ?? null };
@@ -152,7 +152,27 @@ export async function sendManualOrderItem(formData: FormData) {
   const isBulkOrder = Array.isArray(productRelation)
     ? Boolean(productRelation[0]?.is_bulk_order)
     : Boolean(productRelation?.is_bulk_order);
-  if (!isBulkOrder && codes.length !== item.quantity) ordersRedirect("error", `${item.product_name} requires exactly ${item.quantity} code(s).`, orderId);
+  const deliveredResult = await admin
+    .from("gift_card_codes")
+    .select("id", { count: "exact", head: true })
+    .eq("order_item_id", item.id)
+    .eq("status", "SOLD");
+  if (deliveredResult.error) ordersRedirect("error", deliveredResult.error.message, orderId);
+  const deliveredCount = deliveredResult.count ?? 0;
+  const remainingQuantity = item.quantity - deliveredCount;
+  if (remainingQuantity <= 0) {
+    ordersRedirect("error", `${item.product_name} already has all ${item.quantity} ordered code(s).`, orderId);
+  }
+  if (codes.length > remainingQuantity) {
+    ordersRedirect(
+      "error",
+      `Only ${remainingQuantity} code(s) remain for ${item.product_name}. You cannot deliver more than the ordered quantity of ${item.quantity}.`,
+      orderId,
+    );
+  }
+  if (!isBulkOrder && codes.length !== remainingQuantity) {
+    ordersRedirect("error", `${item.product_name} requires exactly ${remainingQuantity} remaining code(s).`, orderId);
+  }
   const existing = await admin.from("gift_card_codes").select("id, code, product_id, product_option_id, status").in("code", codes);
   if (existing.error) ordersRedirect("error", existing.error.message, orderId);
   for (const code of codes) {
@@ -174,7 +194,7 @@ export async function sendManualOrderItem(formData: FormData) {
 export async function completeManualOrderItem(formData: FormData) {
   await requireAdministrator(); const orderId = String(formData.get("order_id") ?? ""); const itemId = String(formData.get("item_id") ?? ""); const admin = createAdminClient();
   const itemResult = await admin.from("order_items").select("id, quantity, option_name, product_name").eq("id", itemId).eq("order_id", orderId).maybeSingle(); if (!itemResult.data) ordersRedirect("error", "Order item was not found.", orderId);
-  const sent = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("order_item_id", itemId).eq("status", "SOLD"); if ((sent.count ?? 0) < itemResult.data.quantity) ordersRedirect("error", "Send all required codes before completing this denomination.", orderId);
+  const sent = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("order_item_id", itemId).eq("status", "SOLD"); if ((sent.count ?? 0) !== itemResult.data.quantity) ordersRedirect("error", "The number of delivered codes must exactly match the ordered quantity.", orderId);
   const items = await admin.from("order_items").select("id, quantity, fulfillment_mode").eq("order_id", orderId);
   if (items.error) ordersRedirect("error", items.error.message, orderId);
   let allComplete = (items.data ?? []).length > 0;
@@ -182,7 +202,7 @@ export async function completeManualOrderItem(formData: FormData) {
     if (item.fulfillment_mode === "PLAYER_ID_TOPUP") { allComplete = false; continue; }
     const count = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("order_item_id", item.id).eq("status", "SOLD");
     if (count.error) ordersRedirect("error", count.error.message, orderId);
-    if ((count.count ?? 0) < item.quantity) allComplete = false;
+    if ((count.count ?? 0) !== item.quantity) allComplete = false;
   }
   if (allComplete) {
     const completed = await admin.from("orders").update({ status: "DELIVERED", delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", orderId).in("status", ["PAID", "PROCESSING"]);

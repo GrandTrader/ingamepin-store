@@ -247,7 +247,7 @@ export default async function OrderReceipt({
     manualCodeItems.length > 0 &&
     manualCodeItems.every(
       (item) =>
-        (codesByItem.get(item.id)?.length ?? 0) >= item.quantity,
+        (codesByItem.get(item.id)?.length ?? 0) === item.quantity,
     );
   const canDeliver =
     order.status === "PAID" || order.status === "PROCESSING";
@@ -546,6 +546,7 @@ export default async function OrderReceipt({
                             ? String(item.denomination)
                             : null),
                         quantity: item.quantity,
+                        delivered_count: deliveredCodes.length,
                         is_bulk_order: isBulkProduct(item.products),
                       }}
                     />
