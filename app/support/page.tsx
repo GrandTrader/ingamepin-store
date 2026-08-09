@@ -11,7 +11,7 @@ export default function SupportPage() {
           </p>
 
           <h1 className="mt-3 text-5xl font-black">
-            We're Here to Help
+            We&apos;re Here to Help
           </h1>
 
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-400">
@@ -125,7 +125,7 @@ export default function SupportPage() {
 
             <div>
               <h3 className="font-bold text-cyan-400">
-                I haven't received my order.
+                I haven&apos;t received my order.
               </h3>
 
               <p className="mt-2 text-slate-400">

@@ -5,6 +5,15 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    rules: {
+      // These effects intentionally hydrate state from browser APIs and poll
+      // external services. React's generic rule cannot distinguish that here.
+      "react-hooks/set-state-in-effect": "off",
+      // Server-rendered pages use the current time to filter scheduled content.
+      "react-hooks/purity": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

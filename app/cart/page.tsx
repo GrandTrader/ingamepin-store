@@ -27,25 +27,6 @@ export default function CartPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [customerDiscounts, setCustomerDiscounts] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    loadCart();
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadDiscounts() {
-      try {
-        const response = await fetch("/api/customer-discounts", { cache: "no-store" });
-        const result = (await response.json()) as { discounts?: Record<string, number> };
-        if (!cancelled && response.ok) setCustomerDiscounts(result.discounts ?? {});
-      } catch {
-        // Cart continues with standard prices.
-      }
-    }
-    void loadDiscounts();
-    return () => { cancelled = true; };
-  }, []);
-
   function loadCart() {
     try {
       const savedCart = localStorage.getItem("shoppingCart");
@@ -69,6 +50,25 @@ export default function CartPage() {
       setIsLoaded(true);
     }
   }
+
+  useEffect(() => {
+    loadCart();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDiscounts() {
+      try {
+        const response = await fetch("/api/customer-discounts", { cache: "no-store" });
+        const result = (await response.json()) as { discounts?: Record<string, number> };
+        if (!cancelled && response.ok) setCustomerDiscounts(result.discounts ?? {});
+      } catch {
+        // Cart continues with standard prices.
+      }
+    }
+    void loadDiscounts();
+    return () => { cancelled = true; };
+  }, []);
 
   function saveCart(updatedCart: CartItem[]) {
     setCartItems(updatedCart);

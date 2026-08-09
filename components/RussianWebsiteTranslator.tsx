@@ -408,22 +408,26 @@ export default function RussianWebsiteTranslator() {
     if (pathname.startsWith("/admin")) return;
 
     const root = document.body;
-    let observer: MutationObserver;
-
-    const apply = () => {
-      observer?.disconnect();
+    const observer = new MutationObserver(() => {
+      observer.disconnect();
       updatePage(root, language === "ru");
-      observer?.observe(root, {
+      observer.observe(root, {
         childList: true,
         subtree: true,
         characterData: true,
         attributes: true,
         attributeFilter: translatedAttributes,
       });
-    };
+    });
 
-    observer = new MutationObserver(apply);
-    apply();
+    updatePage(root, language === "ru");
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: translatedAttributes,
+    });
 
     return () => observer.disconnect();
   }, [language, pathname]);
