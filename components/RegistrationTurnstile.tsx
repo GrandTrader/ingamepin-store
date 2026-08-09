@@ -35,35 +35,83 @@ export default function RegistrationTurnstile({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (
-      !scriptReady ||
-      !siteKey ||
-      !containerRef.current ||
-      !window.turnstile ||
-      widgetIdRef.current
-    ) {
+    if (window.turnstile) {
+      setScriptReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!scriptReady || !siteKey || !containerRef.current) {
       return;
     }
 
-    widgetIdRef.current = window.turnstile.render(containerRef.current, {
-      sitekey: siteKey,
-      theme: "light",
-      callback: (value) => {
-        setToken(value);
+    let cancelled = false;
+    let attempts = 0;
+    let retryTimer: number | undefined;
+
+    function renderWidget() {
+      if (
+        cancelled ||
+        widgetIdRef.current ||
+        !containerRef.current ||
+        !window.turnstile
+      ) {
+        return Boolean(window.turnstile);
+      }
+
+      try {
+        widgetIdRef.current = window.turnstile.render(containerRef.current, {
+          sitekey: siteKey,
+          theme: "light",
+          callback: (value) => {
+            setToken(value);
+            setError("");
+          },
+          "expired-callback": () => setToken(""),
+          "error-callback": (errorCode) => {
+            setToken("");
+            setError(
+              errorCode === "110200"
+                ? "Security check cannot load because this hostname is not authorized in Cloudflare Turnstile."
+                : "Security check could not load. Refresh the page and try again.",
+            );
+          },
+        });
         setError("");
-      },
-      "expired-callback": () => setToken(""),
-      "error-callback": (errorCode) => {
-        setToken("");
+        return true;
+      } catch {
         setError(
-          errorCode === "110200"
-            ? "Security check cannot load because this hostname is not authorized in Cloudflare Turnstile."
-            : "Security check could not load. Refresh the page and try again.",
+          "Security check could not start. Refresh the page and try again.",
         );
-      },
-    });
+        return false;
+      }
+    }
+
+    if (!renderWidget()) {
+      retryTimer = window.setInterval(() => {
+        attempts += 1;
+
+        if (renderWidget() || attempts >= 50) {
+          if (retryTimer !== undefined) {
+            window.clearInterval(retryTimer);
+          }
+
+          if (attempts >= 50 && !window.turnstile) {
+            setError(
+              "Security check could not load. Check your connection, disable content blocking for this page, and refresh.",
+            );
+          }
+        }
+      }, 100);
+    }
 
     return () => {
+      cancelled = true;
+
+      if (retryTimer !== undefined) {
+        window.clearInterval(retryTimer);
+      }
+
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
@@ -84,7 +132,13 @@ export default function RegistrationTurnstile({
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
-        onLoad={() => setScriptReady(true)}
+        onReady={() => setScriptReady(true)}
+        onError={() => {
+          setScriptReady(false);
+          setError(
+            "Security check script was blocked. Allow challenges.cloudflare.com and refresh the page.",
+          );
+        }}
       />
       <input type="hidden" name="captcha_token" value={token} />
       <div
