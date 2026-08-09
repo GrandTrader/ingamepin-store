@@ -21,11 +21,23 @@ export default function WalletTopupForm({
   const [network, setNetwork] = useState<"TRC20" | "BEP20" | "SOLANA">("TRC20");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [gatewayOpened, setGatewayOpened] = useState(false);
   const amountNumber = Math.max(0, Number(amount) || 0);
 
   async function continueToPayment() {
+    const keepWalletOpen = gateway === "FREEKASSA" || gateway === "PALLY";
+    const paymentWindow = keepWalletOpen
+      ? window.open("about:blank", "_blank")
+      : null;
+
+    if (paymentWindow) {
+      paymentWindow.document.title = "Opening secure payment...";
+      paymentWindow.opener = null;
+    }
+
     setIsSubmitting(true);
     setMessage("");
+    setGatewayOpened(false);
 
     try {
       const response = await fetch("/api/wallet/topup", {
@@ -46,8 +58,15 @@ export default function WalletTopupForm({
         throw new Error(result.error ?? "Unable to start wallet top-up.");
       }
 
+      if (paymentWindow && !paymentWindow.closed) {
+        paymentWindow.location.replace(result.checkoutUrl);
+        setGatewayOpened(true);
+        setIsSubmitting(false);
+        return;
+      }
       window.location.href = result.checkoutUrl;
     } catch (error) {
+      paymentWindow?.close();
       setMessage(
         error instanceof Error
           ? error.message
@@ -155,6 +174,13 @@ export default function WalletTopupForm({
       {message && (
         <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
           {message}
+        </p>
+      )}
+
+      {gatewayOpened && (
+        <p className="rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm font-bold text-cyan-800">
+          The payment page opened separately. Close it at any time to return
+          to your InGamePIN wallet.
         </p>
       )}
 

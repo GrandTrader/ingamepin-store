@@ -23,6 +23,7 @@ export default function PaymentPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [gatewayOpened, setGatewayOpened] = useState(false);
 
   useEffect(() => {
     try {
@@ -59,11 +60,23 @@ export default function PaymentPage() {
   async function openPaymentGateway() {
     if (!order?.databaseId || !order.accessToken) return;
 
+    const paymentMethod = order.paymentMethod?.toLowerCase();
+    const keepStoreOpen =
+      paymentMethod === "freekassa" || paymentMethod === "pally";
+    const paymentWindow = keepStoreOpen
+      ? window.open("about:blank", "_blank")
+      : null;
+
+    if (paymentWindow) {
+      paymentWindow.document.title = "Opening secure payment...";
+      paymentWindow.opener = null;
+    }
+
     setIsSubmitting(true);
     setMessage("");
+    setGatewayOpened(false);
 
     try {
-      const paymentMethod = order.paymentMethod?.toLowerCase();
       const response = await fetch(
         paymentMethod === "nowpayments"
           ? "/api/nowpayments/create-invoice"
@@ -91,8 +104,15 @@ export default function PaymentPage() {
       }
 
       localStorage.setItem("latestOrder", JSON.stringify(order));
+      if (paymentWindow && !paymentWindow.closed) {
+        paymentWindow.location.replace(result.checkoutUrl);
+        setGatewayOpened(true);
+        setIsSubmitting(false);
+        return;
+      }
       window.location.href = result.checkoutUrl;
     } catch (error) {
+      paymentWindow?.close();
       setMessage(
         error instanceof Error ? error.message : "Unable to open payment gateway.",
       );
@@ -162,6 +182,12 @@ export default function PaymentPage() {
         {message && (
           <p className="mt-5 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
             {message}
+          </p>
+        )}
+        {gatewayOpened && (
+          <p className="mt-5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-sm font-bold text-cyan-200">
+            The payment page opened separately. Close it at any time to return
+            to this InGamePIN page.
           </p>
         )}
         <button
