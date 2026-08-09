@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
+import GatewayCommissionSettings from "./GatewayCommissionSettings";
 import { savePaymentSettings } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,9 @@ export default async function PaymentSettingsPage({
 
   const settings = await createAdminClient()
     .from("payment_gateway_settings")
-    .select("pally_usd_rub_rate, store_usd_rub_rate, store_usd_inr_rate")
+    .select(
+      "pally_usd_rub_rate, store_usd_rub_rate, store_usd_inr_rate, gateway_commissions",
+    )
     .eq("id", true)
     .maybeSingle();
 
@@ -152,6 +155,10 @@ export default async function PaymentSettingsPage({
               Save exchange rates
             </button>
           </form>
+
+          <GatewayCommissionSettings
+            initialSettings={settings.data?.gateway_commissions ?? null}
+          />
         </main>
       </div>
     </div>

@@ -235,6 +235,7 @@ export default function CheckoutPage() {
     discounts: {},
     loading: true,
   });
+  const [paymentFee, setPaymentFee] = useState(0);
 
   useEffect(() => {
     try {
@@ -442,7 +443,41 @@ export default function CheckoutPage() {
     return subtotal >= 999 ? 0 : 79;
   }, [requiresShipping, subtotal]);
 
-  const totalAmount = Math.max(0, subtotal - customerDiscountAmount + shippingCharge);
+  const baseTotalAmount = Math.max(
+    0,
+    subtotal - customerDiscountAmount + shippingCharge,
+  );
+  const totalAmount = Number((baseTotalAmount + paymentFee).toFixed(2));
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadPaymentFee() {
+      try {
+        const query = new URLSearchParams({
+          paymentMethod,
+          baseTotal: baseTotalAmount.toFixed(2),
+        });
+        const response = await fetch(`/api/orders?${query.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const result = (await response.json()) as { fee?: number };
+
+        if (response.ok) {
+          setPaymentFee(Math.max(0, Number(result.fee) || 0));
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setPaymentFee(0);
+        }
+      }
+    }
+
+    void loadPaymentFee();
+
+    return () => controller.abort();
+  }, [baseTotalAmount, paymentMethod]);
 
   function updateField(
     field: keyof CheckoutForm,
@@ -1694,6 +1729,15 @@ export default function CheckoutPage() {
                   Included
                 </span>
               </div>
+
+              {paymentFee > 0 && (
+                <div className="flex justify-between text-slate-400">
+                  <span>Payment gateway fee</span>
+                  <span className="font-bold text-white">
+                    {formatPrice(paymentFee)}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="my-5 border-t border-white/10" />

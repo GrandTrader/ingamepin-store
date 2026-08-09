@@ -8,6 +8,10 @@ import {
 } from "@/lib/email";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
 import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
+import {
+  calculateGatewayCommission,
+  type GatewayCommissionSettings,
+} from "@/lib/payment-gateway-commissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,6 +27,48 @@ type OrderRequest = {
   paymentMethod?: unknown;
   items?: unknown;
 };
+
+export async function GET(request: NextRequest) {
+  const paymentMethod =
+    request.nextUrl.searchParams.get("paymentMethod")?.trim() ?? "";
+  const baseTotal = Number(request.nextUrl.searchParams.get("baseTotal"));
+
+  if (
+    !paymentMethod ||
+    !Number.isFinite(baseTotal) ||
+    baseTotal < 0 ||
+    baseTotal > 1000000
+  ) {
+    return NextResponse.json(
+      { error: "Payment fee request is invalid." },
+      { status: 400 },
+    );
+  }
+
+  const settings = await createAdminClient()
+    .from("payment_gateway_settings")
+    .select("gateway_commissions")
+    .eq("id", true)
+    .maybeSingle();
+
+  if (settings.error) {
+    return NextResponse.json(
+      { error: "Unable to calculate the payment fee." },
+      { status: 500 },
+    );
+  }
+
+  const commission = calculateGatewayCommission(
+    settings.data?.gateway_commissions as GatewayCommissionSettings | null,
+    paymentMethod,
+    baseTotal,
+  );
+
+  return NextResponse.json(
+    { fee: commission.fee, total: commission.total },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -202,6 +248,58 @@ export async function POST(request: NextRequest) {
         Object.assign(orderResult.data, { subtotal, discount: discountAmount, total });
       }
     }
+
+    const commissionSettingsResult = await admin
+      .from("payment_gateway_settings")
+      .select("gateway_commissions")
+      .eq("id", true)
+      .maybeSingle();
+
+    if (commissionSettingsResult.error) {
+      return NextResponse.json(
+        { error: "Unable to load payment gateway settings." },
+        { status: 500 },
+      );
+    }
+
+    const baseTotal = Number(orderResult.data.total ?? 0);
+    const commission = calculateGatewayCommission(
+      commissionSettingsResult.data
+        ?.gateway_commissions as GatewayCommissionSettings | null,
+      requestedPaymentMethod,
+      baseTotal,
+    );
+
+    const [commissionOrderUpdate, commissionPaymentUpdate] =
+      await Promise.all([
+        admin
+          .from("orders")
+          .update({
+            payment_fee: commission.fee,
+            payment_fee_type: commission.type,
+            payment_fee_value: commission.value,
+            total: commission.total,
+          })
+          .eq("id", orderResult.data.id),
+        admin
+          .from("payments")
+          .update({ amount: commission.total })
+          .eq("order_id", orderResult.data.id),
+      ]);
+
+    if (commissionOrderUpdate.error || commissionPaymentUpdate.error) {
+      return NextResponse.json(
+        { error: "Unable to apply the payment gateway commission." },
+        { status: 500 },
+      );
+    }
+
+    Object.assign(orderResult.data, {
+      payment_fee: commission.fee,
+      paymentFee: commission.fee,
+      total: commission.total,
+      totalAmount: commission.total,
+    });
 
     let walletPaymentResult: Record<string, unknown> | null = null;
 

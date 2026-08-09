@@ -81,3 +81,83 @@ export async function savePaymentSettings(formData: FormData) {
   revalidatePath("/api/store-settings");
   settingsRedirect("success", "Payment and storefront exchange rates saved.");
 }
+
+const gatewayIds = [
+  "WALLET",
+  "UPI",
+  "BINANCE_PAY",
+  "USDT_DIRECT",
+  "PALLY",
+  "FREEKASSA",
+] as const;
+
+type GatewayId = (typeof gatewayIds)[number];
+type CommissionType = "PERCENTAGE" | "FIXED";
+
+type GatewayCommission = {
+  type: CommissionType;
+  value: number;
+  enabled: boolean;
+};
+
+export async function saveGatewayCommissions(formData: FormData) {
+  await requireAdministrator();
+
+  const gatewayCommissions = gatewayIds.reduce(
+    (settings, gatewayId) => {
+      const typeValue = String(
+        formData.get(`${gatewayId}_type`) ?? "PERCENTAGE",
+      );
+      const type: CommissionType =
+        typeValue === "FIXED" ? "FIXED" : "PERCENTAGE";
+      const value = Number(formData.get(`${gatewayId}_value`));
+      const enabled = formData.get(`${gatewayId}_enabled`) === "on";
+
+      if (!Number.isFinite(value) || value < 0) {
+        settingsRedirect(
+          "error",
+          `Enter a valid non-negative commission for ${gatewayId}.`,
+        );
+      }
+
+      if (type === "PERCENTAGE" && value > 100) {
+        settingsRedirect(
+          "error",
+          `Percentage commission for ${gatewayId} cannot exceed 100%.`,
+        );
+      }
+
+      if (type === "FIXED" && value > 100000) {
+        settingsRedirect(
+          "error",
+          `Fixed commission for ${gatewayId} cannot exceed $100,000.`,
+        );
+      }
+
+      settings[gatewayId] = {
+        type,
+        value: Number(value.toFixed(4)),
+        enabled,
+      };
+
+      return settings;
+    },
+    {} as Record<GatewayId, GatewayCommission>,
+  );
+
+  const result = await createAdminClient()
+    .from("payment_gateway_settings")
+    .upsert({
+      id: true,
+      gateway_commissions: gatewayCommissions,
+    });
+
+  if (result.error) {
+    settingsRedirect("error", result.error.message);
+  }
+
+  revalidatePath("/admin/payment-settings");
+  revalidatePath("/checkout");
+  revalidatePath("/api/orders");
+  settingsRedirect("success", "Payment gateway commissions saved.");
+}
