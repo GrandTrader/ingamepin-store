@@ -421,41 +421,107 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
   const total = invoice.quantity * invoice.unitPrice;
 
   return (
-    <section className="mx-auto mt-8 max-w-[900px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl print:mt-0 print:max-w-none print:rounded-none print:border-0 print:shadow-none">
-      <div className="bg-slate-950 px-7 py-8 text-white sm:px-10">
-        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
+    <>
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+
+          html,
+          body {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          #invoice-print-area,
+          #invoice-print-area * {
+            visibility: visible !important;
+          }
+
+          #invoice-print-area {
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 194mm !important;
+            margin: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          #invoice-print-area .invoice-header {
+            padding: 7mm 8mm !important;
+          }
+
+          #invoice-print-area .invoice-body {
+            padding: 7mm 8mm !important;
+          }
+
+          #invoice-print-area .invoice-section-gap {
+            margin-top: 5mm !important;
+          }
+
+          #invoice-print-area .invoice-footer {
+            margin-top: 6mm !important;
+            padding-top: 4mm !important;
+          }
+        }
+      `}</style>
+
+      <section
+        id="invoice-print-area"
+        className="mx-auto mt-8 max-w-[900px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xl"
+      >
+      <div className="invoice-header border-b-2 border-blue-600 bg-blue-50 px-7 py-7 sm:px-10">
+        <div className="flex justify-between gap-6">
           <div>
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-400 text-xl font-black text-slate-950">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-xl font-black text-white">
                 IP
               </div>
               <div>
-                <p className="text-2xl font-black">AMAN G</p>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">
+                <p className="text-2xl font-black text-slate-950">AMAN G</p>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
                   InGamePIN Digital Game Store
                 </p>
               </div>
             </div>
-            <p className="mt-5 max-w-lg text-sm leading-6 text-slate-300">
+            <p className="mt-4 max-w-lg text-xs leading-5 text-slate-600">
               Chandpur Leningarh, near Jagorani Sangha Club, South Jogendra
               Nagar, Kolkata, West Bengal 700110, India
             </p>
-            <p className="mt-2 text-sm text-slate-300">GSTIN: 19CMAPG4174K1ZV</p>
+            <p className="mt-1 text-xs font-semibold text-slate-700">
+              GSTIN: 19CMAPG4174K1ZV
+            </p>
           </div>
 
-          <div className="sm:text-right">
-            <p className="text-xs font-black uppercase tracking-[0.25em] text-cyan-300">
+          <div className="shrink-0 text-right">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-blue-600">
               Tax invoice
             </p>
-            <p className="mt-3 text-2xl font-black">{invoice.invoiceNumber}</p>
-            <p className="mt-2 text-sm text-slate-300">
+            <p className="mt-2 text-xl font-black text-slate-950">
+              {invoice.invoiceNumber}
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
               Issued {formatDate(invoice.invoiceDate)}
             </p>
             <span
-              className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-black ${
+              className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black ${
                 invoice.paymentStatus === "PAID"
-                  ? "bg-emerald-400 text-emerald-950"
-                  : "bg-amber-300 text-amber-950"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-amber-100 text-amber-700"
               }`}
             >
               {invoice.paymentStatus}
@@ -464,13 +530,13 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
         </div>
       </div>
 
-      <div className="p-7 sm:p-10">
-        <div className="grid gap-7 sm:grid-cols-2">
+      <div className="invoice-body p-7 sm:p-9">
+        <div className="grid grid-cols-2 gap-7">
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">
               Billed to
             </p>
-            <p className="mt-3 text-lg font-black">{invoice.customerName}</p>
+            <p className="mt-2 text-base font-black">{invoice.customerName}</p>
             <p className="mt-1 text-sm text-slate-600">{invoice.customerEmail}</p>
             {invoice.customerTaxpayerId && (
               <p className="mt-1 text-sm font-semibold text-slate-600">
@@ -484,7 +550,7 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
             </p>
           </div>
 
-          <div className="sm:text-right">
+          <div className="text-right">
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">
               Payment
             </p>
@@ -495,12 +561,12 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
           </div>
         </div>
 
-        <div className="mt-9 overflow-hidden rounded-xl border border-slate-200">
+        <div className="invoice-section-gap mt-7 overflow-hidden rounded-xl border border-slate-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-100 text-slate-600">
               <tr>
                 <th className="px-4 py-3">Product / denomination</th>
-                <th className="hidden px-4 py-3 sm:table-cell">Category</th>
+                <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3 text-center">Qty</th>
                 <th className="px-4 py-3 text-right">Rate</th>
                 <th className="px-4 py-3 text-right">Amount</th>
@@ -514,14 +580,14 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
                     {invoice.optionName}
                   </p>
                 </td>
-                <td className="hidden px-4 py-5 text-slate-600 sm:table-cell">
+                <td className="px-4 py-4 text-slate-600">
                   {invoice.categoryName}
                 </td>
-                <td className="px-4 py-5 text-center">{invoice.quantity}</td>
-                <td className="px-4 py-5 text-right">
+                <td className="px-4 py-4 text-center">{invoice.quantity}</td>
+                <td className="px-4 py-4 text-right">
                   {formatUsdt(invoice.unitPrice)}
                 </td>
-                <td className="px-4 py-5 text-right font-black">
+                <td className="px-4 py-4 text-right font-black">
                   {formatUsdt(total)}
                 </td>
               </tr>
@@ -529,22 +595,22 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
           </table>
         </div>
 
-        <div className="ml-auto mt-7 max-w-sm rounded-xl bg-slate-950 p-5 text-white">
-          <div className="flex justify-between gap-4 text-sm text-slate-300">
+        <div className="invoice-section-gap ml-auto mt-6 max-w-sm rounded-xl border border-blue-200 bg-blue-50 p-4 text-slate-900">
+          <div className="flex justify-between gap-4 text-sm text-slate-600">
             <span>Subtotal</span>
             <span>{formatUsdt(total)}</span>
           </div>
-          <div className="mt-4 flex justify-between gap-4 border-t border-slate-700 pt-4 text-xl font-black">
+          <div className="mt-3 flex justify-between gap-4 border-t border-blue-200 pt-3 text-xl font-black">
             <span>Total</span>
-            <span className="text-cyan-300">{formatUsdt(total)}</span>
+            <span className="text-blue-700">{formatUsdt(total)}</span>
           </div>
-          <p className="mt-2 text-right text-xs text-slate-400">
+          <p className="mt-1 text-right text-xs text-slate-500">
             Crypto conversion rate is not shown.
           </p>
         </div>
 
         {invoice.notes && (
-          <div className="mt-7 rounded-xl bg-slate-50 p-4">
+          <div className="invoice-section-gap mt-6 rounded-xl bg-slate-50 p-4">
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">
               Notes
             </p>
@@ -554,7 +620,7 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
           </div>
         )}
 
-        <footer className="mt-10 border-t border-slate-200 pt-6 text-center text-xs leading-6 text-slate-500">
+        <footer className="invoice-footer mt-8 border-t border-slate-200 pt-5 text-center text-xs leading-5 text-slate-500">
           <p className="font-bold text-slate-700">Thank you for choosing InGamePIN.</p>
           <p>
             support@ingamepin.com · WhatsApp +91-9073045011 · Telegram
@@ -563,6 +629,7 @@ function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
           <p>This is a computer-generated invoice.</p>
         </footer>
       </div>
-    </section>
+      </section>
+    </>
   );
 }
