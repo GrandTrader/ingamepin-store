@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import PasswordInput from "@/components/PasswordInput";
 
 import { updateCustomerPassword } from "../actions";
 
@@ -20,8 +21,16 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
         <h1 className="text-3xl font-black">Choose new password</h1>
         {error && <p className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <form action={updateCustomerPassword} className="mt-7 space-y-5">
-          <label className="block text-sm font-bold">New password<input name="password" type="password" required minLength={8} autoComplete="new-password" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3" /></label>
-          <label className="block text-sm font-bold">Confirm password<input name="confirm_password" type="password" required minLength={8} autoComplete="new-password" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3" /></label>
+          <PasswordInput
+            label="New password"
+            name="password"
+            autoComplete="new-password"
+          />
+          <PasswordInput
+            label="Confirm password"
+            name="confirm_password"
+            autoComplete="new-password"
+          />
           <button type="submit" className="w-full rounded-xl bg-cyan-500 px-5 py-3 font-black text-slate-950">Update password</button>
         </form>
       </div>

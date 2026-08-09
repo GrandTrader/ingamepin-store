@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { adminLogin } from "../actions";
 import { createClient } from "@/lib/supabase/server";
+import PasswordInput from "@/components/PasswordInput";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 
 type AdminLoginPageProps = {
@@ -87,25 +88,14 @@ export default async function AdminLoginPage({
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="text-sm font-bold"
-            >
-              Password
-            </label>
-
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              minLength={8}
-              placeholder="Enter your password"
-              className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none transition focus:border-cyan-400"
-            />
-          </div>
+          <PasswordInput
+            id="password"
+            label="Password"
+            name="password"
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            dark
+          />
 
           <RegistrationTurnstile message="Complete the security check to sign in." />
 

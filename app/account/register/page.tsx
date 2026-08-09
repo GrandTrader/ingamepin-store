@@ -2,6 +2,7 @@
 import Link from "next/link";
 
 import OtpVerificationForm from "@/components/OtpVerificationForm";
+import PasswordInput from "@/components/PasswordInput";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 import { countryCallingCodes } from "@/lib/countryCallingCodes";
 
@@ -150,28 +151,16 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
                   />
                 </div>
               </fieldset>
-              <label className="block text-sm font-bold">
-                Password
-                <input
-                  name="password"
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
-                />
-              </label>
-              <label className="block text-sm font-bold">
-                Confirm password
-                <input
-                  name="confirm_password"
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
-                />
-              </label>
+              <PasswordInput
+                label="Password"
+                name="password"
+                autoComplete="new-password"
+              />
+              <PasswordInput
+                label="Confirm password"
+                name="confirm_password"
+                autoComplete="new-password"
+              />
               <RegistrationTurnstile />
               <button
                 type="submit"
