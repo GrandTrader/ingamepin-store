@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
-import { createDraftProduct } from "./actions";
+import { cloneProduct, createDraftProduct } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -361,6 +361,16 @@ export default async function AdminProductsPage({
                           >
                             View
                           </Link>
+
+                          <form action={cloneProduct}>
+                            <input type="hidden" name="product_id" value={product.id} />
+                            <button
+                              type="submit"
+                              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              Clone
+                            </button>
+                          </form>
 
                           <Link
                             href={`/admin/products/${product.id}/edit/general`}

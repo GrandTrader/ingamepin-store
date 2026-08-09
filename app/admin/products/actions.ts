@@ -167,6 +167,152 @@ export async function createDraftProduct() {
   redirect(`/admin/products/${result.data.id}/edit/general`);
 }
 
+export async function cloneProduct(formData: FormData) {
+  await getAdminClient();
+
+  const sourceProductId = String(
+    formData.get("product_id") ?? "",
+  ).trim();
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (!uuidPattern.test(sourceProductId)) {
+    redirect(
+      "/admin/products?error=Product%20information%20is%20invalid",
+    );
+  }
+
+  const admin = createAdminClient();
+  const [sourceResult, optionsResult, fieldsResult] = await Promise.all([
+    admin
+      .from("products")
+      .select("*")
+      .eq("id", sourceProductId)
+      .maybeSingle(),
+    admin
+      .from("product_options")
+      .select("*")
+      .eq("product_id", sourceProductId)
+      .eq("is_custom_value", false)
+      .order("sort_order", { ascending: true }),
+    admin
+      .from("product_customer_fields")
+      .select("*")
+      .eq("product_id", sourceProductId)
+      .order("sort_order", { ascending: true }),
+  ]);
+
+  if (sourceResult.error || !sourceResult.data) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        sourceResult.error?.message ?? "The product was not found.",
+      )}`,
+    );
+  }
+
+  if (optionsResult.error || fieldsResult.error) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        optionsResult.error?.message ??
+          fieldsResult.error?.message ??
+          "Unable to load the product information.",
+      )}`,
+    );
+  }
+
+  const cloneKey = crypto.randomUUID();
+  const source = sourceResult.data as Record<string, unknown>;
+  const clonePayload: Record<string, unknown> = { ...source };
+
+  for (const key of ["id", "created_at", "updated_at"]) {
+    delete clonePayload[key];
+  }
+
+  clonePayload.name = `${String(source.name).slice(0, 180)} (Copy)`;
+  clonePayload.slug = `${String(source.slug).slice(0, 80)}-copy-${cloneKey.slice(0, 8)}`;
+  clonePayload.status = "DRAFT";
+  clonePayload.is_featured = false;
+  clonePayload.sold_count = 0;
+  clonePayload.stock_quantity = 0;
+
+  const cloneResult = await admin
+    .from("products")
+    .insert(clonePayload)
+    .select("id")
+    .single();
+
+  if (cloneResult.error || !cloneResult.data) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        `Unable to clone product: ${cloneResult.error?.message ?? "Unknown error"}`,
+      )}`,
+    );
+  }
+
+  const clonedProductId = cloneResult.data.id;
+  const clonedOptions = (optionsResult.data ?? []).map((option) => {
+    const payload: Record<string, unknown> = { ...option };
+    for (const key of ["id", "product_id", "created_at", "updated_at"]) {
+      delete payload[key];
+    }
+    payload.product_id = clonedProductId;
+    payload.stock_quantity = 0;
+    return payload;
+  });
+  const clonedFields = (fieldsResult.data ?? []).map((field) => {
+    const payload: Record<string, unknown> = { ...field };
+    for (const key of ["id", "product_id", "created_at", "updated_at"]) {
+      delete payload[key];
+    }
+    payload.product_id = clonedProductId;
+    return payload;
+  });
+
+  if (clonedOptions.length > 0) {
+    const insertOptionsResult = await admin
+      .from("product_options")
+      .insert(clonedOptions);
+
+    if (insertOptionsResult.error) {
+      await admin.from("product_options").delete().eq("product_id", clonedProductId);
+      await admin.from("products").delete().eq("id", clonedProductId);
+      redirect(
+        `/admin/products?error=${encodeURIComponent(
+          `Unable to clone product options: ${insertOptionsResult.error.message}`,
+        )}`,
+      );
+    }
+  }
+
+  if (clonedFields.length > 0) {
+    const insertFieldsResult = await admin
+      .from("product_customer_fields")
+      .insert(clonedFields);
+
+    if (insertFieldsResult.error) {
+      await admin
+        .from("product_customer_fields")
+        .delete()
+        .eq("product_id", clonedProductId);
+      await admin.from("product_options").delete().eq("product_id", clonedProductId);
+      await admin.from("products").delete().eq("id", clonedProductId);
+      redirect(
+        `/admin/products?error=${encodeURIComponent(
+          `Unable to clone customer fields: ${insertFieldsResult.error.message}`,
+        )}`,
+      );
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+  redirect(
+    `/admin/products/${clonedProductId}/edit/general?success=${encodeURIComponent(
+      "Product cloned as a draft. Review its stock and settings before publishing.",
+    )}`,
+  );
+}
+
 export async function updateProduct(
   formData: FormData,
 ) {
@@ -1274,4 +1420,3 @@ export async function deleteProductOption(
 
   productRedirect(productId, "success", `Option "${optionResult.data.option_name}" deleted permanently`);
 }
-
