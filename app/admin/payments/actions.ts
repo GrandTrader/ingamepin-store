@@ -113,6 +113,7 @@ async function sendPaymentNotification(
   }
 
   const deliveryResults = await sendOrderStatusEmails({
+    orderId: paymentResult.data.order_id,
     event,
     orderNumber: order.order_number,
     customerName: order.customer_name ?? "Customer",

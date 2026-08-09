@@ -69,6 +69,7 @@ async function sendPaymentEmails(orderId: string) {
   const order = orderResult.data;
 
   await sendOrderStatusEmails({
+    orderId,
     event: "PAYMENT_APPROVED",
     orderNumber: order.order_number,
     customerName: order.customer_name ?? "Customer",

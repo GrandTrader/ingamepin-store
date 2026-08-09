@@ -88,6 +88,7 @@ async function sendBinanceDeliveryEmails(orderId: string) {
     .filter((item) => item.codes.length > 0);
   const order = orderResult.data;
   const emailResults = await sendOrderStatusEmails({
+    orderId,
     event: "PAYMENT_APPROVED",
     orderNumber: order.order_number,
     customerName: order.customer_name ?? "Customer",

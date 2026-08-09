@@ -385,7 +385,7 @@ export async function POST(request: NextRequest) {
         admin
           .from("orders")
           .select(
-            "order_number, customer_name, customer_email, customer_phone, total, currency, status",
+            "id, order_number, customer_name, customer_email, customer_phone, total, currency, status",
           )
           .eq("id", orderResult.data.id)
           .single(),
@@ -416,6 +416,7 @@ export async function POST(request: NextRequest) {
     } else {
       const createdOrder = createdOrderResult.data;
       const deliveryResults = await sendOrderCreatedEmails({
+        orderId: createdOrder.id,
         orderNumber: createdOrder.order_number,
         customerName: createdOrder.customer_name ?? "Customer",
         customerEmail: createdOrder.customer_email,
@@ -475,6 +476,7 @@ export async function POST(request: NextRequest) {
         });
 
         const statusEmailResults = await sendOrderStatusEmails({
+          orderId: createdOrder.id,
           event: "PAYMENT_APPROVED",
           orderNumber: createdOrder.order_number,
           customerName: createdOrder.customer_name ?? "Customer",

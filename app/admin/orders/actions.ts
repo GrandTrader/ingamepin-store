@@ -108,6 +108,7 @@ export async function finalizeManualOrderFromCodes(formData: FormData) {
 
     const order = orderResult.data;
     const deliveryResults = await sendOrderStatusEmails({
+      orderId,
       event: "ORDER_DELIVERED",
       orderNumber: order.order_number,
       customerName: order.customer_name ?? "Customer",
@@ -164,7 +165,7 @@ export async function sendManualOrderItem(formData: FormData) {
     if (result.error) ordersRedirect("error", result.error.message, orderId);
   }
   const orderResult = await admin.from("orders").select("order_number, customer_name, customer_email, total, currency, status").eq("id", orderId).single();
-  if (orderResult.data) await sendOrderStatusEmails({ event: "PRODUCT_SENT", orderNumber: orderResult.data.order_number, customerName: orderResult.data.customer_name ?? "Customer", customerEmail: orderResult.data.customer_email, total: Number(orderResult.data.total), currency: orderResult.data.currency, orderStatus: orderResult.data.status, deliveredItems: [{ productName: item.product_name, optionName: item.option_name, codes }] });
+  if (orderResult.data) await sendOrderStatusEmails({ orderId, event: "PRODUCT_SENT", orderNumber: orderResult.data.order_number, customerName: orderResult.data.customer_name ?? "Customer", customerEmail: orderResult.data.customer_email, total: Number(orderResult.data.total), currency: orderResult.data.currency, orderStatus: orderResult.data.status, deliveredItems: [{ productName: item.product_name, optionName: item.option_name, codes }] });
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}/receipt`);
   ordersRedirect("success", `${item.option_name ?? item.product_name} sent successfully.`, orderId);
@@ -340,6 +341,7 @@ export async function completeManualOrder(
     const order = orderResult.data;
     const deliveryResults =
       await sendOrderStatusEmails({
+        orderId,
         event: "ORDER_DELIVERED",
         orderNumber:
           order.order_number,

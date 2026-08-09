@@ -1,28 +1,53 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import CustomerAccountShell from "../CustomerAccountShell";
 import {
+  customerDisplayName,
   customerStatusClass,
   formatCustomerDate,
   formatCustomerMoney,
   getCustomerOrders,
-  requireCustomer,
 } from "@/lib/customer-account-data";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 type CustomerOrdersPageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    orderId?: string;
+    orderNumber?: string;
+  }>;
 };
 
 export default async function CustomerOrdersPage({
   searchParams,
 }: CustomerOrdersPageProps) {
-  const [{ user, displayName }, { error }] = await Promise.all([
-    requireCustomer(),
-    searchParams,
-  ]);
-  const orders = await getCustomerOrders(user.email!);
+  const { error, orderId, orderNumber } = await searchParams;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.email) {
+    if (orderId) {
+      const trackingUrl = orderNumber
+        ? `/track-order?orderNumber=${encodeURIComponent(orderNumber)}`
+        : "/track-order";
+
+      redirect(trackingUrl);
+    }
+
+    redirect("/account?error=Please sign in to continue.");
+  }
+
+  const displayName = customerDisplayName(user);
+  const orders = await getCustomerOrders(user.email);
+
+  if (orderId && orders.some((order) => order.id === orderId)) {
+    redirect(`/account/orders/${encodeURIComponent(orderId)}`);
+  }
 
   return (
     <CustomerAccountShell displayName={displayName}>

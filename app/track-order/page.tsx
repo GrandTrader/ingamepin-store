@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
 
@@ -54,6 +55,8 @@ function formatDate(value: string | null) {
 }
 
 export default function TrackOrderPage() {
+  const [orderNumber, setOrderNumber] =
+    useState("");
   const [result, setResult] =
     useState<LookupResult | null>(null);
   const [isLoading, setIsLoading] =
@@ -61,6 +64,18 @@ export default function TrackOrderPage() {
   const [error, setError] = useState("");
   const [copiedCode, setCopiedCode] =
     useState("");
+
+  useEffect(() => {
+    const value = new URLSearchParams(
+      window.location.search,
+    )
+      .get("orderNumber")
+      ?.trim();
+
+    if (value) {
+      setOrderNumber(value.toUpperCase());
+    }
+  }, []);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -170,6 +185,12 @@ export default function TrackOrderPage() {
               <input
                 name="order_number"
                 type="text"
+                value={orderNumber}
+                onChange={(event) =>
+                  setOrderNumber(
+                    event.target.value.toUpperCase(),
+                  )
+                }
                 required
                 minLength={8}
                 maxLength={100}

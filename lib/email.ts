@@ -19,6 +19,7 @@ type OrderEmailItem = {
 };
 
 type OrderCreatedEmailInput = {
+  orderId: string;
   orderNumber: string;
   customerName: string;
   customerEmail: string;
@@ -31,6 +32,7 @@ type OrderCreatedEmailInput = {
 };
 
 type OrderStatusEmailInput = {
+  orderId: string;
   event: "PAYMENT_APPROVED" | "PAYMENT_REJECTED" | "PRODUCT_SENT" | "ORDER_DELIVERED";
   orderNumber: string;
   customerName: string;
@@ -132,6 +134,19 @@ function formatOrderStatus(status: string) {
     : status.replaceAll("_", " ");
 }
 
+function createCustomerOrderUrl(orderId: string, orderNumber: string) {
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ingamepin.com"
+  ).replace(/\/$/, "");
+
+  const query = new URLSearchParams({
+    orderId,
+    orderNumber,
+  });
+
+  return `${siteUrl}/account/orders?${query.toString()}`;
+}
+
 function createOrderItemsHtml(items: OrderEmailItem[]) {
   return items
     .map((item) => {
@@ -162,6 +177,7 @@ function createOrderItemsHtml(items: OrderEmailItem[]) {
 }
 
 export async function sendOrderCreatedEmails({
+  orderId,
   orderNumber,
   customerName,
   customerEmail,
@@ -176,7 +192,7 @@ export async function sendOrderCreatedEmails({
   const safeCustomerName = escapeHtml(customerName || "Customer");
   const itemRows = createOrderItemsHtml(items);
   const totalLabel = formatMoney(total, currency);
-  const trackingUrl = "https://ingamepin.com/track-order";
+  const trackingUrl = createCustomerOrderUrl(orderId, orderNumber);
 
   const customerHtml = `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
@@ -192,7 +208,7 @@ export async function sendOrderCreatedEmails({
         <strong>Total</strong><strong>${escapeHtml(totalLabel)}</strong>
       </div>
       <p style="margin-top:22px;color:#475569;line-height:1.7">Payment method: <strong>${escapeHtml(paymentMethod.replaceAll("_", " "))}</strong><br>Status: <strong>${escapeHtml(formatOrderStatus(status))}</strong></p>
-      <a href="${trackingUrl}" style="display:inline-block;margin-top:12px;background:#06b6d4;color:#082f49;text-decoration:none;padding:13px 20px;border-radius:10px;font-weight:800">Track your order</a>
+      <a href="${trackingUrl}" style="display:inline-block;margin-top:12px;background:#06b6d4;color:#082f49;text-decoration:none;padding:13px 20px;border-radius:10px;font-weight:800">View your order</a>
       <p style="margin-top:28px;color:#64748b;font-size:13px;line-height:1.6">Need help? Reply to this email or contact support@ingamepin.com.</p>
     </div>
   `;
@@ -228,6 +244,7 @@ export async function sendOrderCreatedEmails({
 }
 
 export async function sendOrderStatusEmails({
+  orderId,
   event,
   orderNumber,
   customerName,
@@ -268,7 +285,7 @@ export async function sendOrderStatusEmails({
   const safeOrderNumber = escapeHtml(orderNumber);
   const safeCustomerName = escapeHtml(customerName || "Customer");
   const totalLabel = formatMoney(total, currency);
-  const trackingUrl = "https://ingamepin.com/track-order";
+  const trackingUrl = createCustomerOrderUrl(orderId, orderNumber);
   const deliveredCodesHtml = deliveredItems.length
     ? `
       <div style="margin:24px 0">
@@ -304,7 +321,7 @@ export async function sendOrderStatusEmails({
         <div style="margin-top:5px;color:#475569">Status: <strong>${escapeHtml(formatOrderStatus(orderStatus))}</strong></div>
       </div>
       ${deliveredCodesHtml}
-      <a href="${trackingUrl}" style="display:inline-block;background:#06b6d4;color:#082f49;text-decoration:none;padding:13px 20px;border-radius:10px;font-weight:800">Track your order</a>
+      <a href="${trackingUrl}" style="display:inline-block;background:#06b6d4;color:#082f49;text-decoration:none;padding:13px 20px;border-radius:10px;font-weight:800">View your order</a>
       <p style="margin-top:28px;color:#64748b;font-size:13px;line-height:1.6">Need help? Reply to this email or contact support@ingamepin.com.</p>
     </div>
   `;
