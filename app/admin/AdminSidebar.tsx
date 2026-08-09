@@ -14,6 +14,7 @@ const links = [
   { label: "Products", href: "/admin/products", icon: "PR" },
   { label: "Categories", href: "/admin/categories", icon: "CA" },
   { label: "Orders", href: "/admin/orders", icon: "OR" },
+  { label: "Invoices", href: "/admin/invoices", icon: "IN" },
   { label: "Payments", href: "/admin/payments", icon: "PY" },
   { label: "Payment Settings", href: "/admin/payment-settings", icon: "PS" },
   { label: "Preorder Popup", href: "/admin/preorder-popup", icon: "PP" },
