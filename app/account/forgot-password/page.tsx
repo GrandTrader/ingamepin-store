@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import RegistrationTurnstile from "@/components/RegistrationTurnstile";
+
 import { requestPasswordReset } from "../actions";
 
 type ForgotPasswordPageProps = {
@@ -17,6 +19,7 @@ export default async function ForgotPasswordPage({ searchParams }: ForgotPasswor
         {success && <p className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p>}
         <form action={requestPasswordReset} className="mt-7 space-y-5">
           <label className="block text-sm font-bold">Email address<input name="email" type="email" required autoComplete="email" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3" /></label>
+          <RegistrationTurnstile message="Complete the security check to request a password-reset link." />
           <button type="submit" className="w-full rounded-xl bg-cyan-500 px-5 py-3 font-black text-slate-950">Send reset link</button>
         </form>
         <Link className="mt-6 block text-center text-sm font-bold text-cyan-600" href="/account">Return to login</Link>

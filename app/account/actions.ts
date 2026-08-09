@@ -243,15 +243,25 @@ export async function customerLogout() {
 
 export async function requestPasswordReset(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const captchaToken = String(formData.get("captcha_token") ?? "").trim();
 
   if (!email) {
     accountRedirect("/account/forgot-password", "error", "Enter your email address.");
+  }
+
+  if (!captchaToken) {
+    accountRedirect(
+      "/account/forgot-password",
+      "error",
+      "Complete the security check before requesting a reset link.",
+    );
   }
 
   const supabase = await createClient();
   const result = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo:
       "https://www.ingamepin.com/account/callback?next=/account/reset-password",
+    captchaToken,
   });
 
   if (result.error) {
