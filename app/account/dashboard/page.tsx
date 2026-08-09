@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import { customerLogout } from "../actions";
+import DeliveredCodesDownloadButton from "@/components/DeliveredCodesDownloadButton";
 import InstallCustomerAppButton from "@/components/InstallCustomerAppButton";
 
 export const dynamic = "force-dynamic";
@@ -175,8 +176,56 @@ export default async function CustomerDashboardPage() {
           </section>
 
           <section id="codes" className="mt-10 scroll-mt-40">
-            <h2 className="text-2xl font-black">My delivered codes</h2><p className="mt-1 text-sm text-slate-500">Keep codes private and redeem them only on the official platform.</p>
-            {codes.length === 0 ? <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-7 text-slate-500">No delivered digital codes yet.</div> : <div className="mt-4 grid gap-4 lg:grid-cols-2">{codes.map((code) => <article key={code.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><h3 className="font-black">{code.productName}</h3><p className="mt-1 text-xs text-slate-500">{code.optionName || code.orderNumber}</p></div><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Delivered</span></div><div className="mt-4 break-all rounded-xl bg-slate-950 p-4 font-mono text-sm font-bold text-cyan-300">{code.code}</div></article>)}</div>}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-black">My delivered codes</h2>
+                <p className="mt-1 text-sm text-slate-500">Keep codes private and redeem them only on the official platform.</p>
+              </div>
+
+              {codes.length > 0 && (
+                <DeliveredCodesDownloadButton
+                  orderNumber="my-ingamepin-orders"
+                  items={codes.map((code) => ({
+                    productName: code.productName,
+                    optionName: code.optionName,
+                    codes: [code.code],
+                  }))}
+                  label="Download All Codes (.txt)"
+                  variant="secondary"
+                />
+              )}
+            </div>
+
+            {codes.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-7 text-slate-500">No delivered digital codes yet.</div>
+            ) : (
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                {codes.map((code) => (
+                  <article key={code.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-black">{code.productName}</h3>
+                        <p className="mt-1 text-xs text-slate-500">{code.optionName || code.orderNumber}</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Delivered</span>
+                    </div>
+                    <div className="mt-4 break-all rounded-xl bg-slate-950 p-4 font-mono text-sm font-bold text-cyan-300">{code.code}</div>
+                    <div className="mt-4">
+                      <DeliveredCodesDownloadButton
+                        orderNumber={code.orderNumber}
+                        items={[{
+                          productName: code.productName,
+                          optionName: code.optionName,
+                          codes: [code.code],
+                        }]}
+                        label="Download Code (.txt)"
+                        variant="secondary"
+                      />
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <section id="notifications" className="mt-10 scroll-mt-40">

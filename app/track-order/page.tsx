@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import DeliveredCodesDownloadButton from "@/components/DeliveredCodesDownloadButton";
+
 type LookupItem = {
   productName: string;
   optionName: string | null;
@@ -127,6 +129,9 @@ export default function TrackOrderPage() {
   const completedItemCount = items.filter(
     (item) => item.codes.length >= item.quantity,
   ).length;
+  const hasDeliveredCodes = items.some(
+    (item) => item.codes.length > 0,
+  );
 
   return (
     <main className="min-h-screen bg-slate-950 px-5 py-12 text-white">
@@ -269,9 +274,20 @@ export default function TrackOrderPage() {
 
             {items.length > 0 && (
               <div className="mt-7 space-y-5">
-                <h3 className="text-xl font-black text-emerald-300">
-                  Denomination delivery status
-                </h3>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-xl font-black text-emerald-300">
+                    Denomination delivery status
+                  </h3>
+
+                  {hasDeliveredCodes && (
+                    <DeliveredCodesDownloadButton
+                      orderNumber={order.orderNumber}
+                      items={items}
+                      label="Download All Codes (.txt)"
+                      variant="primary"
+                    />
+                  )}
+                </div>
 
                 {items.map((item, index) => {
                   const itemCompleted = item.codes.length >= item.quantity;
@@ -291,9 +307,19 @@ export default function TrackOrderPage() {
                       </p>
                     )}
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-xs font-black ${itemCompleted ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>
-                        {itemCompleted ? "COMPLETED" : "PROCESSING"}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {item.codes.length > 0 && (
+                          <DeliveredCodesDownloadButton
+                            orderNumber={order.orderNumber}
+                            items={[item]}
+                            label="Download Codes"
+                            variant="primary"
+                          />
+                        )}
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ${itemCompleted ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>
+                          {itemCompleted ? "COMPLETED" : "PROCESSING"}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
