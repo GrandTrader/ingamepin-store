@@ -283,6 +283,83 @@ export default function CheckoutSuccessPage() {
     }, 1500);
   }
 
+  function safeFileName(value: string) {
+    return value
+      .trim()
+      .replace(/[^a-zA-Z0-9-_]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "delivered-codes";
+  }
+
+  function downloadTextFile(fileName: string, content: string) {
+    const blob = new Blob([content], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function createDeliveredCodesFile(items: DeliveredItem[]) {
+    const orderNumber =
+      delivery?.order?.orderNumber ?? order?.orderNumber ?? order?.id ?? "Unknown";
+    const lines = [
+      "InGamePIN Digital Delivery",
+      `Order: ${orderNumber}`,
+      `Status: ${liveStatus}`,
+      "",
+    ];
+
+    items.forEach((item, itemIndex) => {
+      lines.push(`Product ${itemIndex + 1}: ${item.productName}`);
+
+      if (item.optionName) lines.push(`Option: ${item.optionName}`);
+      if (item.denomination !== null) {
+        lines.push(`Denomination: ${item.denomination}`);
+      }
+      if (item.platform) lines.push(`Platform: ${item.platform}`);
+      if (item.region) lines.push(`Region: ${item.region}`);
+
+      item.codes.forEach((code, codeIndex) => {
+        lines.push(`Code ${codeIndex + 1}: ${code}`);
+      });
+
+      lines.push("");
+    });
+
+    lines.push("Keep these codes private. Each code can normally be redeemed only once.");
+    return lines.join("\r\n");
+  }
+
+  function downloadProductCodes(item: DeliveredItem) {
+    if (item.codes.length === 0) return;
+
+    downloadTextFile(
+      `${safeFileName(item.productName)}-codes.txt`,
+      createDeliveredCodesFile([item]),
+    );
+  }
+
+  function downloadAllCodes() {
+    const itemsWithCodes = deliveredItems.filter((item) => item.codes.length > 0);
+
+    if (itemsWithCodes.length === 0) return;
+
+    const orderNumber =
+      delivery?.order?.orderNumber ?? order?.orderNumber ?? order?.id ?? "order";
+
+    downloadTextFile(
+      `${safeFileName(orderNumber)}-delivered-codes.txt`,
+      createDeliveredCodesFile(itemsWithCodes),
+    );
+  }
+
   if (!isLoaded) {
     return (
       <main className="min-h-screen bg-slate-950 px-3 py-8 text-white sm:px-5 sm:py-16">
@@ -445,15 +522,29 @@ export default function CheckoutSuccessPage() {
 
             {delivered && (
               <section className="mt-5 rounded-2xl border border-emerald-400/30 bg-emerald-400/5 p-4 sm:mt-7 sm:p-6">
-                <h2 className="text-xl font-black text-emerald-300">
-                  Secure digital delivery
-                </h2>
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                  <div>
+                    <h2 className="text-xl font-black text-emerald-300">
+                      Secure digital delivery
+                    </h2>
 
-                <p className="mt-2 text-sm text-slate-400">
-                  Keep these codes private.
-                  Each code can normally be
-                  redeemed only once.
-                </p>
+                    <p className="mt-2 text-sm text-slate-400">
+                      Keep these codes private.
+                      Each code can normally be
+                      redeemed only once.
+                    </p>
+                  </div>
+
+                  {deliveredItems.some((item) => item.codes.length > 0) && (
+                    <button
+                      type="button"
+                      onClick={downloadAllCodes}
+                      className="shrink-0 rounded-xl bg-emerald-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-emerald-300"
+                    >
+                      Download All Codes (.txt)
+                    </button>
+                  )}
+                </div>
 
                 <div className="mt-5 space-y-5">
                   {deliveredItems.map(
@@ -462,9 +553,21 @@ export default function CheckoutSuccessPage() {
                         key={`${item.productName}-${itemIndex}`}
                         className="rounded-xl bg-slate-950 p-4"
                       >
-                        <p className="font-bold">
-                          {item.productName}
-                        </p>
+                        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                          <p className="font-bold">
+                            {item.productName}
+                          </p>
+
+                          {item.codes.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => downloadProductCodes(item)}
+                              className="shrink-0 rounded-lg border border-cyan-400/30 px-3 py-2 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+                            >
+                              Download Product Codes
+                            </button>
+                          )}
+                        </div>
 
                         {item.optionName && (
                           <p className="mt-1 text-sm text-cyan-300">
