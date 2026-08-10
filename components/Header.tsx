@@ -273,6 +273,13 @@ export default function Header() {
             </Link>
 
             <Link
+              href="/products/bulk"
+              className="rounded-lg border-2 border-cyan-600 bg-cyan-400 px-3 py-2 text-sm font-black text-slate-950 shadow-sm transition hover:border-slate-950 hover:bg-slate-950 hover:text-white"
+            >
+              B2B Bulk
+            </Link>
+
+            <Link
               href="/track-order"
               className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
             >
@@ -629,6 +636,18 @@ export default function Header() {
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\uD83D\uDD11"}</span>
                   {t("gameKeys")}
+                </span>
+                <span aria-hidden="true">{"\u203A"}</span>
+              </Link>
+
+              <Link
+                href="/products/bulk"
+                onClick={closeMenu}
+                className="flex items-center justify-between rounded-xl border-2 border-cyan-600 bg-cyan-400 px-4 py-3 font-black text-slate-950 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-300"
+              >
+                <span className="flex items-center gap-3">
+                  <span aria-hidden="true">{"\uD83D\uDCE6"}</span>
+                  B2B Bulk
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>

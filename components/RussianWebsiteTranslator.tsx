@@ -145,6 +145,7 @@ const russianText: Record<string, string> = {
     "Ознакомьтесь с оптовыми товарами, гибкими объёмами, выгодными B2B-ценами и персональной поддержкой.",
   "View B2B Bulk Products": "Смотреть оптовые товары B2B",
   "B2B Bulk Products": "Оптовые товары B2B",
+  "B2B Bulk": "B2B Оптом",
   "Bulk digital products for resellers and businesses with flexible quantities and dedicated support.":
     "Оптовые цифровые товары для реселлеров и бизнеса с гибкими объёмами и персональной поддержкой.",
   "No active products are available in this collection yet.":
