@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 type Category = {
   id: string;
@@ -40,15 +40,37 @@ export type InvoiceData = {
   customerCountry: string;
   customerTaxpayerId: string;
   customerAddress: string;
+  items?: InvoiceLineItem[];
+  categoryName?: string;
+  productName?: string;
+  optionName?: string;
+  quantity?: number;
+  unitPrice?: number;
+  paymentStatus: string;
+  network: string;
+  transactionId?: string;
+  notes: string;
+};
+
+export type InvoiceLineItem = {
   categoryName: string;
   productName: string;
   optionName: string;
   quantity: number;
   unitPrice: number;
-  paymentStatus: string;
-  network: string;
+  paymentMethod?: string;
+  transactionId?: string;
+};
+
+type InvoiceLineDraft = {
+  id: number;
+  categoryId: string;
+  productId: string;
+  optionId: string;
+  quantity: number;
+  unitPrice: string;
+  paymentMethod: string;
   transactionId: string;
-  notes: string;
 };
 
 const inputClass =
@@ -93,43 +115,81 @@ export default function InvoiceBuilder({
   defaultInvoiceNumber,
   defaultInvoiceDate,
 }: InvoiceBuilderProps) {
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
-  const availableProducts = useMemo(
-    () => products.filter((product) => product.category_id === categoryId),
-    [categoryId, products],
-  );
-  const [productId, setProductId] = useState("");
-  const [optionId, setOptionId] = useState("");
-  const availableOptions = useMemo(
-    () => options.filter((option) => option.product_id === productId),
-    [options, productId],
-  );
+  const firstCategoryId = categories[0]?.id ?? "";
+  const [lineItems, setLineItems] = useState<InvoiceLineDraft[]>([
+    {
+      id: 1,
+      categoryId: firstCategoryId,
+      productId: "",
+      optionId: "",
+      quantity: 1,
+      unitPrice: "",
+      paymentMethod: "USDT TRC20",
+      transactionId: "",
+    },
+  ]);
+  const [nextLineId, setNextLineId] = useState(2);
   const [preview, setPreview] = useState<InvoiceData | null>(null);
   const [savedInvoiceId, setSavedInvoiceId] = useState("");
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  function handleCategoryChange(value: string) {
-    setCategoryId(value);
-    setProductId("");
-    setOptionId("");
+  function updateLine(
+    id: number,
+    changes: Partial<InvoiceLineDraft>,
+  ) {
+    setLineItems((current) =>
+      current.map((line) =>
+        line.id === id ? { ...line, ...changes } : line,
+      ),
+    );
   }
 
-  function handleProductChange(value: string) {
-    setProductId(value);
-    setOptionId("");
+  function addLine() {
+    setLineItems((current) => [
+      ...current,
+      {
+        id: nextLineId,
+        categoryId: firstCategoryId,
+        productId: "",
+        optionId: "",
+        quantity: 1,
+        unitPrice: "",
+        paymentMethod: "USDT TRC20",
+        transactionId: "",
+      },
+    ]);
+    setNextLineId((current) => current + 1);
+  }
+
+  function removeLine(id: number) {
+    setLineItems((current) => current.filter((line) => line.id !== id));
   }
 
   function generatePreview(formData: FormData) {
-    const selectedCategory = categories.find(
-      (category) => category.id === String(formData.get("category_id") ?? ""),
-    );
-    const selectedProduct = products.find(
-      (product) => product.id === String(formData.get("product_id") ?? ""),
-    );
-    const selectedOption = options.find(
-      (option) => option.id === String(formData.get("product_option_id") ?? ""),
-    );
+    const invoiceItems = lineItems.map((line) => {
+      const selectedCategory = categories.find(
+        (category) => category.id === line.categoryId,
+      );
+      const selectedProduct = products.find(
+        (product) => product.id === line.productId,
+      );
+      const selectedOption = options.find(
+        (option) => option.id === line.optionId,
+      );
+
+      return {
+        categoryName: selectedCategory?.name ?? "Uncategorized",
+        productName: selectedProduct?.name ?? "Selected product",
+        optionName: selectedOption
+          ? formatOption(selectedOption)
+          : "Standard option",
+        quantity: Math.max(1, Number(line.quantity)),
+        unitPrice: Math.max(0, Number(line.unitPrice)),
+        paymentMethod: line.paymentMethod,
+        transactionId: line.transactionId.trim(),
+      };
+    });
 
     setSavedInvoiceId("");
     setSaveError("");
@@ -143,14 +203,9 @@ export default function InvoiceBuilder({
         formData.get("customer_taxpayer_id") ?? "",
       ).trim(),
       customerAddress: String(formData.get("customer_address") ?? "").trim(),
-      categoryName: selectedCategory?.name ?? "Uncategorized",
-      productName: selectedProduct?.name ?? "Selected product",
-      optionName: selectedOption ? formatOption(selectedOption) : "Standard option",
-      quantity: Math.max(1, Number(formData.get("quantity") ?? 1)),
-      unitPrice: Math.max(0, Number(formData.get("unit_price") ?? 0)),
+      items: invoiceItems,
       paymentStatus: String(formData.get("payment_status") ?? "PAID"),
       network: String(formData.get("network") ?? "").trim(),
-      transactionId: String(formData.get("transaction_id") ?? "").trim(),
       notes: String(formData.get("notes") ?? "").trim(),
     });
   }
@@ -194,6 +249,27 @@ export default function InvoiceBuilder({
       setIsSaving(false);
     }
   }
+
+  const linesAreValid = lineItems.every((line) => {
+    const hasOption = options.some(
+      (option) =>
+        option.id === line.optionId && option.product_id === line.productId,
+    );
+
+    return (
+      Boolean(
+        line.categoryId &&
+          line.productId &&
+          line.optionId &&
+          line.paymentMethod,
+      ) &&
+      hasOption &&
+      Number.isInteger(Number(line.quantity)) &&
+      Number(line.quantity) > 0 &&
+      Number.isFinite(Number(line.unitPrice)) &&
+      Number(line.unitPrice) > 0
+    );
+  });
 
   return (
     <>
@@ -249,25 +325,8 @@ export default function InvoiceBuilder({
                   <option value="PENDING">Pending</option>
                 </select>
               </label>
-              <label className="block">
-                <span className="text-sm font-bold">USDT network</span>
-                <select name="network" className={inputClass} defaultValue="TRC20">
-                  <option value="TRC20">TRC20</option>
-                  <option value="BEP20">BEP20</option>
-                  <option value="ERC20">ERC20</option>
-                  <option value="Other">Other</option>
-                </select>
-              </label>
             </div>
 
-            <label className="mt-5 block">
-              <span className="text-sm font-bold">Transaction ID / hash</span>
-              <input
-                name="transaction_id"
-                placeholder="Optional blockchain transaction hash"
-                className={inputClass}
-              />
-            </label>
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -327,97 +386,208 @@ export default function InvoiceBuilder({
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:col-span-2 sm:p-6">
-            <h2 className="text-xl font-black">Product and price</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              The product comes from your store, but this invoice price is entered manually.
-            </p>
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-xl font-black">Products and prices</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Add one or more store products and enter each agreed USDT price manually.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addLine}
+                className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
+              >
+                + Add product
+              </button>
+            </div>
 
-            <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
-              <label className="block">
-                <span className="text-sm font-bold">Category</span>
-                <select
-                  name="category_id"
-                  required
-                  value={categoryId}
-                  onChange={(event) => handleCategoryChange(event.target.value)}
-                  className={inputClass}
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <div className="mt-5 grid gap-4">
+              {lineItems.map((line, index) => {
+                const availableProducts = products.filter(
+                  (product) => product.category_id === line.categoryId,
+                );
+                const availableOptions = options.filter(
+                  (option) => option.product_id === line.productId,
+                );
 
-              <label className="block">
-                <span className="text-sm font-bold">Product</span>
-                <select
-                  name="product_id"
-                  required
-                  value={productId}
-                  onChange={(event) => handleProductChange(event.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">Select product</option>
-                  {availableProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                return (
+                  <div
+                    key={line.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-sm font-black text-slate-700">
+                        Product {index + 1}
+                      </p>
+                      {lineItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeLine(line.id)}
+                          className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-black text-red-600 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
 
-              <label className="block">
-                <span className="text-sm font-bold">Denomination / option</span>
-                <select
-                  name="product_option_id"
-                  required
-                  value={optionId}
-                  onChange={(event) => setOptionId(event.target.value)}
-                  disabled={!productId || availableOptions.length === 0}
-                  className={inputClass}
-                >
-                  <option value="">
-                    {!productId
-                      ? "Select product first"
-                      : availableOptions.length === 0
-                        ? "No denomination available"
-                        : "Select denomination"}
-                  </option>
-                  {availableOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {formatOption(option)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                    <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                      <label className="block">
+                        <span className="text-sm font-bold">Category</span>
+                        <select
+                          required
+                          value={line.categoryId}
+                          onChange={(event) =>
+                            updateLine(line.id, {
+                              categoryId: event.target.value,
+                              productId: "",
+                              optionId: "",
+                            })
+                          }
+                          className={inputClass}
+                        >
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
 
-              <label className="block">
-                <span className="text-sm font-bold">Quantity</span>
-                <input
-                  name="quantity"
-                  type="number"
-                  min="1"
-                  step="1"
-                  required
-                  defaultValue="1"
-                  className={inputClass}
-                />
-              </label>
+                      <label className="block">
+                        <span className="text-sm font-bold">Product</span>
+                        <select
+                          required
+                          value={line.productId}
+                          onChange={(event) =>
+                            updateLine(line.id, {
+                              productId: event.target.value,
+                              optionId: "",
+                            })
+                          }
+                          className={inputClass}
+                        >
+                          <option value="">Select product</option>
+                          {availableProducts.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
 
-              <label className="block">
-                <span className="text-sm font-bold">Manual price (USDT)</span>
-                <input
-                  name="unit_price"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  required
-                  placeholder="100.00"
-                  className={inputClass}
-                />
-              </label>
+                      <label className="block">
+                        <span className="text-sm font-bold">
+                          Denomination / option
+                        </span>
+                        <select
+                          required
+                          value={line.optionId}
+                          onChange={(event) =>
+                            updateLine(line.id, { optionId: event.target.value })
+                          }
+                          disabled={!line.productId || availableOptions.length === 0}
+                          className={inputClass}
+                        >
+                          <option value="">
+                            {!line.productId
+                              ? "Select product first"
+                              : availableOptions.length === 0
+                                ? "No denomination available"
+                                : "Select denomination"}
+                          </option>
+                          {availableOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {formatOption(option)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="text-sm font-bold">Quantity</span>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          required
+                          value={line.quantity}
+                          onChange={(event) =>
+                            updateLine(line.id, {
+                              quantity: Number(event.target.value),
+                            })
+                          }
+                          className={inputClass}
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="text-sm font-bold">
+                          Manual price (USDT)
+                        </span>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          required
+                          value={line.unitPrice}
+                          onChange={(event) =>
+                            updateLine(line.id, { unitPrice: event.target.value })
+                          }
+                          placeholder="100.00"
+                          className={inputClass}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <label className="block">
+                        <span className="text-sm font-bold">Payment method</span>
+                        <select
+                          value={line.paymentMethod}
+                          onChange={(event) =>
+                            updateLine(line.id, {
+                              paymentMethod: event.target.value,
+                            })
+                          }
+                          className={inputClass}
+                        >
+                          <option value="USDT TRC20">USDT TRC20</option>
+                          <option value="USDT BEP20">USDT BEP20</option>
+                          <option value="USDT ERC20">USDT ERC20</option>
+                          <option value="USDT SOLANA">USDT Solana</option>
+                          <option value="PayPalych">PayPalych</option>
+                          <option value="FreeKassa">FreeKassa</option>
+                          <option value="Wallet">Wallet</option>
+                          <option value="Bank transfer">Bank transfer</option>
+                          <option value="Cash">Cash</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="text-sm font-bold">
+                          Transaction ID / hash
+                        </span>
+                        <span className="ml-2 text-xs font-normal text-slate-500">
+                          Optional
+                        </span>
+                        <input
+                          value={line.transactionId}
+                          onChange={(event) =>
+                            updateLine(line.id, {
+                              transactionId: event.target.value,
+                            })
+                          }
+                          maxLength={500}
+                          placeholder="Enter the transaction used for this product"
+                          className={inputClass}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <label className="mt-5 block">
@@ -434,9 +604,8 @@ export default function InvoiceBuilder({
               type="submit"
               disabled={
                 categories.length === 0 ||
-                availableProducts.length === 0 ||
-                !productId ||
-                availableOptions.length === 0
+                products.length === 0 ||
+                !linesAreValid
               }
               className="mt-6 w-full rounded-xl bg-blue-600 px-6 py-3 font-black text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
             >
@@ -484,7 +653,26 @@ export default function InvoiceBuilder({
 }
 
 export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
-  const total = invoice.quantity * invoice.unitPrice;
+  const invoiceItems: InvoiceLineItem[] =
+    invoice.items && invoice.items.length > 0
+      ? invoice.items
+      : [
+          {
+            categoryName: invoice.categoryName ?? "Uncategorized",
+            productName: invoice.productName ?? "Product",
+            optionName: invoice.optionName ?? "Standard option",
+            quantity: invoice.quantity ?? 1,
+            unitPrice: invoice.unitPrice ?? 0,
+            paymentMethod: invoice.network
+              ? `USDT ${invoice.network}`
+              : "",
+            transactionId: invoice.transactionId ?? "",
+          },
+        ];
+  const total = invoiceItems.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice,
+    0,
+  );
 
   return (
     <>
@@ -620,9 +808,9 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">
               Payment
             </p>
-            <p className="mt-3 font-black">USDT {invoice.network}</p>
-            <p className="mt-1 break-all text-sm text-slate-600">
-              {invoice.transactionId || "Transaction reference not recorded"}
+            <p className="mt-3 font-black">Product payment details</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Payment methods and transaction references are listed with each product.
             </p>
           </div>
         </div>
@@ -639,24 +827,39 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-t border-slate-200">
-                <td className="px-4 py-5">
-                  <p className="font-bold">{invoice.productName}</p>
-                  <p className="mt-1 text-xs font-semibold text-blue-600">
-                    {invoice.optionName}
-                  </p>
-                </td>
-                <td className="px-4 py-4 text-slate-600">
-                  {invoice.categoryName}
-                </td>
-                <td className="px-4 py-4 text-center">{invoice.quantity}</td>
-                <td className="px-4 py-4 text-right">
-                  {formatUsdt(invoice.unitPrice)}
-                </td>
-                <td className="px-4 py-4 text-right font-black">
-                  {formatUsdt(total)}
-                </td>
-              </tr>
+              {invoiceItems.map((item, index) => (
+                <tr
+                  key={`${item.productName}-${item.optionName}-${index}`}
+                  className="border-t border-slate-200"
+                >
+                  <td className="px-4 py-4">
+                    <p className="font-bold">{item.productName}</p>
+                    <p className="mt-1 text-xs font-semibold text-blue-600">
+                      {item.optionName}
+                    </p>
+                    {item.paymentMethod && (
+                      <p className="mt-2 text-[11px] font-bold text-slate-600">
+                        Payment: {item.paymentMethod}
+                      </p>
+                    )}
+                    {item.transactionId && (
+                      <p className="mt-1 break-all text-[11px] text-slate-500">
+                        Transaction: {item.transactionId}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 text-slate-600">
+                    {item.categoryName}
+                  </td>
+                  <td className="px-4 py-4 text-center">{item.quantity}</td>
+                  <td className="px-4 py-4 text-right">
+                    {formatUsdt(item.unitPrice)}
+                  </td>
+                  <td className="px-4 py-4 text-right font-black">
+                    {formatUsdt(item.quantity * item.unitPrice)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

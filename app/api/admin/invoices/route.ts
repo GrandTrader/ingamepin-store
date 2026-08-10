@@ -22,6 +22,17 @@ type InvoicePayload = {
   network?: unknown;
   transactionId?: unknown;
   notes?: unknown;
+  items?: unknown;
+};
+
+type InvoiceItemPayload = {
+  categoryName?: unknown;
+  productName?: unknown;
+  optionName?: unknown;
+  quantity?: unknown;
+  unitPrice?: unknown;
+  paymentMethod?: unknown;
+  transactionId?: unknown;
 };
 
 function clean(value: unknown, maximum = 500) {
@@ -60,10 +71,31 @@ export async function POST(request: NextRequest) {
     const invoiceDate = clean(body.invoiceDate, 10);
     const customerName = clean(body.customerName, 200);
     const customerEmail = clean(body.customerEmail, 320).toLowerCase();
-    const productName = clean(body.productName, 300);
-    const quantity = Number(body.quantity);
-    const unitPrice = Number(body.unitPrice);
     const paymentStatus = clean(body.paymentStatus, 20);
+    const rawItems: InvoiceItemPayload[] = Array.isArray(body.items)
+      ? (body.items as InvoiceItemPayload[])
+      : [
+          {
+            categoryName: body.categoryName,
+            productName: body.productName,
+            optionName: body.optionName,
+            quantity: body.quantity,
+            unitPrice: body.unitPrice,
+            paymentMethod: body.network
+              ? `USDT ${clean(body.network, 50)}`
+              : "Other",
+            transactionId: body.transactionId,
+          },
+        ];
+    const items = rawItems.map((item) => ({
+      categoryName: clean(item.categoryName, 200),
+      productName: clean(item.productName, 300),
+      optionName: clean(item.optionName, 300),
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+      paymentMethod: clean(item.paymentMethod, 100),
+      transactionId: clean(item.transactionId, 500),
+    }));
 
     if (!invoiceNumber || !/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate)) {
       return NextResponse.json(
@@ -72,21 +104,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!customerName || !customerEmail.includes("@") || !productName) {
+    if (!customerName || !customerEmail.includes("@")) {
       return NextResponse.json(
-        { error: "Customer or product information is invalid." },
+        { error: "Customer information is invalid." },
         { status: 400 },
       );
     }
 
     if (
-      !Number.isInteger(quantity) ||
-      quantity < 1 ||
-      !Number.isFinite(unitPrice) ||
-      unitPrice <= 0
+      items.length < 1 ||
+      items.length > 50 ||
+      items.some(
+        (item) =>
+          !item.productName ||
+          !item.paymentMethod ||
+          !Number.isInteger(item.quantity) ||
+          item.quantity < 1 ||
+          !Number.isFinite(item.unitPrice) ||
+          item.unitPrice <= 0,
+      )
     ) {
       return NextResponse.json(
-        { error: "Invoice quantity or price is invalid." },
+        { error: "One or more invoice products are invalid." },
         { status: 400 },
       );
     }
@@ -106,11 +145,7 @@ export async function POST(request: NextRequest) {
       customerCountry: clean(body.customerCountry, 150),
       customerTaxpayerId: clean(body.customerTaxpayerId, 100),
       customerAddress: clean(body.customerAddress, 1000),
-      categoryName: clean(body.categoryName, 200),
-      productName,
-      optionName: clean(body.optionName, 300),
-      quantity,
-      unitPrice,
+      items,
       paymentStatus,
       network: clean(body.network, 50),
       transactionId: clean(body.transactionId, 500),
@@ -126,7 +161,14 @@ export async function POST(request: NextRequest) {
         invoice_date: invoiceDate,
         payment_status: paymentStatus,
         currency: "USDT",
-        total: Number((quantity * unitPrice).toFixed(2)),
+        total: Number(
+          items
+            .reduce(
+              (sum, item) => sum + item.quantity * item.unitPrice,
+              0,
+            )
+            .toFixed(2),
+        ),
         invoice_data: invoiceData,
         created_by: user.id,
       })
