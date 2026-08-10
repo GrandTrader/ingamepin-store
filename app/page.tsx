@@ -260,7 +260,9 @@ export default async function Home() {
   ]);
 
   const products: StoreProduct[] =
-    productRows.map((product) => ({
+    productRows
+      .filter((product) => !product.is_bulk_order)
+      .map((product) => ({
       id: product.id,
       name: product.name,
       nameRu: product.name_ru,
@@ -288,7 +290,7 @@ export default async function Home() {
       isInstantDelivery:
         product.delivery_type === "AUTOMATIC",
       discountPercent: customerDiscounts.get(product.id) ?? 0,
-    }));
+      }));
 
   const featuredProducts =
     products.filter(
@@ -426,6 +428,38 @@ export default async function Home() {
         ) : (
           <EmptySection message="No categories are currently available." />
         )}
+      </section>
+
+      <section className="mx-auto max-w-7xl px-3 pb-5 sm:px-5 sm:pb-10">
+        <Link
+          href="/products/bulk"
+          className="group relative flex flex-col gap-5 overflow-hidden rounded-2xl border-2 border-cyan-400 bg-gradient-to-r from-cyan-100 via-white to-blue-200 p-5 shadow-lg shadow-cyan-200/60 ring-4 ring-cyan-100/70 transition hover:-translate-y-1 hover:border-cyan-500 hover:shadow-xl hover:shadow-cyan-200 sm:flex-row sm:items-center sm:justify-between sm:p-7"
+        >
+          <span
+            aria-hidden="true"
+            className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-cyan-300/30 blur-2xl"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute -bottom-20 left-1/3 h-36 w-36 rounded-full bg-blue-300/30 blur-2xl"
+          />
+
+          <div className="relative z-10">
+            <p className="inline-flex rounded-full bg-amber-300 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-950 shadow-sm sm:text-xs">
+              For resellers &amp; businesses
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
+              Need products in bulk quantity?
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Explore bulk products with flexible quantities, competitive B2B pricing and dedicated support.
+            </p>
+          </div>
+
+          <span className="relative z-10 inline-flex shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-slate-400/30 transition group-hover:border-cyan-600 group-hover:bg-cyan-600 group-hover:shadow-cyan-300/50">
+            View B2B Bulk Products <span aria-hidden="true" className="ml-2">→</span>
+          </span>
+        </Link>
       </section>
 
       {featuredProductsForDisplay.length > 0 && (

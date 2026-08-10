@@ -70,6 +70,11 @@ const collections = {
     description:
       "Apple Store and iTunes gift cards starting from INR 100.",
   },
+  bulk: {
+    title: "B2B Bulk Products",
+    description:
+      "Bulk digital products for resellers and businesses with flexible quantities and dedicated support.",
+  },
 } as const;
 
 type CollectionKey = keyof typeof collections;
@@ -109,6 +114,10 @@ function matchesCollection(
     return true;
   }
 
+  if (collection === "bulk") {
+    return product.is_bulk_order;
+  }
+
   const category = Array.isArray(product.categories)
     ? product.categories[0]
     : product.categories;
@@ -136,11 +145,15 @@ function matchesCollection(
     return searchableText.includes("steam");
   }
 
-  return (
-    searchableText.includes("apple") ||
-    searchableText.includes("itunes") ||
-    searchableText.includes("app store")
-  );
+  if (collection === "apple") {
+    return (
+      searchableText.includes("apple") ||
+      searchableText.includes("itunes") ||
+      searchableText.includes("app store")
+    );
+  }
+
+  return false;
 }
 
 export default async function ProductsPage({

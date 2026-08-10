@@ -139,6 +139,16 @@ const russianText: Record<string, string> = {
   "Order items": "Товары в заказе",
   "Featured Products": "Рекомендуемые товары",
   "Popular Categories": "Популярные категории",
+  "For resellers & businesses": "Для реселлеров и бизнеса",
+  "Need products in bulk quantity?": "Нужны товары оптом?",
+  "Explore bulk products with flexible quantities, competitive B2B pricing and dedicated support.":
+    "Ознакомьтесь с оптовыми товарами, гибкими объёмами, выгодными B2B-ценами и персональной поддержкой.",
+  "View B2B Bulk Products": "Смотреть оптовые товары B2B",
+  "B2B Bulk Products": "Оптовые товары B2B",
+  "Bulk digital products for resellers and businesses with flexible quantities and dedicated support.":
+    "Оптовые цифровые товары для реселлеров и бизнеса с гибкими объёмами и персональной поддержкой.",
+  "No active products are available in this collection yet.":
+    "В этой оптовой категории пока нет доступных товаров.",
   "View all": "Смотреть все",
   "Shop now": "Купить сейчас",
   "No products found.": "Товары не найдены.",
