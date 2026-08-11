@@ -84,12 +84,20 @@ export default async function AffiliateSettingsPage({
               </p>
             </div>
 
-            <Link
-              href="/admin/affiliates/promoters"
-              className="rounded-xl bg-slate-900 px-5 py-3 text-center text-sm font-black text-white transition hover:bg-blue-700"
-            >
-              Manage Promoters
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/admin/affiliates/payouts"
+                className="rounded-xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white transition hover:bg-emerald-700"
+              >
+                Manage Payouts
+              </Link>
+              <Link
+                href="/admin/affiliates/promoters"
+                className="rounded-xl bg-slate-900 px-5 py-3 text-center text-sm font-black text-white transition hover:bg-blue-700"
+              >
+                Manage Promoters
+              </Link>
+            </div>
           </div>
 
           {error && (

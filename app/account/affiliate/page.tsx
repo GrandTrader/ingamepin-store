@@ -65,6 +65,15 @@ export default async function CustomerAffiliatePage({
   const admin = createAdminClient();
   const approvedAccount = account?.status === "APPROVED" ? account : null;
 
+  if (approvedAccount) {
+    const releaseResult = await admin.rpc("release_mature_affiliate_commissions");
+    if (releaseResult.error) {
+      throw new Error(
+        `Unable to release matured affiliate commissions: ${releaseResult.error.message}`,
+      );
+    }
+  }
+
   const [productsResult, clicksResult, commissionsResult] = approvedAccount
     ? await Promise.all([
         admin
