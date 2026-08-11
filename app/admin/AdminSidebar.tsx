@@ -24,6 +24,7 @@ const links = [
   { label: "Affiliates", href: "/admin/affiliates", icon: "AF" },
   { label: "Customers", href: "/admin/customers", icon: "CU" },
   { label: "Live Chat", href: "/admin/live-chat", icon: "CH" },
+  { label: "Security", href: "/admin/security", icon: "SC" },
 ];
 
 export default function AdminSidebar({

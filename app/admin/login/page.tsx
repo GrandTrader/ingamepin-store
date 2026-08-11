@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { adminLogin } from "../actions";
+import AdminPasskeyLoginButton from "./AdminPasskeyLoginButton";
 import { createClient } from "@/lib/supabase/server";
 import PasswordInput from "@/components/PasswordInput";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";
@@ -30,7 +31,30 @@ export default async function AdminLoginPage({
       .maybeSingle();
 
     if (adminResult.data) {
-      redirect("/admin");
+      const [assuranceResult, factorsResult] =
+        await Promise.all([
+          supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+          supabase.auth.mfa.listFactors(),
+        ]);
+
+      if (
+        !assuranceResult.error &&
+        assuranceResult.data.currentLevel === "aal2"
+      ) {
+        redirect("/admin");
+      }
+
+      const hasVerifiedFactor =
+        !factorsResult.error &&
+        factorsResult.data.totp.some(
+          (factor) => factor.status === "verified"
+        );
+
+      redirect(
+        hasVerifiedFactor
+          ? "/admin/login/verify"
+          : "/admin"
+      );
     }
   }
 
@@ -105,6 +129,14 @@ export default async function AdminLoginPage({
           >
             Sign in to Admin
           </button>
+
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span className="h-px flex-1 bg-white/10" />
+            OR
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <AdminPasskeyLoginButton />
         </form>
       </div>
     </div>

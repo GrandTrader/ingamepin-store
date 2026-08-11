@@ -1,8 +1,16 @@
-import { createServerClient } from "@supabase/ssr";
+import {
+  createServerClient,
+  type CookieOptions,
+} from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+  let refreshedCookies: Array<{
+    name: string;
+    value: string;
+    options: CookieOptions;
+  }> = [];
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -12,6 +20,7 @@ export async function proxy(request: NextRequest) {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet) {
+        refreshedCookies = cookiesToSet;
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
@@ -19,7 +28,60 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isAdminPage = pathname.startsWith("/admin");
+  const isAdminLoginPage = pathname.startsWith("/admin/login");
+
+  function redirectWithSession(path: string) {
+    const url = request.nextUrl.clone();
+    url.pathname = path;
+    url.search = "";
+
+    const redirectResponse = NextResponse.redirect(url);
+    refreshedCookies.forEach(({ name, value, options }) => {
+      redirectResponse.cookies.set(name, value, options);
+    });
+    return redirectResponse;
+  }
+
+  if (isAdminPage && !isAdminLoginPage) {
+    if (!user) {
+      return redirectWithSession("/admin/login");
+    }
+
+    const adminResult = await supabase
+      .from("admin_users")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (adminResult.error || !adminResult.data) {
+      return redirectWithSession("/admin/login");
+    }
+
+    const [assuranceResult, factorsResult] =
+      await Promise.all([
+        supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+        supabase.auth.mfa.listFactors(),
+      ]);
+
+    const hasVerifiedFactor =
+      !factorsResult.error &&
+      factorsResult.data.totp.length > 0;
+
+    if (
+      hasVerifiedFactor &&
+      (assuranceResult.error ||
+        assuranceResult.data.currentLevel !== "aal2")
+    ) {
+      return redirectWithSession("/admin/login/verify");
+    }
+  }
+
   return response;
 }
 

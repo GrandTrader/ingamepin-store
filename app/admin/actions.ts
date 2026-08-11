@@ -37,6 +37,20 @@ export async function adminLogin(
     });
 
   if (loginResult.error || !loginResult.data.user) {
+    const authenticationError = loginResult.error?.message.toLowerCase() ?? "";
+
+    if (
+      authenticationError.includes("captcha") ||
+      authenticationError.includes("turnstile") ||
+      authenticationError.includes("challenge")
+    ) {
+      redirect(
+        `/admin/login?error=${encodeURIComponent(
+          "Security check verification failed. Complete the security check again and retry."
+        )}`
+      );
+    }
+
     redirect(
       `/admin/login?error=${encodeURIComponent(
         "Incorrect email or password"
@@ -60,7 +74,35 @@ export async function adminLogin(
     );
   }
 
-  redirect("/admin");
+  const [assuranceResult, factorsResult] =
+    await Promise.all([
+      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+      supabase.auth.mfa.listFactors(),
+    ]);
+
+  if (assuranceResult.error || factorsResult.error) {
+    await supabase.auth.signOut();
+
+    redirect(
+      `/admin/login?error=${encodeURIComponent(
+        "Unable to verify administrator security settings"
+      )}`
+    );
+  }
+
+  if (assuranceResult.data.currentLevel === "aal2") {
+    redirect("/admin");
+  }
+
+  const hasVerifiedFactor = factorsResult.data.totp.some(
+    (factor) => factor.status === "verified"
+  );
+
+  redirect(
+    hasVerifiedFactor
+      ? "/admin/login/verify"
+      : "/admin"
+  );
 }
 
 export async function adminLogout() {
