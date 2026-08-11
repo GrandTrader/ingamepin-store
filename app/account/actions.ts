@@ -84,6 +84,16 @@ export async function customerLogin(formData: FormData) {
   redirect("/account/dashboard");
 }
 
+export async function recordCustomerPasskeyLogin() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const requestHeaders = await headers();
+  await recordCustomerLogin(user.id, getCountryCode(requestHeaders));
+}
+
 export async function customerRegister(formData: FormData) {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();

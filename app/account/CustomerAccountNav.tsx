@@ -10,6 +10,7 @@ const links = [
   { label: "Wallet", href: "/account/wallet" },
   { label: "Affiliate", href: "/account/affiliate" },
   { label: "Notifications", href: "/account/notifications" },
+  { label: "Security", href: "/account/security" },
   { label: "Profile", href: "/account/profile" },
 ];
 

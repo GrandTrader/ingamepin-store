@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { customerLogout } from "../actions";
 import DeliveredCodesDownloadButton from "@/components/DeliveredCodesDownloadButton";
 import InstallCustomerAppButton from "@/components/InstallCustomerAppButton";
+import CustomerPasskeyReminder from "../CustomerPasskeyReminder";
 
 export const dynamic = "force-dynamic";
 
@@ -148,11 +149,13 @@ export default async function CustomerDashboardPage() {
             <Link href="/account/wallet" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Wallet</Link>
             <Link href="/account/affiliate" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Affiliate</Link>
             <Link href="/account/notifications" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Notifications {unreadCount > 0 ? `(${unreadCount})` : ""}</Link>
+            <Link href="/account/security" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Security</Link>
             <Link href="/account/profile" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Profile</Link>
           </nav>
         </aside>
 
         <div className="min-w-0 max-w-full overflow-hidden p-4 sm:p-8">
+          <CustomerPasskeyReminder />
           <section id="overview" className="scroll-mt-40">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div><p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-600">My account</p><h1 className="mt-2 text-3xl font-black">Hello, {displayName}</h1><p className="mt-2 text-slate-500">Manage purchases, codes, notifications and wallet balance.</p></div>
