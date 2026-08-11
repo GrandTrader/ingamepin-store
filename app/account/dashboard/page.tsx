@@ -146,6 +146,7 @@ export default async function CustomerDashboardPage() {
             <Link href="/account/orders" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">My orders</Link>
             <Link href="/account/codes" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">My codes</Link>
             <Link href="/account/wallet" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Wallet</Link>
+            <Link href="/account/affiliate" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Affiliate</Link>
             <Link href="/account/notifications" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Notifications {unreadCount > 0 ? `(${unreadCount})` : ""}</Link>
             <Link href="/account/profile" className="whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50">Profile</Link>
           </nav>

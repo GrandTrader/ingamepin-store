@@ -55,6 +55,7 @@ type ProductPurchaseFormProps = {
     allowsGamingVoucher: boolean;
     playerIdLabel: string | null;
     customerDiscountPercent: number;
+    affiliateCommissionPercent?: number;
     isBulkOrder?: boolean;
     bulkDeliveryInstructions?: string | null;
     minimumQuantity: number;
@@ -184,12 +185,23 @@ export default function ProductPurchaseForm({
 
   const parsedCustomValue = Number(customValue);
 
+  const affiliatePriceMultiplier =
+    1 + Math.max(0, product.affiliateCommissionPercent ?? 0) / 100;
+
+  function applyAffiliateMarkup(basePrice: number) {
+    const markup = Math.round(
+      basePrice * (affiliatePriceMultiplier - 1) * 100,
+    ) / 100;
+
+    return Math.round((basePrice + markup) * 100) / 100;
+  }
+
   const selectedUnitPrice =
     valueMode === "CUSTOM"
       ? Number.isFinite(parsedCustomValue)
-        ? parsedCustomValue
+        ? applyAffiliateMarkup(parsedCustomValue)
         : 0
-      : selectedFixedOption?.sellingPrice ?? 0;
+      : applyAffiliateMarkup(selectedFixedOption?.sellingPrice ?? 0);
 
   const requiresSingleQuantity =
     valueMode === "CUSTOM" ||
@@ -598,8 +610,8 @@ export default function ProductPurchaseForm({
                   )}
                   <span className="mt-1 block text-sm">
                     {product.customerDiscountPercent > 0 ? (
-                      <><span className="font-black">{formatPrice(option.sellingPrice * (1 - product.customerDiscountPercent / 100))}</span>{" "}<span className="text-xs line-through opacity-60">{formatPrice(option.sellingPrice)}</span></>
-                    ) : formatPrice(option.sellingPrice)}
+                      <><span className="font-black">{formatPrice(applyAffiliateMarkup(option.sellingPrice) * (1 - product.customerDiscountPercent / 100))}</span>{" "}<span className="text-xs line-through opacity-60">{formatPrice(applyAffiliateMarkup(option.sellingPrice))}</span></>
+                    ) : formatPrice(applyAffiliateMarkup(option.sellingPrice))}
                   </span>
                   <span className="mt-1 block text-xs opacity-70">
                     {product.isBulkOrder

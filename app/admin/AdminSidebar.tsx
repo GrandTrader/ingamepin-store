@@ -21,6 +21,7 @@ const links = [
   { label: "Homepage Slider", href: "/admin/homepage-slider", icon: "HS" },
   { label: "Wallet", href: "/admin/wallet", icon: "WA" },
   { label: "Customer Discounts", href: "/admin/customer-discounts", icon: "CD" },
+  { label: "Affiliates", href: "/admin/affiliates", icon: "AF" },
   { label: "Customers", href: "/admin/customers", icon: "CU" },
   { label: "Live Chat", href: "/admin/live-chat", icon: "CH" },
 ];

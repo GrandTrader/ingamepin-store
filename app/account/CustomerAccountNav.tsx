@@ -8,6 +8,7 @@ const links = [
   { label: "My Orders", href: "/account/orders" },
   { label: "My Codes", href: "/account/codes" },
   { label: "Wallet", href: "/account/wallet" },
+  { label: "Affiliate", href: "/account/affiliate" },
   { label: "Notifications", href: "/account/notifications" },
   { label: "Profile", href: "/account/profile" },
 ];

@@ -2,16 +2,21 @@
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import ProductPurchaseForm from "./ProductPurchaseForm";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import LocalizedProductText from "@/components/LocalizedProductText";
 import ProductViewTracker from "@/components/ProductViewTracker";
+import AffiliateReferralTracker from "@/components/AffiliateReferralTracker";
 
 export const dynamic = "force-dynamic";
 
 type ProductPageProps = {
   params: Promise<{
     slug: string;
+  }>;
+  searchParams: Promise<{
+    ref?: string | string[];
   }>;
 };
 
@@ -52,6 +57,8 @@ type ProductRow = {
   player_id_label: string | null;
   minimum_quantity: number;
   maximum_quantity: number;
+  affiliate_enabled: boolean;
+  affiliate_commission_percent: number | string;
   categories: CategoryRelation;
 };
 
@@ -86,8 +93,13 @@ function getCategory(category: CategoryRelation) {
 
 export default async function ProductPage({
   params,
+  searchParams,
 }: ProductPageProps) {
   const { slug } = await params;
+  const query = await searchParams;
+  const affiliateCode = Array.isArray(query.ref)
+    ? query.ref[0]?.trim()
+    : query.ref?.trim();
   const supabase = await createClient();
 
   const productResult = await supabase
@@ -119,6 +131,8 @@ export default async function ProductPage({
         player_id_label,
         minimum_quantity,
         maximum_quantity,
+        affiliate_enabled,
+        affiliate_commission_percent,
         categories (
           name,
           slug
@@ -182,10 +196,63 @@ export default async function ProductPage({
   const category = getCategory(product.categories);
   const customerDiscounts = await getSignedInCustomerDiscounts();
   const customerDiscountPercent = customerDiscounts.get(product.id) ?? 0;
+  let affiliateCommissionPercent = 0;
+
+  if (affiliateCode && product.affiliate_enabled) {
+    const admin = createAdminClient();
+    const [settingsResult, affiliateResult] = await Promise.all([
+      admin
+        .from("affiliate_settings")
+        .select("program_enabled")
+        .eq("id", 1)
+        .maybeSingle(),
+      admin
+        .from("affiliate_accounts")
+        .select("id, commission_override_percent")
+        .eq("affiliate_code", affiliateCode.toUpperCase())
+        .eq("status", "APPROVED")
+        .maybeSingle(),
+    ]);
+
+    const affiliate = affiliateResult.data;
+
+    if (settingsResult.data?.program_enabled && affiliate) {
+      const selectedRateResult = await admin
+        .from("affiliate_product_rates")
+        .select("commission_percent")
+        .eq("affiliate_id", affiliate.id)
+        .eq("product_id", product.id)
+        .maybeSingle();
+      const maximumRate = Number(
+        affiliate.commission_override_percent ??
+          product.affiliate_commission_percent,
+      );
+      const selectedRate = Number(
+        selectedRateResult.data?.commission_percent ?? maximumRate,
+      );
+
+      if (
+        Number.isFinite(maximumRate) &&
+        Number.isFinite(selectedRate) &&
+        maximumRate > 0
+      ) {
+        affiliateCommissionPercent = Math.min(
+          Math.max(selectedRate, 0),
+          maximumRate,
+        );
+      }
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-3 py-5 text-white sm:px-5 sm:py-10">
       <ProductViewTracker productId={product.id} />
+      {affiliateCode && (
+        <AffiliateReferralTracker
+          affiliateCode={affiliateCode}
+          productId={product.id}
+        />
+      )}
       <div className="mx-auto max-w-6xl">
         <nav className="flex flex-nowrap items-center gap-1.5 overflow-hidden text-xs text-slate-400 sm:flex-wrap sm:gap-2 sm:text-sm">
           <Link href="/" className="transition hover:text-cyan-400">
@@ -351,6 +418,7 @@ export default async function ProductPage({
                 playerIdLabel:
                   product.player_id_label,
                 customerDiscountPercent,
+                affiliateCommissionPercent,
                 isBulkOrder: product.is_bulk_order,
                 bulkDeliveryInstructions: product.bulk_delivery_instructions,
                 minimumQuantity: product.minimum_quantity,

@@ -28,6 +28,15 @@ type OrderRequest = {
   items?: unknown;
 };
 
+const AFFILIATE_VISITOR_COOKIE = "igp_affiliate_visitor";
+const AFFILIATE_CLICK_COOKIE = "igp_affiliate_click";
+
+function affiliateVisitorHash(value: string, secret: string) {
+  return createHash("sha256")
+    .update(`${secret}:${value}`)
+    .digest("hex");
+}
+
 export async function GET(request: NextRequest) {
   const paymentMethod =
     request.nextUrl.searchParams.get("paymentMethod")?.trim() ?? "";
@@ -180,6 +189,102 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const affiliateClickId =
+      request.cookies.get(AFFILIATE_CLICK_COOKIE)?.value?.trim() ?? "";
+    const affiliateVisitorToken =
+      request.cookies.get(AFFILIATE_VISITOR_COOKIE)?.value?.trim() ?? "";
+    const affiliateHashSecret =
+      process.env.AFFILIATE_HASH_SECRET ??
+      process.env.SUPABASE_SECRET_KEY ??
+      "";
+
+    if (
+      affiliateClickId &&
+      affiliateVisitorToken &&
+      affiliateHashSecret
+    ) {
+      const expectedVisitorHash = affiliateVisitorHash(
+        affiliateVisitorToken,
+        affiliateHashSecret,
+      );
+      const clickResult = await admin
+        .from("affiliate_clicks")
+        .select("id, product_id, visitor_token_hash")
+        .eq("id", affiliateClickId)
+        .eq("visitor_token_hash", expectedVisitorHash)
+        .maybeSingle();
+
+      if (clickResult.error) {
+        console.error("Affiliate visit validation failed:", clickResult.error);
+      } else if (clickResult.data) {
+        const eligibleItemResult = await admin
+          .from("order_items")
+          .select("id", { count: "exact", head: true })
+          .eq("order_id", orderResult.data.id)
+          .eq("product_id", clickResult.data.product_id);
+
+        if (eligibleItemResult.error) {
+          console.error(
+            "Affiliate order item validation failed:",
+            eligibleItemResult.error,
+          );
+        } else if ((eligibleItemResult.count ?? 0) > 0) {
+          const affiliatePricingResult = await admin.rpc(
+            "apply_affiliate_order_pricing",
+            {
+              p_order_id: orderResult.data.id,
+              p_affiliate_click_id: clickResult.data.id,
+            },
+          );
+
+          if (affiliatePricingResult.error) {
+            console.error(
+              "Affiliate order pricing failed:",
+              affiliatePricingResult.error,
+            );
+
+            const cleanupResult = await admin
+              .from("orders")
+              .delete()
+              .eq("id", orderResult.data.id)
+              .eq("status", "PENDING_PAYMENT");
+
+            if (cleanupResult.error) {
+              console.error(
+                "Affiliate order cleanup failed:",
+                cleanupResult.error,
+              );
+            }
+
+            return NextResponse.json(
+              {
+                error:
+                  "The affiliate price changed. Return to the product and try again.",
+              },
+              { status: 409 },
+            );
+          }
+
+          const affiliatePricing = affiliatePricingResult.data as {
+            markup?: number | string;
+            subtotal?: number | string;
+            total?: number | string;
+          } | null;
+
+          if (affiliatePricing) {
+            Object.assign(orderResult.data, {
+              affiliate_markup: Number(affiliatePricing.markup ?? 0),
+              affiliateMarkup: Number(affiliatePricing.markup ?? 0),
+              subtotal: Number(affiliatePricing.subtotal ?? 0),
+              total: Number(affiliatePricing.total ?? 0),
+              totalAmount: Number(affiliatePricing.total ?? 0),
+            });
+          }
+        }
+      }
+    }
+
     if (customerIp) await admin.from("orders").update({ customer_ip: customerIp }).eq("id", orderResult.data.id);
 
     const customerEmail = String(customer.email ?? "").trim().toLowerCase();
