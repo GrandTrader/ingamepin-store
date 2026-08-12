@@ -15,7 +15,7 @@ export type StoreCurrency = "USD" | "INR" | "RUB";
 
 const translations = {
   en: {
-    digitalDelivery: "Digital Delivery",
+    digitalDelivery: "Digital Instant Delivery",
     genuineProducts: "Genuine Products",
     securePayment: "Secure Payment",
     customerSupport: "Customer Support",
@@ -96,7 +96,7 @@ const translations = {
     deliveryInstructions: "Delivery instructions",
   },
   ru: {
-    digitalDelivery: "Цифровая доставка",
+    digitalDelivery: "Мгновенная цифровая доставка",
     genuineProducts: "Оригинальные товары",
     securePayment: "Безопасная оплата",
     customerSupport: "Поддержка клиентов",

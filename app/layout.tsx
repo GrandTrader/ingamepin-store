@@ -46,7 +46,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-store-theme="light" style={{ colorScheme: "light" }}>
       <body
         suppressHydrationWarning
         className={`${inter.variable} ${robotoMono.variable} flex min-h-screen flex-col bg-slate-950 antialiased`}

@@ -20,12 +20,12 @@ export default function ThemeModeSwitch({
   className?: string;
 }) {
   const { language } = useStorePreferences();
-  const [theme, setTheme] = useState<StoreTheme>("dark");
+  const [theme, setTheme] = useState<StoreTheme>("light");
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem(STORAGE_KEY);
     const initialTheme: StoreTheme =
-      savedTheme === "light" ? "light" : "dark";
+      savedTheme === "dark" ? "dark" : "light";
 
     setTheme(initialTheme);
     applyTheme(initialTheme);
@@ -41,7 +41,7 @@ export default function ThemeModeSwitch({
     const syncStorage = (event: StorageEvent) => {
       if (event.key !== STORAGE_KEY) return;
       const nextTheme: StoreTheme =
-        event.newValue === "light" ? "light" : "dark";
+        event.newValue === "dark" ? "dark" : "light";
       setTheme(nextTheme);
       applyTheme(nextTheme);
     };
