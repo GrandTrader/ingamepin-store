@@ -17,7 +17,6 @@ const links = [
   { label: "Invoices", href: "/admin/invoices", icon: "IN" },
   { label: "Payments", href: "/admin/payments", icon: "PY" },
   { label: "Payment Settings", href: "/admin/payment-settings", icon: "PS" },
-  { label: "Preorder Popup", href: "/admin/preorder-popup", icon: "PP" },
   { label: "Homepage Slider", href: "/admin/homepage-slider", icon: "HS" },
   { label: "Wallet", href: "/admin/wallet", icon: "WA" },
   { label: "Customer Discounts", href: "/admin/customer-discounts", icon: "CD" },
