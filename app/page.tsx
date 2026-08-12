@@ -12,12 +12,14 @@ import PreorderPopup, {
 } from "@/components/PreorderPopup";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
+import { getProductUrl } from "@/lib/product-url";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 type CategoryRow = {
   id: string;
+  public_id: number | string;
   name: string;
   short_name: string | null;
   slug: string;
@@ -34,6 +36,7 @@ type ProductType =
 
 type ProductRow = {
   id: string;
+  public_id: number | string;
   name: string;
   name_ru: string | null;
   slug: string;
@@ -58,9 +61,13 @@ type ProductRow = {
   categories:
     | {
         short_name: string | null;
+        slug: string;
+        public_id: number | string;
       }
     | {
         short_name: string | null;
+        slug: string;
+        public_id: number | string;
       }[]
     | null;
 };
@@ -117,6 +124,24 @@ function getProductCategory(
   );
 }
 
+function getProductCategoryRow(category: ProductRow["categories"]) {
+  return Array.isArray(category) ? category[0] : category;
+}
+
+function getStoreProductUrl(product: ProductRow) {
+  const category = getProductCategoryRow(product.categories);
+
+  if (!category) {
+    return `/product/${encodeURIComponent(product.slug)}`;
+  }
+
+  return getProductUrl({
+    categorySlug: category.slug,
+    categoryPublicId: category.public_id,
+    productPublicId: product.public_id,
+  });
+}
+
 function getAvailableStock(
   product: ProductRow,
 ) {
@@ -151,6 +176,7 @@ export default async function Home() {
       .select(
         `
           id,
+          public_id,
           name,
           short_name,
           slug,
@@ -168,6 +194,7 @@ export default async function Home() {
       .select(
         `
           id,
+          public_id,
           name,
           name_ru,
           slug,
@@ -187,7 +214,9 @@ export default async function Home() {
             is_active
           ),
           categories (
-            short_name
+            short_name,
+            slug,
+            public_id
           )
         `,
       )
@@ -267,6 +296,7 @@ export default async function Home() {
       name: product.name,
       nameRu: product.name_ru,
       slug: product.slug,
+      href: getStoreProductUrl(product),
       image: product.image_url ?? "",
       price: Number(product.price),
       badge:
@@ -343,7 +373,7 @@ export default async function Home() {
           buttonText:
             popupRow.button_text ||
             "PREORDER NOW",
-          href: popupStoreProduct ? `/product/${popupStoreProduct.slug}` : "/preorder",
+          href: popupStoreProduct ? getStoreProductUrl(popupStoreProduct) : "/preorder",
           eyebrow: popupStoreProduct ? "Featured Product" : "Game Preorder",
         }
       : null;

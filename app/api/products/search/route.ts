@@ -4,6 +4,7 @@ import {
 } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getProductUrl } from "@/lib/product-url";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export async function GET(
     .select(
       `
         id,
+        public_id,
         name,
         name_ru,
         slug,
@@ -45,7 +47,9 @@ export async function GET(
         badge,
         is_bulk_order,
         categories (
-          short_name
+          short_name,
+          slug,
+          public_id
         )
       `,
     )
@@ -88,6 +92,13 @@ export async function GET(
         name: product.name,
         nameRu: product.name_ru,
         slug: product.slug,
+        href: category
+          ? getProductUrl({
+              categorySlug: category.slug,
+              categoryPublicId: category.public_id,
+              productPublicId: product.public_id,
+            })
+          : `/product/${encodeURIComponent(product.slug)}`,
         image: product.image_url,
         price: Number(product.price),
         badge: product.badge,

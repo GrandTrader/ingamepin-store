@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireCustomer } from "@/lib/customer-account-data";
+import { getProductUrl } from "@/lib/product-url";
 import CustomerAccountShell from "../CustomerAccountShell";
 import AffiliateProductLink from "./AffiliateProductLink";
 import {
@@ -79,7 +80,19 @@ export default async function CustomerAffiliatePage({
     ? await Promise.all([
         admin
           .from("products")
-          .select("id, name, slug, affiliate_commission_percent")
+          .select(
+            `
+              id,
+              public_id,
+              name,
+              slug,
+              affiliate_commission_percent,
+              categories (
+                slug,
+                public_id
+              )
+            `,
+          )
           .eq("status", "ACTIVE")
           .eq("affiliate_enabled", true)
           .gt("affiliate_commission_percent", 0)
@@ -279,13 +292,25 @@ export default async function CustomerAffiliatePage({
             </p>
 
             <div className="mt-5 grid gap-4">
-              {(productsResult.data ?? []).map((product) => (
-                <AffiliateProductLink
+              {(productsResult.data ?? []).map((product) => {
+                const category = Array.isArray(product.categories)
+                  ? product.categories[0]
+                  : product.categories;
+                const productPath = category
+                  ? getProductUrl({
+                      categorySlug: category.slug,
+                      categoryPublicId: category.public_id,
+                      productPublicId: product.public_id,
+                    })
+                  : `/product/${encodeURIComponent(product.slug)}`;
+
+                return (
+                  <AffiliateProductLink
                   key={product.id}
                   affiliateCode={approvedAccount.affiliate_code}
                   productId={product.id}
                   productName={product.name}
-                  productSlug={product.slug}
+                  productPath={productPath}
                   maximumCommissionPercent={Number(
                     approvedAccount.commission_override_percent ??
                       product.affiliate_commission_percent,
@@ -301,8 +326,9 @@ export default async function CustomerAffiliatePage({
                         product.affiliate_commission_percent,
                     ),
                   )}
-                />
-              ))}
+                  />
+                );
+              })}
 
               {(productsResult.data ?? []).length === 0 && (
                 <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">

@@ -13,6 +13,7 @@ export type SliderProduct = {
   id: string;
   name: string;
   slug: string;
+  href: string;
   is_preorder_only: boolean;
 };
 
@@ -64,7 +65,7 @@ export default function AdminHomepageSlider({
       button_url: product
         ? product.is_preorder_only
           ? "/preorder"
-          : `/product/${product.slug}`
+          : product.href
         : current.button_url,
     }));
   }

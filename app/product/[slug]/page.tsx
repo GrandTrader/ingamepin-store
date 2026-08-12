@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,6 +9,7 @@ import LocalizedProductText from "@/components/LocalizedProductText";
 import ProductViewTracker from "@/components/ProductViewTracker";
 import AffiliateReferralTracker from "@/components/AffiliateReferralTracker";
 import { isUnlimitedStock } from "@/lib/product-stock";
+import { getProductUrl } from "@/lib/product-url";
 
 export const dynamic = "force-dynamic";
 
@@ -25,15 +26,18 @@ type CategoryRelation =
   | {
       name: string;
       slug: string;
+      public_id: number | string;
     }
   | {
       name: string;
       slug: string;
+      public_id: number | string;
     }[]
   | null;
 
 type ProductRow = {
   id: string;
+  public_id: number | string;
   name: string;
   name_ru: string | null;
   slug: string;
@@ -90,6 +94,7 @@ function getCategory(category: CategoryRelation) {
   return {
     name: value?.name ?? "Digital Products",
     slug: value?.slug ?? "all-products",
+    publicId: value?.public_id ?? 0,
   };
 }
 
@@ -98,6 +103,18 @@ export default async function ProductPage({
   searchParams,
 }: ProductPageProps) {
   const { slug } = await params;
+  return renderProductPage({ slug, searchParams });
+}
+
+export async function renderProductPage({
+  slug,
+  searchParams,
+  canonicalRequest = false,
+}: {
+  slug: string;
+  searchParams: ProductPageProps["searchParams"];
+  canonicalRequest?: boolean;
+}) {
   const query = await searchParams;
   const affiliateCode = Array.isArray(query.ref)
     ? query.ref[0]?.trim()
@@ -109,6 +126,7 @@ export default async function ProductPage({
     .select(
       `
         id,
+        public_id,
         name,
         name_ru,
         slug,
@@ -138,7 +156,8 @@ export default async function ProductPage({
         affiliate_commission_percent,
         categories (
           name,
-          slug
+          slug,
+          public_id
         )
       `,
     )
@@ -197,6 +216,18 @@ export default async function ProductPage({
   const customerFields = (customerFieldResult.data ?? []) as ProductCustomerFieldRow[];
   const options = (optionResult.data ?? []) as ProductOptionRow[];
   const category = getCategory(product.categories);
+
+  if (!canonicalRequest) {
+    const canonicalUrl = getProductUrl({
+      categorySlug: category.slug,
+      categoryPublicId: category.publicId,
+      productPublicId: product.public_id,
+    });
+    const referral = affiliateCode
+      ? `?ref=${encodeURIComponent(affiliateCode)}`
+      : "";
+    permanentRedirect(`${canonicalUrl}${referral}`);
+  }
   const customerDiscounts = await getSignedInCustomerDiscounts();
   const customerDiscountPercent = customerDiscounts.get(product.id) ?? 0;
   let affiliateCommissionPercent = 0;

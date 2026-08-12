@@ -7,7 +7,7 @@ type AffiliateProductLinkProps = {
   affiliateCode: string;
   productId: string;
   productName: string;
-  productSlug: string;
+  productPath: string;
   maximumCommissionPercent: number;
   selectedCommissionPercent: number;
 };
@@ -16,11 +16,11 @@ export default function AffiliateProductLink({
   affiliateCode,
   productId,
   productName,
-  productSlug,
+  productPath,
   maximumCommissionPercent,
   selectedCommissionPercent,
 }: AffiliateProductLinkProps) {
-  const path = `/product/${encodeURIComponent(productSlug)}?ref=${encodeURIComponent(
+  const path = `${productPath}?ref=${encodeURIComponent(
     affiliateCode,
   )}`;
   const [link, setLink] = useState(`https://www.ingamepin.com${path}`);

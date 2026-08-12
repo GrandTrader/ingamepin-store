@@ -6,6 +6,7 @@ import ProductCard, {
 } from "@/components/ProductCard";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
+import { getProductUrl } from "@/lib/product-url";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ type ProductsPageProps = {
 
 type ProductRow = {
   id: string;
+  public_id: number | string;
   name: string;
   name_ru: string | null;
   slug: string;
@@ -34,10 +36,14 @@ type ProductRow = {
     | {
         name: string;
         short_name: string | null;
+        slug: string;
+        public_id: number | string;
       }
     | {
         name: string;
         short_name: string | null;
+        slug: string;
+        public_id: number | string;
       }[]
     | null;
   product_options:
@@ -85,6 +91,26 @@ function getCategory(product: ProductRow) {
     : product.categories;
 
   return category?.short_name ?? category?.name ?? "Digital Product";
+}
+
+function getCategoryRow(product: ProductRow) {
+  return Array.isArray(product.categories)
+    ? product.categories[0]
+    : product.categories;
+}
+
+function getStoreProductUrl(product: ProductRow) {
+  const category = getCategoryRow(product);
+
+  if (!category) {
+    return `/product/${encodeURIComponent(product.slug)}`;
+  }
+
+  return getProductUrl({
+    categorySlug: category.slug,
+    categoryPublicId: category.public_id,
+    productPublicId: product.public_id,
+  });
 }
 
 function getAvailableStock(
@@ -176,6 +202,7 @@ export default async function ProductsPage({
     .select(
       `
         id,
+        public_id,
         name,
         name_ru,
         slug,
@@ -190,7 +217,9 @@ export default async function ProductsPage({
         delivery_type,
         categories (
           name,
-          short_name
+          short_name,
+          slug,
+          public_id
         ),
         product_options (
           platform,
@@ -222,6 +251,7 @@ export default async function ProductsPage({
         name: product.name,
         nameRu: product.name_ru,
         slug: product.slug,
+        href: getStoreProductUrl(product),
         image: product.image_url ?? "",
         price: Number(product.price),
         badge: product.badge ?? "Digital Delivery",

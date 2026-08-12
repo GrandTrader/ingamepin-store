@@ -224,7 +224,7 @@ export async function cloneProduct(formData: FormData) {
   const source = sourceResult.data as Record<string, unknown>;
   const clonePayload: Record<string, unknown> = { ...source };
 
-  for (const key of ["id", "created_at", "updated_at"]) {
+  for (const key of ["id", "public_id", "created_at", "updated_at"]) {
     delete clonePayload[key];
   }
 

@@ -567,9 +567,7 @@ export async function POST(request: NextRequest) {
       const deliveryResults = await sendOrderCreatedEmails({
         orderId: createdOrder.id,
         orderNumber: createdOrder.order_number,
-        customerName: createdOrder.customer_name ?? "Customer",
         customerEmail: createdOrder.customer_email,
-        customerPhone: createdOrder.customer_phone,
         total: Number(createdOrder.total),
         currency: createdOrder.currency,
         paymentMethod:

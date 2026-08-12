@@ -17,6 +17,7 @@ type SearchProduct = {
   name: string;
   nameRu: string | null;
   slug: string;
+  href: string;
   image: string | null;
   price: number;
   badge: string | null;
@@ -491,7 +492,7 @@ export default function Header() {
                     searchProducts.map((product) => (
                       <Link
                         key={product.id}
-                        href={`/product/${product.slug}`}
+                        href={product.href}
                         onClick={() => {
                           setIsSearchFocused(false);
                           setSearchQuery("");

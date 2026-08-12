@@ -7,6 +7,7 @@ import ResponsiveImageField from "@/components/ResponsiveImageField";
 import ProductCustomerFieldsEditor from "@/components/ProductCustomerFieldsEditor";
 import ProductFormTabs from "@/components/ProductFormTabs";
 import { createClient } from "@/lib/supabase/server";
+import { getProductUrl } from "@/lib/product-url";
 import AdminSidebar from "../../../AdminSidebar";
 import DeliveryInventoryField from "../../DeliveryInventoryField";
 import DeliveryTypeSwitch from "../../DeliveryTypeSwitch";
@@ -37,7 +38,9 @@ type EditProductPageProps = {
 
 type CategoryRow = {
   id: string;
+  public_id: number | string;
   name: string;
+  slug: string;
   category_type: CategoryType;
 };
 
@@ -58,6 +61,7 @@ type ProductOptionRow = {
 
 type ProductRow = {
   id: string;
+  public_id: number | string;
   category_id: string;
   name: string;
   name_ru: string | null;
@@ -124,6 +128,7 @@ export default async function EditProductPage({
       .select(
         `
           id,
+          public_id,
           category_id,
           name,
           name_ru,
@@ -158,7 +163,7 @@ export default async function EditProductPage({
 
     supabase
       .from("categories")
-      .select("id, name, category_type")
+      .select("id, public_id, name, slug, category_type")
       .eq("is_active", true)
       .order("sort_order", { ascending: true }),
 
@@ -216,6 +221,16 @@ export default async function EditProductPage({
 
   const product = productResult.data as ProductRow;
   const categories = (categoryResult.data ?? []) as CategoryRow[];
+  const selectedCategory = categories.find(
+    (category) => category.id === product.category_id,
+  );
+  const productUrl = selectedCategory
+    ? getProductUrl({
+        categorySlug: selectedCategory.slug,
+        categoryPublicId: selectedCategory.public_id,
+        productPublicId: product.public_id,
+      })
+    : `/product/${encodeURIComponent(product.slug)}`;
   const categoryChoices = categories.map((category) => ({
     id: category.id,
     name: category.name,
@@ -253,7 +268,9 @@ export default async function EditProductPage({
                 Product settings
               </p>
               <h1 className="mt-2 text-3xl font-black">Edit product</h1>
-              <p className="mt-1 text-sm text-slate-500">{product.slug}</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Product ID: {product.public_id}
+              </p>
             </div>
 
             <Link
@@ -512,7 +529,7 @@ export default async function EditProductPage({
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Link
-                href={`/product/${product.slug}`}
+                href={productUrl}
                 className="rounded-xl border border-slate-200 px-6 py-3 text-center font-bold transition hover:bg-slate-50"
               >
                 View product
@@ -537,8 +554,6 @@ export default async function EditProductPage({
     </div>
   );
 }
-
-
 
 
 

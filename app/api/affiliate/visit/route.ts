@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     if (
       !affiliateCode ||
       !productId ||
-      !landingPath.startsWith("/product/")
+      !landingPath.startsWith("/product/") &&
+      !landingPath.startsWith("/category/")
     ) {
       return NextResponse.json(
         { tracked: false },

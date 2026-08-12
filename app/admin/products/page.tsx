@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { getProductUrl } from "@/lib/product-url";
 import AdminSidebar from "../AdminSidebar";
 import { cloneProduct, createDraftProduct } from "./actions";
 
@@ -26,6 +27,7 @@ type ProductOptionRow = {
 
 type ProductRow = {
   id: string;
+  public_id: number | string;
   name: string;
   slug: string;
   image_url: string | null;
@@ -37,10 +39,14 @@ type ProductRow = {
     | {
         name: string;
         short_name: string | null;
+        slug: string;
+        public_id: number | string;
       }
     | {
         name: string;
         short_name: string | null;
+        slug: string;
+        public_id: number | string;
       }[]
     | null;
   product_options: ProductOptionRow[] | null;
@@ -49,6 +55,20 @@ type ProductRow = {
 function getCategoryName(category: ProductRow["categories"]) {
   const value = Array.isArray(category) ? category[0] : category;
   return value?.short_name || value?.name || "Uncategorized";
+}
+
+function getAdminProductUrl(product: ProductRow) {
+  const category = Array.isArray(product.categories)
+    ? product.categories[0]
+    : product.categories;
+
+  return category
+    ? getProductUrl({
+        categorySlug: category.slug,
+        categoryPublicId: category.public_id,
+        productPublicId: product.public_id,
+      })
+    : `/product/${encodeURIComponent(product.slug)}`;
 }
 
 function getInitials(name: string) {
@@ -137,6 +157,7 @@ export default async function AdminProductsPage({
     .select(
       `
         id,
+        public_id,
         name,
         slug,
         image_url,
@@ -146,7 +167,9 @@ export default async function AdminProductsPage({
         status,
         categories (
           name,
-          short_name
+          short_name,
+          slug,
+          public_id
         ),
         product_options (
           selling_price,
@@ -313,7 +336,9 @@ export default async function AdminProductsPage({
 
                           <div>
                             <p className="font-bold text-slate-900 transition group-hover:text-blue-600">{product.name}</p>
-                            <p className="mt-1 text-xs text-slate-400">{product.slug}</p>
+                            <p className="mt-1 text-xs text-slate-400">
+                              Product ID: {product.public_id}
+                            </p>
                           </div>
                         </Link>
                       </td>
@@ -356,7 +381,7 @@ export default async function AdminProductsPage({
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
                           <Link
-                            href={`/product/${product.slug}`}
+                            href={getAdminProductUrl(product)}
                             className="rounded-lg px-3 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
                           >
                             View

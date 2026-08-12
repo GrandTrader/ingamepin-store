@@ -2,6 +2,11 @@ import "server-only";
 
 import nodemailer from "nodemailer";
 
+import {
+  isUnlimitedStock,
+} from "@/lib/product-stock";
+import { createAdminClient } from "@/lib/supabase/admin";
+
 type SendEmailInput = {
   to: string;
   subject: string;
@@ -21,14 +26,20 @@ type OrderEmailItem = {
 type OrderCreatedEmailInput = {
   orderId: string;
   orderNumber: string;
-  customerName: string;
   customerEmail: string;
-  customerPhone: string | null;
   total: number;
   currency: string;
   paymentMethod: string;
   status: string;
   items: OrderEmailItem[];
+};
+
+type SoldInventoryItem = {
+  productName: string;
+  optionName: string | null;
+  denomination: number | null;
+  quantitySold: number;
+  remainingQuantity: number;
 };
 
 type OrderStatusEmailInput = {
@@ -176,12 +187,110 @@ function createOrderItemsHtml(items: OrderEmailItem[]) {
     .join("");
 }
 
+async function loadSoldInventory(orderId: string) {
+  const admin = createAdminClient();
+  const itemResult = await admin
+    .from("order_items")
+    .select(
+      "product_name, option_name, denomination, quantity, product_option_id",
+    )
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: true });
+
+  if (itemResult.error) {
+    console.error("Order inventory email query failed:", itemResult.error);
+    return [] as SoldInventoryItem[];
+  }
+
+  const optionIds = Array.from(
+    new Set(
+      (itemResult.data ?? [])
+        .map((item) => item.product_option_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+
+  if (optionIds.length === 0) {
+    return [] as SoldInventoryItem[];
+  }
+
+  const optionResult = await admin
+    .from("product_options")
+    .select("id, stock_quantity")
+    .in("id", optionIds);
+
+  if (optionResult.error) {
+    console.error("Product stock email query failed:", optionResult.error);
+    return [] as SoldInventoryItem[];
+  }
+
+  const stockByOption = new Map(
+    (optionResult.data ?? []).map((option) => [
+      option.id,
+      Number(option.stock_quantity),
+    ]),
+  );
+
+  return (itemResult.data ?? []).flatMap((item) => {
+    if (!item.product_option_id) return [];
+
+    const remainingQuantity = stockByOption.get(item.product_option_id);
+    if (remainingQuantity === undefined) return [];
+
+    return [{
+      productName: item.product_name,
+      optionName: item.option_name,
+      denomination:
+        item.denomination === null ? null : Number(item.denomination),
+      quantitySold: Number(item.quantity),
+      remainingQuantity,
+    }];
+  });
+}
+
+function createSoldInventoryHtml(items: SoldInventoryItem[]) {
+  if (items.length === 0) return "";
+
+  const rows = items.map((item) => {
+    const optionLabel = item.optionName
+      || (item.denomination === null
+        ? "Default option"
+        : `Denomination: ${item.denomination}`);
+    const remainingLabel = isUnlimitedStock(item.remainingQuantity)
+      ? "Unlimited"
+      : item.remainingQuantity.toLocaleString("en-IN");
+
+    return `
+      <tr>
+        <td style="padding:12px 10px;border-bottom:1px solid #e2e8f0">
+          <strong>${escapeHtml(item.productName)}</strong>
+          <div style="margin-top:4px;color:#64748b;font-size:13px">${escapeHtml(optionLabel)}</div>
+        </td>
+        <td style="padding:12px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${item.quantitySold}</td>
+        <td style="padding:12px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:800">${remainingLabel}</td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <h2 style="margin-top:26px;font-size:20px">Inventory after sale</h2>
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:#f1f5f9;color:#475569;font-size:13px">
+          <th style="padding:10px;text-align:left">Product / denomination</th>
+          <th style="padding:10px;text-align:center">Sold</th>
+          <th style="padding:10px;text-align:right">Available</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
 export async function sendOrderCreatedEmails({
   orderId,
   orderNumber,
-  customerName,
   customerEmail,
-  customerPhone,
   total,
   currency,
   paymentMethod,
@@ -189,7 +298,6 @@ export async function sendOrderCreatedEmails({
   items,
 }: OrderCreatedEmailInput) {
   const safeOrderNumber = escapeHtml(orderNumber);
-  const safeCustomerName = escapeHtml(customerName || "Customer");
   const itemRows = createOrderItemsHtml(items);
   const totalLabel = formatMoney(total, currency);
   const trackingUrl = createCustomerOrderUrl(orderId, orderNumber);
@@ -198,7 +306,7 @@ export async function sendOrderCreatedEmails({
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
       <div style="background:#06b6d4;border-radius:14px;padding:18px 22px;font-size:24px;font-weight:800">InGamePin</div>
       <h1 style="font-size:26px;margin:28px 0 10px">We received your order</h1>
-      <p style="color:#475569;line-height:1.7">Hello ${safeCustomerName}, your order has been created successfully.</p>
+      <p style="color:#475569;line-height:1.7">Hello, your order has been created successfully.</p>
       <div style="background:#f1f5f9;border-radius:12px;padding:16px;margin:22px 0">
         <div style="color:#64748b;font-size:13px">Order number</div>
         <div style="font-size:20px;font-weight:800;margin-top:4px">${safeOrderNumber}</div>
@@ -217,9 +325,7 @@ export async function sendOrderCreatedEmails({
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
       <h1>New InGamePin order</h1>
       <p><strong>Order:</strong> ${safeOrderNumber}</p>
-      <p><strong>Customer:</strong> ${safeCustomerName}</p>
       <p><strong>Email:</strong> ${escapeHtml(customerEmail)}</p>
-      <p><strong>Phone:</strong> ${escapeHtml(customerPhone || "Not provided")}</p>
       <p><strong>Total:</strong> ${escapeHtml(totalLabel)}</p>
       <p><strong>Payment:</strong> ${escapeHtml(paymentMethod.replaceAll("_", " "))}</p>
       <table style="width:100%;border-collapse:collapse"><tbody>${itemRows}</tbody></table>
@@ -238,7 +344,7 @@ export async function sendOrderCreatedEmails({
       to: "support@ingamepin.com",
       subject: `New order ${orderNumber} — ${totalLabel}`,
       html: adminHtml,
-      text: `New order ${orderNumber} from ${customerName} (${customerEmail}). Total: ${totalLabel}.`,
+      text: `New order ${orderNumber} from ${customerEmail}. Total: ${totalLabel}.`,
     }),
   ]);
 }
@@ -255,6 +361,10 @@ export async function sendOrderStatusEmails({
   reason,
   deliveredItems = [],
 }: OrderStatusEmailInput) {
+  const soldInventory = event === "PAYMENT_APPROVED"
+    ? await loadSoldInventory(orderId)
+    : [];
+  const soldInventoryHtml = createSoldInventoryHtml(soldInventory);
   const eventContent = {
     PAYMENT_APPROVED: {
       customerTitle: "Your payment has been approved",
@@ -333,6 +443,7 @@ export async function sendOrderStatusEmails({
       <p><strong>Total:</strong> ${escapeHtml(totalLabel)}</p>
       <p><strong>Order status:</strong> ${escapeHtml(formatOrderStatus(orderStatus))}</p>
       ${reason ? `<p><strong>Reason:</strong> ${escapeHtml(reason)}</p>` : ""}
+      ${soldInventoryHtml}
       <a href="https://ingamepin.com/admin/orders" style="display:inline-block;margin-top:16px;background:#2563eb;color:white;text-decoration:none;padding:12px 18px;border-radius:9px;font-weight:700">Open admin orders</a>
     </div>
   `;

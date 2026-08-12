@@ -5,6 +5,7 @@ import AdminHomepageSlider, {
 } from "@/components/AdminHomepageSlider";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getProductUrl } from "@/lib/product-url";
 import AdminSidebar from "../AdminSidebar";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +49,19 @@ export default async function HomepageSliderPage({
 
     admin
       .from("products")
-      .select("id, name, slug, is_preorder_only")
+      .select(
+        `
+          id,
+          public_id,
+          name,
+          slug,
+          is_preorder_only,
+          categories (
+            slug,
+            public_id
+          )
+        `,
+      )
       .eq("status", "ACTIVE")
       .order("name", { ascending: true }),
   ]);
@@ -83,7 +96,25 @@ export default async function HomepageSliderPage({
 
           <AdminHomepageSlider
             slides={(slides.data ?? []) as AdminSlide[]}
-            products={(products.data ?? []) as SliderProduct[]}
+            products={(products.data ?? []).map((product) => {
+              const category = Array.isArray(product.categories)
+                ? product.categories[0]
+                : product.categories;
+
+              return {
+                id: product.id,
+                name: product.name,
+                slug: product.slug,
+                is_preorder_only: product.is_preorder_only,
+                href: category
+                  ? getProductUrl({
+                      categorySlug: category.slug,
+                      categoryPublicId: category.public_id,
+                      productPublicId: product.public_id,
+                    })
+                  : `/product/${encodeURIComponent(product.slug)}`,
+              } satisfies SliderProduct;
+            })}
             settings={
               settings.data ?? {
                 is_enabled: true,

@@ -6,6 +6,7 @@ import ProductCard, {
 } from "@/components/ProductCard";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
+import { getProductUrl } from "@/lib/product-url";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ type CategoryPageProps = {
 
 type CategoryRow = {
   id: string;
+  public_id: number | string;
   name: string;
   short_name: string | null;
   description: string | null;
@@ -25,6 +27,7 @@ type CategoryRow = {
 
 type ProductRow = {
   id: string;
+  public_id: number | string;
   name: string;
   name_ru: string | null;
   slug: string;
@@ -79,7 +82,7 @@ export default async function CategoryPage({
   const supabase = await createClient();
   const categoryResult = await supabase
     .from("categories")
-    .select("id, name, short_name, description")
+    .select("id, public_id, name, short_name, description")
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();
@@ -100,6 +103,7 @@ export default async function CategoryPage({
     .select(
       `
         id,
+        public_id,
         name,
         name_ru,
         slug,
@@ -141,6 +145,11 @@ export default async function CategoryPage({
       name: product.name,
       nameRu: product.name_ru,
       slug: product.slug,
+      href: getProductUrl({
+        categorySlug: slug,
+        categoryPublicId: category.public_id,
+        productPublicId: product.public_id,
+      }),
       image: product.image_url ?? "",
       price: getStartingPrice(product),
       badge: product.badge ?? "Digital Delivery",

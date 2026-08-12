@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { uploadStoreImage } from "@/lib/store-image-upload";
+import { getProductUrl } from "@/lib/product-url";
 
 async function requireAdministrator() {
   const supabase = await createClient();
@@ -114,7 +115,18 @@ export async function saveSlide(formData: FormData) {
   if (productId) {
     const product = await admin
       .from("products")
-      .select("name, slug, is_preorder_only")
+      .select(
+        `
+          name,
+          slug,
+          public_id,
+          is_preorder_only,
+          categories (
+            slug,
+            public_id
+          )
+        `,
+      )
       .eq("id", productId)
       .maybeSingle();
 
@@ -123,9 +135,18 @@ export async function saveSlide(formData: FormData) {
     }
 
     internalTitle = product.data.name;
+    const category = Array.isArray(product.data.categories)
+      ? product.data.categories[0]
+      : product.data.categories;
     buttonUrl = product.data.is_preorder_only
       ? "/preorder"
-      : `/product/${product.data.slug}`;
+      : category
+        ? getProductUrl({
+            categorySlug: category.slug,
+            categoryPublicId: category.public_id,
+            productPublicId: product.data.public_id,
+          })
+        : `/product/${encodeURIComponent(product.data.slug)}`;
   }
 
   if (!buttonUrl || (!buttonUrl.startsWith("/") && !validWebUrl(buttonUrl))) {
