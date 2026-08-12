@@ -167,6 +167,56 @@ export async function createDraftProduct() {
   redirect(`/admin/products/${result.data.id}/edit/general`);
 }
 
+export async function toggleProductSales(formData: FormData) {
+  await getAdminClient();
+
+  const productId = String(formData.get("product_id") ?? "").trim();
+  const currentStatus = String(formData.get("current_status") ?? "").trim();
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (!uuidPattern.test(productId)) {
+    redirect("/admin/products?error=Product%20information%20is%20invalid");
+  }
+
+  if (currentStatus !== "ACTIVE" && currentStatus !== "INACTIVE") {
+    redirect("/admin/products?error=Draft%20products%20must%20be%20completed%20before%20sales%20can%20be%20enabled");
+  }
+
+  const nextStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+  const admin = createAdminClient();
+  const updateResult = await admin
+    .from("products")
+    .update({
+      status: nextStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productId)
+    .eq("status", currentStatus)
+    .select("name")
+    .maybeSingle();
+
+  if (updateResult.error || !updateResult.data) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        updateResult.error?.message ?? "The product status changed before it could be updated.",
+      )}`,
+    );
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+
+  redirect(
+    `/admin/products?success=${encodeURIComponent(
+      nextStatus === "ACTIVE"
+        ? `Sales enabled for ${updateResult.data.name}`
+        : `Sales suspended for ${updateResult.data.name}`,
+    )}`,
+  );
+}
+
 export async function cloneProduct(formData: FormData) {
   await getAdminClient();
 
@@ -1324,6 +1374,128 @@ export async function deleteProduct(
   redirect(
     `/admin/products?success=${encodeURIComponent(
       `Product "${productResult.data.name}" deleted successfully`,
+    )}`,
+  );
+}
+
+export async function deleteSelectedProducts(formData: FormData) {
+  await getAdminClient();
+
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const productIds = Array.from(
+    new Set(
+      formData
+        .getAll("product_ids")
+        .map((value) => String(value).trim())
+        .filter(Boolean),
+    ),
+  );
+
+  if (
+    productIds.length === 0 ||
+    productIds.length > 20 ||
+    productIds.some((id) => !uuidPattern.test(id))
+  ) {
+    redirect(
+      "/admin/products?error=Select%20between%201%20and%2020%20valid%20products",
+    );
+  }
+
+  const admin = createAdminClient();
+  const [productsResult, orderItemsResult] = await Promise.all([
+    admin
+      .from("products")
+      .select("id, name")
+      .in("id", productIds),
+    admin
+      .from("order_items")
+      .select("product_id")
+      .in("product_id", productIds),
+  ]);
+
+  if (productsResult.error || orderItemsResult.error) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        productsResult.error?.message ??
+          orderItemsResult.error?.message ??
+          "Unable to verify the selected products.",
+      )}`,
+    );
+  }
+
+  if ((productsResult.data ?? []).length !== productIds.length) {
+    redirect(
+      "/admin/products?error=One%20or%20more%20selected%20products%20were%20not%20found",
+    );
+  }
+
+  const productsWithOrders = new Set(
+    (orderItemsResult.data ?? []).map((item) => item.product_id),
+  );
+
+  if (productsWithOrders.size > 0) {
+    const blockedNames = (productsResult.data ?? [])
+      .filter((product) => productsWithOrders.has(product.id))
+      .map((product) => product.name)
+      .join(", ");
+
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        `${blockedNames} cannot be deleted because order history exists. Suspend sales instead.`,
+      )}`,
+    );
+  }
+
+  const codesResult = await admin
+    .from("gift_card_codes")
+    .delete()
+    .in("product_id", productIds);
+
+  if (codesResult.error) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        `Unable to remove product codes: ${codesResult.error.message}`,
+      )}`,
+    );
+  }
+
+  const optionsResult = await admin
+    .from("product_options")
+    .delete()
+    .in("product_id", productIds);
+
+  if (optionsResult.error) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        `Unable to remove product options: ${optionsResult.error.message}`,
+      )}`,
+    );
+  }
+
+  const deleteResult = await admin
+    .from("products")
+    .delete()
+    .in("id", productIds)
+    .select("id");
+
+  if (deleteResult.error || (deleteResult.data ?? []).length !== productIds.length) {
+    redirect(
+      `/admin/products?error=${encodeURIComponent(
+        deleteResult.error?.message ??
+          "One or more selected products could not be deleted.",
+      )}`,
+    );
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/gift-codes");
+
+  redirect(
+    `/admin/products?success=${encodeURIComponent(
+      `${productIds.length} selected product${productIds.length === 1 ? "" : "s"} deleted successfully`,
     )}`,
   );
 }

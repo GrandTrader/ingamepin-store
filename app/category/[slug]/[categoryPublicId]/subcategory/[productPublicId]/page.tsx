@@ -1,14 +1,14 @@
 import { notFound, permanentRedirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
-import { getProductUrl } from "@/lib/product-url";
 import { renderProductPage } from "@/app/product/[slug]/page";
+import { getProductUrl } from "@/lib/product-url";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 type CanonicalProductPageProps = {
   params: Promise<{
-    categorySlug: string;
+    slug: string;
     categoryPublicId: string;
     productPublicId: string;
   }>;
@@ -18,14 +18,8 @@ type CanonicalProductPageProps = {
 };
 
 type CategoryRelation =
-  | {
-      slug: string;
-      public_id: number | string;
-    }
-  | {
-      slug: string;
-      public_id: number | string;
-    }[]
+  | { slug: string; public_id: number | string }
+  | { slug: string; public_id: number | string }[]
   | null;
 
 type ProductLookupRow = {
@@ -46,7 +40,11 @@ export default async function CanonicalProductPage({
   params,
   searchParams,
 }: CanonicalProductPageProps) {
-  const { categorySlug, categoryPublicId, productPublicId } = await params;
+  const {
+    slug: categorySlug,
+    categoryPublicId,
+    productPublicId,
+  } = await params;
 
   if (!validPublicId(categoryPublicId) || !validPublicId(productPublicId)) {
     notFound();
@@ -71,21 +69,14 @@ export default async function CanonicalProductPage({
     .maybeSingle();
 
   if (productResult.error) {
-    throw new Error(
-      `Unable to load product: ${productResult.error.message}`,
-    );
+    throw new Error(`Unable to load product: ${productResult.error.message}`);
   }
 
-  if (!productResult.data) {
-    notFound();
-  }
+  if (!productResult.data) notFound();
 
   const product = productResult.data as ProductLookupRow;
   const category = firstCategory(product.categories);
-
-  if (!category) {
-    notFound();
-  }
+  if (!category) notFound();
 
   const canonicalUrl = getProductUrl({
     categorySlug: category.slug,
