@@ -3,6 +3,25 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdminsByPush } from "@/lib/admin-push";
 import { notifySoldOutInstantOptions } from "@/lib/instant-stock-notification";
+import { isUnlimitedStock } from "@/lib/product-stock";
+
+type TelegramOrderItemRow = {
+  product_id: string;
+  product_option_id: string | null;
+  product_name: string;
+  option_name: string | null;
+  quantity: number;
+};
+
+type TelegramProductOptionRow = {
+  id: string;
+  stock_quantity: number;
+};
+
+type TelegramProductRow = {
+  id: string;
+  stock_quantity: number;
+};
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -74,7 +93,9 @@ export async function notifyPaidOrderInTelegram(orderId: string) {
         .single(),
       admin
         .from("order_items")
-        .select("product_name, option_name, quantity")
+        .select(
+          "product_id, product_option_id, product_name, option_name, quantity",
+        )
         .eq("order_id", orderId)
         .order("created_at", { ascending: true }),
       admin
@@ -89,12 +110,66 @@ export async function notifyPaidOrderInTelegram(orderId: string) {
     if (paymentResult.error) throw paymentResult.error;
 
     const order = orderResult.data;
-    const itemLines = (itemResult.data ?? []).map((item) => {
+    const orderItems = (itemResult.data ?? []) as TelegramOrderItemRow[];
+    const optionIds = Array.from(
+      new Set(
+        orderItems
+          .map((item) => item.product_option_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const productIds = Array.from(
+      new Set(orderItems.map((item) => item.product_id).filter(Boolean)),
+    );
+
+    const [optionStockResult, productStockResult] = await Promise.all([
+      optionIds.length
+        ? admin
+            .from("product_options")
+            .select("id, stock_quantity")
+            .in("id", optionIds)
+        : Promise.resolve({ data: [], error: null }),
+      productIds.length
+        ? admin
+            .from("products")
+            .select("id, stock_quantity")
+            .in("id", productIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (optionStockResult.error) throw optionStockResult.error;
+    if (productStockResult.error) throw productStockResult.error;
+
+    const optionStockById = new Map(
+      ((optionStockResult.data ?? []) as TelegramProductOptionRow[]).map(
+        (option) => [option.id, Number(option.stock_quantity)],
+      ),
+    );
+    const productStockById = new Map(
+      ((productStockResult.data ?? []) as TelegramProductRow[]).map(
+        (product) => [product.id, Number(product.stock_quantity)],
+      ),
+    );
+
+    const baseItemLines = orderItems.map((item) => {
       const option = item.option_name
         ? ` — ${escapeHtml(item.option_name)}`
         : "";
 
       return `• ${escapeHtml(item.product_name)}${option} × ${escapeHtml(item.quantity)}`;
+    });
+    const itemLines = baseItemLines.map((line, index) => {
+      const item = orderItems[index];
+      const availableQuantity = item.product_option_id
+        ? optionStockById.get(item.product_option_id)
+        : productStockById.get(item.product_id);
+      const availableLabel = isUnlimitedStock(availableQuantity)
+        ? "Unlimited"
+        : Number.isFinite(availableQuantity)
+          ? String(availableQuantity)
+          : "Not available";
+
+      return `${line}\n  <b>Available after sale:</b> ${escapeHtml(availableLabel)}`;
     });
     const siteUrl = (
       process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ingamepin.com"
