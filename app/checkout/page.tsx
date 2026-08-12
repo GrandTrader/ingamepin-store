@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
-import { countryCallingCodes } from "../../lib/countryCallingCodes";
 
 type CartItem = {
   id: string;
@@ -154,10 +153,7 @@ function normalizeCartItem(
 }
 
 type CheckoutForm = {
-  fullName: string;
   email: string;
-  countryCode: string;
-  phone: string;
   addressLine1: string;
   addressLine2: string;
   landmark: string;
@@ -182,10 +178,7 @@ type CustomerDiscountDetails = {
 };
 
 const initialForm: CheckoutForm = {
-  fullName: "",
   email: "",
-  countryCode: "+91",
-  phone: "",
   addressLine1: "",
   addressLine2: "",
   landmark: "",
@@ -341,10 +334,7 @@ export default function CheckoutPage() {
         const response = await fetch("/api/customer-discounts", { cache: "no-store" });
         const result = (await response.json()) as {
           authenticated?: boolean;
-          fullName?: string | null;
           email?: string | null;
-          countryCode?: string | null;
-          phone?: string | null;
           discounts?: Record<string, number>;
         };
 
@@ -358,13 +348,7 @@ export default function CheckoutPage() {
           if (result.authenticated) {
             setForm((current) => ({
               ...current,
-              fullName: current.fullName || result.fullName || "",
               email: current.email || result.email || "",
-              countryCode:
-                current.phone || !result.phone
-                  ? current.countryCode
-                  : result.countryCode || current.countryCode,
-              phone: current.phone || result.phone || "",
             }));
           }
         }
@@ -617,24 +601,12 @@ export default function CheckoutPage() {
   }
 
   function validateForm() {
-    if (!form.fullName.trim()) {
-      return "Please enter your full name.";
-    }
-
     if (!form.email.trim()) {
       return "Please enter your email address.";
     }
 
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) {
       return "Please enter a valid email address.";
-    }
-
-    if (!form.phone.trim()) {
-      return "Please enter your mobile number.";
-    }
-
-    if (!/^\d{6,15}$/.test(form.phone.trim())) {
-      return "Please enter a valid mobile number.";
     }
 
     if (requiresShipping) {
@@ -728,9 +700,7 @@ export default function CheckoutPage() {
 
       body: JSON.stringify({
         customer: {
-          fullName: form.fullName.trim(),
           email: form.email.trim(),
-          phone: `${form.countryCode}${form.phone.trim()}`,
           orderNote: form.orderNote.trim(),
         },
 
@@ -769,9 +739,9 @@ export default function CheckoutPage() {
       accessToken: result.order.accessToken,
 
       customer: {
-        fullName: form.fullName.trim(),
+        fullName: "Customer",
         email: form.email.trim(),
-        phone: `${form.countryCode}${form.phone.trim()}`,
+        phone: "",
       },
 
       items: cartItems,
@@ -944,29 +914,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-5 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label
-                  htmlFor="fullName"
-                  className="mb-2 block text-sm font-semibold text-slate-200"
-                >
-                  Full Name
-                  <span className="ml-1 text-red-400">*</span>
-                </label>
-
-                <input
-                  id="fullName"
-                  type="text"
-                  value={form.fullName}
-                  onChange={(event) =>
-                    updateField("fullName", event.target.value)
-                  }
-                  placeholder="Enter your full name"
-                  autoComplete="name"
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3.5 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/10"
-                />
-              </div>
-
+            <div className="mt-6">
               <div>
                 <label
                   htmlFor="email"
@@ -989,47 +937,6 @@ export default function CheckoutPage() {
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="phone"
-                  className="mb-2 block text-sm font-semibold text-slate-200"
-                >
-                  Mobile Number
-                  <span className="ml-1 text-red-400">*</span>
-                </label>
-
-                <div className="flex overflow-hidden rounded-xl border border-white/10 bg-slate-950 focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-400/10">
-                  <select
-                    aria-label="Country calling code"
-                    value={form.countryCode}
-                    onChange={(event) => updateField("countryCode", event.target.value)}
-                    className="max-w-[150px] border-r border-white/10 bg-slate-950 px-3 text-sm text-slate-200 outline-none"
-                  >
-                    {countryCallingCodes.map(([country, code]) => (
-                      <option key={`${country}-${code}`} value={code}>
-                        {country} ({code})
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={(event) =>
-                      updateField(
-                        "phone",
-                        event.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 15)
-                      )
-                    }
-                    placeholder="Mobile number"
-                    autoComplete="tel"
-                    className="w-full bg-transparent px-4 py-3.5 text-white outline-none placeholder:text-slate-600"
-                  />
-                </div>
-              </div>
             </div>
           </section>
 

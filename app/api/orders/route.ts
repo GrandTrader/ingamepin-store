@@ -130,6 +130,18 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
     const customerEmailForLimit = String(customer.email ?? "").trim().toLowerCase();
+    const submittedCustomerName = String(customer.fullName ?? "").trim();
+    const accountCustomerName = String(
+      signedInUser?.user_metadata?.name ??
+        signedInUser?.user_metadata?.full_name ??
+        "",
+    ).trim();
+    const customerName = (
+      submittedCustomerName ||
+      accountCustomerName ||
+      customerEmailForLimit.split("@")[0] ||
+      "Customer"
+    ).slice(0, 120);
     const customerIp = (request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
     const submittedItems = body.items as Array<{ productOptionId?: string; quantity?: number; customValue?: number }>;
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
@@ -169,9 +181,9 @@ export async function POST(request: NextRequest) {
       }
     }
     const orderResult = await admin.rpc("create_store_order", {
-      p_customer_name: String(customer.fullName ?? ""),
+      p_customer_name: customerName.length >= 2 ? customerName : "Customer",
       p_customer_email: String(customer.email ?? ""),
-      p_customer_phone: String(customer.phone ?? ""),
+      p_customer_phone: "",
       p_payment_method: isWalletPayment
         ? "wallet"
         : requestedPaymentMethod,
@@ -210,7 +222,9 @@ export async function POST(request: NextRequest) {
       );
       const clickResult = await admin
         .from("affiliate_clicks")
-        .select("id, product_id, visitor_token_hash")
+        .select(
+          "id, affiliate_id, product_id, visitor_token_hash, ip_hash, device_hash, landing_path, referrer_url, converted_order_id",
+        )
         .eq("id", affiliateClickId)
         .eq("visitor_token_hash", expectedVisitorHash)
         .maybeSingle();
@@ -218,6 +232,36 @@ export async function POST(request: NextRequest) {
       if (clickResult.error) {
         console.error("Affiliate visit validation failed:", clickResult.error);
       } else if (clickResult.data) {
+        let pricingClickId = clickResult.data.id;
+
+        // An affiliate visit cookie can remain valid for several days, while a
+        // click row represents only one conversion. Create a fresh conversion
+        // row when the cookie points to a visit already used by another order.
+        if (clickResult.data.converted_order_id) {
+          const replacementClickResult = await admin
+            .from("affiliate_clicks")
+            .insert({
+              affiliate_id: clickResult.data.affiliate_id,
+              product_id: clickResult.data.product_id,
+              visitor_token_hash: clickResult.data.visitor_token_hash,
+              ip_hash: clickResult.data.ip_hash,
+              device_hash: clickResult.data.device_hash,
+              landing_path: clickResult.data.landing_path,
+              referrer_url: clickResult.data.referrer_url,
+            })
+            .select("id")
+            .single();
+
+          if (replacementClickResult.error) {
+            console.error(
+              "Affiliate conversion visit refresh failed:",
+              replacementClickResult.error,
+            );
+          } else {
+            pricingClickId = replacementClickResult.data.id;
+          }
+        }
+
         const eligibleItemResult = await admin
           .from("order_items")
           .select("id", { count: "exact", head: true })
@@ -234,7 +278,7 @@ export async function POST(request: NextRequest) {
             "apply_affiliate_order_pricing",
             {
               p_order_id: orderResult.data.id,
-              p_affiliate_click_id: clickResult.data.id,
+              p_affiliate_click_id: pricingClickId,
             },
           );
 

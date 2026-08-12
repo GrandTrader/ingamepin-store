@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
       .eq("affiliate_id", affiliate.id)
       .eq("product_id", product.id)
       .eq("visitor_token_hash", visitorTokenHash)
+      .is("converted_order_id", null)
       .gte("created_at", duplicateWindow)
       .order("created_at", { ascending: false })
       .limit(1)
