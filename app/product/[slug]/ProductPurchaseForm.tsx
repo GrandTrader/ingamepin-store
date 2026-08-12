@@ -60,6 +60,7 @@ type ProductPurchaseFormProps = {
     bulkDeliveryInstructions?: string | null;
     minimumQuantity: number;
     maximumQuantity: number;
+    isUnlimitedStock?: boolean;
   };
   options: ProductOption[];
   customerFields?: CustomerField[];
@@ -127,13 +128,13 @@ export default function ProductPurchaseForm({
   const firstAvailableFixedOption =
     fixedOptions.find(
       (option) =>
-        (product.isBulkOrder || option.stockQuantity > 0) &&
+        (product.isBulkOrder || product.isUnlimitedStock || option.stockQuantity > 0) &&
         option.optionName
           .toLowerCase()
           .includes("standard"),
     ) ??
     fixedOptions.find(
-      (option) => product.isBulkOrder || option.stockQuantity > 0,
+      (option) => product.isBulkOrder || product.isUnlimitedStock || option.stockQuantity > 0,
     ) ??
     fixedOptions[0];
 
@@ -279,6 +280,7 @@ export default function ProductPurchaseForm({
     if (
       valueMode === "FIXED" &&
       !product.isBulkOrder &&
+      !product.isUnlimitedStock &&
       selectedOption.stockQuantity < 1
     ) {
       return showError("The selected option is out of stock.");
@@ -588,7 +590,7 @@ export default function ProductPurchaseForm({
             {fixedOptions.map((option) => {
               const isSelected = selectedOptionId === option.id;
               const isUnavailable =
-                !product.isBulkOrder && option.stockQuantity < 1;
+                !product.isBulkOrder && !product.isUnlimitedStock && option.stockQuantity < 1;
 
               return (
                 <button
@@ -616,6 +618,8 @@ export default function ProductPurchaseForm({
                   <span className="mt-1 block text-xs opacity-70">
                     {product.isBulkOrder
                       ? "Bulk quantity available"
+                      : product.isUnlimitedStock
+                        ? "Unlimited availability"
                       : isUnavailable
                         ? t("outOfStock")
                         : product.deliveryType === "AUTOMATIC"

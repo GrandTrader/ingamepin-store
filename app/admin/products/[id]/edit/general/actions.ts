@@ -30,6 +30,9 @@ export async function updateProductGeneral(formData: FormData) {
   const categoryId = String(formData.get("category_id") ?? "").trim();
   const region = String(formData.get("region") ?? "").trim();
   let imageUrl = String(formData.get("image_url") ?? "").trim();
+  let popupImageUrl = String(formData.get("popup_image_url") ?? "").trim();
+  const useAsPopup = formData.get("use_as_popup") === "on";
+  const wasPopupProduct = formData.get("was_popup_product") === "true";
 
   if (!productId || name.length < 2 || !categoryId || !region) {
     redirect(`${path}?error=${encodeURIComponent("Product name, category and region are required.")}`);
@@ -40,6 +43,7 @@ export async function updateProductGeneral(formData: FormData) {
 
   try {
     imageUrl = (await uploadStoreImage(formData.get("image_file"), "products")) ?? imageUrl;
+    popupImageUrl = (await uploadStoreImage(formData.get("popup_image_file"), "popups")) ?? popupImageUrl;
   } catch (error) {
     redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Unable to upload product image.")}`);
   }
@@ -64,7 +68,54 @@ export async function updateProductGeneral(formData: FormData) {
     redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
   }
 
+  if (useAsPopup) {
+    if (!popupImageUrl) {
+      redirect(`${path}?error=${encodeURIComponent("Add a popup image before enabling this product as the popup.")}`);
+    }
+
+    const productResult = await admin
+      .from("products")
+      .select("slug, price, currency, badge")
+      .eq("id", productId)
+      .maybeSingle();
+
+    if (!productResult.data) {
+      redirect(`${path}?error=${encodeURIComponent("Unable to load the saved product for the popup.")}`);
+    }
+
+    const popupResult = await admin
+      .from("preorder_popup_settings")
+      .upsert({
+        id: true,
+        product_id: productId,
+        is_enabled: true,
+        game_title: name,
+        description: description || name,
+        image_url: popupImageUrl,
+        launch_date: null,
+        preorder_price: Number(productResult.data.price),
+        bonus_text: productResult.data.badge || "Available now",
+        button_text: "VIEW PRODUCT",
+        updated_at: new Date().toISOString(),
+      });
+
+    if (popupResult.error) {
+      redirect(`${path}?error=${encodeURIComponent(`Product saved, but popup could not be enabled: ${popupResult.error.message}`)}`);
+    }
+  } else if (wasPopupProduct) {
+    const popupResult = await admin
+      .from("preorder_popup_settings")
+      .update({ is_enabled: false, updated_at: new Date().toISOString() })
+      .eq("id", true)
+      .eq("product_id", productId);
+
+    if (popupResult.error) {
+      redirect(`${path}?error=${encodeURIComponent(`Product saved, but popup could not be disabled: ${popupResult.error.message}`)}`);
+    }
+  }
+
   revalidatePath(path);
+  revalidatePath("/");
   revalidatePath(`/product/${productId}`);
   redirect(`${path}?success=${encodeURIComponent("General information saved.")}`);
 }

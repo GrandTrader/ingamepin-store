@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 export type PreorderPopupData = {
   gameTitle: string;
   imageUrl: string;
-  launchDate: string;
+  launchDate: string | null;
   preorderPrice: number | null;
   bonusText: string;
   buttonText: string;
+  href: string;
+  eyebrow: string;
 };
 
 type TimeLeft = {
@@ -53,7 +55,7 @@ export default function PreorderPopup({
     useState(false);
   const [timeLeft, setTimeLeft] =
     useState(() =>
-      getTimeLeft(popup.launchDate),
+      popup.launchDate ? getTimeLeft(popup.launchDate) : null,
     );
 
   useEffect(() => {
@@ -65,13 +67,15 @@ export default function PreorderPopup({
       setIsOpen(true);
     }
 
-    const timer = window.setInterval(() => {
-      setTimeLeft(
-        getTimeLeft(popup.launchDate),
-      );
-    }, 1000);
+    const timer = popup.launchDate
+      ? window.setInterval(() => {
+          setTimeLeft(getTimeLeft(popup.launchDate!));
+        }, 1000)
+      : null;
 
-    return () => window.clearInterval(timer);
+    return () => {
+      if (timer !== null) window.clearInterval(timer);
+    };
   }, [popup.launchDate]);
 
   function closePopup() {
@@ -117,7 +121,7 @@ export default function PreorderPopup({
 
         <div className="flex flex-col justify-center p-5 text-center sm:p-8 md:p-10">
           <p className="text-sm font-black uppercase tracking-[0.25em] text-cyan-400">
-            Game Preorder
+            {popup.eyebrow}
           </p>
 
           <h2 className="mt-3 text-3xl font-black text-white sm:text-4xl">
@@ -126,10 +130,7 @@ export default function PreorderPopup({
 
           <div className="mx-auto mt-5 h-px w-full max-w-md bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
 
-          <p className="mt-6 font-bold text-slate-300">
-            Launches In
-          </p>
-
+          {timeLeft && <><p className="mt-6 font-bold text-slate-300">Launches In</p>
           <div className="mt-3 grid grid-cols-4 gap-2">
             <CountdownBox
               value={timeLeft.days}
@@ -147,7 +148,7 @@ export default function PreorderPopup({
               value={timeLeft.seconds}
               label="Sec"
             />
-          </div>
+          </div></>}
 
           {popup.preorderPrice !== null && (
             <div className="mt-6 border-t border-white/10 pt-5">
@@ -161,7 +162,7 @@ export default function PreorderPopup({
           )}
 
           <Link
-            href="/preorder"
+            href={popup.href}
             onClick={closePopup}
             className="mt-6 rounded-xl bg-cyan-400 px-5 py-4 font-black text-slate-950 shadow-[0_0_30px_rgba(34,211,238,0.25)] transition hover:bg-cyan-300"
           >

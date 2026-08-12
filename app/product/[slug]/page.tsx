@@ -8,6 +8,7 @@ import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import LocalizedProductText from "@/components/LocalizedProductText";
 import ProductViewTracker from "@/components/ProductViewTracker";
 import AffiliateReferralTracker from "@/components/AffiliateReferralTracker";
+import { isUnlimitedStock } from "@/lib/product-stock";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ type ProductRow = {
   player_id_label: string | null;
   minimum_quantity: number;
   maximum_quantity: number;
+  stock_quantity: number;
   affiliate_enabled: boolean;
   affiliate_commission_percent: number | string;
   categories: CategoryRelation;
@@ -131,6 +133,7 @@ export default async function ProductPage({
         player_id_label,
         minimum_quantity,
         maximum_quantity,
+        stock_quantity,
         affiliate_enabled,
         affiliate_commission_percent,
         categories (
@@ -423,6 +426,7 @@ export default async function ProductPage({
                 bulkDeliveryInstructions: product.bulk_delivery_instructions,
                 minimumQuantity: product.minimum_quantity,
                 maximumQuantity: product.maximum_quantity,
+                isUnlimitedStock: isUnlimitedStock(product.stock_quantity),
               }}
               customerFields={customerFields.map((field) => ({
                 id: field.id,

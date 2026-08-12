@@ -299,6 +299,10 @@ export default async function Home() {
 
   const popupRow =
     preorderPopupResult.data as PreorderPopupRow | null;
+  const popupStoreProduct = popupRow?.product_id
+    ? productRows.find((product) => product.id === popupRow.product_id) ?? null
+    : null;
+  const isIndependentPreorder = Boolean(popupRow?.launch_date && !popupStoreProduct);
 
   const now = Date.now();
   const heroSlides: HeroSlide[] = (slidesResult.data ?? [])
@@ -320,15 +324,17 @@ export default async function Home() {
 
   const preorderPopup: PreorderPopupData | null =
     popupRow &&
-    popupRow.launch_date &&
     popupRow.game_title &&
-    popupRow.image_url
+    popupRow.image_url &&
+    (popupStoreProduct || popupRow.launch_date)
       ? {
-          gameTitle: popupRow.game_title,
+          gameTitle: popupStoreProduct?.name ?? popupRow.game_title,
           imageUrl: popupRow.image_url,
           launchDate: popupRow.launch_date,
           preorderPrice:
-            popupRow.preorder_price === null
+            popupStoreProduct
+              ? Number(popupStoreProduct.price)
+              : popupRow.preorder_price === null
               ? null
               : Number(
                   popupRow.preorder_price,
@@ -337,11 +343,13 @@ export default async function Home() {
           buttonText:
             popupRow.button_text ||
             "PREORDER NOW",
+          href: popupStoreProduct ? `/product/${popupStoreProduct.slug}` : "/preorder",
+          eyebrow: popupStoreProduct ? "Featured Product" : "Game Preorder",
         }
       : null;
 
   const featuredProductsForDisplay: ProductCardData[] =
-    preorderPopup
+    preorderPopup && isIndependentPreorder
       ? [
           {
             id: "independent-preorder",

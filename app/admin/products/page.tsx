@@ -336,7 +336,7 @@ export default async function AdminProductsPage({
                               : "text-slate-700"
                           }
                         >
-                          {product.stock_quantity}
+                          {product.stock_quantity === 2147483647 ? "Unlimited" : product.stock_quantity}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-center font-bold text-blue-600">

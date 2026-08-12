@@ -6,6 +6,7 @@ import CountrySelect from "@/components/CountrySelect";
 import ProductEditPageTabs from "@/components/ProductEditPageTabs";
 import ResponsiveImageField from "@/components/ResponsiveImageField";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { updateProductGeneral } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -27,14 +28,18 @@ export default async function ProductGeneralPage({
   const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
   if (!access.data) redirect("/admin/login?error=Access denied");
 
-  const [result, categoriesResult] = await Promise.all([
+  const admin = createAdminClient();
+  const [result, categoriesResult, popupResult] = await Promise.all([
     supabase.from("products").select("id, category_id, name, name_ru, slug, description, description_ru, image_url, region").eq("id", id).maybeSingle(),
     supabase.from("categories").select("id, name").eq("is_active", true).order("sort_order"),
+    admin.from("preorder_popup_settings").select("product_id, is_enabled, image_url").eq("id", true).maybeSingle(),
   ]);
 
   if (result.error) throw new Error(`Unable to load product: ${result.error.message}`);
   if (!result.data) notFound();
   const product = result.data;
+  const isPopupProduct = popupResult.data?.is_enabled === true && popupResult.data.product_id === id;
+  const popupImageUrl = popupResult.data?.product_id === id ? popupResult.data.image_url : null;
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -67,6 +72,32 @@ export default async function ProductGeneralPage({
                 <ResponsiveImageField label="Product image" name="image_url" fileName="image_file" defaultValue={product.image_url} variant="product" />
                 <label className="md:col-span-2"><span className="text-sm font-bold">Description</span><textarea name="description" rows={6} defaultValue={product.description ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
                 <label className="md:col-span-2"><span className="text-sm font-bold">Description (Russian)</span><textarea name="description_ru" rows={6} defaultValue={product.description_ru ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  name="use_as_popup"
+                  defaultChecked={isPopupProduct}
+                  className="mt-1 h-5 w-5 accent-cyan-500"
+                />
+                <span>
+                  <span className="block text-lg font-black">Use this product as homepage popup</span>
+                  <span className="mt-1 block text-sm text-slate-600">Only one product popup can be active. Selecting this product replaces the current popup.</span>
+                </span>
+              </label>
+              <input type="hidden" name="was_popup_product" value={popupResult.data?.product_id === id ? "true" : "false"} />
+              <div className="mt-5">
+                <ResponsiveImageField
+                  label="Popup image"
+                  name="popup_image_url"
+                  fileName="popup_image_file"
+                  defaultValue={popupImageUrl}
+                  variant="product"
+                />
+                <p className="mt-2 text-xs text-slate-500">This image is used only inside the popup. The normal product image remains unchanged.</p>
               </div>
             </section>
             <div className="flex justify-end"><button type="submit" className="rounded-xl bg-slate-900 px-7 py-3 font-black text-white">Save General</button></div>

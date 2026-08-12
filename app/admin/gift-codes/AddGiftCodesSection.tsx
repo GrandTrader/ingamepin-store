@@ -5,6 +5,7 @@ import AddGiftCodesForm from "./AddGiftCodesForm";
 type ProductRow = {
   id: string;
   name: string;
+  stock_quantity: number;
 };
 
 type ProductOptionRow = {
@@ -21,7 +22,7 @@ export default async function AddGiftCodesSection() {
     await Promise.all([
       supabase
         .from("products")
-        .select("id, name")
+        .select("id, name, stock_quantity")
         .eq("status", "ACTIVE")
         .order("name", {
           ascending: true,
@@ -56,7 +57,7 @@ export default async function AddGiftCodesSection() {
   const options =
     (optionResult.data ?? []) as ProductOptionRow[];
 
-  const productsWithOptions = products.map(
+  const productsWithOptions = products.filter((product) => product.stock_quantity !== 2147483647).map(
     (product) => ({
       id: product.id,
       name: product.name,
