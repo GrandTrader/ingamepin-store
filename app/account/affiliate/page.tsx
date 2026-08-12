@@ -1,5 +1,6 @@
 import countries from "i18n-iso-countries";
 import englishCountries from "i18n-iso-countries/langs/en.json";
+import Link from "next/link";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireCustomer } from "@/lib/customer-account-data";
@@ -502,6 +503,26 @@ export default async function CustomerAffiliatePage({
                 placeholder="Explain how and where you will promote InGamePin products."
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
               />
+            </label>
+
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+              <input
+                type="checkbox"
+                name="affiliate_terms_accepted"
+                required
+                className="mt-1 h-4 w-4 rounded border-slate-300 accent-cyan-500"
+              />
+              <span className="text-sm leading-6 text-slate-600">
+                I have read and agree to the{" "}
+                <Link
+                  href="/affiliate-program#affiliate-terms"
+                  target="_blank"
+                  className="font-bold text-cyan-600 hover:text-cyan-500"
+                >
+                  Affiliate Program Terms &amp; Conditions
+                </Link>
+                .
+              </span>
             </label>
           </div>
 

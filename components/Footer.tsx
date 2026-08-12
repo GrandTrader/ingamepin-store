@@ -88,6 +88,7 @@ export default function Footer() {
             <Link href="/terms">{t("terms")}</Link>
             <Link href="/refund-policy">{t("refundPolicy")}</Link>
             <Link href="/privacy-policy">{t("privacyPolicy")}</Link>
+            <Link href="/affiliate-program">{t("affiliateProgram")}</Link>
           </MobileFooterSection>
 
           <MobileFooterSection title={t("paymentDelivery")}>
@@ -241,6 +242,7 @@ export default function Footer() {
             <Link href="/terms" className="transition hover:text-cyan-400">{t("terms")}</Link>
             <Link href="/refund-policy" className="transition hover:text-cyan-400">{t("refundPolicy")}</Link>
             <Link href="/privacy-policy" className="transition hover:text-cyan-400">{t("privacyPolicy")}</Link>
+            <Link href="/affiliate-program" className="transition hover:text-cyan-400">{t("affiliateProgram")}</Link>
           </nav>
         </div>
       </div>

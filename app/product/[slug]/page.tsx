@@ -200,49 +200,64 @@ export default async function ProductPage({
   const customerDiscounts = await getSignedInCustomerDiscounts();
   const customerDiscountPercent = customerDiscounts.get(product.id) ?? 0;
   let affiliateCommissionPercent = 0;
+  let affiliateMaximumCommissionPercent = 0;
 
-  if (affiliateCode && product.affiliate_enabled) {
+  const configuredAffiliateMaximum = Number(
+    product.affiliate_commission_percent,
+  );
+
+  if (
+    product.affiliate_enabled &&
+    Number.isFinite(configuredAffiliateMaximum) &&
+    configuredAffiliateMaximum > 0
+  ) {
     const admin = createAdminClient();
-    const [settingsResult, affiliateResult] = await Promise.all([
-      admin
-        .from("affiliate_settings")
-        .select("program_enabled")
-        .eq("id", 1)
-        .maybeSingle(),
-      admin
+    const settingsResult = await admin
+      .from("affiliate_settings")
+      .select("program_enabled")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (settingsResult.data?.program_enabled) {
+      affiliateMaximumCommissionPercent = configuredAffiliateMaximum;
+    }
+
+    if (affiliateCode && settingsResult.data?.program_enabled) {
+      const affiliateResult = await admin
         .from("affiliate_accounts")
         .select("id, commission_override_percent")
         .eq("affiliate_code", affiliateCode.toUpperCase())
         .eq("status", "APPROVED")
-        .maybeSingle(),
-    ]);
-
-    const affiliate = affiliateResult.data;
-
-    if (settingsResult.data?.program_enabled && affiliate) {
-      const selectedRateResult = await admin
-        .from("affiliate_product_rates")
-        .select("commission_percent")
-        .eq("affiliate_id", affiliate.id)
-        .eq("product_id", product.id)
         .maybeSingle();
-      const maximumRate = Number(
-        affiliate.commission_override_percent ??
-          product.affiliate_commission_percent,
-      );
-      const selectedRate = Number(
-        selectedRateResult.data?.commission_percent ?? maximumRate,
-      );
+      const affiliate = affiliateResult.data;
 
-      if (
-        Number.isFinite(maximumRate) &&
-        Number.isFinite(selectedRate) &&
-        maximumRate > 0
-      ) {
-        affiliateCommissionPercent = Math.min(
-          Math.max(selectedRate, 0),
-          maximumRate,
+      if (!affiliate) {
+        affiliateMaximumCommissionPercent = configuredAffiliateMaximum;
+      } else {
+        const selectedRateResult = await admin
+          .from("affiliate_product_rates")
+          .select("commission_percent")
+          .eq("affiliate_id", affiliate.id)
+          .eq("product_id", product.id)
+          .maybeSingle();
+        const maximumRate = Number(
+          affiliate.commission_override_percent ??
+            product.affiliate_commission_percent,
         );
+        const selectedRate = Number(
+          selectedRateResult.data?.commission_percent ?? maximumRate,
+        );
+
+        if (
+          Number.isFinite(maximumRate) &&
+          Number.isFinite(selectedRate) &&
+          maximumRate > 0
+        ) {
+          affiliateCommissionPercent = Math.min(
+            Math.max(selectedRate, 0),
+            maximumRate,
+          );
+        }
       }
     }
   }
@@ -422,6 +437,7 @@ export default async function ProductPage({
                   product.player_id_label,
                 customerDiscountPercent,
                 affiliateCommissionPercent,
+                affiliateMaximumCommissionPercent,
                 isBulkOrder: product.is_bulk_order,
                 bulkDeliveryInstructions: product.bulk_delivery_instructions,
                 minimumQuantity: product.minimum_quantity,

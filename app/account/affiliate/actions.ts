@@ -41,6 +41,15 @@ export async function submitAffiliateApplication(formData: FormData) {
     .toUpperCase();
   const promotionUrl = String(formData.get("promotion_url") ?? "").trim();
   const promotionPlan = String(formData.get("promotion_plan") ?? "").trim();
+  const termsAccepted =
+    String(formData.get("affiliate_terms_accepted") ?? "") === "on";
+
+  if (!termsAccepted) {
+    affiliateRedirect(
+      "error",
+      "Accept the Affiliate Program Terms & Conditions to continue.",
+    );
+  }
 
   const result = await supabase.rpc("submit_affiliate_application", {
     p_full_name: fullName,

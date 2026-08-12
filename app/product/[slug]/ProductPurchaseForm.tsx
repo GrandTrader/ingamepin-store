@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStorePreferences } from "@/components/StorePreferences";
 
@@ -56,6 +57,7 @@ type ProductPurchaseFormProps = {
     playerIdLabel: string | null;
     customerDiscountPercent: number;
     affiliateCommissionPercent?: number;
+    affiliateMaximumCommissionPercent?: number;
     isBulkOrder?: boolean;
     bulkDeliveryInstructions?: string | null;
     minimumQuantity: number;
@@ -233,6 +235,18 @@ export default function ProductPurchaseForm({
   const customerDiscountAmount =
     totalPrice * Math.max(0, product.customerDiscountPercent) / 100;
   const customerTotal = totalPrice - customerDiscountAmount;
+  const affiliateMaximumCommissionPercent = Math.max(
+    0,
+    product.affiliateMaximumCommissionPercent ?? 0,
+  );
+  const affiliateMaximumEarning =
+    (valueMode === "CUSTOM"
+      ? Number.isFinite(parsedCustomValue)
+        ? parsedCustomValue
+        : 0
+      : selectedFixedOption?.sellingPrice ?? 0) *
+    affiliateMaximumCommissionPercent /
+    100;
 
   function formatPrice(value: number) {
     return formatStorePrice(value);
@@ -846,6 +860,37 @@ export default function ProductPurchaseForm({
           </div>
         )}
       </section>
+
+      {affiliateMaximumCommissionPercent > 0 && (
+        <Link
+          href={`/affiliate-program?product=${encodeURIComponent(product.slug)}`}
+          className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-amber-300/40 bg-gradient-to-r from-amber-300/15 to-cyan-400/10 p-4 transition hover:border-amber-200 hover:bg-amber-300/20 sm:mt-6 sm:p-5"
+        >
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-300 text-xl text-slate-950">
+            ◈
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-bold uppercase tracking-widest text-amber-200">
+              {language === "ru"
+                ? "Партнёрская возможность"
+                : "Affiliate opportunity"}
+            </span>
+            <span className="mt-1 block font-black text-white">
+              {language === "ru" ? "Заработайте до" : "Earn up to"}{" "}
+              {formatPrice(affiliateMaximumEarning)}{" "}
+              {language === "ru" ? "на этом товаре!" : "on this product!"}
+            </span>
+            <span className="mt-1 block text-xs text-slate-400">
+              {language === "ru"
+                ? "Присоединяйтесь к программе и делитесь своей уникальной ссылкой."
+                : "Join the program and share your unique product link."}
+            </span>
+          </span>
+          <span aria-hidden="true" className="text-2xl text-amber-200">
+            →
+          </span>
+        </Link>
+      )}
 
       <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
         <button
