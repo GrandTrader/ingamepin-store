@@ -1,6 +1,7 @@
 ﻿import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter, Roboto_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import Header from "../components/Header";
@@ -46,7 +47,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" data-store-theme="light" style={{ colorScheme: "light" }}>
+    <html
+      lang="en"
+      data-store-theme="light"
+      style={{ colorScheme: "light" }}
+    >
       <body
         suppressHydrationWarning
         className={`${inter.variable} ${robotoMono.variable} flex min-h-screen flex-col bg-slate-950 antialiased`}
@@ -66,10 +71,9 @@ export default function RootLayout({
         <YandexMetrica />
         <GoogleAdsTag />
 
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
   );
 }
-
-
