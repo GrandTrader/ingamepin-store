@@ -513,21 +513,22 @@ export default async function Home() {
       <section className="mx-auto max-w-7xl px-3 pb-8 sm:px-5 sm:pb-12">
         <Link
           href="/affiliate-program"
-          className="affiliate-home-banner group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-violet-400/40 bg-gradient-to-r from-slate-900 via-indigo-950 to-cyan-950 p-5 shadow-xl shadow-indigo-950/20 transition hover:-translate-y-1 hover:border-cyan-400 sm:flex-row sm:items-center sm:justify-between sm:p-7"
+          className="affiliate-home-banner group relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-cyan-200 bg-gradient-to-br from-white via-cyan-50 to-blue-100 p-5 shadow-lg shadow-cyan-200/40 transition duration-300 hover:-translate-y-1 hover:border-cyan-400 hover:shadow-xl hover:shadow-cyan-200/60 sm:flex-row sm:items-center sm:justify-between sm:p-8"
         >
-          <span aria-hidden="true" className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-cyan-400/20 blur-3xl" />
+          <span aria-hidden="true" className="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-cyan-400/25 blur-3xl" />
+          <span aria-hidden="true" className="absolute -bottom-20 left-1/3 h-44 w-44 rounded-full bg-blue-400/15 blur-3xl" />
           <div className="relative z-10">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400 sm:text-xs">
+            <span className="inline-flex items-center rounded-full border border-cyan-200 bg-white/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-700 shadow-sm sm:text-xs">
               Affiliate Program
-            </p>
-            <h2 className="affiliate-home-banner-title mt-2 text-2xl font-black text-white sm:text-3xl">
+            </span>
+            <h2 className="affiliate-home-banner-title mt-3 text-2xl font-black text-slate-950 sm:text-3xl">
               Share products. Earn commission in USDT.
             </h2>
-            <p className="affiliate-home-banner-description mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+            <p className="affiliate-home-banner-description mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
               Create referral links for eligible products and earn from approved customer orders.
             </p>
           </div>
-          <span className="relative z-10 inline-flex shrink-0 items-center justify-center rounded-xl bg-cyan-400 px-6 py-3.5 text-sm font-black text-slate-950 transition group-hover:bg-cyan-300">
+          <span className="relative z-10 inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl border border-cyan-500 bg-cyan-500 px-7 py-3.5 text-sm font-black text-slate-950 shadow-lg shadow-cyan-300/40 transition group-hover:border-cyan-400 group-hover:bg-cyan-400 sm:min-w-40">
             Learn &amp; Join <span aria-hidden="true" className="ml-2">{"→"}</span>
           </span>
         </Link>
