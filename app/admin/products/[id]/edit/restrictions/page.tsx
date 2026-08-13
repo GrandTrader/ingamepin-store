@@ -45,7 +45,7 @@ export default async function RestrictionsPage({ params, searchParams }: { param
           <label className="font-bold sm:col-span-2">Customer notification<textarea name="notification_message" rows={3} defaultValue={rule?.notification_message ?? "Weekly purchase limit reached. Please try again after your limit resets."} required className="mt-2 w-full rounded-xl border px-4 py-3" /></label>
         </div>
       </section> : <input type="hidden" name="weekly_limit" value={rule?.weekly_limit ?? 25000} />}
-      <div className="mt-6 flex justify-end"><button className="rounded-xl bg-blue-600 px-6 py-3 font-black text-white">Save restrictions</button></div>
+      <div className="mt-6 flex justify-end"><button className="admin-save-action rounded-xl px-6 py-3 font-black transition">Save restrictions</button></div>
     </form>
     <DenominationQuantityEditor productId={id} defaultMinimum={product.minimum_quantity ?? 1} defaultMaximum={product.maximum_quantity ?? 5} options={(optionsResult.data ?? []).map((option) => ({ id: option.id, name: option.option_name, denomination: option.denomination === null ? null : Number(option.denomination), currency: option.denomination_currency, sellingPrice: Number(option.selling_price), minimumQuantity: option.minimum_quantity, maximumQuantity: option.maximum_quantity }))} />
   </main></div></div>;

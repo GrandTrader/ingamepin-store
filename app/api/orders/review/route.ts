@@ -52,20 +52,28 @@ export async function POST(request: NextRequest) {
 
     if (!signedInOwner && !guestOwner && !tokenOwner) return NextResponse.json({ error: "Order verification failed." }, { status: 403 });
 
-    const insertResult = await admin.from("order_reviews").insert({
-      order_id: order.id,
-      customer_id: order.customer_id,
-      customer_email: ownerEmail,
-      sentiment,
-      comment: comment || null,
+    const reviewResult = await admin.rpc("submit_verified_order_review", {
+      p_order_id: order.id,
+      p_customer_id: signedInOwner && user ? user.id : null,
+      p_customer_email: ownerEmail,
+      p_sentiment: sentiment,
+      p_comment: comment || null,
     });
-    if (insertResult.error?.code === "23505") return NextResponse.json({ error: "A review has already been submitted for this order." }, { status: 409 });
-    if (insertResult.error) throw insertResult.error;
+    if (reviewResult.error?.code === "23505") return NextResponse.json({ error: "A review has already been submitted for this order." }, { status: 409 });
+    if (reviewResult.error) throw reviewResult.error;
 
-    return NextResponse.json({ success: true });
+    const result = reviewResult.data as {
+      rewardAmount?: number;
+      supportCaseId?: string | null;
+    } | null;
+
+    return NextResponse.json({
+      success: true,
+      rewardAmount: Number(result?.rewardAmount ?? 0),
+      supportCaseCreated: Boolean(result?.supportCaseId),
+    });
   } catch (error) {
     console.error("Order review submission failed:", error);
     return NextResponse.json({ error: "Unable to submit your review right now." }, { status: 500 });
   }
 }
-

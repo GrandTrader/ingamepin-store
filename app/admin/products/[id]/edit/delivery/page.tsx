@@ -65,7 +65,7 @@ export default async function DeliveryPage({
                 isUnlimitedStock={isUnlimitedStock(product.stock_quantity)}
               />
             </section>
-            <div className="flex justify-end"><button className="rounded-xl bg-slate-900 px-7 py-3 font-black text-white">Save Delivery</button></div>
+            <div className="flex justify-end"><button className="admin-save-action rounded-xl px-7 py-3 font-black transition">Save Delivery</button></div>
           </form>
         </main>
       </div>

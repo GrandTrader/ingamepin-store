@@ -33,6 +33,8 @@ export async function updateProductGeneral(formData: FormData) {
   let popupImageUrl = String(formData.get("popup_image_url") ?? "").trim();
   const useAsPopup = formData.get("use_as_popup") === "on";
   const wasPopupProduct = formData.get("was_popup_product") === "true";
+  const reviewRewardEnabled = formData.get("review_reward_enabled") === "on";
+  const reviewRewardPercent = Number(formData.get("review_reward_percent") ?? 0);
 
   if (!productId || name.length < 2 || !categoryId || !region) {
     redirect(`${path}?error=${encodeURIComponent("Product name, category and region are required.")}`);
@@ -40,6 +42,18 @@ export async function updateProductGeneral(formData: FormData) {
 
   const categoryResult = await supabase.from("categories").select("category_type").eq("id", categoryId).eq("is_active", true).maybeSingle();
   if (!categoryResult.data) redirect(`${path}?error=${encodeURIComponent("Select a valid category.")}`);
+
+  if (
+    !Number.isFinite(reviewRewardPercent) ||
+    reviewRewardPercent < 0 ||
+    reviewRewardPercent > 100
+  ) {
+    redirect(`${path}?error=${encodeURIComponent("Positive feedback bonus must be between 0% and 100%.")}`);
+  }
+
+  if (reviewRewardEnabled && reviewRewardPercent <= 0) {
+    redirect(`${path}?error=${encodeURIComponent("Enter a positive feedback bonus greater than 0% before enabling it.")}`);
+  }
 
   try {
     imageUrl = (await uploadStoreImage(formData.get("image_file"), "products")) ?? imageUrl;
@@ -60,6 +74,8 @@ export async function updateProductGeneral(formData: FormData) {
       product_type: categoryResult.data.category_type,
       region,
       image_url: imageUrl || null,
+      review_reward_enabled: reviewRewardEnabled,
+      review_reward_percent: reviewRewardEnabled ? reviewRewardPercent : 0,
       updated_at: new Date().toISOString(),
     })
     .eq("id", productId);

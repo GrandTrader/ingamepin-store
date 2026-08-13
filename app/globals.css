@@ -116,6 +116,38 @@ html[data-store-theme="light"] select,
 html[data-store-theme="light"] textarea {
   color-scheme: light;
 }
+
+/* Admin form actions must stay visible when the customer light theme is active. */
+.admin-save-action,
+html[data-store-theme="light"] .admin-save-action {
+  background-color: #0f172a !important;
+  border: 1px solid #0f172a !important;
+  color: #ffffff !important;
+  min-width: 170px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+}
+
+.admin-save-action:hover,
+html[data-store-theme="light"] .admin-save-action:hover {
+  background-color: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
+
+html[data-store-theme="light"] button[class*="bg-slate-900"] {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+html[data-store-theme="light"] button[class*="bg-slate-900"]:hover {
+  background-color: #1d4ed8 !important;
+}
+
+@media (max-width: 639px) {
+  .admin-save-action {
+    width: 100%;
+    min-height: 48px;
+  }
+}
 @media (max-width: 639px) {
   .admin-responsive-shell main > header {
     align-items: stretch;

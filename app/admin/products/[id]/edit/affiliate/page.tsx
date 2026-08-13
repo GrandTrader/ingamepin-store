@@ -164,7 +164,7 @@ export default async function ProductAffiliatePage({
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="rounded-xl bg-slate-900 px-7 py-3 font-black text-white transition hover:bg-blue-700"
+                className="admin-save-action rounded-xl px-7 py-3 font-black transition"
               >
                 Save Affiliate Settings
               </button>

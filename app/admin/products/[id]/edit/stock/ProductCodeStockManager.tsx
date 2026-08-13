@@ -45,7 +45,7 @@ export default function ProductCodeStockManager({ productId, isUnlimited, option
           <span className="mt-1 block pl-6 text-sm text-slate-500">Every denomination stays available. Voucher upload is hidden and delivery is manual.</span>
         </label>
       </div>
-      <button className="mt-4 rounded-xl bg-slate-900 px-6 py-3 font-black text-white">Save stock mode</button>
+      <button className="admin-save-action mt-4 rounded-xl px-6 py-3 font-black transition">Save stock mode</button>
     </form>
 
     {isUnlimited ? (

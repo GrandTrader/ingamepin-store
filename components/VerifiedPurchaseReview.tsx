@@ -7,6 +7,7 @@ type Props = { orderId?: string; orderNumber?: string; email?: string; accessTok
 export default function VerifiedPurchaseReview(props: Props) {
   const [sentiment, setSentiment] = useState<"POSITIVE" | "NEGATIVE" | "">("");
   const [message, setMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -21,9 +22,24 @@ export default function VerifiedPurchaseReview(props: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...props, sentiment, comment: form.get("comment") }),
     });
-    const result = (await response.json()) as { error?: string };
+    const result = (await response.json()) as {
+      error?: string;
+      rewardAmount?: number;
+      supportCaseCreated?: boolean;
+    };
     setLoading(false);
     if (!response.ok) return setMessage(result.error ?? "Unable to submit your review.");
+    if (sentiment === "POSITIVE" && Number(result.rewardAmount ?? 0) > 0) {
+      setSuccessMessage(
+        `Thank you. $${Number(result.rewardAmount).toFixed(2)} has been added to your wallet.`,
+      );
+    } else if (sentiment === "NEGATIVE" && result.supportCaseCreated) {
+      setSuccessMessage(
+        "Thank you. A support case has been opened so our team can resolve the issue.",
+      );
+    } else {
+      setSuccessMessage("Thank you. Your review was submitted successfully.");
+    }
     setSubmitted(true);
   }
 
@@ -32,7 +48,7 @@ export default function VerifiedPurchaseReview(props: Props) {
       <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-600">Verified purchase</p>
       <h2 className="mt-2 text-xl font-black text-slate-900">How was your purchase?</h2>
       {submitted ? (
-        <p className="mt-4 rounded-xl bg-emerald-50 p-4 font-bold text-emerald-700">Thank you. Your review was submitted successfully.</p>
+        <p className="mt-4 rounded-xl bg-emerald-50 p-4 font-bold text-emerald-700">{successMessage}</p>
       ) : (
         <form onSubmit={submitReview} className="mt-4">
           <div className="flex flex-wrap gap-3">
