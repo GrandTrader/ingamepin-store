@@ -7,6 +7,7 @@ import ProductEditPageTabs from "@/components/ProductEditPageTabs";
 import ResponsiveImageField from "@/components/ResponsiveImageField";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getPaidProductSales } from "@/lib/product-sales";
 import { updateProductGeneral } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -29,15 +30,28 @@ export default async function ProductGeneralPage({
   if (!access.data) redirect("/admin/login?error=Access denied");
 
   const admin = createAdminClient();
-  const [result, categoriesResult, popupResult] = await Promise.all([
-    supabase.from("products").select("id, category_id, name, name_ru, slug, description, description_ru, image_url, region, review_reward_enabled, review_reward_percent").eq("id", id).maybeSingle(),
+  const twentyFourHoursAgo = new Date(
+    Date.now() - 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const [result, categoriesResult, popupResult, viewsResult, paidProductSales] = await Promise.all([
+    supabase.from("products").select("id, category_id, name, name_ru, slug, description, description_ru, image_url, region, sold_count, review_reward_enabled, review_reward_percent").eq("id", id).maybeSingle(),
     supabase.from("categories").select("id, name").eq("is_active", true).order("sort_order"),
     admin.from("preorder_popup_settings").select("product_id, is_enabled, image_url").eq("id", true).maybeSingle(),
+    admin
+      .from("product_views")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", id)
+      .gte("last_viewed_at", twentyFourHoursAgo),
+    getPaidProductSales(),
   ]);
 
   if (result.error) throw new Error(`Unable to load product: ${result.error.message}`);
+  if (viewsResult.error) throw new Error(`Unable to load product visitors: ${viewsResult.error.message}`);
   if (!result.data) notFound();
   const product = result.data;
+  const totalSold =
+    Number(product.sold_count ?? 0) + (paidProductSales.get(id) ?? 0);
+  const visitorsLast24Hours = viewsResult.count ?? 0;
   const isPopupProduct = popupResult.data?.is_enabled === true && popupResult.data.product_id === id;
   const popupImageUrl = popupResult.data?.product_id === id ? popupResult.data.image_url : null;
 
@@ -59,6 +73,19 @@ export default async function ProductGeneralPage({
           {error && <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
 
           <div className="mt-8"><ProductEditPageTabs productId={id} current="general" /></div>
+
+          <section className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Total units sold</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">{totalSold.toLocaleString("en-IN")}</p>
+              <p className="mt-1 text-xs text-slate-500">Includes completed bulk-order quantities.</p>
+            </div>
+            <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-cyan-700">Visitors (24 hours)</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">{visitorsLast24Hours.toLocaleString("en-IN")}</p>
+              <p className="mt-1 text-xs text-slate-500">Privacy-friendly unique product visitors.</p>
+            </div>
+          </section>
 
           <form action={updateProductGeneral} className="mt-6 grid gap-6">
             <input type="hidden" name="id" value={id} />

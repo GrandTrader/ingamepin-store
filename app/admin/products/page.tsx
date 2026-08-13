@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getProductUrl } from "@/lib/product-url";
+import { getPaidProductSales } from "@/lib/product-sales";
 import { isUnlimitedStock } from "@/lib/product-stock";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
 import {
@@ -38,6 +40,10 @@ type ProductOptionRow = {
   stock_quantity: number;
   is_active: boolean;
   is_custom_value: boolean;
+};
+
+type ProductViewRow = {
+  product_id: string;
 };
 
 type ProductRow = {
@@ -246,6 +252,33 @@ export default async function AdminProductsPage({
   }
 
   const allProducts = (productResult.data ?? []) as ProductRow[];
+  const admin = createAdminClient();
+  const twentyFourHoursAgo = new Date(
+    Date.now() - 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const [viewsResult, paidProductSales] = await Promise.all([
+    admin
+      .from("product_views")
+      .select("product_id")
+      .gte("last_viewed_at", twentyFourHoursAgo),
+    getPaidProductSales(),
+  ]);
+
+  if (viewsResult.error) {
+    throw new Error(
+      `Unable to load product visitors: ${viewsResult.error.message}`,
+    );
+  }
+
+  const viewsByProduct = new Map<string, number>();
+  for (const row of (viewsResult.data ?? []) as ProductViewRow[]) {
+    viewsByProduct.set(
+      row.product_id,
+      (viewsByProduct.get(row.product_id) ?? 0) + 1,
+    );
+  }
+  const getTotalSold = (product: ProductRow) =>
+    Number(product.sold_count ?? 0) + (paidProductSales.get(product.id) ?? 0);
   const normalizedSearch = search.toLocaleLowerCase();
   const filteredProducts = allProducts
     .filter((product) => {
@@ -269,7 +302,7 @@ export default async function AdminProductsPage({
         return getMinimumPrice(left) - getMinimumPrice(right);
       }
       if (sort === "SOLD_DESC") {
-        return Number(right.sold_count) - Number(left.sold_count);
+        return getTotalSold(right) - getTotalSold(left);
       }
       return Number(right.public_id) - Number(left.public_id);
     });
@@ -383,7 +416,7 @@ export default async function AdminProductsPage({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[1260px] border-collapse text-left text-sm">
                 <thead className="border-b border-slate-300 bg-white text-xs font-black uppercase tracking-wide text-slate-600">
                   <tr>
                     <th className="px-4 py-3 text-center">Sales</th>
@@ -393,6 +426,7 @@ export default async function AdminProductsPage({
                     <th className="px-3 py-3 text-right">Price</th>
                     <th className="px-3 py-3 text-center">Discount</th>
                     <th className="px-3 py-3 text-center">Sold</th>
+                    <th className="px-3 py-3 text-center">Visitors (24h)</th>
                     <th className="px-3 py-3 text-center">Available</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                     <th className="w-14 px-4 py-3 text-center">
@@ -459,7 +493,11 @@ export default async function AdminProductsPage({
                         </td>
 
                         <td className="px-3 py-2.5 text-center font-bold text-blue-600">
-                          {Number(product.sold_count).toLocaleString("en-IN")}
+                          {getTotalSold(product).toLocaleString("en-IN")}
+                        </td>
+
+                        <td className="px-3 py-2.5 text-center font-bold text-cyan-700">
+                          {(viewsByProduct.get(product.id) ?? 0).toLocaleString("en-IN")}
                         </td>
 
                         <td className="px-3 py-2.5 text-center">
@@ -499,7 +537,7 @@ export default async function AdminProductsPage({
 
                   {visibleProducts.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="px-5 py-16 text-center text-slate-500">
+                      <td colSpan={11} className="px-5 py-16 text-center text-slate-500">
                         No products match these filters.
                       </td>
                     </tr>
