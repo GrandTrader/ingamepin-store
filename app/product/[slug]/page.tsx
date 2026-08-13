@@ -242,6 +242,7 @@ export async function renderProductPage({
         .from("order_reviews")
         .select("id, customer_email, sentiment, comment, created_at")
         .in("order_id", reviewOrderIds)
+        .eq("is_visible", true)
         .order("created_at", { ascending: false })
         .limit(50)
     : { data: [], error: null };
