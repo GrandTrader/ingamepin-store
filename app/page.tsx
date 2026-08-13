@@ -513,17 +513,17 @@ export default async function Home() {
       <section className="mx-auto max-w-7xl px-3 pb-8 sm:px-5 sm:pb-12">
         <Link
           href="/affiliate-program"
-          className="group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-violet-400/40 bg-gradient-to-r from-slate-900 via-indigo-950 to-cyan-950 p-5 shadow-xl shadow-indigo-950/20 transition hover:-translate-y-1 hover:border-cyan-400 sm:flex-row sm:items-center sm:justify-between sm:p-7"
+          className="affiliate-home-banner group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-violet-400/40 bg-gradient-to-r from-slate-900 via-indigo-950 to-cyan-950 p-5 shadow-xl shadow-indigo-950/20 transition hover:-translate-y-1 hover:border-cyan-400 sm:flex-row sm:items-center sm:justify-between sm:p-7"
         >
           <span aria-hidden="true" className="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-cyan-400/20 blur-3xl" />
           <div className="relative z-10">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400 sm:text-xs">
               Affiliate Program
             </p>
-            <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">
+            <h2 className="affiliate-home-banner-title mt-2 text-2xl font-black text-white sm:text-3xl">
               Share products. Earn commission in USDT.
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+            <p className="affiliate-home-banner-description mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
               Create referral links for eligible products and earn from approved customer orders.
             </p>
           </div>

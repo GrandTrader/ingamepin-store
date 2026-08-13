@@ -142,6 +142,17 @@ html[data-store-theme="light"] button[class*="bg-slate-900"]:hover {
   background-color: #1d4ed8 !important;
 }
 
+/* Keep the dark affiliate promotion readable in every customer theme. */
+.affiliate-home-banner .affiliate-home-banner-title,
+html[data-store-theme="light"] .affiliate-home-banner .affiliate-home-banner-title {
+  color: #ffffff !important;
+}
+
+.affiliate-home-banner .affiliate-home-banner-description,
+html[data-store-theme="light"] .affiliate-home-banner .affiliate-home-banner-description {
+  color: #cbd5e1 !important;
+}
+
 @media (max-width: 639px) {
   .admin-save-action {
     width: 100%;
