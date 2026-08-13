@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import DeliveredCodesDownloadButton from "@/components/DeliveredCodesDownloadButton";
+import VerifiedPurchaseReview from "@/components/VerifiedPurchaseReview";
 
 type LookupItem = {
   productName: string;
@@ -64,6 +65,8 @@ export default function TrackOrderPage() {
   const [error, setError] = useState("");
   const [copiedCode, setCopiedCode] =
     useState("");
+  const [verifiedEmail, setVerifiedEmail] =
+    useState("");
 
   useEffect(() => {
     const value = new URLSearchParams(
@@ -117,6 +120,7 @@ export default function TrackOrderPage() {
       }
 
       setResult(data);
+      setVerifiedEmail(String(formData.get("email") ?? "").trim().toLowerCase());
     } catch (lookupError) {
       setError(
         lookupError instanceof Error
@@ -306,6 +310,7 @@ export default function TrackOrderPage() {
                       items={items}
                       label="Download All Codes (.txt)"
                       variant="primary"
+                      includeItemDetails
                     />
                   )}
                 </div>
@@ -322,11 +327,9 @@ export default function TrackOrderPage() {
                       {item.productName}
                     </h4>
 
-                    {item.optionName && (
-                      <p className="mt-1 text-sm text-cyan-300">
-                        Edition / option: {item.optionName}
-                      </p>
-                    )}
+                    <p className="mt-1 text-sm text-cyan-300">
+                      Denomination / option: {item.denomination ?? item.optionName ?? item.platform ?? "Standard"}
+                    </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {item.codes.length > 0 && (
@@ -357,7 +360,16 @@ export default function TrackOrderPage() {
                       )}
                     </div>
 
-                    <div className="mt-4 space-y-2">
+                    <details
+                      className="mt-4 rounded-xl border border-white/10 p-3"
+                      open={item.codes.length === 1}
+                    >
+                      <summary className="cursor-pointer text-sm font-black text-slate-200">
+                        {item.codes.length > 0
+                          ? `Show ${item.codes.length} delivered code${item.codes.length === 1 ? "" : "s"}`
+                          : "Delivery pending"}
+                      </summary>
+                      <div className="mt-3 space-y-2">
                       {item.codes.map((code) => (
                         <div
                           key={code}
@@ -386,10 +398,18 @@ export default function TrackOrderPage() {
                           This denomination is waiting for delivery.
                         </p>
                       )}
-                    </div>
+                      </div>
+                    </details>
                   </article>;
                 })}
               </div>
+            )}
+
+            {delivered && verifiedEmail && (
+              <VerifiedPurchaseReview
+                orderNumber={order.orderNumber}
+                email={verifiedEmail}
+              />
             )}
           </section>
         )}

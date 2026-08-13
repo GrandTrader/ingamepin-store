@@ -10,6 +10,7 @@ import ProductViewTracker from "@/components/ProductViewTracker";
 import AffiliateReferralTracker from "@/components/AffiliateReferralTracker";
 import { isUnlimitedStock } from "@/lib/product-stock";
 import { getProductUrl } from "@/lib/product-url";
+import ProductDetailsTabs from "@/components/ProductDetailsTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -217,6 +218,61 @@ export async function renderProductPage({
   const options = (optionResult.data ?? []) as ProductOptionRow[];
   const category = getCategory(product.categories);
 
+  const admin = createAdminClient();
+  const reviewItemResult = await admin
+    .from("order_items")
+    .select("order_id")
+    .eq("product_id", product.id);
+
+  if (reviewItemResult.error) {
+    throw new Error(
+      `Unable to load product review orders: ${reviewItemResult.error.message}`,
+    );
+  }
+
+  const reviewOrderIds = Array.from(
+    new Set(
+      (reviewItemResult.data ?? [])
+        .map((item) => item.order_id as string | null)
+        .filter((orderId): orderId is string => Boolean(orderId)),
+    ),
+  );
+  const reviewResult = reviewOrderIds.length
+    ? await admin
+        .from("order_reviews")
+        .select("id, customer_email, sentiment, comment, created_at")
+        .in("order_id", reviewOrderIds)
+        .order("created_at", { ascending: false })
+        .limit(50)
+    : { data: [], error: null };
+
+  if (reviewResult.error) {
+    throw new Error(
+      `Unable to load product reviews: ${reviewResult.error.message}`,
+    );
+  }
+
+  const productReviews = (reviewResult.data ?? []).map((review) => {
+    const email = String(review.customer_email ?? "");
+    const [localPart = "Customer"] = email.split("@");
+    const customerLabel =
+      localPart.length > 2
+        ? `${localPart.slice(0, 2)}${"*".repeat(Math.min(localPart.length - 2, 6))}`
+        : "Verified customer";
+
+    return {
+      id: String(review.id),
+      sentiment: review.sentiment as "POSITIVE" | "NEGATIVE",
+      comment: review.comment ? String(review.comment) : null,
+      customerLabel,
+      createdAt: String(review.created_at),
+    };
+  });
+  const positiveReviewCount = productReviews.filter(
+    (review) => review.sentiment === "POSITIVE",
+  ).length;
+  const negativeReviewCount = productReviews.length - positiveReviewCount;
+
   if (!canonicalRequest) {
     const canonicalUrl = getProductUrl({
       categorySlug: category.slug,
@@ -242,7 +298,6 @@ export async function renderProductPage({
     Number.isFinite(configuredAffiliateMaximum) &&
     configuredAffiliateMaximum > 0
   ) {
-    const admin = createAdminClient();
     const settingsResult = await admin
       .from("affiliate_settings")
       .select("program_enabled")
@@ -399,29 +454,17 @@ export async function renderProductPage({
                   </div>
                 )}
 
-              <div className="mt-5 whitespace-pre-line text-sm leading-6 text-slate-300 sm:mt-7 sm:text-base sm:leading-7">
-                <LocalizedProductText
-                  english={
-                    product.description ??
-                    "Product details and delivery information will be provided with your order."
-                  }
-                  russian={product.description_ru}
-                />
-              </div>
-
-              {product.delivery_instructions && (
-                <div className="mt-5 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 sm:mt-7 sm:p-5">
-                  <h2 className="font-black text-cyan-300">
-                    <LocalizedProductText
-                      english="Delivery instructions"
-                      russian="Инструкции по доставке"
-                    />
-                  </h2>
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-300">
-                    {product.delivery_instructions}
-                  </p>
-                </div>
-              )}
+              <ProductDetailsTabs
+                description={
+                  product.description ??
+                  "Product details and delivery information will be provided with your order."
+                }
+                descriptionRu={product.description_ru}
+                deliveryInstructions={product.delivery_instructions}
+                reviews={productReviews}
+                positiveCount={positiveReviewCount}
+                negativeCount={negativeReviewCount}
+              />
             </div>
           </div>
 

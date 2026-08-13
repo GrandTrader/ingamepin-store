@@ -6,7 +6,11 @@ import {
   useEffect,
   useState,
 } from "react";
-import { buildDeliveredCodesFileName } from "@/components/DeliveredCodesDownloadButton";
+import {
+  buildDeliveredCodesFileContent,
+  buildDeliveredCodesFileName,
+} from "@/components/DeliveredCodesDownloadButton";
+import VerifiedPurchaseReview from "@/components/VerifiedPurchaseReview";
 
 type LatestOrder = {
   id?: string;
@@ -299,14 +303,6 @@ export default function CheckoutSuccessPage() {
     URL.revokeObjectURL(url);
   }
 
-  function createDeliveredCodesFile(items: DeliveredItem[]) {
-    return items
-      .flatMap((item) => item.codes)
-      .map((code) => code.trim())
-      .filter(Boolean)
-      .join("\r\n");
-  }
-
   function downloadProductCodes(item: DeliveredItem) {
     if (item.codes.length === 0) return;
 
@@ -315,7 +311,7 @@ export default function CheckoutSuccessPage() {
 
     downloadTextFile(
       buildDeliveredCodesFileName(orderNumber, [item]),
-      createDeliveredCodesFile([item]),
+      buildDeliveredCodesFileContent([item]),
     );
   }
 
@@ -329,7 +325,7 @@ export default function CheckoutSuccessPage() {
 
     downloadTextFile(
       buildDeliveredCodesFileName(orderNumber, itemsWithCodes),
-      createDeliveredCodesFile(itemsWithCodes),
+      buildDeliveredCodesFileContent(itemsWithCodes, true),
     );
   }
 
@@ -542,12 +538,10 @@ export default function CheckoutSuccessPage() {
                           )}
                         </div>
 
-                        {item.optionName && (
-                          <p className="mt-1 text-sm text-cyan-300">
-                            Edition / option:{" "}
-                            {item.optionName}
-                          </p>
-                        )}
+                        <p className="mt-1 text-sm text-cyan-300">
+                          Denomination / option:{" "}
+                          {item.denomination ?? item.optionName ?? item.platform ?? "Standard"}
+                        </p>
 
                         <div className="mt-3 flex flex-wrap gap-2">
                           {item.platform && (
@@ -563,7 +557,14 @@ export default function CheckoutSuccessPage() {
                           )}
                         </div>
 
-                        <div className="mt-3 space-y-2">
+                        <details
+                          className="mt-3 rounded-xl border border-white/10 p-3"
+                          open={item.codes.length === 1}
+                        >
+                          <summary className="cursor-pointer text-sm font-black text-slate-200">
+                            Show {item.codes.length} delivered code{item.codes.length === 1 ? "" : "s"}
+                          </summary>
+                          <div className="mt-3 space-y-2">
                           {item.codes.map(
                             (code) => (
                               <div
@@ -600,7 +601,8 @@ export default function CheckoutSuccessPage() {
                               processing.
                             </p>
                           )}
-                        </div>
+                          </div>
+                        </details>
 
                         {item.codes.length > 0 && (
                           <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-sm text-slate-300">
@@ -621,6 +623,15 @@ export default function CheckoutSuccessPage() {
                 </div>
               </section>
             )}
+
+            {delivered &&
+              (order.databaseId || order.id) &&
+              order.accessToken && (
+                <VerifiedPurchaseReview
+                  orderId={order.databaseId ?? order.id}
+                  accessToken={order.accessToken}
+                />
+              )}
 
             {message && (
               <p className="mt-6 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">

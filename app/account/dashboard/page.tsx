@@ -198,6 +198,7 @@ export default async function CustomerDashboardPage() {
                   }))}
                   label="Download All Codes (.txt)"
                   variant="secondary"
+                  includeItemDetails
                 />
               )}
             </div>

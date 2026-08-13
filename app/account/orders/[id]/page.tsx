@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import CustomerAccountShell from "../../CustomerAccountShell";
 import DeliveredCodesDownloadButton from "@/components/DeliveredCodesDownloadButton";
+import VerifiedPurchaseReview from "@/components/VerifiedPurchaseReview";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   customerStatusClass,
@@ -207,6 +208,7 @@ export default async function CustomerOrderReceiptPage({
             items={downloadableItems}
             label="Download All Codes (.txt)"
             variant="primary"
+            includeItemDetails
           />
         </div>
 
@@ -222,25 +224,43 @@ export default async function CustomerOrderReceiptPage({
                 className="rounded-xl border border-slate-200 bg-slate-50 p-4"
               >
                 <h3 className="font-black">{item.productName}</h3>
-                {item.optionName && (
-                  <p className="mt-1 text-xs text-slate-500">{item.optionName}</p>
-                )}
+                <p className="mt-1 text-xs font-bold uppercase tracking-wide text-cyan-700">
+                  Denomination / option: {item.denomination ?? item.optionName ?? item.platform ?? "Standard"}
+                </p>
 
-                <div className="mt-3 grid gap-2">
-                  {item.codes.map((code, codeIndex) => (
-                    <div
-                      key={`${code}-${codeIndex}`}
-                      className="break-all rounded-lg bg-slate-950 p-3 font-mono text-sm font-bold text-cyan-300"
-                    >
-                      {code}
-                    </div>
-                  ))}
+                <div className="mt-3">
+                  <DeliveredCodesDownloadButton
+                    orderNumber={order.order_number}
+                    items={[item]}
+                    label="Download this denomination"
+                    variant="secondary"
+                  />
                 </div>
+
+                <details className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                  <summary className="cursor-pointer text-sm font-black text-slate-700">
+                    Show {item.codes.length} delivered code{item.codes.length === 1 ? "" : "s"}
+                  </summary>
+                  <div className="mt-3 grid gap-2">
+                    {item.codes.map((code, codeIndex) => (
+                      <div
+                        key={`${code}-${codeIndex}`}
+                        className="break-all rounded-lg bg-slate-950 p-3 font-mono text-sm font-bold text-cyan-300"
+                      >
+                        {code}
+                      </div>
+                    ))}
+                  </div>
+                </details>
               </article>
             ))}
           </div>
         )}
       </section>
+
+      {order.status === "DELIVERED" && (
+        <VerifiedPurchaseReview orderId={order.id} />
+      )}
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

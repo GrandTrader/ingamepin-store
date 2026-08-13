@@ -14,6 +14,7 @@ type DeliveredCodesDownloadButtonProps = {
   items: DownloadableCodeItem[];
   label: string;
   variant?: "primary" | "secondary";
+  includeItemDetails?: boolean;
 };
 
 function safeFileName(value: string) {
@@ -65,12 +66,42 @@ function downloadTextFile(fileName: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function createFileContent(items: DownloadableCodeItem[]) {
-  return items
-    .flatMap((item) => item.codes)
-    .map((code) => code.trim())
-    .filter(Boolean)
-    .join("\r\n");
+function itemDescription(item: DownloadableCodeItem) {
+  const option = item.optionName?.trim();
+  const denomination =
+    item.denomination !== null && item.denomination !== undefined
+      ? String(item.denomination).trim()
+      : "";
+
+  return denomination || option || item.platform?.trim() || "Standard";
+}
+
+export function buildDeliveredCodesFileContent(
+  items: DownloadableCodeItem[],
+  includeItemDetails = false,
+) {
+  const cleanItems = items
+    .map((item) => ({
+      ...item,
+      codes: item.codes.map((code) => code.trim()).filter(Boolean),
+    }))
+    .filter((item) => item.codes.length > 0);
+
+  if (!includeItemDetails) {
+    return cleanItems.flatMap((item) => item.codes).join("\r\n");
+  }
+
+  return cleanItems
+    .map((item) =>
+      [
+        `PRODUCT: ${item.productName}`,
+        `DENOMINATION / OPTION: ${itemDescription(item)}`,
+        `QUANTITY: ${item.codes.length}`,
+        "",
+        ...item.codes,
+      ].join("\r\n"),
+    )
+    .join("\r\n\r\n----------------------------------------\r\n\r\n");
 }
 
 export default function DeliveredCodesDownloadButton({
@@ -78,6 +109,7 @@ export default function DeliveredCodesDownloadButton({
   items,
   label,
   variant = "secondary",
+  includeItemDetails = false,
 }: DeliveredCodesDownloadButtonProps) {
   const deliveredItems = items
     .map((item) => ({
@@ -93,7 +125,7 @@ export default function DeliveredCodesDownloadButton({
   function downloadCodes() {
     downloadTextFile(
       buildDeliveredCodesFileName(orderNumber, deliveredItems),
-      createFileContent(deliveredItems),
+      buildDeliveredCodesFileContent(deliveredItems, includeItemDetails),
     );
   }
 
