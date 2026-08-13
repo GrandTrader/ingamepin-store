@@ -421,19 +421,29 @@ export default async function OrderReceipt({
           </section>
 
           {deliveredContentItems.length > 0 && (
-            <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm sm:p-6">
-              <div>
-                <p className="text-xs font-black uppercase tracking-widest text-emerald-700">
-                  Fulfilled products
-                </p>
-                <h2 className="mt-2 text-xl font-black text-emerald-950">
-                  Delivered content
-                </h2>
-                <p className="mt-2 text-sm text-emerald-800">
-                  These are the codes and digital contents delivered with this
-                  order.
-                </p>
-              </div>
+            <details className="group mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm sm:p-6">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-emerald-700">
+                    Fulfilled products
+                  </p>
+                  <h2 className="mt-2 text-xl font-black text-emerald-950">
+                    Delivered content
+                  </h2>
+                  <p className="mt-2 text-sm text-emerald-800">
+                    {deliveredContentItems.reduce(
+                      (total, deliveredItem) =>
+                        total + deliveredItem.codes.length,
+                      0,
+                    )}{" "}
+                    delivered code(s). Click to view or hide them.
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border border-emerald-300 bg-white px-4 py-2 text-sm font-black text-emerald-800">
+                  <span className="group-open:hidden">Show codes</span>
+                  <span className="hidden group-open:inline">Hide codes</span>
+                </span>
+              </summary>
 
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 {deliveredContentItems.map(({ item, codes }) => (
@@ -478,7 +488,7 @@ export default async function OrderReceipt({
                   </article>
                 ))}
               </div>
-            </section>
+            </details>
           )}
 
           {manualCodeItems.length > 0 && (

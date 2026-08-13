@@ -188,7 +188,11 @@ export async function sendManualOrderItem(formData: FormData) {
   if (orderResult.data) await sendOrderStatusEmails({ orderId, event: "PRODUCT_SENT", orderNumber: orderResult.data.order_number, customerName: orderResult.data.customer_name ?? "Customer", customerEmail: orderResult.data.customer_email, total: Number(orderResult.data.total), currency: orderResult.data.currency, orderStatus: orderResult.data.status, deliveredItems: [{ productName: item.product_name, optionName: item.option_name, codes }] });
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}/receipt`);
-  ordersRedirect("success", `${item.option_name ?? item.product_name} sent successfully.`, orderId);
+  ordersRedirect(
+    "success",
+    `${codes.length} code(s) sent successfully.`,
+    orderId,
+  );
 }
 
 export async function completeManualOrderItem(formData: FormData) {
