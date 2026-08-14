@@ -440,7 +440,13 @@ export default function RussianWebsiteTranslator() {
       attributeFilter: translatedAttributes,
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+
+      if (language === "ru") {
+        updatePage(root, false);
+      }
+    };
   }, [language, pathname]);
 
   return null;

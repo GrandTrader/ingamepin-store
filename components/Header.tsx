@@ -24,6 +24,26 @@ type SearchProduct = {
   category: string;
 };
 
+const productSearchCache = new Map<
+  string,
+  SearchProduct[]
+>();
+
+function cacheProductSearch(
+  query: string,
+  products: SearchProduct[],
+) {
+  if (productSearchCache.size >= 25) {
+    const oldestQuery = productSearchCache.keys().next().value;
+
+    if (oldestQuery) {
+      productSearchCache.delete(oldestQuery);
+    }
+  }
+
+  productSearchCache.set(query, products);
+}
+
 export default function Header() {
   const pathname = usePathname();
   const hideProductSearch = [
@@ -58,9 +78,9 @@ export default function Header() {
     const supabase = createClient();
     let active = true;
 
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       if (active) {
-        setIsAuthenticated(Boolean(data.user));
+        setIsAuthenticated(Boolean(data.session?.user));
       }
     });
 
@@ -137,9 +157,18 @@ export default function Header() {
 
   useEffect(() => {
     const query = searchQuery.trim();
+    const cacheKey = query.toLocaleLowerCase();
 
     if (query.length < 2) {
       setSearchProducts([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const cachedProducts = productSearchCache.get(cacheKey);
+
+    if (cachedProducts) {
+      setSearchProducts(cachedProducts);
       setIsSearching(false);
       return;
     }
@@ -161,11 +190,15 @@ export default function Header() {
             products?: SearchProduct[];
           };
 
-          setSearchProducts(
-            response.ok
-              ? result.products ?? []
-              : [],
-          );
+          const products = response.ok
+            ? result.products ?? []
+            : [];
+
+          if (response.ok) {
+            cacheProductSearch(cacheKey, products);
+          }
+
+          setSearchProducts(products);
         } catch (error) {
           if (
             error instanceof Error &&

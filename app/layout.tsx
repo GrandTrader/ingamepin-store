@@ -1,16 +1,12 @@
 ﻿import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter, Roboto_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import LiveSupportWidget from "../components/LiveSupportWidget";
-import YandexMetrica from "../components/YandexMetrica";
-import RussianWebsiteTranslator from "../components/RussianWebsiteTranslator";
+import PublicStoreEnhancements from "../components/PublicStoreEnhancements";
 import { StorePreferencesProvider } from "../components/StorePreferences";
-import GoogleAdsTag from "../components/GoogleAdsTag";
+import StoreTracking from "../components/StoreTracking";
 
 import "./globals.css";
 
@@ -57,7 +53,7 @@ export default function RootLayout({
         className={`${inter.variable} ${robotoMono.variable} flex min-h-screen flex-col bg-slate-950 antialiased`}
       >
         <StorePreferencesProvider>
-          <RussianWebsiteTranslator />
+          <PublicStoreEnhancements />
           <Header />
 
           <main className="flex flex-1 flex-col">
@@ -65,14 +61,9 @@ export default function RootLayout({
           </main>
 
           <Footer />
-          <LiveSupportWidget />
         </StorePreferencesProvider>
 
-        <YandexMetrica />
-        <GoogleAdsTag />
-
-        <Analytics />
-        <SpeedInsights />
+        <StoreTracking />
       </body>
     </html>
   );

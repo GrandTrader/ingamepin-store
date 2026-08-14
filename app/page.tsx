@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 
 import HeroSlider, { type HeroSlide } from "@/components/HeroSlider";
 import ProductCard, {
@@ -11,9 +12,9 @@ import PreorderPopup, {
   type PreorderPopupData,
 } from "@/components/PreorderPopup";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
-import { getPaidProductSales } from "@/lib/product-sales";
+import { getCachedPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -161,93 +162,95 @@ function getAvailableStock(
   );
 }
 
-export default async function Home() {
-  const supabase = await createClient();
+const getCachedHomepageData = unstable_cache(
+  async () => {
+    const supabase = createAdminClient();
 
+    return Promise.all([
+      supabase
+        .from("categories")
+        .select(
+          `
+            id,
+            public_id,
+            name,
+            short_name,
+            slug,
+            description,
+            icon
+          `,
+        )
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("products")
+        .select(
+          `
+            id,
+            public_id,
+            name,
+            name_ru,
+            slug,
+            image_url,
+            price,
+            badge,
+            badge_ru,
+            stock_quantity,
+            rating,
+            sold_count,
+            product_type,
+            is_featured,
+            is_bulk_order,
+            delivery_type,
+            product_options (
+              stock_quantity,
+              is_active
+            ),
+            categories (
+              short_name,
+              slug,
+              public_id
+            )
+          `,
+        )
+        .eq("status", "ACTIVE")
+        .eq("is_preorder_only", false)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("preorder_popup_settings")
+        .select(
+          "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, sold_count, bonus_text, button_text",
+        )
+        .eq("id", true)
+        .eq("is_enabled", true)
+        .maybeSingle(),
+      supabase
+        .from("homepage_slider_settings")
+        .select("is_enabled, autoplay_ms")
+        .eq("id", true)
+        .maybeSingle(),
+      supabase
+        .from("homepage_slides")
+        .select(
+          "id, eyebrow, title, description, desktop_image_url, mobile_image_url, button_text, button_url, starts_at, ends_at",
+        )
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true }),
+    ]);
+  },
+  ["homepage-public-data"],
+  { revalidate: 30 },
+);
+
+export default async function Home() {
   const [
     categoryResult,
     productResult,
     preorderPopupResult,
     sliderSettingsResult,
     slidesResult,
-  ] = await Promise.all([
-    supabase
-      .from("categories")
-      .select(
-        `
-          id,
-          public_id,
-          name,
-          short_name,
-          slug,
-          description,
-          icon
-        `,
-      )
-      .eq("is_active", true)
-      .order("sort_order", {
-        ascending: true,
-      }),
-
-    supabase
-      .from("products")
-      .select(
-        `
-          id,
-          public_id,
-          name,
-          name_ru,
-          slug,
-          image_url,
-          price,
-          badge,
-          badge_ru,
-          stock_quantity,
-          rating,
-          sold_count,
-          product_type,
-          is_featured,
-          is_bulk_order,
-          delivery_type,
-          product_options (
-            stock_quantity,
-            is_active
-          ),
-          categories (
-            short_name,
-            slug,
-            public_id
-          )
-        `,
-      )
-      .eq("status", "ACTIVE")
-      .eq("is_preorder_only", false)
-      .order("sort_order", {
-        ascending: true,
-      }),
-
-    supabase
-      .from("preorder_popup_settings")
-      .select(
-        "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, sold_count, bonus_text, button_text",
-      )
-      .eq("id", true)
-      .eq("is_enabled", true)
-      .maybeSingle(),
-
-    supabase
-      .from("homepage_slider_settings")
-      .select("is_enabled, autoplay_ms")
-      .eq("id", true)
-      .maybeSingle(),
-
-    supabase
-      .from("homepage_slides")
-      .select("id, eyebrow, title, description, desktop_image_url, mobile_image_url, button_text, button_url, starts_at, ends_at")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true }),
-  ]);
+  ] = await getCachedHomepageData();
 
   if (categoryResult.error) {
     throw new Error(
@@ -285,7 +288,7 @@ export default async function Home() {
 
   const [customerDiscounts, paidProductSales] = await Promise.all([
     getSignedInCustomerDiscounts(),
-    getPaidProductSales(),
+    getCachedPaidProductSales(),
   ]);
 
   const products: StoreProduct[] =

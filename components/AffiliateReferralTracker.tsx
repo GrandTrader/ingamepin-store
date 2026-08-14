@@ -16,7 +16,14 @@ export default function AffiliateReferralTracker({
       return;
     }
 
-    const controller = new AbortController();
+    const storageKey = `ingamepin-affiliate-visit:${affiliateCode}:${productId}`;
+
+    try {
+      if (window.sessionStorage.getItem(storageKey)) return;
+      window.sessionStorage.setItem(storageKey, "1");
+    } catch {
+      // Referral tracking still works when session storage is unavailable.
+    }
 
     void fetch("/api/affiliate/visit", {
       method: "POST",
@@ -31,12 +38,21 @@ export default function AffiliateReferralTracker({
       }),
       credentials: "same-origin",
       cache: "no-store",
-      signal: controller.signal,
-    }).catch(() => {
-      // Referral tracking must never interrupt the product page.
-    });
-
-    return () => controller.abort();
+      keepalive: true,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          window.sessionStorage.removeItem(storageKey);
+        }
+      })
+      .catch(() => {
+        try {
+          window.sessionStorage.removeItem(storageKey);
+        } catch {
+          // A later referral visit can retry when storage is available again.
+        }
+        // Referral tracking must never interrupt the product page.
+      });
   }, [affiliateCode, productId]);
 
   return null;

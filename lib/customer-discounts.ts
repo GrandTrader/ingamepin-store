@@ -1,7 +1,16 @@
+import { cookies } from "next/headers";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasSupabaseAuthCookie } from "@/lib/supabase/auth-cookie";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getSignedInCustomerDiscounts() {
+  const cookieStore = await cookies();
+
+  if (!hasSupabaseAuthCookie(cookieStore.getAll())) {
+    return new Map<string, number>();
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

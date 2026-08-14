@@ -31,6 +31,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "ipdmayryyhqmznxaolad.supabase.co",
+        pathname: "/storage/v1/object/public/store-images/**",
+      },
+    ],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
