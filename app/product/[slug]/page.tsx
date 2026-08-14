@@ -11,7 +11,6 @@ import AffiliateReferralTracker from "@/components/AffiliateReferralTracker";
 import { isUnlimitedStock } from "@/lib/product-stock";
 import { getProductUrl } from "@/lib/product-url";
 import ProductDetailsTabs from "@/components/ProductDetailsTabs";
-import StoreImage from "@/components/StoreImage";
 
 export const dynamic = "force-dynamic";
 
@@ -180,43 +179,36 @@ export async function renderProductPage({
 
   const product = productResult.data as ProductRow;
 
-  const admin = createAdminClient();
-  const [optionResult, customerFieldResult, reviewItemResult] =
-    await Promise.all([
-      supabase
-        .from("product_options")
-        .select(
-          `
-            id,
-            option_name,
-            platform,
-            denomination,
-            selling_price,
-            stock_quantity,
-            is_custom_value,
-            minimum_quantity,
-            maximum_quantity
-          `,
-        )
-        .eq("product_id", product.id)
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("product_customer_fields")
-        .select("id, label, placeholder, field_type, is_required")
-        .eq("product_id", product.id)
-        .order("sort_order", { ascending: true }),
-      admin
-        .from("order_items")
-        .select("order_id")
-        .eq("product_id", product.id),
-    ]);
+  const optionResult = await supabase
+    .from("product_options")
+    .select(
+      `
+        id,
+        option_name,
+        platform,
+        denomination,
+        selling_price,
+        stock_quantity,
+        is_custom_value
+        ,minimum_quantity,
+        maximum_quantity
+      `,
+    )
+    .eq("product_id", product.id)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
 
   if (optionResult.error) {
     throw new Error(
       `Unable to load product options: ${optionResult.error.message}`,
     );
   }
+
+  const customerFieldResult = await supabase
+    .from("product_customer_fields")
+    .select("id, label, placeholder, field_type, is_required")
+    .eq("product_id", product.id)
+    .order("sort_order", { ascending: true });
 
   if (customerFieldResult.error) {
     throw new Error(`Unable to load customer fields: ${customerFieldResult.error.message}`);
@@ -225,6 +217,12 @@ export async function renderProductPage({
   const customerFields = (customerFieldResult.data ?? []) as ProductCustomerFieldRow[];
   const options = (optionResult.data ?? []) as ProductOptionRow[];
   const category = getCategory(product.categories);
+
+  const admin = createAdminClient();
+  const reviewItemResult = await admin
+    .from("order_items")
+    .select("order_id")
+    .eq("product_id", product.id);
 
   if (reviewItemResult.error) {
     throw new Error(
@@ -395,11 +393,10 @@ export async function renderProductPage({
               )}
 
               {product.image_url ? (
-                <StoreImage
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={product.image_url}
                   alt={product.name}
-                  sizes="(max-width: 1024px) 100vw, 650px"
-                  priority
                   className="aspect-[16/10] w-full object-fill"
                 />
               ) : (

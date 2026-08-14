@@ -46,28 +46,9 @@ export default function LiveSupportWidget() {
 
   useEffect(() => {
     if (!open) return;
-
-    let timer: number | undefined;
-
-    const startPolling = () => {
-      if (timer !== undefined) {
-        window.clearInterval(timer);
-        timer = undefined;
-      }
-
-      if (document.visibilityState === "visible") {
-        void loadChat();
-        timer = window.setInterval(() => void loadChat(), 8000);
-      }
-    };
-
-    startPolling();
-    document.addEventListener("visibilitychange", startPolling);
-
-    return () => {
-      document.removeEventListener("visibilitychange", startPolling);
-      if (timer !== undefined) window.clearInterval(timer);
-    };
+    loadChat();
+    const timer = window.setInterval(loadChat, 4000);
+    return () => window.clearInterval(timer);
   }, [open, loadChat]);
 
   useEffect(() => {

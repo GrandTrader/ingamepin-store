@@ -4,8 +4,6 @@ import {
 } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
-import { hasSupabaseAuthCookie } from "@/lib/supabase/auth-cookie";
-
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   let refreshedCookies: Array<{
@@ -13,24 +11,6 @@ export async function proxy(request: NextRequest) {
     value: string;
     options: CookieOptions;
   }> = [];
-  const pathname = request.nextUrl.pathname;
-  const isAdminPage = pathname.startsWith("/admin");
-  const isAdminLoginPage = pathname.startsWith("/admin/login");
-  const hasAuthCookie = hasSupabaseAuthCookie(
-    request.cookies.getAll(),
-  );
-
-  if (!hasAuthCookie) {
-    if (isAdminPage && !isAdminLoginPage) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/admin/login";
-      loginUrl.search = "";
-      return NextResponse.redirect(loginUrl);
-    }
-
-    return response;
-  }
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -51,6 +31,10 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isAdminPage = pathname.startsWith("/admin");
+  const isAdminLoginPage = pathname.startsWith("/admin/login");
 
   function redirectWithSession(path: string) {
     const url = request.nextUrl.clone();

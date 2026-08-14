@@ -1,5 +1,3 @@
-import { unstable_cache } from "next/cache";
-
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type OrderItemSaleRow = {
@@ -23,7 +21,7 @@ function getOrderStatus(order: OrderItemSaleRow["orders"]) {
   return order?.status;
 }
 
-async function calculatePaidProductSales() {
+export async function getPaidProductSales() {
   const admin = createAdminClient();
   const sales = new Map<string, number>();
   const pageSize = 1000;
@@ -76,15 +74,3 @@ async function calculatePaidProductSales() {
 
   return sales;
 }
-
-export async function getPaidProductSales() {
-  return calculatePaidProductSales();
-}
-
-export const getCachedPaidProductSales = unstable_cache(
-  calculatePaidProductSales,
-  ["paid-product-sales"],
-  {
-    revalidate: 60,
-  },
-);

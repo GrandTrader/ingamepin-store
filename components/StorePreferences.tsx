@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -209,7 +208,6 @@ export function StorePreferencesProvider({
   const [currency, setCurrencyState] = useState<StoreCurrency>("USD");
   const [usdRubRate, setUsdRubRate] = useState(85);
   const [usdInrRate, setUsdInrRate] = useState(102);
-  const exchangeRatesRequested = useRef(false);
 
   useEffect(() => {
     const savedLanguage = window.localStorage.getItem("storeLanguage");
@@ -226,14 +224,6 @@ export function StorePreferencesProvider({
     ) {
       setCurrencyState(savedCurrency);
     }
-  }, []);
-
-  useEffect(() => {
-    if (currency === "USD" || exchangeRatesRequested.current) {
-      return;
-    }
-
-    exchangeRatesRequested.current = true;
 
     fetch("/api/store-settings")
       .then((response) => (response.ok ? response.json() : null))
@@ -244,10 +234,9 @@ export function StorePreferencesProvider({
         if (Number.isFinite(inrRate) && inrRate > 0) setUsdInrRate(inrRate);
       })
       .catch(() => {
-        exchangeRatesRequested.current = false;
         // Keep the safe default when the public setting is temporarily unavailable.
       });
-  }, [currency]);
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = language;

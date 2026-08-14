@@ -8,14 +8,7 @@ export default function ProductViewTracker({
   productId: string;
 }) {
   useEffect(() => {
-    const storageKey = `ingamepin-product-view:${productId}`;
-
-    try {
-      if (window.sessionStorage.getItem(storageKey)) return;
-      window.sessionStorage.setItem(storageKey, "1");
-    } catch {
-      // Tracking still works when session storage is unavailable.
-    }
+    const controller = new AbortController();
 
     void fetch("/api/product-views", {
       method: "POST",
@@ -24,20 +17,12 @@ export default function ProductViewTracker({
       },
       body: JSON.stringify({ productId }),
       keepalive: true,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          window.sessionStorage.removeItem(storageKey);
-        }
-      })
-      .catch(() => {
-        try {
-          window.sessionStorage.removeItem(storageKey);
-        } catch {
-          // A later page view can retry when storage is available again.
-        }
-        // View tracking must never interrupt the storefront.
-      });
+      signal: controller.signal,
+    }).catch(() => {
+      // View tracking must never interrupt the storefront.
+    });
+
+    return () => controller.abort();
   }, [productId]);
 
   return null;

@@ -5,7 +5,7 @@ import ProductCard, {
   type ProductCardData,
 } from "@/components/ProductCard";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
-import { getCachedPaidProductSales } from "@/lib/product-sales";
+import { getPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
 import { createClient } from "@/lib/supabase/server";
 
@@ -137,7 +137,7 @@ export default async function CategoryPage({
 
   const [customerDiscounts, paidProductSales] = await Promise.all([
     getSignedInCustomerDiscounts(),
-    getCachedPaidProductSales(),
+    getPaidProductSales(),
   ]);
   const products = ((productResult.data ?? []) as ProductRow[]).map(
     (product): ProductCardData => ({

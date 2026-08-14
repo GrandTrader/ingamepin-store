@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import StoreImage from "./StoreImage";
 
 export type HeroSlide = {
   id: string;
@@ -27,48 +26,13 @@ export default function HeroSlider({
   useEffect(() => {
     if (slides.length < 2) return;
 
-    let slider: number | undefined;
-
-    function stopSlider() {
-      if (slider !== undefined) {
-        window.clearInterval(slider);
-        slider = undefined;
-      }
-    }
-
-    function startSlider() {
-      stopSlider();
-
-      if (document.visibilityState !== "visible") return;
-
-      slider = window.setInterval(() => {
-        setCurrentSlide((previous) =>
-          previous === slides.length - 1 ? 0 : previous + 1,
-        );
-      }, autoplayMs);
-    }
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        startSlider();
-      } else {
-        stopSlider();
-      }
-    }
-
-    startSlider();
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange,
-    );
-
-    return () => {
-      stopSlider();
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange,
+    const slider = setInterval(() => {
+      setCurrentSlide((previous) =>
+        previous === slides.length - 1 ? 0 : previous + 1,
       );
-    };
+    }, autoplayMs);
+
+    return () => clearInterval(slider);
   }, [autoplayMs, slides.length]);
 
   if (slides.length === 0) return null;
@@ -79,11 +43,10 @@ export default function HeroSlider({
   return (
     <section className="mx-auto hidden max-w-6xl px-5 pt-6 sm:block">
       <div className="relative aspect-[1920/700] w-full overflow-hidden rounded-3xl bg-slate-900">
-        <StoreImage
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={slide.desktopImageUrl}
           alt=""
-          sizes="(max-width: 1280px) 100vw, 1152px"
-          priority
           className="absolute inset-0 h-full w-full object-fill"
         />
 
