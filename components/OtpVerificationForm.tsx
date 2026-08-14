@@ -4,6 +4,7 @@ import {
   ClipboardEvent,
   FormEvent,
   KeyboardEvent,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -19,7 +20,18 @@ export default function OtpVerificationForm() {
   const [digits, setDigits] = useState<string[]>(
     Array.from({ length: OTP_LENGTH }, () => ""),
   );
+  const [resendSeconds, setResendSeconds] = useState(60);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+
+    const timer = window.setTimeout(() => {
+      setResendSeconds((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [resendSeconds]);
 
   function updateDigit(index: number, value: string) {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -102,12 +114,19 @@ export default function OtpVerificationForm() {
         </button>
       </form>
 
-      <form action={resendSignupOtp} className="mt-4">
+      <form
+        action={resendSignupOtp}
+        className="mt-4"
+        onSubmit={() => setResendSeconds(60)}
+      >
         <button
           type="submit"
-          className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-cyan-400 hover:text-cyan-700"
+          disabled={resendSeconds > 0}
+          className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-cyan-400 hover:text-cyan-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
         >
-          Resend verification code
+          {resendSeconds > 0
+            ? `Resend code in ${resendSeconds}s`
+            : "Resend verification code"}
         </button>
       </form>
     </>
