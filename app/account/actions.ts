@@ -211,8 +211,9 @@ export async function customerVerifySignupOtp(formData: FormData) {
   redirect("/account/dashboard");
 }
 
-export async function resendSignupOtp() {
+export async function resendSignupOtp(formData: FormData) {
   const email = await getPendingSignupEmail();
+  const captchaToken = String(formData.get("captcha_token") ?? "").trim();
 
   if (!email) {
     accountRedirect(
@@ -222,11 +223,19 @@ export async function resendSignupOtp() {
     );
   }
 
+  if (!captchaToken) {
+    verificationRedirect(
+      "error",
+      "Complete the security check before requesting another code.",
+    );
+  }
+
   const supabase = await createClient();
   const result = await supabase.auth.resend({
     type: "signup",
     email,
     options: {
+      captchaToken,
       emailRedirectTo: "https://www.ingamepin.com/account/callback",
     },
   });

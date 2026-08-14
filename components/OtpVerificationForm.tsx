@@ -13,6 +13,7 @@ import {
   customerVerifySignupOtp,
   resendSignupOtp,
 } from "@/app/account/actions";
+import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 
 const OTP_LENGTH = 6;
 
@@ -119,6 +120,9 @@ export default function OtpVerificationForm() {
         className="mt-4"
         onSubmit={() => setResendSeconds(60)}
       >
+        {resendSeconds === 0 && (
+          <RegistrationTurnstile message="Complete the security check to request another code." />
+        )}
         <button
           type="submit"
           disabled={resendSeconds > 0}
