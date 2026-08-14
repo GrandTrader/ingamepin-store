@@ -45,13 +45,17 @@ type ProductRow = {
         selling_price: number | string;
         stock_quantity: number;
         is_active: boolean;
+        is_in_stock: boolean;
       }[]
     | null;
 };
 
 function getStartingPrice(product: ProductRow) {
   const optionPrices = (product.product_options ?? [])
-    .filter((option) => option.is_active)
+    .filter(
+      (option) =>
+        option.is_active && option.is_in_stock !== false,
+    )
     .map((option) => Number(option.selling_price))
     .filter((price) => Number.isFinite(price) && price > 0);
 
@@ -62,7 +66,8 @@ function getStartingPrice(product: ProductRow) {
 
 function getAvailableStock(product: ProductRow) {
   const activeOptions = (product.product_options ?? []).filter(
-    (option) => option.is_active,
+    (option) =>
+      option.is_active && option.is_in_stock !== false,
   );
 
   if (activeOptions.length === 0) {
@@ -119,7 +124,8 @@ export default async function CategoryPage({
         product_options (
           selling_price,
           stock_quantity,
-          is_active
+          is_active,
+          is_in_stock
         )
       `,
     )

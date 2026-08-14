@@ -38,6 +38,7 @@ type ProductOptionRow = {
   selling_price: number | string;
   stock_quantity: number;
   is_custom_value: boolean;
+  is_in_stock: boolean;
 };
 
 export default async function PreorderPage() {
@@ -78,7 +79,7 @@ export default async function PreorderPage() {
       supabase
         .from("product_options")
         .select(
-          "id, option_name, platform, denomination, selling_price, stock_quantity, is_custom_value",
+          "id, option_name, platform, denomination, selling_price, stock_quantity, is_custom_value, is_in_stock",
         )
         .eq("product_id", settings.product_id)
         .eq("is_active", true)
@@ -246,6 +247,8 @@ export default async function PreorderPage() {
                   option.stock_quantity,
                 isCustomValue:
                   option.is_custom_value,
+                isInStock:
+                  option.is_in_stock !== false,
                 minimumQuantity: null,
                 maximumQuantity: null,
               }))}

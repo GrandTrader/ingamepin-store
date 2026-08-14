@@ -87,6 +87,7 @@ type ProductOptionRow = {
   is_custom_value: boolean;
   minimum_quantity: number | null;
   maximum_quantity: number | null;
+  is_in_stock: boolean;
 };
 
 function getCategory(category: CategoryRelation) {
@@ -191,7 +192,8 @@ export async function renderProductPage({
         stock_quantity,
         is_custom_value
         ,minimum_quantity,
-        maximum_quantity
+        maximum_quantity,
+        is_in_stock
       `,
     )
     .eq("product_id", product.id)
@@ -539,6 +541,7 @@ export async function renderProductPage({
                 isCustomValue: option.is_custom_value,
                 minimumQuantity: option.minimum_quantity,
                 maximumQuantity: option.maximum_quantity,
+                isInStock: option.is_in_stock !== false,
               }))}
             />
           </aside>

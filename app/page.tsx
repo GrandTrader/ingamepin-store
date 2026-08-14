@@ -55,6 +55,7 @@ type ProductRow = {
     | {
         stock_quantity: number;
         is_active: boolean;
+        is_in_stock: boolean;
       }[]
     | null;
 
@@ -147,7 +148,10 @@ function getAvailableStock(
 ) {
   const activeOptions = (
     product.product_options ?? []
-  ).filter((option) => option.is_active);
+  ).filter(
+    (option) =>
+      option.is_active && option.is_in_stock !== false,
+  );
 
   if (activeOptions.length === 0) {
     return product.stock_quantity;
@@ -211,7 +215,8 @@ export default async function Home() {
           delivery_type,
           product_options (
             stock_quantity,
-            is_active
+            is_active,
+            is_in_stock
           ),
           categories (
             short_name,

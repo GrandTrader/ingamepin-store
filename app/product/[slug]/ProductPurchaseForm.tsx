@@ -15,6 +15,7 @@ type ProductOption = {
   isCustomValue: boolean;
   minimumQuantity: number | null;
   maximumQuantity: number | null;
+  isInStock: boolean;
 };
 
 type FulfillmentMode =
@@ -130,13 +131,14 @@ export default function ProductPurchaseForm({
   const firstAvailableFixedOption =
     fixedOptions.find(
       (option) =>
+        option.isInStock &&
         (product.isBulkOrder || product.isUnlimitedStock || option.stockQuantity > 0) &&
         option.optionName
           .toLowerCase()
           .includes("standard"),
     ) ??
     fixedOptions.find(
-      (option) => product.isBulkOrder || product.isUnlimitedStock || option.stockQuantity > 0,
+      (option) => option.isInStock && (product.isBulkOrder || product.isUnlimitedStock || option.stockQuantity > 0),
     ) ??
     fixedOptions[0];
 
@@ -289,6 +291,10 @@ export default function ProductPurchaseForm({
   function validateSelection() {
     if (!selectedOption) {
       return showError("Please select a product option.");
+    }
+
+    if (!selectedOption.isInStock) {
+      return showError("The selected option is out of stock.");
     }
 
     if (
@@ -604,7 +610,8 @@ export default function ProductPurchaseForm({
             {fixedOptions.map((option) => {
               const isSelected = selectedOptionId === option.id;
               const isUnavailable =
-                !product.isBulkOrder && !product.isUnlimitedStock && option.stockQuantity < 1;
+                !option.isInStock ||
+                (!product.isBulkOrder && !product.isUnlimitedStock && option.stockQuantity < 1);
 
               return (
                 <button
@@ -630,12 +637,12 @@ export default function ProductPurchaseForm({
                     ) : formatPrice(applyAffiliateMarkup(option.sellingPrice))}
                   </span>
                   <span className="mt-1 block text-xs opacity-70">
-                    {product.isBulkOrder
-                      ? "Bulk quantity available"
-                      : product.isUnlimitedStock
-                        ? "Unlimited availability"
-                      : isUnavailable
-                        ? t("outOfStock")
+                    {isUnavailable
+                      ? t("outOfStock")
+                      : product.isBulkOrder
+                        ? "Bulk quantity available"
+                        : product.isUnlimitedStock
+                          ? "Unlimited availability"
                         : product.deliveryType === "AUTOMATIC"
                           ? `${option.stockQuantity.toLocaleString("en-IN")} available`
                           : t("inStock")}

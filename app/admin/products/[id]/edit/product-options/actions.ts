@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isUnlimitedStock, UNLIMITED_STOCK_QUANTITY } from "@/lib/product-stock";
 
-type SubmittedOption = { id: string; name: string; denomination: number; currency: string; sellingPrice: number; isActive: boolean };
+type SubmittedOption = { id: string; name: string; denomination: number; currency: string; sellingPrice: number; isActive: boolean; isInStock: boolean };
 
 export async function saveProductOptions(formData: FormData) {
   const productId = String(formData.get("id") ?? "").trim();
@@ -37,7 +37,7 @@ export async function saveProductOptions(formData: FormData) {
   }
 
   for (const [index, option] of options.entries()) {
-    const values = { category_id: product.data.category_id, option_type: "CURRENCY", option_name: option.name.trim(), denomination: option.denomination, denomination_currency: option.currency, selling_price: option.sellingPrice, sort_order: index, is_active: option.isActive, is_custom_value: false, ...(isUnlimitedStock(product.data.stock_quantity) ? { stock_quantity: UNLIMITED_STOCK_QUANTITY } : {}) };
+    const values = { category_id: product.data.category_id, option_type: "CURRENCY", option_name: option.name.trim(), denomination: option.denomination, denomination_currency: option.currency, selling_price: option.sellingPrice, sort_order: index, is_active: option.isActive, is_in_stock: option.isInStock !== false, is_custom_value: false, ...(isUnlimitedStock(product.data.stock_quantity) ? { stock_quantity: UNLIMITED_STOCK_QUANTITY } : {}) };
     const result = option.id
       ? await admin.from("product_options").update(values).eq("id", option.id).eq("product_id", productId)
       : await admin.from("product_options").insert({ ...values, product_id: productId, stock_quantity: isUnlimitedStock(product.data.stock_quantity) ? UNLIMITED_STOCK_QUANTITY : 0 });

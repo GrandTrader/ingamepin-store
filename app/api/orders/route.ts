@@ -146,12 +146,15 @@ export async function POST(request: NextRequest) {
     const submittedItems = body.items as Array<{ productOptionId?: string; quantity?: number; customValue?: number }>;
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
     if (optionIds.length) {
-      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price, minimum_quantity, maximum_quantity").in("id", optionIds);
+      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
       const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
       const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order").in("id", productIds) : { data: [] };
       for (const item of submittedItems) {
         const option = options.find((entry) => entry.id === item.productOptionId);
         const product = (productsResult.data ?? []).find((entry) => entry.id === option?.product_id);
+        if (!option || option.is_active !== true || option.is_in_stock === false) {
+          return NextResponse.json({ error: "The selected product option is out of stock." }, { status: 409 });
+        }
         const quantity = Number(item.quantity ?? 1);
         const minimum = Number(option?.minimum_quantity ?? product?.minimum_quantity ?? 1);
         const maximum = Number(option?.maximum_quantity ?? product?.maximum_quantity ?? 10);
