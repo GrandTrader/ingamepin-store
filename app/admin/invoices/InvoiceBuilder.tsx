@@ -794,7 +794,9 @@ export default function InvoiceBuilder({
                       <label className="block">
                         <span className="text-sm font-bold">Payment method</span>
                         <select
-                          value={line.paymentMethod}
+                          key={`${line.id}:${line.paymentMethod}`}
+                          name={`invoice_payment_method_${line.id}`}
+                          defaultValue={line.paymentMethod}
                           onChange={(event) =>
                             updateLine(line.id, {
                               paymentMethod: event.target.value,
