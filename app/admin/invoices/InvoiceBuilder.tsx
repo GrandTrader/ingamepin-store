@@ -73,11 +73,6 @@ type InvoiceLineDraft = {
   transactionId: string;
 };
 
-type InvoiceDraft = {
-  fields: Record<string, string>;
-  lineItems: InvoiceLineDraft[];
-};
-
 type CustomerDetails = {
   name: string;
   email: string;
@@ -85,8 +80,6 @@ type CustomerDetails = {
   taxpayerId: string;
   address: string;
 };
-
-const INVOICE_DRAFT_KEY = "ingamepin-admin-invoice-draft-v2";
 
 const PAYMENT_METHODS = [
   "USDT TRC20",
@@ -144,10 +137,7 @@ export default function InvoiceBuilder({
   defaultInvoiceDate,
 }: InvoiceBuilderProps) {
   const formRef = useRef<HTMLFormElement>(null);
-  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const customerLookupRef = useRef<AbortController | null>(null);
-  const draftRestoredRef = useRef(false);
-  const firstCategoryId = categories[0]?.id ?? "";
   const [lineItems, setLineItems] = useState<InvoiceLineDraft[]>([
     {
       id: 1,
@@ -166,7 +156,6 @@ export default function InvoiceBuilder({
   const [savedInvoiceId, setSavedInvoiceId] = useState("");
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [draftStatus, setDraftStatus] = useState("Draft ready");
   const [customerLookupStatus, setCustomerLookupStatus] = useState("");
   const [customer, setCustomer] = useState<CustomerDetails>({
     name: "",
@@ -176,108 +165,9 @@ export default function InvoiceBuilder({
     address: "",
   });
 
-  function readFormFields() {
-    const form = formRef.current;
-    if (!form) return {};
-
-    const fields: Record<string, string> = {};
-    const formData = new FormData(form);
-    for (const [key, value] of formData.entries()) {
-      if (typeof value === "string") fields[key] = value;
-    }
-    return fields;
-  }
-
-  function saveDraft(items: InvoiceLineDraft[] = lineItemsRef.current) {
-    if (typeof window === "undefined") return;
-
-    const draft: InvoiceDraft = {
-      fields: readFormFields(),
-      lineItems: items,
-    };
-    window.localStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(draft));
-    setDraftStatus("Draft saved automatically");
-  }
-
-  function scheduleDraftSave(items?: InvoiceLineDraft[]) {
-    setDraftStatus("Saving draft…");
-    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    draftTimerRef.current = setTimeout(() => saveDraft(items), 500);
-  }
-
   useEffect(() => {
     lineItemsRef.current = lineItems;
   }, [lineItems]);
-
-  useEffect(() => {
-    if (draftRestoredRef.current) return;
-    draftRestoredRef.current = true;
-
-    const rawDraft = window.localStorage.getItem(INVOICE_DRAFT_KEY);
-    if (!rawDraft) return;
-
-    try {
-      const draft = JSON.parse(rawDraft) as InvoiceDraft;
-      const form = formRef.current;
-      if (!form || !draft.fields) return;
-
-      for (const [name, value] of Object.entries(draft.fields)) {
-        const field = form.elements.namedItem(name);
-        if (
-          field instanceof HTMLInputElement ||
-          field instanceof HTMLSelectElement ||
-          field instanceof HTMLTextAreaElement
-        ) {
-          field.value = value;
-        }
-      }
-
-      setCustomer({
-        name: draft.fields.customer_name ?? "",
-        email: draft.fields.customer_email ?? "",
-        country: draft.fields.customer_country ?? "",
-        taxpayerId: draft.fields.customer_taxpayer_id ?? "",
-        address: draft.fields.customer_address ?? "",
-      });
-
-      if (Array.isArray(draft.lineItems) && draft.lineItems.length > 0) {
-        const restoredLines = draft.lineItems.map((line) => {
-          const categoryExists = categories.some(
-            (category) => category.id === line.categoryId,
-          );
-          const restoredCategoryId = categoryExists
-            ? line.categoryId
-            : firstCategoryId;
-          const productExists = products.some(
-            (product) =>
-              product.id === line.productId &&
-              product.category_id === restoredCategoryId,
-          );
-          const restoredProductId = productExists ? line.productId : "";
-          const optionExists = options.some(
-            (option) =>
-              option.id === line.optionId &&
-              option.product_id === restoredProductId,
-          );
-
-          return {
-            ...line,
-            categoryId: restoredCategoryId,
-            productId: restoredProductId,
-            optionId: optionExists ? line.optionId : "",
-          };
-        });
-
-        setLineItems(restoredLines);
-        setNextLineId(
-          Math.max(...restoredLines.map((line) => Number(line.id) || 0)) + 1,
-        );
-      }
-      setDraftStatus("Saved draft restored");
-    } catch {
-      window.localStorage.removeItem(INVOICE_DRAFT_KEY);
-    }
-  }, [categories, firstCategoryId, options, products]);
 
   useEffect(() => {
     const email = customer.email.trim().toLowerCase();
@@ -334,7 +224,6 @@ export default function InvoiceBuilder({
     );
     lineItemsRef.current = updated;
     setLineItems(updated);
-    scheduleDraftSave(updated);
   }
 
   function addLine() {
@@ -353,7 +242,6 @@ export default function InvoiceBuilder({
     ];
     lineItemsRef.current = updated;
     setLineItems(updated);
-    scheduleDraftSave(updated);
     setNextLineId((current) => current + 1);
   }
 
@@ -361,7 +249,6 @@ export default function InvoiceBuilder({
     const updated = lineItemsRef.current.filter((line) => line.id !== id);
     lineItemsRef.current = updated;
     setLineItems(updated);
-    scheduleDraftSave(updated);
   }
 
   function generatePreview(formData: FormData) {
@@ -436,8 +323,6 @@ export default function InvoiceBuilder({
 
         invoiceId = result.id;
         setSavedInvoiceId(invoiceId);
-        window.localStorage.removeItem(INVOICE_DRAFT_KEY);
-        setDraftStatus("Invoice saved permanently");
       }
 
       const originalTitle = document.title;
@@ -503,15 +388,8 @@ export default function InvoiceBuilder({
         <form
           ref={formRef}
           action={generatePreview}
-          onInput={() => scheduleDraftSave()}
-          onChange={() => scheduleDraftSave()}
           className="mt-8 grid gap-6 xl:grid-cols-2"
         >
-          <div className="xl:col-span-2 flex items-center justify-end">
-            <p className="rounded-full bg-blue-50 px-4 py-2 text-xs font-bold text-blue-700">
-              {draftStatus}
-            </p>
-          </div>
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-xl font-black">Invoice details</h2>
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -694,20 +572,19 @@ export default function InvoiceBuilder({
                       <label className="block">
                         <span className="text-sm font-bold">Category</span>
                         <select
+                          key={`category-${line.id}`}
                           required
                           value={line.categoryId}
                           onChange={(event) =>
                             updateLine(line.id, {
-                              categoryId: event.target.value,
+                              categoryId: event.currentTarget.value,
                               productId: "",
                               optionId: "",
                             })
                           }
                           className={inputClass}
                         >
-                          <option value="" disabled>
-                            Select category
-                          </option>
+                          <option value="">Select category</option>
                           {categories.map((category) => (
                             <option key={category.id} value={category.id}>
                               {category.name}
@@ -719,17 +596,25 @@ export default function InvoiceBuilder({
                       <label className="block">
                         <span className="text-sm font-bold">Product</span>
                         <select
+                          key={`product-${line.id}-${line.categoryId}`}
                           required
+                          disabled={!line.categoryId || availableProducts.length === 0}
                           value={line.productId}
                           onChange={(event) =>
                             updateLine(line.id, {
-                              productId: event.target.value,
+                              productId: event.currentTarget.value,
                               optionId: "",
                             })
                           }
                           className={inputClass}
                         >
-                          <option value="">Select product</option>
+                          <option value="">
+                            {!line.categoryId
+                              ? "Select category first"
+                              : availableProducts.length === 0
+                                ? "No products available"
+                                : "Select product"}
+                          </option>
                           {availableProducts.map((product) => (
                             <option key={product.id} value={product.id}>
                               {product.name}
@@ -739,16 +624,17 @@ export default function InvoiceBuilder({
                       </label>
 
                       <label className="block">
-                        <span className="text-sm font-bold">
-                          Denomination / option
-                        </span>
+                        <span className="text-sm font-bold">Denomination / option</span>
                         <select
+                          key={`option-${line.id}-${line.productId}`}
                           required
+                          disabled={!line.productId || availableOptions.length === 0}
                           value={line.optionId}
                           onChange={(event) =>
-                            updateLine(line.id, { optionId: event.target.value })
+                            updateLine(line.id, {
+                              optionId: event.currentTarget.value,
+                            })
                           }
-                          disabled={!line.productId || availableOptions.length === 0}
                           className={inputClass}
                         >
                           <option value="">
