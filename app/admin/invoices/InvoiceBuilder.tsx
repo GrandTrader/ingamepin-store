@@ -133,6 +133,7 @@ export default function InvoiceBuilder({
   const formRef = useRef<HTMLFormElement>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const customerLookupRef = useRef<AbortController | null>(null);
+  const draftRestoredRef = useRef(false);
   const firstCategoryId = categories[0]?.id ?? "";
   const [lineItems, setLineItems] = useState<InvoiceLineDraft[]>([
     {
@@ -146,6 +147,7 @@ export default function InvoiceBuilder({
       transactionId: "",
     },
   ]);
+  const lineItemsRef = useRef(lineItems);
   const [nextLineId, setNextLineId] = useState(2);
   const [preview, setPreview] = useState<InvoiceData | null>(null);
   const [savedInvoiceId, setSavedInvoiceId] = useState("");
@@ -173,7 +175,7 @@ export default function InvoiceBuilder({
     return fields;
   }
 
-  function saveDraft(items: InvoiceLineDraft[] = lineItems) {
+  function saveDraft(items: InvoiceLineDraft[] = lineItemsRef.current) {
     if (typeof window === "undefined") return;
 
     const draft: InvoiceDraft = {
@@ -191,6 +193,13 @@ export default function InvoiceBuilder({
   }
 
   useEffect(() => {
+    lineItemsRef.current = lineItems;
+  }, [lineItems]);
+
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+
     const rawDraft = window.localStorage.getItem(INVOICE_DRAFT_KEY);
     if (!rawDraft) return;
 
