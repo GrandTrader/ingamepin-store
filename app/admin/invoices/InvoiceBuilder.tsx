@@ -316,20 +316,18 @@ export default function InvoiceBuilder({
     id: number,
     changes: Partial<InvoiceLineDraft>,
   ) {
-    setLineItems((current) => {
-      const updated = current.map((line) =>
-        line.id === id ? { ...line, ...changes } : line,
-      );
-      scheduleDraftSave(updated);
-      return updated;
-    });
+    const updated = lineItemsRef.current.map((line) =>
+      line.id === id ? { ...line, ...changes } : line,
+    );
+    lineItemsRef.current = updated;
+    setLineItems(updated);
+    scheduleDraftSave(updated);
   }
 
   function addLine() {
-    setLineItems((current) => {
-      const updated = [
-        ...current,
-        {
+    const updated = [
+      ...lineItemsRef.current,
+      {
         id: nextLineId,
         categoryId: "",
         productId: "",
@@ -338,20 +336,19 @@ export default function InvoiceBuilder({
         unitPrice: "",
         paymentMethod: "USDT TRC20",
         transactionId: "",
-        },
-      ];
-      scheduleDraftSave(updated);
-      return updated;
-    });
+      },
+    ];
+    lineItemsRef.current = updated;
+    setLineItems(updated);
+    scheduleDraftSave(updated);
     setNextLineId((current) => current + 1);
   }
 
   function removeLine(id: number) {
-    setLineItems((current) => {
-      const updated = current.filter((line) => line.id !== id);
-      scheduleDraftSave(updated);
-      return updated;
-    });
+    const updated = lineItemsRef.current.filter((line) => line.id !== id);
+    lineItemsRef.current = updated;
+    setLineItems(updated);
+    scheduleDraftSave(updated);
   }
 
   function generatePreview(formData: FormData) {
@@ -676,10 +673,8 @@ export default function InvoiceBuilder({
                       <label className="block">
                         <span className="text-sm font-bold">Category</span>
                         <select
-                          key={`${line.id}:${line.categoryId}`}
-                          name={`invoice_category_${line.id}`}
                           required
-                          defaultValue={line.categoryId}
+                          value={line.categoryId}
                           onChange={(event) =>
                             updateLine(line.id, {
                               categoryId: event.target.value,
@@ -703,10 +698,8 @@ export default function InvoiceBuilder({
                       <label className="block">
                         <span className="text-sm font-bold">Product</span>
                         <select
-                          key={`${line.id}:${line.categoryId}:${line.productId}`}
-                          name={`invoice_product_${line.id}`}
                           required
-                          defaultValue={line.productId}
+                          value={line.productId}
                           onChange={(event) =>
                             updateLine(line.id, {
                               productId: event.target.value,
@@ -729,10 +722,8 @@ export default function InvoiceBuilder({
                           Denomination / option
                         </span>
                         <select
-                          key={`${line.id}:${line.productId}:${line.optionId}`}
-                          name={`invoice_option_${line.id}`}
                           required
-                          defaultValue={line.optionId}
+                          value={line.optionId}
                           onChange={(event) =>
                             updateLine(line.id, { optionId: event.target.value })
                           }
@@ -794,9 +785,7 @@ export default function InvoiceBuilder({
                       <label className="block">
                         <span className="text-sm font-bold">Payment method</span>
                         <select
-                          key={`${line.id}:${line.paymentMethod}`}
-                          name={`invoice_payment_method_${line.id}`}
-                          defaultValue={line.paymentMethod}
+                          value={line.paymentMethod}
                           onChange={(event) =>
                             updateLine(line.id, {
                               paymentMethod: event.target.value,
