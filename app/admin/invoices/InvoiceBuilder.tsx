@@ -440,7 +440,11 @@ export default function InvoiceBuilder({
         setDraftStatus("Invoice saved permanently");
       }
 
+      const originalTitle = document.title;
+      const fileDate = preview.invoiceDate || new Date().toISOString().slice(0, 10);
+      document.title = `InGamePIN-Invoice-${fileDate}`;
       window.print();
+      document.title = originalTitle;
     } catch (error) {
       setSaveError(
         error instanceof Error ? error.message : "Unable to save the invoice.",
@@ -1000,11 +1004,11 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
 
       <section
         id="invoice-print-area"
-        className="mx-auto mt-8 max-w-[900px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xl"
+        className="mx-auto mt-8 w-full min-w-0 max-w-[900px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xl"
       >
-      <div className="invoice-header border-b-2 border-blue-600 bg-blue-50 px-7 py-7 sm:px-10">
-        <div className="flex justify-between gap-6">
-          <div>
+      <div className="invoice-header border-b-2 border-blue-600 bg-blue-50 px-4 py-6 sm:px-10 sm:py-7">
+        <div className="flex min-w-0 flex-col justify-between gap-6 sm:flex-row">
+          <div className="min-w-0">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-xl font-black text-white">
                 IP
@@ -1025,11 +1029,11 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
             </p>
           </div>
 
-          <div className="shrink-0 text-right">
+          <div className="min-w-0 text-left sm:shrink-0 sm:text-right">
             <p className="text-xs font-black uppercase tracking-[0.25em] text-blue-600">
               Tax invoice
             </p>
-            <p className="mt-2 text-xl font-black text-slate-950">
+            <p className="mt-2 break-words text-lg font-black text-slate-950 sm:text-xl">
               {invoice.invoiceNumber}
             </p>
             <p className="mt-1 text-xs text-slate-600">
@@ -1048,14 +1052,14 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
         </div>
       </div>
 
-      <div className="invoice-body p-7 sm:p-9">
-        <div className="grid grid-cols-2 gap-7">
-          <div>
+      <div className="invoice-body min-w-0 p-4 sm:p-9">
+        <div className="grid min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-7">
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">
               Billed to
             </p>
             <p className="mt-2 text-base font-black">{invoice.customerName}</p>
-            <p className="mt-1 text-sm text-slate-600">{invoice.customerEmail}</p>
+            <p className="mt-1 break-all text-sm text-slate-600">{invoice.customerEmail}</p>
             {invoice.customerTaxpayerId && (
               <p className="mt-1 text-sm font-semibold text-slate-600">
                 Taxpayer ID: {invoice.customerTaxpayerId}
@@ -1068,7 +1072,7 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
             </p>
           </div>
 
-          <div className="text-right">
+          <div className="min-w-0 text-left sm:text-right">
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">
               Payment
             </p>
@@ -1079,7 +1083,7 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
           </div>
         </div>
 
-        <div className="invoice-section-gap mt-7 overflow-hidden rounded-xl border border-slate-200">
+        <div className="invoice-section-gap mt-7 hidden overflow-hidden rounded-xl border border-slate-200 sm:block print:block">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-100 text-slate-600">
               <tr>
@@ -1128,7 +1132,51 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
           </table>
         </div>
 
-        <div className="invoice-section-gap ml-auto mt-6 max-w-sm rounded-xl border border-blue-200 bg-blue-50 p-4 text-slate-900">
+        <div className="invoice-section-gap mt-6 grid min-w-0 gap-3 sm:hidden print:hidden">
+          {invoiceItems.map((item, index) => (
+            <article
+              key={`${item.productName}-${item.optionName}-mobile-${index}`}
+              className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4"
+            >
+              <p className="break-words font-black text-slate-900">{item.productName}</p>
+              <p className="mt-1 break-words text-xs font-bold text-blue-600">
+                {item.optionName}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs font-bold uppercase text-slate-400">Category</p>
+                  <p className="mt-1 break-words text-slate-700">{item.categoryName}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold uppercase text-slate-400">Quantity</p>
+                  <p className="mt-1 font-bold text-slate-900">{item.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase text-slate-400">Rate</p>
+                  <p className="mt-1 font-bold text-slate-900">{formatUsdt(item.unitPrice)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold uppercase text-slate-400">Amount</p>
+                  <p className="mt-1 font-black text-slate-900">
+                    {formatUsdt(item.quantity * item.unitPrice)}
+                  </p>
+                </div>
+              </div>
+              {item.paymentMethod && (
+                <p className="mt-3 break-words text-xs font-bold text-slate-600">
+                  Payment: {item.paymentMethod}
+                </p>
+              )}
+              {item.transactionId && (
+                <p className="mt-1 break-all text-xs text-slate-500">
+                  Transaction: {item.transactionId}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+
+        <div className="invoice-section-gap ml-auto mt-6 w-full max-w-sm rounded-xl border border-blue-200 bg-blue-50 p-4 text-slate-900">
           <div className="flex justify-between gap-4 text-sm text-slate-600">
             <span>Subtotal</span>
             <span>{formatUsdt(total)}</span>
