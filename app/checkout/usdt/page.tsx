@@ -11,6 +11,7 @@ type PendingOrder = {
   accessToken?: string;
   paymentMethod?: string;
   totalAmount: number;
+  allowedUsdtNetworks?: Array<"TRC20" | "BEP20" | "SOLANA">;
 };
 
 type Invoice = {
@@ -204,7 +205,7 @@ export default function DirectUsdtPaymentPage() {
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => void createInvoice("TRC20")}
-                className="rounded-2xl border border-red-400/30 bg-red-400/10 p-5 text-left transition hover:border-red-300 disabled:opacity-50"
+                className={`rounded-2xl border border-red-400/30 bg-red-400/10 p-5 text-left transition hover:border-red-300 disabled:opacity-50 ${order.allowedUsdtNetworks && !order.allowedUsdtNetworks.includes("TRC20") ? "hidden" : ""}`}
               >
                 <span className="block text-lg font-black">USDT – TRC20</span>
                 <span className="mt-1 block text-xs text-slate-400">
@@ -215,7 +216,7 @@ export default function DirectUsdtPaymentPage() {
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => void createInvoice("BEP20")}
-                className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-left transition hover:border-amber-300 disabled:opacity-50"
+                className={`rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-left transition hover:border-amber-300 disabled:opacity-50 ${order.allowedUsdtNetworks && !order.allowedUsdtNetworks.includes("BEP20") ? "hidden" : ""}`}
               >
                 <span className="block text-lg font-black">USDT – BEP20</span>
                 <span className="mt-1 block text-xs text-slate-400">
@@ -226,7 +227,7 @@ export default function DirectUsdtPaymentPage() {
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => void createInvoice("SOLANA")}
-                className="rounded-2xl border border-violet-400/30 bg-violet-400/10 p-5 text-left transition hover:border-violet-300 disabled:opacity-50"
+                className={`rounded-2xl border border-violet-400/30 bg-violet-400/10 p-5 text-left transition hover:border-violet-300 disabled:opacity-50 ${order.allowedUsdtNetworks && !order.allowedUsdtNetworks.includes("SOLANA") ? "hidden" : ""}`}
               >
                 <span className="block text-lg font-black">USDT - Solana</span>
                 <span className="mt-1 block text-xs text-slate-400">

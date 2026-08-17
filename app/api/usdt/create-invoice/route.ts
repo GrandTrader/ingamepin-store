@@ -78,6 +78,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const itemResult = await admin
+      .from("order_items")
+      .select("product_id")
+      .eq("order_id", order.id);
+    const productIds = [...new Set((itemResult.data ?? []).map((item) => item.product_id))];
+    const productResult = productIds.length
+      ? await admin
+          .from("products")
+          .select("name, allowed_usdt_networks")
+          .in("id", productIds)
+      : { data: [], error: null };
+
+    if (itemResult.error || productResult.error) {
+      return NextResponse.json(
+        { error: "Unable to verify the permitted USDT networks." },
+        { status: 500 },
+      );
+    }
+
+    const disallowedProduct = (productResult.data ?? []).find(
+      (product) =>
+        !((product.allowed_usdt_networks ?? ["TRC20", "BEP20", "SOLANA"]) as string[])
+          .includes(network),
+    );
+    if (disallowedProduct) {
+      return NextResponse.json(
+        { error: `${network} is not available for ${disallowedProduct.name}.` },
+        { status: 400 },
+      );
+    }
+
     if (payment.gateway_order_id) {
       const existing = await getUsdtInvoice(payment.gateway_order_id);
       if (existing.network !== network) {

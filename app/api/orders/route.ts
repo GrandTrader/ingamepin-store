@@ -89,6 +89,17 @@ export async function POST(request: NextRequest) {
       .trim()
       .toLowerCase();
     const isWalletPayment = requestedPaymentMethod === "wallet";
+    const paymentMethodId: Record<string, string> = {
+      wallet: "WALLET",
+      binance: "BINANCE_PAY",
+      usdt: "USDT_DIRECT",
+      pally: "PALLY",
+      freekassa: "FREEKASSA",
+    };
+
+    if (!paymentMethodId[requestedPaymentMethod]) {
+      return NextResponse.json({ error: "Payment method is invalid." }, { status: 400 });
+    }
 
     const sessionClient = await createClient();
     const {
@@ -148,7 +159,18 @@ export async function POST(request: NextRequest) {
     if (optionIds.length) {
       const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
       const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
-      const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order").in("id", productIds) : { data: [] };
+      const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods").in("id", productIds) : { data: [] };
+      const disallowedProduct = (productsResult.data ?? []).find(
+        (product) =>
+          !((product.allowed_payment_methods ?? ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA"]) as string[])
+            .includes(paymentMethodId[requestedPaymentMethod]),
+      );
+      if (disallowedProduct) {
+        return NextResponse.json(
+          { error: `${requestedPaymentMethod === "usdt" ? "Direct USDT" : requestedPaymentMethod} is not available for ${disallowedProduct.name}.` },
+          { status: 400 },
+        );
+      }
       for (const item of submittedItems) {
         const option = options.find((entry) => entry.id === item.productOptionId);
         const product = (productsResult.data ?? []).find((entry) => entry.id === option?.product_id);

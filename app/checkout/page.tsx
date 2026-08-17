@@ -178,6 +178,22 @@ type CustomerDiscountDetails = {
   loading: boolean;
 };
 
+type PaymentRestrictions = {
+  allowedPaymentMethods: string[];
+  allowedUsdtNetworks: string[];
+  loading: boolean;
+};
+
+const PAYMENT_METHOD_IDS: Record<string, string> = {
+  wallet: "WALLET",
+  binance: "BINANCE_PAY",
+  usdt: "USDT_DIRECT",
+  pally: "PALLY",
+  freekassa: "FREEKASSA",
+};
+
+const PAYMENT_METHOD_ORDER = ["wallet", "binance", "usdt", "pally", "freekassa"];
+
 const initialForm: CheckoutForm = {
   email: "",
   addressLine1: "",
@@ -233,6 +249,11 @@ export default function CheckoutPage() {
     loading: true,
   });
   const [paymentFee, setPaymentFee] = useState(0);
+  const [paymentRestrictions, setPaymentRestrictions] = useState<PaymentRestrictions>({
+    allowedPaymentMethods: [],
+    allowedUsdtNetworks: [],
+    loading: true,
+  });
 
   useEffect(() => {
     try {
@@ -327,6 +348,60 @@ export default function CheckoutPage() {
       setIsLoaded(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isLoaded || cartItems.length === 0) return;
+    const productIds = [...new Set(cartItems.map((item) => item.productId).filter(Boolean))] as string[];
+
+    if (productIds.length === 0) {
+      setPaymentRestrictions({ allowedPaymentMethods: [], allowedUsdtNetworks: [], loading: false });
+      setMessage("Unable to identify the products in your cart. Please add them again.");
+      return;
+    }
+
+    const controller = new AbortController();
+    async function loadPaymentRestrictions() {
+      try {
+        const response = await fetch("/api/products/payment-restrictions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productIds }),
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const result = (await response.json()) as {
+          allowedPaymentMethods?: string[];
+          allowedUsdtNetworks?: string[];
+          error?: string;
+        };
+        if (!response.ok) throw new Error(result.error ?? "Unable to load payment methods.");
+
+        const next: PaymentRestrictions = {
+          allowedPaymentMethods: result.allowedPaymentMethods ?? [],
+          allowedUsdtNetworks: result.allowedUsdtNetworks ?? [],
+          loading: false,
+        };
+        setPaymentRestrictions(next);
+        setPaymentMethod((current) => {
+          if (next.allowedPaymentMethods.includes(PAYMENT_METHOD_IDS[current])) return current;
+          return PAYMENT_METHOD_ORDER.find((method) =>
+            next.allowedPaymentMethods.includes(PAYMENT_METHOD_IDS[method]),
+          ) ?? "";
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPaymentRestrictions({ allowedPaymentMethods: [], allowedUsdtNetworks: [], loading: false });
+        setMessage(error instanceof Error ? error.message : "Unable to load payment methods.");
+      }
+    }
+
+    void loadPaymentRestrictions();
+    return () => controller.abort();
+  }, [cartItems, isLoaded]);
+
+  function paymentAllowed(method: string) {
+    return paymentRestrictions.allowedPaymentMethods.includes(PAYMENT_METHOD_IDS[method]);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -633,6 +708,14 @@ export default function CheckoutPage() {
       return "Please select a payment method.";
     }
 
+    if (paymentRestrictions.loading) {
+      return "Please wait while payment methods are loaded.";
+    }
+
+    if (!paymentAllowed(paymentMethod)) {
+      return "This payment method is not available for the selected products.";
+    }
+
     if (paymentMethod === "wallet" && !wallet.authenticated) {
       return "Sign in before paying with your wallet.";
     }
@@ -749,6 +832,7 @@ export default function CheckoutPage() {
       items: cartItems,
 
       paymentMethod,
+      allowedUsdtNetworks: paymentRestrictions.allowedUsdtNetworks,
 
       subtotal: Number(
         result.order.subtotal
@@ -1222,7 +1306,7 @@ export default function CheckoutPage() {
                   !wallet.authenticated || wallet.balance < totalAmount
                     ? "cursor-not-allowed opacity-60"
                     : "cursor-pointer hover:border-white/20"
-                }`}
+                } ${!paymentAllowed("wallet") ? "hidden" : ""}`}
               >
                 <input
                   type="radio"
@@ -1307,7 +1391,7 @@ export default function CheckoutPage() {
                   paymentMethod === "binance"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
-                }`}
+                } ${!paymentAllowed("binance") ? "hidden" : ""}`}
               >
                 <input
                   type="radio"
@@ -1339,7 +1423,7 @@ export default function CheckoutPage() {
                   paymentMethod === "usdt"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
-                }`}
+                } ${!paymentAllowed("usdt") ? "hidden" : ""}`}
               >
                 <input
                   type="radio"
@@ -1369,7 +1453,7 @@ export default function CheckoutPage() {
                   paymentMethod === "pally"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
-                }`}
+                } ${!paymentAllowed("pally") ? "hidden" : ""}`}
               >
                 <input
                   type="radio"
@@ -1399,7 +1483,7 @@ export default function CheckoutPage() {
                   paymentMethod === "freekassa"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
-                }`}
+                } ${!paymentAllowed("freekassa") ? "hidden" : ""}`}
               >
                 <input
                   type="radio"
@@ -1426,6 +1510,12 @@ export default function CheckoutPage() {
                 </div>
               </label>
             </div>
+
+            {!paymentRestrictions.loading && paymentRestrictions.allowedPaymentMethods.length === 0 && (
+              <p className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">
+                No common payment method is available for the products in this cart.
+              </p>
+            )}
 
             <PaymentMethodsBanner className="mt-4 sm:mt-5" />
           </section>
