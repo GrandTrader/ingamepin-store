@@ -729,8 +729,10 @@ export default function InvoiceBuilder({
                           Denomination / option
                         </span>
                         <select
+                          key={`${line.id}:${line.productId}:${line.optionId}`}
+                          name={`invoice_option_${line.id}`}
                           required
-                          value={line.optionId}
+                          defaultValue={line.optionId}
                           onChange={(event) =>
                             updateLine(line.id, { optionId: event.target.value })
                           }
