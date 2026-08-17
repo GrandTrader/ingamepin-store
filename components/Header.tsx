@@ -306,12 +306,19 @@ export default function Header() {
                 id="store-language"
                 value={language}
                 onChange={(event) =>
-                  setLanguage(event.target.value === "ru" ? "ru" : "en")
+                  setLanguage(
+                    event.target.value === "ru"
+                      ? "ru"
+                      : event.target.value === "th"
+                        ? "th"
+                        : "en",
+                  )
                 }
                 className="h-10 rounded-xl border border-white/10 bg-slate-950 px-2 text-xs font-bold text-white outline-none transition hover:border-cyan-400"
               >
                 <option value="en">🇺🇸 EN</option>
                 <option value="ru">🇷🇺 RU</option>
+                <option value="th">🇹🇭 TH</option>
               </select>
 
               <label htmlFor="store-currency" className="sr-only">
@@ -562,12 +569,19 @@ export default function Header() {
                   aria-label="Language"
                   value={language}
                   onChange={(event) =>
-                    setLanguage(event.target.value === "ru" ? "ru" : "en")
+                    setLanguage(
+                      event.target.value === "ru"
+                        ? "ru"
+                        : event.target.value === "th"
+                          ? "th"
+                          : "en",
+                    )
                   }
                   className="h-11 rounded-xl border border-white/10 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition focus:border-cyan-400"
                 >
                   <option value="en">🇺🇸 English</option>
                   <option value="ru">🇷🇺 Русский</option>
+                  <option value="th">🇹🇭 ไทย</option>
                 </select>
 
                 <select

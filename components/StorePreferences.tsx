@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type StoreLanguage = "en" | "ru";
+export type StoreLanguage = "en" | "ru" | "th";
 export type StoreCurrency = "USD" | "INR" | "RUB";
 
 const translations = {
@@ -176,6 +176,84 @@ const translations = {
     region: "Регион",
     deliveryInstructions: "Инструкции по доставке",
   },
+  th: {
+    digitalDelivery: "จัดส่งดิจิทัลทันที",
+    genuineProducts: "สินค้าของแท้",
+    securePayment: "ชำระเงินปลอดภัย",
+    customerSupport: "ฝ่ายบริการลูกค้า",
+    storeTagline: "ร้านเกมดิจิทัล",
+    home: "หน้าหลัก",
+    allProducts: "สินค้าทั้งหมด",
+    support: "ช่วยเหลือ",
+    trackOrder: "ติดตามคำสั่งซื้อ",
+    cart: "ตะกร้า",
+    myAccount: "บัญชีของฉัน",
+    login: "เข้าสู่ระบบ",
+    searchProducts: "ค้นหาสินค้า",
+    searchPlaceholder: "ค้นหาเกม บัตรของขวัญ การสมัครสมาชิก...",
+    search: "ค้นหา",
+    searching: "กำลังค้นหาสินค้า...",
+    noResults: "ไม่พบสินค้าที่ตรงกัน",
+    openMenu: "เปิดเมนูนำทาง",
+    closeMenu: "ปิดเมนูนำทาง",
+    gamingTopups: "เติมเงินเกม",
+    giftCards: "บัตรของขวัญ",
+    subscriptions: "การสมัครสมาชิก",
+    gameKeys: "คีย์เกม",
+    inStock: "มีสินค้า",
+    outOfStock: "สินค้าหมด",
+    sold: "ขายแล้ว",
+    unavailable: "ไม่พร้อมจำหน่าย",
+    buy: "ซื้อ",
+    yourDiscount: "ส่วนลดของคุณ {percent}%",
+    productCategories: "หมวดหมู่สินค้า",
+    customerHelp: "ช่วยเหลือลูกค้า",
+    legal: "ข้อมูลทางกฎหมาย",
+    paymentDelivery: "การชำระเงินและการจัดส่ง",
+    trackYourOrder: "ติดตามคำสั่งซื้อของคุณ",
+    contactSupport: "ติดต่อฝ่ายช่วยเหลือ",
+    shoppingCart: "ตะกร้าสินค้า",
+    terms: "ข้อกำหนดและเงื่อนไข",
+    refundPolicy: "นโยบายคืนสินค้าและคืนเงิน",
+    privacyPolicy: "นโยบายความเป็นส่วนตัว",
+    affiliateProgram: "โปรแกรมพันธมิตร",
+    viewAllProducts: "ดูสินค้าทั้งหมด",
+    orderDeliveryLegal: "การจัดส่งและข้อมูลทางกฎหมาย",
+    checkOrderStatus: "ตรวจสอบสถานะคำสั่งซื้อ",
+    secureCheckout: "ชำระเงินอย่างปลอดภัย",
+    confirmBeforePayment: "ตรวจสอบรายละเอียดคำสั่งซื้อก่อนชำระเงิน",
+    footerSummary:
+      "เติมเงินเกม บัตรของขวัญ การสมัครสมาชิก และคีย์เกม พร้อมการจัดส่งดิจิทัลที่ปลอดภัย",
+    rightsReserved: "สงวนลิขสิทธิ์",
+    trademarkNotice: "ชื่อสินค้าและเครื่องหมายการค้าเป็นของเจ้าของแต่ละราย",
+    selectDeliveryMethod: "เลือกวิธีจัดส่ง",
+    playerIdTopup: "เติมเงินด้วย ID ผู้เล่น",
+    playerIdTopupDescription: "ระบบจะเติมเงินโดยใช้ ID ผู้เล่นของคุณ",
+    gamingVoucher: "บัตรเติมเงินเกม",
+    gamingVoucherDescription: "รับรหัสบัตรหลังจากยืนยันการชำระเงิน",
+    selectValueType: "เลือกประเภทยอดเงิน",
+    fixedValue: "มูลค่าคงที่",
+    customValue: "กำหนดจำนวนเอง",
+    selectProductOption: "เลือกตัวเลือกสินค้า",
+    enterCustomValue: "กรอกจำนวนที่ต้องการ",
+    enterAmount: "กรอกจำนวนเงิน",
+    allowedRange: "ช่วงที่อนุญาต",
+    playerId: "ID ผู้เล่น",
+    checkPlayerId: "โปรดตรวจสอบให้ถูกต้อง ID ผู้เล่นที่ผิดอาจทำให้การจัดส่งล่าช้า",
+    deliveryEmail: "อีเมลสำหรับจัดส่ง",
+    quantity: "จำนวน",
+    selectedOption: "ตัวเลือกที่เลือก",
+    notSelected: "ยังไม่ได้เลือก",
+    deliveryMethod: "วิธีจัดส่ง",
+    total: "ยอดรวม",
+    yourDiscountShort: "ส่วนลดของคุณ",
+    addToCart: "เพิ่มลงตะกร้า",
+    buyNow: "ซื้อเลย",
+    secureCheckoutLabel: "ชำระเงินอย่างปลอดภัย",
+    chooseProductOption: "เลือกตัวเลือกสินค้า",
+    region: "ภูมิภาค",
+    deliveryInstructions: "คำแนะนำการจัดส่ง",
+  },
 } as const;
 
 type TranslationKey = keyof typeof translations.en;
@@ -213,7 +291,11 @@ export function StorePreferencesProvider({
     const savedLanguage = window.localStorage.getItem("storeLanguage");
     const savedCurrency = window.localStorage.getItem("storeCurrency");
 
-    if (savedLanguage === "en" || savedLanguage === "ru") {
+    if (
+      savedLanguage === "en" ||
+      savedLanguage === "ru" ||
+      savedLanguage === "th"
+    ) {
       setLanguageState(savedLanguage);
     }
 
@@ -282,13 +364,16 @@ export function StorePreferencesProvider({
       usdAmount: number,
       options: Intl.NumberFormatOptions = {},
     ) =>
-      new Intl.NumberFormat(language === "ru" ? "ru-RU" : "en-US", {
+      new Intl.NumberFormat(
+        language === "ru" ? "ru-RU" : language === "th" ? "th-TH" : "en-US",
+        {
         style: "currency",
         currency,
         minimumFractionDigits: currency === "USD" ? 2 : 0,
         maximumFractionDigits: currency === "RUB" ? 2 : 2,
         ...options,
-      }).format(convertFromUsd(usdAmount)),
+        },
+      ).format(convertFromUsd(usdAmount)),
     [convertFromUsd, currency, language],
   );
 

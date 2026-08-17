@@ -3,7 +3,10 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-import { useStorePreferences } from "./StorePreferences";
+import {
+  useStorePreferences,
+  type StoreLanguage,
+} from "./StorePreferences";
 
 const russianText: Record<string, string> = {
   "Return to dashboard": "Вернуться в личный кабинет",
@@ -298,7 +301,113 @@ const russianText: Record<string, string> = {
   "PayPalych": "PayPalych",
   "FreeKassa": "FreeKassa",
   "Binance Pay": "Binance Pay",
+  "My Orders": "Мои заказы",
+  "My Codes": "Мои коды",
+  "Affiliate": "Партнёрская программа",
+  "Affiliate Program": "Партнёрская программа",
+  "View and track every purchase.": "Просматривайте и отслеживайте все покупки.",
+  "Order, payment, and account updates.": "Обновления заказов, платежей и аккаунта.",
+  "Delivered content": "Доставленные товары",
+  "Customer details": "Данные покупателя",
+  "Payment details": "Данные платежа",
+  "Download All Codes (.txt)": "Скачать все коды (.txt)",
+  "Download Product Codes": "Скачать коды товара",
+  "Secure digital delivery": "Безопасная цифровая доставка",
+  "Keep these codes private. Each code can normally be redeemed only once.":
+    "Храните эти коды в тайне. Обычно каждый код можно активировать только один раз.",
+  "Verified purchase": "Подтверждённая покупка",
+  "How was your purchase?": "Как прошла ваша покупка?",
+  "Positive": "Положительный",
+  "Negative": "Отрицательный",
+  "Optional comment about your purchase": "Необязательный комментарий о покупке",
+  "Submitting...": "Отправка...",
+  "Submit review": "Отправить отзыв",
+  "Verified reviews": "Подтверждённые отзывы",
+  "Positive / Negative": "Положительные / Отрицательные",
+  "No verified reviews yet": "Подтверждённых отзывов пока нет",
+  "Customers can review this product after a completed delivery.":
+    "Покупатели могут оставить отзыв после завершения доставки.",
+  "Description": "Описание",
+  "Reviews": "Отзывы",
+  "Delivery instructions": "Инструкции по доставке",
+  "Generate invoice": "Создать счёт",
+  "Invoice": "Счёт",
+  "Invoice ready": "Счёт готов",
+  "Full legal name": "Полное юридическое имя",
+  "Country": "Страна",
+  "Complete billing address": "Полный платёжный адрес",
+  "House/building, street, city, state, postal code":
+    "Дом/строение, улица, город, регион, почтовый индекс",
+  "Tax ID / TIN": "Налоговый номер / ИНН",
+  "Product / denomination": "Товар / номинал",
+  "Qty": "Кол-во",
+  "Rate": "Цена",
+  "Total": "Итого",
+  "This is a computer-generated invoice.": "Это автоматически сформированный счёт.",
+  "Protect your account with a Passkey": "Защитите аккаунт с помощью ключа доступа",
+  "Sign in securely using your phone, fingerprint, face or device PIN.":
+    "Безопасно входите с помощью телефона, отпечатка пальца, распознавания лица или PIN-кода устройства.",
+  "Account protection": "Защита аккаунта",
+  "Security": "Безопасность",
+  "Use a Passkey to sign in without Google Authenticator codes.":
+    "Используйте ключ доступа для входа без кодов Google Authenticator.",
+  "Passkeys": "Ключи доступа",
+  "Loading passkeys...": "Загрузка ключей доступа...",
+  "No passkey is connected yet.": "Ключ доступа ещё не подключён.",
+  "Enable Passkey": "Включить ключ доступа",
+  "Add Passkey": "Добавить ключ доступа",
+  "Sign in with Passkey": "Войти с ключом доступа",
+  "Checking passkey...": "Проверка ключа доступа...",
+  "Customer App Installed": "Приложение покупателя установлено",
+  "Install Customer App": "Установить приложение покупателя",
+  "InGamePin Marketing Partners": "Маркетинговые партнёры InGamePin",
+  "Promote digital products. Earn commission in USDT.":
+    "Продвигайте цифровые товары. Получайте комиссию в USDT.",
+  "Join Affiliate Program": "Вступить в партнёрскую программу",
+  "Learn & Join": "Узнать и присоединиться",
+  "Ready to become a partner?": "Готовы стать партнёром?",
+  "Apply": "Подать заявку",
+  "Create links": "Создавайте ссылки",
+  "Promote": "Продвигайте",
+  "Earn USDT": "Получайте USDT",
+  "Affiliate code": "Партнёрский код",
+  "Promotion channel": "Канал продвижения",
+  "Commission": "Комиссия",
+  "Affiliate application": "Заявка в партнёрскую программу",
+  "Update application": "Обновить заявку",
+  "Affiliate applications are currently closed.": "Приём заявок в партнёрскую программу временно закрыт.",
+  "Your application is waiting for administrator review.":
+    "Ваша заявка ожидает проверки администратором.",
+  "Fast Delivery": "Быстрая доставка",
+  "Genuine Products": "Оригинальные товары",
+  "Secure Checkout": "Безопасное оформление",
+  "Customer Support": "Поддержка покупателей",
+  "Enter other amount": "Введите другую сумму",
+  "Enter recipient email address": "Введите email получателя",
+  "Decrease quantity": "Уменьшить количество",
+  "Increase quantity": "Увеличить количество",
+  "House number, building and street": "Номер дома, строение и улица",
+  "Area, colony or locality": "Район или населённый пункт",
+  "Nearby landmark": "Ближайший ориентир",
+  "Enter city": "Введите город",
+  "Payment gateway fee": "Комиссия платёжной системы",
+  "Close live chat": "Закрыть онлайн-чат",
+  "Your name": "Ваше имя",
+  "Your email": "Ваш email",
+  "Open live support chat": "Открыть чат поддержки",
+  "Main navigation": "Основная навигация",
+  "Mobile navigation": "Мобильная навигация",
+  "Currency": "Валюта",
+  "Mobile number": "Номер телефона",
+  "Country calling code": "Телефонный код страны",
+  "Loading payment...": "Загрузка платежа...",
+  "Digital product": "Цифровой товар",
+  "PENDING PAYMENT": "ОЖИДАЕТ ОПЛАТЫ",
+  "PAYMENT REVIEW": "ПРОВЕРКА ПЛАТЕЖА",
   PENDING: "ОЖИДАЕТ",
+  PENDING_PAYMENT: "ОЖИДАЕТ ОПЛАТЫ",
+  PAYMENT_REVIEW: "ПРОВЕРКА ПЛАТЕЖА",
+  SUBMITTED: "ОТПРАВЛЕН",
   PAID: "ОПЛАЧЕН",
   VERIFIED: "ПОДТВЕРЖДЁН",
   PROCESSING: "ОБРАБАТЫВАЕТСЯ",
@@ -306,7 +415,163 @@ const russianText: Record<string, string> = {
   COMPLETED: "ЗАВЕРШЁН",
   FAILED: "ОШИБКА",
   CANCELLED: "ОТМЕНЁН",
+  REJECTED: "ОТКЛОНЁН",
+  REFUNDED: "ВОЗВРАЩЁН",
   EXPIRED: "ИСТЁК",
+};
+
+const thaiText: Record<string, string> = {
+  "Return to dashboard": "กลับไปที่แดชบอร์ด",
+  "← Return to dashboard": "← กลับไปที่แดชบอร์ด",
+  "Available balance": "ยอดเงินที่ใช้ได้",
+  "USD wallet": "กระเป๋าเงิน USD",
+  "Add money": "เติมเงิน",
+  "Choose an amount and pay using any available gateway.":
+    "เลือกจำนวนเงินและชำระผ่านช่องทางที่พร้อมใช้งาน",
+  "Add money through any available payment gateway.":
+    "เติมเงินผ่านช่องทางการชำระเงินที่พร้อมใช้งาน",
+  "Your balance is credited automatically after verified payment.":
+    "ยอดเงินจะเข้ากระเป๋าโดยอัตโนมัติหลังยืนยันการชำระเงิน",
+  "Top-up amount (USD)": "จำนวนเงินเติม (USD)",
+  "Payment method": "วิธีชำระเงิน",
+  "Instant verification": "ยืนยันทันที",
+  "Cards and local methods": "บัตรและช่องทางท้องถิ่น",
+  "Available payment methods": "วิธีชำระเงินที่พร้อมใช้งาน",
+  "Add amount": "จำนวนเงินเติม",
+  "New balance": "ยอดเงินใหม่",
+  "Continue to payment": "ดำเนินการชำระเงิน",
+  "Bulk delivery information": "ข้อมูลการจัดส่งแบบขายส่ง",
+  "Bulk Delivery Time: 1-15 Working Days": "ระยะเวลาจัดส่งแบบขายส่ง: 1–15 วันทำการ",
+  "Please confirm that you understand the delivery time.":
+    "โปรดยืนยันว่าคุณเข้าใจระยะเวลาจัดส่ง",
+  "I understand": "ฉันเข้าใจ",
+  Cancel: "ยกเลิก",
+  "Opening payment gateway...": "กำลังเปิดช่องทางชำระเงิน...",
+  "Recent top-ups": "รายการเติมเงินล่าสุด",
+  "No top-ups yet.": "ยังไม่มีรายการเติมเงิน",
+  "Welcome back": "ยินดีต้อนรับกลับ",
+  "Sign in to manage your orders, wallet and profile.":
+    "เข้าสู่ระบบเพื่อจัดการคำสั่งซื้อ กระเป๋าเงิน และโปรไฟล์",
+  "Customer account": "บัญชีลูกค้า",
+  "Email address": "อีเมล",
+  Password: "รหัสผ่าน",
+  "Sign in": "เข้าสู่ระบบ",
+  "Forgot password?": "ลืมรหัสผ่าน?",
+  "New customer?": "ลูกค้าใหม่?",
+  "Create account": "สร้างบัญชี",
+  "Create your account": "สร้างบัญชีของคุณ",
+  "Already have an account?": "มีบัญชีอยู่แล้ว?",
+  "Enter your OTP": "กรอกรหัส OTP",
+  "Verify & Activate Account": "ยืนยันและเปิดใช้งานบัญชี",
+  "Resend verification code": "ส่งรหัสยืนยันอีกครั้ง",
+  "Use a different email address": "ใช้อีเมลอื่น",
+  "My orders": "คำสั่งซื้อของฉัน",
+  "My codes": "โค้ดของฉัน",
+  "My wallet": "กระเป๋าเงินของฉัน",
+  Profile: "โปรไฟล์",
+  "Sign out": "ออกจากระบบ",
+  "Wallet balance": "ยอดเงินในกระเป๋า",
+  "Delivered codes": "โค้ดที่จัดส่งแล้ว",
+  Notifications: "การแจ้งเตือน",
+  "Account details": "รายละเอียดบัญชี",
+  "Full name": "ชื่อ-นามสกุล",
+  Phone: "โทรศัพท์",
+  "Save profile": "บันทึกโปรไฟล์",
+  "Shopping Cart": "ตะกร้าสินค้า",
+  "Your cart is empty.": "ตะกร้าของคุณว่างเปล่า",
+  "Continue shopping": "เลือกซื้อสินค้าต่อ",
+  Product: "สินค้า",
+  Price: "ราคา",
+  Quantity: "จำนวน",
+  Subtotal: "ยอดรวมย่อย",
+  Discount: "ส่วนลด",
+  Delivery: "การจัดส่ง",
+  Taxes: "ภาษี",
+  "Total Amount": "ยอดรวมทั้งหมด",
+  Remove: "ลบ",
+  Checkout: "ชำระเงิน",
+  "Contact Information": "ข้อมูลติดต่อ",
+  "Used for order updates and delivery communication.":
+    "ใช้สำหรับแจ้งสถานะคำสั่งซื้อและการจัดส่ง",
+  "Order Summary": "สรุปคำสั่งซื้อ",
+  "Payment gateway fee": "ค่าธรรมเนียมช่องทางชำระเงิน",
+  "Continue to Payment": "ดำเนินการชำระเงิน",
+  "Secure checkout": "ชำระเงินอย่างปลอดภัย",
+  "Choose your product option": "เลือกตัวเลือกสินค้า",
+  "Select product option": "เลือกตัวเลือกสินค้า",
+  "Selected option": "ตัวเลือกที่เลือก",
+  "Delivery email": "อีเมลสำหรับจัดส่ง",
+  "Add to Cart": "เพิ่มลงตะกร้า",
+  "Buy Now": "ซื้อเลย",
+  "In Stock": "มีสินค้า",
+  "Out of Stock": "สินค้าหมด",
+  "Digital Instant Delivery": "จัดส่งดิจิทัลทันที",
+  "Genuine Products": "สินค้าของแท้",
+  "Secure Payment": "ชำระเงินปลอดภัย",
+  "Customer Support": "ฝ่ายบริการลูกค้า",
+  Home: "หน้าหลัก",
+  "All Products": "สินค้าทั้งหมด",
+  "Track Order": "ติดตามคำสั่งซื้อ",
+  Cart: "ตะกร้า",
+  "My Account": "บัญชีของฉัน",
+  Login: "เข้าสู่ระบบ",
+  Search: "ค้นหา",
+  "Gaming Top-Ups": "เติมเงินเกม",
+  "Gift Cards": "บัตรของขวัญ",
+  Subscriptions: "การสมัครสมาชิก",
+  "Game Keys": "คีย์เกม",
+  "Product Categories": "หมวดหมู่สินค้า",
+  "Customer Help": "ช่วยเหลือลูกค้า",
+  "Terms & Conditions": "ข้อกำหนดและเงื่อนไข",
+  "Return & Refund Policy": "นโยบายคืนสินค้าและคืนเงิน",
+  "Privacy Policy": "นโยบายความเป็นส่วนตัว",
+  "Affiliate Program": "โปรแกรมพันธมิตร",
+  "View All Products": "ดูสินค้าทั้งหมด",
+  "Track Your Order": "ติดตามคำสั่งซื้อของคุณ",
+  "Contact Support": "ติดต่อฝ่ายช่วยเหลือ",
+  "Order number": "หมายเลขคำสั่งซื้อ",
+  "Order Number": "หมายเลขคำสั่งซื้อ",
+  "Order status": "สถานะคำสั่งซื้อ",
+  "Payment status": "สถานะการชำระเงิน",
+  "Customer email": "อีเมลลูกค้า",
+  "Check Delivery Status": "ตรวจสอบสถานะการจัดส่ง",
+  "Download All Codes (.txt)": "ดาวน์โหลดโค้ดทั้งหมด (.txt)",
+  "Download Product Codes": "ดาวน์โหลดโค้ดสินค้า",
+  "Secure digital delivery": "การจัดส่งดิจิทัลที่ปลอดภัย",
+  "Your Digital Product Is Ready": "สินค้าดิจิทัลของคุณพร้อมแล้ว",
+  "Thank You for Your Order": "ขอบคุณสำหรับคำสั่งซื้อ",
+  "Payment is verified. Your private codes are displayed below.":
+    "ยืนยันการชำระเงินแล้ว โค้ดส่วนตัวของคุณแสดงอยู่ด้านล่าง",
+  "Payment Pending": "รอการชำระเงิน",
+  "Payment Review": "กำลังตรวจสอบการชำระเงิน",
+  "Your order": "คำสั่งซื้อของคุณ",
+  "Order details": "รายละเอียดคำสั่งซื้อ",
+  "No orders found.": "ไม่พบคำสั่งซื้อ",
+  "No delivered digital codes yet.": "ยังไม่มีโค้ดดิจิทัลที่จัดส่งแล้ว",
+  "Copy": "คัดลอก",
+  "Copied": "คัดลอกแล้ว",
+  "Live Chat": "แชตสด",
+  "Open live support chat": "เปิดแชตฝ่ายช่วยเหลือ",
+  "Mobile number": "หมายเลขโทรศัพท์",
+  "Country calling code": "รหัสโทรศัพท์ประเทศ",
+  "Loading payment...": "กำลังโหลดการชำระเงิน...",
+  "Digital product": "สินค้าดิจิทัล",
+  "PENDING PAYMENT": "รอการชำระเงิน",
+  "PAYMENT REVIEW": "กำลังตรวจสอบการชำระเงิน",
+  PENDING: "รอดำเนินการ",
+  PENDING_PAYMENT: "รอการชำระเงิน",
+  PAYMENT_REVIEW: "กำลังตรวจสอบการชำระเงิน",
+  SUBMITTED: "ส่งแล้ว",
+  PAID: "ชำระแล้ว",
+  VERIFIED: "ยืนยันแล้ว",
+  PROCESSING: "กำลังดำเนินการ",
+  DELIVERED: "จัดส่งแล้ว",
+  COMPLETED: "เสร็จสมบูรณ์",
+  FAILED: "ล้มเหลว",
+  CANCELLED: "ยกเลิกแล้ว",
+  REJECTED: "ถูกปฏิเสธ",
+  REFUNDED: "คืนเงินแล้ว",
+  EXPIRED: "หมดอายุ",
 };
 
 const russianPatterns: Array<[RegExp, (...matches: string[]) => string]> = [
@@ -318,20 +583,39 @@ const russianPatterns: Array<[RegExp, (...matches: string[]) => string]> = [
   [/^We sent an?\s+(?:six|eight)-digit verification code to\s+(.+)\.$/, (email) => `Мы отправили код подтверждения на ${email}.`],
   [/^Invoice expires in\s+(.+)$/, (time) => `Счёт истекает через ${time}`],
   [/^(.+)\s+available$/, (count) => `Доступно: ${count}`],
+  [/^Allowed quantity:\s*(.+)$/, (quantity) => `Допустимое количество: ${quantity}`],
+  [/^Showing\s+(.+)\s+products?$/, (count) => `Показано товаров: ${count}`],
+  [/^(.+)\s+Sold$/, (count) => `Продано: ${count}`],
+];
+
+const thaiPatterns: Array<[RegExp, (...matches: string[]) => string]> = [
+  [/^Hello,\s+(.+)$/, (name) => `สวัสดี ${name}`],
+  [/^Minimum amount:\s*\$(.+)$/, (amount) => `จำนวนขั้นต่ำ: $${amount}`],
+  [/^Order\s+(.+)$/, (number) => `คำสั่งซื้อ ${number}`],
+  [/^(.+)\s+items?$/, (count) => `${count} รายการ`],
+  [/^Orders using\s+(.+)$/, (email) => `คำสั่งซื้อของ ${email}`],
+  [/^We sent an?\s+(?:six|eight)-digit verification code to\s+(.+)\.$/, (email) => `เราได้ส่งรหัสยืนยันไปยัง ${email}`],
+  [/^Invoice expires in\s+(.+)$/, (time) => `ใบแจ้งชำระหมดอายุใน ${time}`],
+  [/^(.+)\s+available$/, (count) => `พร้อมจำหน่าย ${count}`],
+  [/^Allowed quantity:\s*(.+)$/, (quantity) => `จำนวนที่อนุญาต: ${quantity}`],
+  [/^Showing\s+(.+)\s+products?$/, (count) => `แสดงสินค้า ${count} รายการ`],
+  [/^(.+)\s+Sold$/, (count) => `ขายแล้ว ${count}`],
 ];
 
 const originalText = new WeakMap<Text, string>();
 const originalAttributes = new WeakMap<Element, Map<string, string>>();
 const translatedAttributes = ["placeholder", "title", "aria-label"];
 
-function translateValue(value: string) {
+function translateValue(value: string, language: StoreLanguage) {
   const trimmed = value.trim();
   if (!trimmed) return value;
   const normalized = trimmed.replace(/\s+/g, " ");
 
-  let translated = russianText[normalized];
+  const textMap = language === "th" ? thaiText : russianText;
+  const patterns = language === "th" ? thaiPatterns : russianPatterns;
+  let translated = textMap[normalized];
   if (!translated) {
-    for (const [pattern, formatter] of russianPatterns) {
+    for (const [pattern, formatter] of patterns) {
       const match = normalized.match(pattern);
       if (match) {
         translated = formatter(...match.slice(1));
@@ -359,16 +643,17 @@ function isExcluded(node: Node) {
   );
 }
 
-function updatePage(root: HTMLElement, useRussian: boolean) {
+function updatePage(root: HTMLElement, language: StoreLanguage) {
+  const shouldTranslate = language !== "en";
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let current = walker.nextNode();
 
   while (current) {
     const textNode = current as Text;
     if (!isExcluded(textNode)) {
-      if (useRussian) {
+      if (shouldTranslate) {
         const source = originalText.get(textNode) ?? textNode.data;
-        const translated = translateValue(source);
+        const translated = translateValue(source, language);
         if (translated !== source) {
           originalText.set(textNode, source);
           if (textNode.data !== translated) textNode.data = translated;
@@ -389,10 +674,10 @@ function updatePage(root: HTMLElement, useRussian: boolean) {
     for (const attribute of translatedAttributes) {
       if (!element.hasAttribute(attribute)) continue;
 
-      if (useRussian) {
+      if (shouldTranslate) {
         const saved = originalAttributes.get(element);
         const source = saved?.get(attribute) ?? element.getAttribute(attribute) ?? "";
-        const translated = translateValue(source);
+        const translated = translateValue(source, language);
         if (translated !== source) {
           const values = saved ?? new Map<string, string>();
           values.set(attribute, source);
@@ -421,7 +706,7 @@ export default function RussianWebsiteTranslator() {
     const root = document.body;
     const observer = new MutationObserver(() => {
       observer.disconnect();
-      updatePage(root, language === "ru");
+      updatePage(root, language);
       observer.observe(root, {
         childList: true,
         subtree: true,
@@ -431,7 +716,7 @@ export default function RussianWebsiteTranslator() {
       });
     });
 
-    updatePage(root, language === "ru");
+    updatePage(root, language);
     observer.observe(root, {
       childList: true,
       subtree: true,
