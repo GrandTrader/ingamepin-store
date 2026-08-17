@@ -173,21 +173,21 @@ export default function InvoiceBuilder({
     return fields;
   }
 
-  function saveDraft() {
+  function saveDraft(items: InvoiceLineDraft[] = lineItems) {
     if (typeof window === "undefined") return;
 
     const draft: InvoiceDraft = {
       fields: readFormFields(),
-      lineItems,
+      lineItems: items,
     };
     window.localStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(draft));
     setDraftStatus("Draft saved automatically");
   }
 
-  function scheduleDraftSave() {
+  function scheduleDraftSave(items?: InvoiceLineDraft[]) {
     setDraftStatus("Saving draft…");
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    draftTimerRef.current = setTimeout(saveDraft, 500);
+    draftTimerRef.current = setTimeout(() => saveDraft(items), 500);
   }
 
   useEffect(() => {
@@ -219,16 +219,43 @@ export default function InvoiceBuilder({
       });
 
       if (Array.isArray(draft.lineItems) && draft.lineItems.length > 0) {
-        setLineItems(draft.lineItems);
+        const restoredLines = draft.lineItems.map((line) => {
+          const categoryExists = categories.some(
+            (category) => category.id === line.categoryId,
+          );
+          const restoredCategoryId = categoryExists
+            ? line.categoryId
+            : firstCategoryId;
+          const productExists = products.some(
+            (product) =>
+              product.id === line.productId &&
+              product.category_id === restoredCategoryId,
+          );
+          const restoredProductId = productExists ? line.productId : "";
+          const optionExists = options.some(
+            (option) =>
+              option.id === line.optionId &&
+              option.product_id === restoredProductId,
+          );
+
+          return {
+            ...line,
+            categoryId: restoredCategoryId,
+            productId: restoredProductId,
+            optionId: optionExists ? line.optionId : "",
+          };
+        });
+
+        setLineItems(restoredLines);
         setNextLineId(
-          Math.max(...draft.lineItems.map((line) => Number(line.id) || 0)) + 1,
+          Math.max(...restoredLines.map((line) => Number(line.id) || 0)) + 1,
         );
       }
       setDraftStatus("Saved draft restored");
     } catch {
       window.localStorage.removeItem(INVOICE_DRAFT_KEY);
     }
-  }, []);
+  }, [categories, firstCategoryId, options, products]);
 
   useEffect(() => {
     const email = customer.email.trim().toLowerCase();
@@ -280,18 +307,20 @@ export default function InvoiceBuilder({
     id: number,
     changes: Partial<InvoiceLineDraft>,
   ) {
-    setLineItems((current) =>
-      current.map((line) =>
+    setLineItems((current) => {
+      const updated = current.map((line) =>
         line.id === id ? { ...line, ...changes } : line,
-      ),
-    );
-    scheduleDraftSave();
+      );
+      scheduleDraftSave(updated);
+      return updated;
+    });
   }
 
   function addLine() {
-    setLineItems((current) => [
-      ...current,
-      {
+    setLineItems((current) => {
+      const updated = [
+        ...current,
+        {
         id: nextLineId,
         categoryId: firstCategoryId,
         productId: "",
@@ -300,15 +329,20 @@ export default function InvoiceBuilder({
         unitPrice: "",
         paymentMethod: "USDT TRC20",
         transactionId: "",
-      },
-    ]);
+        },
+      ];
+      scheduleDraftSave(updated);
+      return updated;
+    });
     setNextLineId((current) => current + 1);
-    scheduleDraftSave();
   }
 
   function removeLine(id: number) {
-    setLineItems((current) => current.filter((line) => line.id !== id));
-    scheduleDraftSave();
+    setLineItems((current) => {
+      const updated = current.filter((line) => line.id !== id);
+      scheduleDraftSave(updated);
+      return updated;
+    });
   }
 
   function generatePreview(formData: FormData) {
@@ -442,8 +476,8 @@ export default function InvoiceBuilder({
         <form
           ref={formRef}
           action={generatePreview}
-          onInput={scheduleDraftSave}
-          onChange={scheduleDraftSave}
+          onInput={() => scheduleDraftSave()}
+          onChange={() => scheduleDraftSave()}
           className="mt-8 grid gap-6 xl:grid-cols-2"
         >
           <div className="xl:col-span-2 flex items-center justify-end">
@@ -644,6 +678,9 @@ export default function InvoiceBuilder({
                           }
                           className={inputClass}
                         >
+                          <option value="" disabled>
+                            Select category
+                          </option>
                           {categories.map((category) => (
                             <option key={category.id} value={category.id}>
                               {category.name}
