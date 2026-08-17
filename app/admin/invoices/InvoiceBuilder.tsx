@@ -88,6 +88,19 @@ type CustomerDetails = {
 
 const INVOICE_DRAFT_KEY = "ingamepin-admin-invoice-draft-v2";
 
+const PAYMENT_METHODS = [
+  "USDT TRC20",
+  "USDT BEP20",
+  "USDT ERC20",
+  "USDT SOLANA",
+  "PayPalych",
+  "FreeKassa",
+  "Wallet",
+  "Bank transfer",
+  "Cash",
+  "Other",
+] as const;
+
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
@@ -782,29 +795,39 @@ export default function InvoiceBuilder({
                     </div>
 
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <label className="block">
-                        <span className="text-sm font-bold">Payment method</span>
-                        <select
+                      <fieldset className="block">
+                        <legend className="text-sm font-bold">Payment method</legend>
+                        <input
+                          type="hidden"
+                          name={`payment_method_${line.id}`}
                           value={line.paymentMethod}
-                          onChange={(event) =>
-                            updateLine(line.id, {
-                              paymentMethod: event.target.value,
-                            })
-                          }
-                          className={inputClass}
-                        >
-                          <option value="USDT TRC20">USDT TRC20</option>
-                          <option value="USDT BEP20">USDT BEP20</option>
-                          <option value="USDT ERC20">USDT ERC20</option>
-                          <option value="USDT SOLANA">USDT Solana</option>
-                          <option value="PayPalych">PayPalych</option>
-                          <option value="FreeKassa">FreeKassa</option>
-                          <option value="Wallet">Wallet</option>
-                          <option value="Bank transfer">Bank transfer</option>
-                          <option value="Cash">Cash</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </label>
+                        />
+                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {PAYMENT_METHODS.map((method) => {
+                            const selected = line.paymentMethod === method;
+
+                            return (
+                              <button
+                                key={method}
+                                type="button"
+                                aria-pressed={selected}
+                                onClick={() =>
+                                  updateLine(line.id, {
+                                    paymentMethod: method,
+                                  })
+                                }
+                                className={`min-h-11 rounded-xl border px-3 py-2 text-left text-xs font-bold transition ${
+                                  selected
+                                    ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                                    : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+                                }`}
+                              >
+                                {method}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </fieldset>
 
                       <label className="block">
                         <span className="text-sm font-bold">
