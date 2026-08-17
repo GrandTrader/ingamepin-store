@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
 
@@ -206,6 +207,7 @@ function isPhysicalProduct(item: CartItem) {
 }
 
 export default function CheckoutPage() {
+  const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [checkoutSource, setCheckoutSource] = useState<
     "buyNowItem" | "cart"
@@ -785,11 +787,11 @@ export default function CheckoutPage() {
       ].forEach((key) => localStorage.removeItem(key));
 
       window.dispatchEvent(new Event("cartUpdated"));
-      window.location.href = "/checkout/success";
+      router.push("/checkout/success");
       return;
     }
 
-    window.location.href = paymentMethod === "usdt" ? "/checkout/usdt" : "/checkout/payment";
+    router.push(paymentMethod === "usdt" ? "/checkout/usdt" : "/checkout/payment");
   } catch (error) {
     setMessage(
       error instanceof Error

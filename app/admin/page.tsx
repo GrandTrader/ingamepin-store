@@ -92,20 +92,12 @@ export default async function AdminDashboard({
   today.setUTCHours(0, 0, 0, 0);
 
   const [
-    productsResult,
     ordersResult,
     paymentsResult,
     processingOrdersResult,
     recentOrdersResult,
     revenueResult,
   ] = await Promise.all([
-    supabase
-      .from("products")
-      .select("*", {
-        count: "exact",
-        head: true,
-      }),
-
     supabase
       .from("orders")
       .select("*", {

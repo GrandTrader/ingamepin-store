@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import UsdtQrCode from "@/components/UsdtQrCode";
@@ -26,6 +27,7 @@ export default function WalletUsdtPayment({
 }: {
   requestId: string;
 }) {
+  const router = useRouter();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState<"amount" | "address" | null>(null);
@@ -49,15 +51,14 @@ export default function WalletUsdtPayment({
 
       setInvoice(result.invoice);
       if (result.topupStatus === "APPROVED") {
-        window.location.href =
-          "/account/wallet?success=Wallet+top-up+completed";
+        router.push("/account/wallet?success=Wallet+top-up+completed");
       }
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Unable to check payment.",
       );
     }
-  }, [requestId]);
+  }, [requestId, router]);
 
   useEffect(() => {
     void checkPayment();

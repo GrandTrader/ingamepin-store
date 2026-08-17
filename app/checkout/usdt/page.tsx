@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import UsdtQrCode from "@/components/UsdtQrCode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -32,6 +33,7 @@ function formatTime(seconds: number) {
 }
 
 export default function DirectUsdtPaymentPage() {
+  const router = useRouter();
   const [order, setOrder] = useState<PendingOrder | null>(null);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -95,14 +97,14 @@ export default function DirectUsdtPaymentPage() {
         result.paymentStatus === "VERIFIED"
       ) {
         localStorage.setItem("latestOrder", JSON.stringify(order));
-        window.location.href = "/checkout/success";
+        router.push("/checkout/success");
       }
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Unable to check payment.",
       );
     }
-  }, [invoice, order]);
+  }, [invoice, order, router]);
 
   useEffect(() => {
     if (!invoice || invoice.status !== "PENDING") return;
