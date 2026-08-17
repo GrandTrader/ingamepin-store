@@ -86,7 +86,7 @@ type CustomerDetails = {
   address: string;
 };
 
-const INVOICE_DRAFT_KEY = "ingamepin-admin-invoice-draft-v1";
+const INVOICE_DRAFT_KEY = "ingamepin-admin-invoice-draft-v2";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
@@ -138,7 +138,7 @@ export default function InvoiceBuilder({
   const [lineItems, setLineItems] = useState<InvoiceLineDraft[]>([
     {
       id: 1,
-      categoryId: firstCategoryId,
+      categoryId: "",
       productId: "",
       optionId: "",
       quantity: 1,
@@ -331,7 +331,7 @@ export default function InvoiceBuilder({
         ...current,
         {
         id: nextLineId,
-        categoryId: firstCategoryId,
+        categoryId: "",
         productId: "",
         optionId: "",
         quantity: 1,
