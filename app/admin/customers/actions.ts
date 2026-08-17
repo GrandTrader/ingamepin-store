@@ -11,12 +11,9 @@ function customerRedirect(
   kind: "success" | "error",
   message: string,
 ): never {
-  const query = new URLSearchParams({
-    selected: customerId,
-    [kind]: message,
-  });
+  const query = new URLSearchParams({ [kind]: message });
 
-  redirect(`/admin/customers?${query.toString()}`);
+  redirect(`/admin/customers/${customerId}?${query.toString()}`);
 }
 
 async function requireAdministrator() {

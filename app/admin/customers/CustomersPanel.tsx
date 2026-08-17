@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   type ReactNode,
   useMemo,
@@ -353,17 +354,12 @@ export default function CustomersPanel({
                     )}
                   </td>
                   <td className="px-4 py-4">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        selectCustomer(
-                          customer.id,
-                        )
-                      }
+                    <Link
+                      href={`/admin/customers/${customer.id}`}
                       className="rounded-lg border border-slate-200 px-3 py-2 font-bold text-blue-600 hover:bg-blue-50"
                     >
                       View
-                    </button>
+                    </Link>
                   </td>
                 </tr>
               ),
