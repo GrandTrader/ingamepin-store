@@ -442,7 +442,11 @@ export default function InvoiceBuilder({
 
       const originalTitle = document.title;
       const fileDate = preview.invoiceDate || new Date().toISOString().slice(0, 10);
-      document.title = `InGamePIN-Invoice-${fileDate}`;
+      const invoiceNumber = preview.invoiceNumber
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      document.title = `InGamePIN-Invoice-${invoiceNumber}-${fileDate}`;
       window.print();
       document.title = originalTitle;
     } catch (error) {
