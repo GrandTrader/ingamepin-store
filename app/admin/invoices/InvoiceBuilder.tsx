@@ -703,8 +703,10 @@ export default function InvoiceBuilder({
                       <label className="block">
                         <span className="text-sm font-bold">Product</span>
                         <select
+                          key={`${line.id}:${line.categoryId}:${line.productId}`}
+                          name={`invoice_product_${line.id}`}
                           required
-                          value={line.productId}
+                          defaultValue={line.productId}
                           onChange={(event) =>
                             updateLine(line.id, {
                               productId: event.target.value,
