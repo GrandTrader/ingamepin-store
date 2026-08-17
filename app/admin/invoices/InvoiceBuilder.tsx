@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Category = {
   id: string;
@@ -73,6 +73,21 @@ type InvoiceLineDraft = {
   transactionId: string;
 };
 
+type InvoiceDraft = {
+  fields: Record<string, string>;
+  lineItems: InvoiceLineDraft[];
+};
+
+type CustomerDetails = {
+  name: string;
+  email: string;
+  country: string;
+  taxpayerId: string;
+  address: string;
+};
+
+const INVOICE_DRAFT_KEY = "ingamepin-admin-invoice-draft-v1";
+
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
@@ -115,6 +130,9 @@ export default function InvoiceBuilder({
   defaultInvoiceNumber,
   defaultInvoiceDate,
 }: InvoiceBuilderProps) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const customerLookupRef = useRef<AbortController | null>(null);
   const firstCategoryId = categories[0]?.id ?? "";
   const [lineItems, setLineItems] = useState<InvoiceLineDraft[]>([
     {
@@ -133,6 +151,130 @@ export default function InvoiceBuilder({
   const [savedInvoiceId, setSavedInvoiceId] = useState("");
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [draftStatus, setDraftStatus] = useState("Draft ready");
+  const [customerLookupStatus, setCustomerLookupStatus] = useState("");
+  const [customer, setCustomer] = useState<CustomerDetails>({
+    name: "",
+    email: "",
+    country: "",
+    taxpayerId: "",
+    address: "",
+  });
+
+  function readFormFields() {
+    const form = formRef.current;
+    if (!form) return {};
+
+    const fields: Record<string, string> = {};
+    const formData = new FormData(form);
+    for (const [key, value] of formData.entries()) {
+      if (typeof value === "string") fields[key] = value;
+    }
+    return fields;
+  }
+
+  function saveDraft() {
+    if (typeof window === "undefined") return;
+
+    const draft: InvoiceDraft = {
+      fields: readFormFields(),
+      lineItems,
+    };
+    window.localStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(draft));
+    setDraftStatus("Draft saved automatically");
+  }
+
+  function scheduleDraftSave() {
+    setDraftStatus("Saving draft…");
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(saveDraft, 500);
+  }
+
+  useEffect(() => {
+    const rawDraft = window.localStorage.getItem(INVOICE_DRAFT_KEY);
+    if (!rawDraft) return;
+
+    try {
+      const draft = JSON.parse(rawDraft) as InvoiceDraft;
+      const form = formRef.current;
+      if (!form || !draft.fields) return;
+
+      for (const [name, value] of Object.entries(draft.fields)) {
+        const field = form.elements.namedItem(name);
+        if (
+          field instanceof HTMLInputElement ||
+          field instanceof HTMLSelectElement ||
+          field instanceof HTMLTextAreaElement
+        ) {
+          field.value = value;
+        }
+      }
+
+      setCustomer({
+        name: draft.fields.customer_name ?? "",
+        email: draft.fields.customer_email ?? "",
+        country: draft.fields.customer_country ?? "",
+        taxpayerId: draft.fields.customer_taxpayer_id ?? "",
+        address: draft.fields.customer_address ?? "",
+      });
+
+      if (Array.isArray(draft.lineItems) && draft.lineItems.length > 0) {
+        setLineItems(draft.lineItems);
+        setNextLineId(
+          Math.max(...draft.lineItems.map((line) => Number(line.id) || 0)) + 1,
+        );
+      }
+      setDraftStatus("Saved draft restored");
+    } catch {
+      window.localStorage.removeItem(INVOICE_DRAFT_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    const email = customer.email.trim().toLowerCase();
+    if (!email.includes("@")) {
+      setCustomerLookupStatus("");
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      customerLookupRef.current?.abort();
+      const controller = new AbortController();
+      customerLookupRef.current = controller;
+      setCustomerLookupStatus("Checking previous invoices…");
+
+      try {
+        const response = await fetch(
+          `/api/admin/invoices?customerEmail=${encodeURIComponent(email)}`,
+          { signal: controller.signal },
+        );
+        const result = (await response.json()) as {
+          customer?: CustomerDetails;
+          error?: string;
+        };
+
+        if (!response.ok) throw new Error(result.error ?? "Lookup failed.");
+        if (!result.customer) {
+          setCustomerLookupStatus("No previous customer details found");
+          return;
+        }
+
+        setCustomer((current) => ({
+          name: result.customer?.name || current.name,
+          email: current.email,
+          country: result.customer?.country || current.country,
+          taxpayerId: result.customer?.taxpayerId || current.taxpayerId,
+          address: result.customer?.address || current.address,
+        }));
+        setCustomerLookupStatus("Customer details filled automatically");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setCustomerLookupStatus("Unable to load previous customer details");
+      }
+    }, 650);
+
+    return () => clearTimeout(timer);
+  }, [customer.email]);
 
   function updateLine(
     id: number,
@@ -143,6 +285,7 @@ export default function InvoiceBuilder({
         line.id === id ? { ...line, ...changes } : line,
       ),
     );
+    scheduleDraftSave();
   }
 
   function addLine() {
@@ -160,10 +303,12 @@ export default function InvoiceBuilder({
       },
     ]);
     setNextLineId((current) => current + 1);
+    scheduleDraftSave();
   }
 
   function removeLine(id: number) {
     setLineItems((current) => current.filter((line) => line.id !== id));
+    scheduleDraftSave();
   }
 
   function generatePreview(formData: FormData) {
@@ -238,6 +383,8 @@ export default function InvoiceBuilder({
 
         invoiceId = result.id;
         setSavedInvoiceId(invoiceId);
+        window.localStorage.removeItem(INVOICE_DRAFT_KEY);
+        setDraftStatus("Invoice saved permanently");
       }
 
       window.print();
@@ -293,9 +440,17 @@ export default function InvoiceBuilder({
         </header>
 
         <form
+          ref={formRef}
           action={generatePreview}
+          onInput={scheduleDraftSave}
+          onChange={scheduleDraftSave}
           className="mt-8 grid gap-6 xl:grid-cols-2"
         >
+          <div className="xl:col-span-2 flex items-center justify-end">
+            <p className="rounded-full bg-blue-50 px-4 py-2 text-xs font-bold text-blue-700">
+              {draftStatus}
+            </p>
+          </div>
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-xl font-black">Invoice details</h2>
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -334,7 +489,18 @@ export default function InvoiceBuilder({
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-bold">Customer name</span>
-                <input name="customer_name" required className={inputClass} />
+                <input
+                  name="customer_name"
+                  required
+                  value={customer.name}
+                  onChange={(event) =>
+                    setCustomer((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                  className={inputClass}
+                />
               </label>
               <label className="block">
                 <span className="text-sm font-bold">Customer email</span>
@@ -342,15 +508,33 @@ export default function InvoiceBuilder({
                   name="customer_email"
                   type="email"
                   required
+                  value={customer.email}
+                  onChange={(event) =>
+                    setCustomer((current) => ({
+                      ...current,
+                      email: event.target.value,
+                    }))
+                  }
                   className={inputClass}
                 />
+                {customerLookupStatus && (
+                  <span className="mt-2 block text-xs font-semibold text-blue-600">
+                    {customerLookupStatus}
+                  </span>
+                )}
               </label>
               <label className="block">
                 <span className="text-sm font-bold">Country</span>
                 <select
                   name="customer_country"
                   required
-                  defaultValue=""
+                  value={customer.country}
+                  onChange={(event) =>
+                    setCustomer((current) => ({
+                      ...current,
+                      country: event.target.value,
+                    }))
+                  }
                   className={inputClass}
                 >
                   <option value="" disabled>
@@ -371,6 +555,13 @@ export default function InvoiceBuilder({
                   name="customer_taxpayer_id"
                   maxLength={100}
                   placeholder="Optional tax ID / TIN"
+                  value={customer.taxpayerId}
+                  onChange={(event) =>
+                    setCustomer((current) => ({
+                      ...current,
+                      taxpayerId: event.target.value,
+                    }))
+                  }
                   className={inputClass}
                 />
               </label>
@@ -379,6 +570,13 @@ export default function InvoiceBuilder({
                 <textarea
                   name="customer_address"
                   rows={3}
+                  value={customer.address}
+                  onChange={(event) =>
+                    setCustomer((current) => ({
+                      ...current,
+                      address: event.target.value,
+                    }))
+                  }
                   className={inputClass}
                 />
               </label>

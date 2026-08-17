@@ -39,32 +39,95 @@ function clean(value: unknown, maximum = 500) {
   return String(value ?? "").trim().slice(0, maximum);
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+async function requireAdministrator() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!user) {
+  if (!user) {
+    return { error: "Authentication is required.", status: 401 } as const;
+  }
+
+  const access = await supabase
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!access.data) {
+    return { error: "Administrator access is required.", status: 403 } as const;
+  }
+
+  return { user } as const;
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requireAdministrator();
+    if ("error" in auth) {
       return NextResponse.json(
-        { error: "Authentication is required." },
-        { status: 401 },
+        { error: auth.error },
+        { status: auth.status },
       );
     }
 
-    const access = await supabase
-      .from("admin_users")
-      .select("user_id")
-      .eq("user_id", user.id)
+    const email = clean(
+      request.nextUrl.searchParams.get("customerEmail"),
+      320,
+    ).toLowerCase();
+    if (!email.includes("@")) {
+      return NextResponse.json(
+        { error: "Enter a valid customer email." },
+        { status: 400 },
+      );
+    }
+
+    const result = await createAdminClient()
+      .from("saved_invoices")
+      .select("invoice_data")
+      .eq("customer_email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    if (!access.data) {
+    if (result.error) {
       return NextResponse.json(
-        { error: "Administrator access is required." },
-        { status: 403 },
+        { error: "Unable to load customer details." },
+        { status: 500 },
       );
     }
+
+    if (!result.data) return NextResponse.json({ customer: null });
+
+    const invoice = result.data.invoice_data as InvoicePayload;
+    return NextResponse.json({
+      customer: {
+        name: clean(invoice.customerName, 200),
+        email,
+        country: clean(invoice.customerCountry, 150),
+        taxpayerId: clean(invoice.customerTaxpayerId, 100),
+        address: clean(invoice.customerAddress, 1000),
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Unable to load customer details." },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await requireAdministrator();
+    if ("error" in auth) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.status },
+      );
+    }
+    const { user } = auth;
 
     const body = (await request.json()) as InvoicePayload;
     const invoiceNumber = clean(body.invoiceNumber, 100);
