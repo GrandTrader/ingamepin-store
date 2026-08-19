@@ -8,6 +8,7 @@ import ManualDeliveryItemCard from "../../ManualDeliveryItemCard";
 import {
   completeManualOrder,
   finalizeManualOrderFromCodes,
+  verifyOrderPaymentManually,
 } from "../../actions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -178,7 +179,7 @@ export default async function OrderReceipt({
       admin
         .from("payments")
         .select(
-          "method, status, amount, currency, transaction_id, gateway_order_id, gateway_payment_id, submitted_at, verified_at",
+          "id, method, status, amount, currency, transaction_id, gateway_order_id, gateway_payment_id, submitted_at, verified_at",
         )
         .eq("order_id", id)
         .order("created_at", { ascending: false })
@@ -347,6 +348,60 @@ export default async function OrderReceipt({
               </div>
             </section>
           </div>
+
+          {payment?.status === "PENDING" && payment.gateway_order_id && (
+            <section className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm sm:p-6">
+              <p className="text-xs font-black uppercase tracking-widest text-amber-700">
+                Admin payment override
+              </p>
+              <h2 className="mt-2 text-xl font-black text-amber-950">
+                Verify payment manually
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-800">
+                Use this only after independently confirming that the full order
+                amount was received. Verification immediately unlocks order
+                delivery and cannot be undone here.
+              </p>
+
+              <form
+                action={verifyOrderPaymentManually}
+                className="mt-5 grid gap-4"
+              >
+                <input type="hidden" name="order_id" value={order.id} />
+                <input type="hidden" name="payment_id" value={payment.id} />
+
+                <label className="block max-w-3xl text-sm font-bold text-slate-800">
+                  Transaction hash or payment reference
+                  <input
+                    name="transaction_id"
+                    required
+                    minLength={6}
+                    maxLength={200}
+                    autoComplete="off"
+                    placeholder="Enter the confirmed transaction reference"
+                    className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-4 py-3 font-mono outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                  />
+                </label>
+
+                <label className="flex max-w-3xl items-start gap-3 rounded-xl border border-amber-200 bg-white p-4 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    name="payment_confirmed"
+                    required
+                    className="mt-0.5 h-4 w-4"
+                  />
+                  <span>
+                    I independently confirmed receipt of the full payment of{" "}
+                    <strong>{formatMoney(order.total, order.currency)}</strong>.
+                  </span>
+                </label>
+
+                <button className="w-fit rounded-xl bg-amber-600 px-6 py-3 font-black text-white transition hover:bg-amber-500">
+                  Verify Payment Manually
+                </button>
+              </form>
+            </section>
+          )}
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-lg font-black">Purchased products</h2>

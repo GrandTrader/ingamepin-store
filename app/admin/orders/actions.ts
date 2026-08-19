@@ -4,8 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { sendOrderStatusEmails } from "@/lib/email";
+import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
+import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { sendVerifiedPaymentNotification } from "@/lib/verified-payment-notification";
 
 function ordersRedirect(
   kind: "error" | "success",
@@ -47,6 +50,108 @@ async function requireAdministrator() {
   }
 
   return user;
+}
+
+export async function verifyOrderPaymentManually(formData: FormData) {
+  await requireAdministrator();
+
+  const orderId = String(formData.get("order_id") ?? "").trim();
+  const paymentId = String(formData.get("payment_id") ?? "").trim();
+  const transactionId = String(
+    formData.get("transaction_id") ?? "",
+  ).trim();
+  const confirmed = formData.get("payment_confirmed") === "on";
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  if (!uuidPattern.test(orderId) || !uuidPattern.test(paymentId)) {
+    ordersRedirect("error", "Order payment details are invalid.", orderId);
+  }
+
+  if (transactionId.length < 6 || transactionId.length > 200) {
+    ordersRedirect(
+      "error",
+      "Enter a valid transaction hash or payment reference.",
+      orderId,
+    );
+  }
+
+  if (!confirmed) {
+    ordersRedirect(
+      "error",
+      "Confirm that the full payment was received before verification.",
+      orderId,
+    );
+  }
+
+  const admin = createAdminClient();
+  const paymentResult = await admin
+    .from("payments")
+    .select("id, order_id, status, gateway_order_id")
+    .eq("id", paymentId)
+    .eq("order_id", orderId)
+    .maybeSingle();
+  const payment = paymentResult.data;
+
+  if (paymentResult.error || !payment) {
+    ordersRedirect(
+      "error",
+      paymentResult.error?.message ?? "Payment was not found.",
+      orderId,
+    );
+  }
+
+  if (payment.status === "VERIFIED") {
+    ordersRedirect("success", "Payment is already verified.", orderId);
+  }
+
+  if (
+    !["PENDING", "SUBMITTED"].includes(payment.status) ||
+    !payment.gateway_order_id
+  ) {
+    ordersRedirect(
+      "error",
+      "This payment cannot be verified manually.",
+      orderId,
+    );
+  }
+
+  const completionResult = await admin.rpc("complete_binance_payment", {
+    p_payment_id: payment.id,
+    p_prepay_id: payment.gateway_order_id,
+    p_transaction_id: transactionId,
+  });
+
+  if (completionResult.error) {
+    ordersRedirect("error", completionResult.error.message, orderId);
+  }
+
+  try {
+    await prepareOrderForManualFulfillment(orderId);
+  } catch (error) {
+    ordersRedirect(
+      "error",
+      error instanceof Error
+        ? error.message
+        : "Unable to prepare the paid order for delivery.",
+      orderId,
+    );
+  }
+
+  await sendVerifiedPaymentNotification(orderId);
+  await notifyPaidOrderInTelegram(orderId);
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}/receipt`);
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin/gift-codes");
+
+  ordersRedirect(
+    "success",
+    "Payment verified manually. The order is ready for delivery.",
+    orderId,
+  );
 }
 
 async function finalizeOrderWhenAllCodesSent(orderId: string) {
