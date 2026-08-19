@@ -33,7 +33,7 @@ export default function Footer() {
 
         <div className="bg-black/20">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-center text-xs text-slate-500 sm:flex-row sm:px-5 sm:text-left">
-            <p>{"\u00A9"} {currentYear} InGamePin, operated by AMAN G. {t("rightsReserved")}</p>
+            <p>{"\u00A9"} {currentYear} InGamePin, {t("operatedBy")} {t("rightsReserved")}</p>
             <div className="flex flex-col items-center gap-3 sm:items-end">
               <ThemeModeSwitch />
               <p>{t("trademarkNotice")}</p>
@@ -104,7 +104,7 @@ export default function Footer() {
         </div>
 
         <p className="mt-5 text-center text-[11px] text-slate-500">
-          {"\u00A9"} {currentYear} InGamePin, operated by AMAN G. {t("rightsReserved")}
+          {"\u00A9"} {currentYear} InGamePin, {t("operatedBy")} {t("rightsReserved")}
         </p>
       </div>
 
@@ -275,7 +275,7 @@ export default function Footer() {
       <div className="hidden border-t border-white/10 bg-black/20 sm:block">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 py-5 text-center text-xs text-slate-500 sm:flex-row sm:text-left">
           <p>
-            {"\u00A9"} {currentYear} InGamePin, operated by AMAN G. {t("rightsReserved")}
+            {"\u00A9"} {currentYear} InGamePin, {t("operatedBy")} {t("rightsReserved")}
           </p>
 
           <div className="flex flex-col items-center gap-3 sm:items-end">

@@ -46,6 +46,7 @@ type ProductPurchaseFormProps = {
     name: string;
     nameRu?: string | null;
     imageUrl: string | null;
+    imageUrlRu?: string | null;
     currency: string;
     productType: string;
     deliveryType: string;
@@ -115,6 +116,10 @@ export default function ProductPurchaseForm({
   } = useStorePreferences();
   const localizedProductName =
     language === "ru" && product.nameRu && !hasBrokenProductText(product.nameRu) ? product.nameRu : product.name;
+  const localizedProductImage =
+    language === "ru" && product.imageUrlRu
+      ? product.imageUrlRu
+      : product.imageUrl;
   const isGiftCard = product.productType === "GIFT_CARD";
   const isGamingTopup = product.productType === "GAME_TOPUP";
 
@@ -443,7 +448,7 @@ export default function ProductPurchaseForm({
       customValue: selectedCustomValue,
       fulfillmentMode: selectedFulfillmentMode,
       playerId: normalizedPlayerId,
-      image: product.imageUrl ?? undefined,
+      image: localizedProductImage ?? undefined,
       price: selectedUnitPrice,
       unitPrice: selectedUnitPrice,
       totalPrice,

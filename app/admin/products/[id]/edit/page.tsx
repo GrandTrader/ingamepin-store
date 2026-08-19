@@ -69,6 +69,7 @@ type ProductRow = {
   description: string | null;
   description_ru: string | null;
   image_url: string | null;
+  image_url_ru: string | null;
   region: string;
   price: number | string;
   currency: string;
@@ -136,6 +137,7 @@ export default async function EditProductPage({
           description,
           description_ru,
           image_url,
+          image_url_ru,
           region,
           price,
           currency,
@@ -331,6 +333,15 @@ export default async function EditProductPage({
                   fileName="image_file"
                   defaultValue={product.image_url}
                   variant="product"
+                />
+
+                <ResponsiveImageField
+                  label="Product image (Russian)"
+                  name="image_url_ru"
+                  fileName="image_file_ru"
+                  defaultValue={product.image_url_ru}
+                  variant="product"
+                  helpText="Shown when the customer selects Russian. If empty, the standard product image is used."
                 />
 
                 <label className="md:col-span-2">
@@ -554,7 +565,6 @@ export default async function EditProductPage({
     </div>
   );
 }
-
 
 
 

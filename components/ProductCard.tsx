@@ -11,6 +11,7 @@ export type ProductCardData = {
   category: string;
   price: number;
   image: string;
+  imageRu?: string | null;
   badge: string;
   badgeRu?: string | null;
   stock: number;
@@ -29,9 +30,7 @@ type Props = {
 
 export default function ProductCard({ product }: Props) {
   const { language, t, formatPrice } = useStorePreferences();
-  const [showImage, setShowImage] = useState(
-    Boolean(product.image),
-  );
+  const [failedImages, setFailedImages] = useState<string[]>([]);
   const isOutOfStock =
     !product.isBulkOrder && product.stock <= 0;
 
@@ -44,6 +43,13 @@ export default function ProductCard({ product }: Props) {
     language === "ru" && product.nameRu ? product.nameRu : product.name;
   const localizedBadge =
     language === "ru" && product.badgeRu ? product.badgeRu : product.badge;
+  const russianImage = language === "ru" ? product.imageRu : null;
+  const localizedImage =
+    russianImage && !failedImages.includes(russianImage)
+      ? russianImage
+      : product.image && !failedImages.includes(product.image)
+        ? product.image
+        : "";
 
   const stockClassName = isOutOfStock
     ? "border-red-400/30 bg-red-400/10 text-red-300"
@@ -83,12 +89,19 @@ export default function ProductCard({ product }: Props) {
             {stockLabel}
           </span>
 
-          {showImage ? (
+          {localizedImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={product.image}
+              src={localizedImage}
               alt={localizedName}
               loading="lazy"
-              onError={() => setShowImage(false)}
+              onError={() =>
+                setFailedImages((current) =>
+                  current.includes(localizedImage)
+                    ? current
+                    : [...current, localizedImage],
+                )
+              }
               className="h-full w-full object-fill transition duration-500 group-hover:scale-105"
             />
           ) : (

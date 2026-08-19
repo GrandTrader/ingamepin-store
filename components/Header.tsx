@@ -19,6 +19,7 @@ type SearchProduct = {
   slug: string;
   href: string;
   image: string | null;
+  imageRu: string | null;
   price: number;
   badge: string | null;
   category: string;
@@ -516,11 +517,29 @@ export default function Header() {
                         className="flex items-center gap-3 border-b border-white/10 p-3 transition last:border-b-0 hover:bg-white/5"
                       >
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-cyan-400/10 font-black text-cyan-300">
-                          {product.image ? (
+                          {(language === "ru" && product.imageRu
+                            ? product.imageRu
+                            : product.image) ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={product.image}
+                              src={
+                                language === "ru" && product.imageRu
+                                  ? product.imageRu
+                                  : product.image ?? ""
+                              }
                               alt=""
+                              onError={(event) => {
+                                if (
+                                  product.image &&
+                                  event.currentTarget.dataset.fallbackApplied !== "true"
+                                ) {
+                                  event.currentTarget.dataset.fallbackApplied = "true";
+                                  event.currentTarget.src = product.image;
+                                  return;
+                                }
+
+                                event.currentTarget.style.display = "none";
+                              }}
                               className="h-full w-full object-fill"
                             />
                           ) : (

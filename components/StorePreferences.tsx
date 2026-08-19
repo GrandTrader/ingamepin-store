@@ -63,6 +63,7 @@ const translations = {
       "Confirm your order details before submitting payment.",
     footerSummary:
       "Gaming top-ups, gift cards, subscriptions and game keys with secure digital delivery.",
+    operatedBy: "operated by AMAN G.",
     rightsReserved: "All rights reserved.",
     trademarkNotice:
       "Product names and trademarks belong to their respective owners.",
@@ -144,6 +145,7 @@ const translations = {
       "Проверьте данные заказа перед отправкой платежа.",
     footerSummary:
       "Пополнение игр, подарочные карты, подписки и игровые ключи с безопасной цифровой доставкой.",
+    operatedBy: "управляется компанией AMAN G.",
     rightsReserved: "Все права защищены.",
     trademarkNotice:
       "Названия товаров и товарные знаки принадлежат их владельцам.",
@@ -224,6 +226,7 @@ const translations = {
     confirmBeforePayment: "ตรวจสอบรายละเอียดคำสั่งซื้อก่อนชำระเงิน",
     footerSummary:
       "เติมเงินเกม บัตรของขวัญ การสมัครสมาชิก และคีย์เกม พร้อมการจัดส่งดิจิทัลที่ปลอดภัย",
+    operatedBy: "ดำเนินงานโดย AMAN G.",
     rightsReserved: "สงวนลิขสิทธิ์",
     trademarkNotice: "ชื่อสินค้าและเครื่องหมายการค้าเป็นของเจ้าของแต่ละราย",
     selectDeliveryMethod: "เลือกวิธีจัดส่ง",

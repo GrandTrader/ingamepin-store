@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import ProductPurchaseForm from "@/app/product/[slug]/ProductPurchaseForm";
+import LocalizedProductImage from "@/components/LocalizedProductImage";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +16,11 @@ type SettingsRow = {
 type ProductRow = {
   id: string;
   name: string;
+  name_ru: string | null;
   slug: string;
   description: string | null;
   image_url: string | null;
+  image_url_ru: string | null;
   currency: string;
   delivery_type: string;
 };
@@ -70,7 +73,7 @@ export default async function PreorderPage() {
       supabase
         .from("products")
         .select(
-          "id, name, slug, description, image_url, currency, delivery_type",
+          "id, name, name_ru, slug, description, image_url, image_url_ru, currency, delivery_type",
         )
         .eq("id", settings.product_id)
         .eq("status", "ACTIVE")
@@ -140,20 +143,18 @@ export default async function PreorderPage() {
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)] lg:gap-8">
           <section className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900">
-            {product.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="aspect-[16/10] w-full object-fill"
-              />
-            ) : (
-              <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
-                {product.name
-                  .charAt(0)
-                  .toUpperCase()}
-              </div>
-            )}
+            <LocalizedProductImage
+              imageUrl={product.image_url}
+              imageUrlRu={product.image_url_ru}
+              alt={product.name}
+              altRu={product.name_ru}
+              className="aspect-[16/10] w-full object-fill"
+              fallback={
+                <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
+                  {product.name.charAt(0).toUpperCase()}
+                </div>
+              }
+            />
 
             <div className="p-5 sm:p-8">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-400">
@@ -207,7 +208,9 @@ export default async function PreorderPage() {
                 slug: product.slug,
                 categorySlug: "preorder",
                 name: product.name,
+                nameRu: product.name_ru,
                 imageUrl: product.image_url,
+                imageUrlRu: product.image_url_ru,
                 currency: product.currency,
                 productType: "GAME_KEY",
                 deliveryType:

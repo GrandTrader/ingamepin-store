@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { useStorePreferences } from "./StorePreferences";
+
 export type PreorderPopupData = {
   gameTitle: string;
+  gameTitleRu?: string | null;
   imageUrl: string;
   launchDate: string | null;
   preorderPrice: number | null;
@@ -51,6 +54,11 @@ export default function PreorderPopup({
 }: {
   popup: PreorderPopupData;
 }) {
+  const { language } = useStorePreferences();
+  const gameTitle =
+    language === "ru" && popup.gameTitleRu
+      ? popup.gameTitleRu
+      : popup.gameTitle;
   const [isOpen, setIsOpen] =
     useState(false);
   const [timeLeft, setTimeLeft] =
@@ -94,7 +102,7 @@ export default function PreorderPopup({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`${popup.gameTitle} preorder`}
+      aria-label={`${gameTitle} preorder`}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
@@ -115,7 +123,7 @@ export default function PreorderPopup({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={popup.imageUrl}
-          alt={popup.gameTitle}
+          alt={gameTitle}
           className="h-48 w-full object-fill md:h-full md:min-h-[510px]"
         />
 
@@ -125,7 +133,7 @@ export default function PreorderPopup({
           </p>
 
           <h2 className="mt-3 text-3xl font-black text-white sm:text-4xl">
-            {popup.gameTitle}
+            {gameTitle}
           </h2>
 
           <div className="mx-auto mt-5 h-px w-full max-w-md bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />

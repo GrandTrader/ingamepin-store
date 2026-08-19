@@ -199,6 +199,10 @@ export async function createProduct(
     formData.get("image_url") ?? "",
   ).trim();
 
+  let imageUrlRu = String(
+    formData.get("image_url_ru") ?? "",
+  ).trim();
+
   const region = String(
     formData.get("region") ?? "",
   ).trim();
@@ -410,6 +414,12 @@ export async function createProduct(
   if (!isValidWebUrl(imageUrl)) {
     redirectWithError(
       "Enter a valid HTTP or HTTPS image URL.",
+    );
+  }
+
+  if (!isValidWebUrl(imageUrlRu)) {
+    redirectWithError(
+      "Enter a valid HTTP or HTTPS Russian image URL.",
     );
   }
 
@@ -849,6 +859,11 @@ export async function createProduct(
         formData.get("image_file"),
         "products",
       )) ?? imageUrl;
+    imageUrlRu =
+      (await uploadStoreImage(
+        formData.get("image_file_ru"),
+        "products",
+      )) ?? imageUrlRu;
   } catch (error) {
     redirectWithError(
       error instanceof Error
@@ -889,6 +904,7 @@ export async function createProduct(
         description || null,
       description_ru: descriptionRu || null,
       image_url: imageUrl || null,
+      image_url_ru: imageUrlRu || null,
       region,
       product_type: productType,
       delivery_type: deliveryType,

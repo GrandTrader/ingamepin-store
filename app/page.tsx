@@ -41,6 +41,7 @@ type ProductRow = {
   name_ru: string | null;
   slug: string;
   image_url: string | null;
+  image_url_ru: string | null;
   price: number | string;
   badge: string | null;
   badge_ru: string | null;
@@ -203,6 +204,7 @@ export default async function Home() {
           name_ru,
           slug,
           image_url,
+          image_url_ru,
           price,
           badge,
           badge_ru,
@@ -303,6 +305,7 @@ export default async function Home() {
       slug: product.slug,
       href: getStoreProductUrl(product),
       image: product.image_url ?? "",
+      imageRu: product.image_url_ru,
       price: Number(product.price),
       badge:
         product.badge ??
@@ -364,6 +367,7 @@ export default async function Home() {
     (popupStoreProduct || popupRow.launch_date)
       ? {
           gameTitle: popupStoreProduct?.name ?? popupRow.game_title,
+          gameTitleRu: popupStoreProduct?.name_ru,
           imageUrl: popupRow.image_url,
           launchDate: popupRow.launch_date,
           preorderPrice:

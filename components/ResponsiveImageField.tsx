@@ -9,6 +9,7 @@ type Props = {
   defaultValue?: string | null;
   variant: "product" | "slide";
   required?: boolean;
+  helpText?: string;
 };
 
 export default function ResponsiveImageField({
@@ -18,6 +19,7 @@ export default function ResponsiveImageField({
   defaultValue = "",
   variant,
   required = false,
+  helpText = "Upload an image or paste its URL. Uploaded images must be smaller than 10 MB.",
 }: Props) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [filePreview, setFilePreview] = useState("");
@@ -41,7 +43,7 @@ export default function ResponsiveImageField({
         <div>
           <p className="text-sm font-black text-slate-900">{label}</p>
           <p className="mt-1 text-xs text-slate-500">
-            Upload an image or paste its URL. Uploaded images must be smaller than 10 MB.
+            {helpText}
           </p>
         </div>
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">

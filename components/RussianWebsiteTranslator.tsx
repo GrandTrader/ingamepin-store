@@ -140,8 +140,28 @@ const russianText: Record<string, string> = {
   Date: "Дата",
   Amount: "Сумма",
   "Order items": "Товары в заказе",
+  Browse: "Каталог",
   "Featured Products": "Рекомендуемые товары",
   "Popular Categories": "Популярные категории",
+  "Explore game credits, keys, gift cards and subscriptions.":
+    "Игровая валюта, ключи, подарочные карты и подписки.",
+  "Player-ID top-ups and gaming vouchers":
+    "Пополнения по ID игрока и игровые ваучеры",
+  "Fixed-value and custom-value gift cards":
+    "Подарочные карты фиксированного и произвольного номинала",
+  "Digital subscription plans and vouchers":
+    "Цифровые подписки и ваучеры",
+  "Game editions and activation keys":
+    "Издания игр и ключи активации",
+  "View Products": "Смотреть товары",
+  "View Products →": "Смотреть товары →",
+  "View Gaming Top-Ups": "Смотреть товары для пополнения игр",
+  "View Gift Cards": "Смотреть подарочные карты",
+  "View Subscriptions": "Смотреть подписки",
+  "View Game Keys": "Смотреть игровые ключи",
+  "Best Sellers": "Хиты продаж",
+  "Popular products selected for InGamePin customers.":
+    "Популярные товары, отобранные для покупателей InGamePin.",
   "For resellers & businesses": "Для реселлеров и бизнеса",
   "Need products in bulk quantity?": "Нужны товары оптом?",
   "Explore bulk products with flexible quantities, competitive B2B pricing and dedicated support.":
@@ -155,10 +175,45 @@ const russianText: Record<string, string> = {
     "В этой оптовой категории пока нет доступных товаров.",
   "View all": "Смотреть все",
   "Shop now": "Купить сейчас",
+  "Digital Delivery": "Цифровая доставка",
+  "Instant Delivery": "Мгновенная доставка",
+  "UID Required": "Требуется UID",
+  "Share products. Earn commission in USDT.":
+    "Делитесь товарами. Получайте комиссию в USDT.",
+  "Create referral links for eligible products and earn from approved customer orders.":
+    "Создавайте реферальные ссылки на доступные товары и получайте доход с подтверждённых заказов.",
+  "Browse Store": "Каталог магазина",
+  "Search the store or choose a product category.":
+    "Найдите товар или выберите категорию.",
+  "Search results for:": "Результаты поиска:",
+  "Clear search": "Очистить поиск",
+  "In Stock Only": "Только в наличии",
+  "Sort by": "Сортировка",
+  "Sort products": "Сортировать товары",
+  Featured: "Рекомендуемые",
+  "Price: Low to High": "Цена: по возрастанию",
+  "Price: High to Low": "Цена: по убыванию",
+  "Best Selling": "Самые продаваемые",
+  "Highest Rated": "С высоким рейтингом",
+  "Player-ID top-ups and gaming voucher products.":
+    "Пополнения по ID игрока и игровые ваучеры.",
+  "Fixed-value and custom-value digital gift cards.":
+    "Цифровые подарочные карты фиксированного и произвольного номинала.",
+  "Digital membership plans and subscription vouchers.":
+    "Цифровые подписки и ваучеры.",
+  "Game editions and activation keys for supported platforms.":
+    "Издания игр и ключи активации для поддерживаемых платформ.",
+  "Show Fewer Products": "Показать меньше товаров",
+  "No products found": "Товары не найдены",
+  "Change the search, category or availability filter.":
+    "Измените запрос, категорию или фильтр наличия.",
   "No products found.": "Товары не найдены.",
   "Accepted payment methods": "Принимаемые способы оплаты",
+  "Secure payments": "Безопасные платежи",
+  "Automatic verification": "Автоматическое подтверждение",
   "Secure payments • Automatic verification":
     "Безопасная оплата • Автоматическое подтверждение",
+  "Faster Payment System": "Система быстрых платежей",
   "Live Chat": "Онлайн-чат",
   "InGamePin Support": "Поддержка InGamePin",
   "We usually reply shortly": "Обычно мы отвечаем быстро",
@@ -382,6 +437,23 @@ const russianText: Record<string, string> = {
   "Genuine Products": "Оригинальные товары",
   "Secure Checkout": "Безопасное оформление",
   "Customer Support": "Поддержка покупателей",
+  "Receive digital products after payment verification and secure manual fulfillment.":
+    "Получайте цифровые товары после подтверждения оплаты и безопасной ручной обработки.",
+  "Products sourced from trusted and verified suppliers.":
+    "Товары от надёжных и проверенных поставщиков.",
+  "Protected order processing and secure private-code delivery.":
+    "Защищённая обработка заказов и безопасная доставка личных кодов.",
+  "Get assistance with orders, payments and redemption.":
+    "Получите помощь с заказами, оплатой и активацией.",
+  "Featured Product": "Рекомендуемый товар",
+  "Game Preorder": "Предзаказ игры",
+  "Preorder Price": "Цена предзаказа",
+  "VIEW PRODUCT": "ОТКРЫТЬ ТОВАР",
+  "PREORDER NOW": "ОФОРМИТЬ ПРЕДЗАКАЗ",
+  "Available now": "Уже доступно",
+  "Close preorder popup": "Закрыть окно предзаказа",
+  "Previous slide": "Предыдущий слайд",
+  "Next slide": "Следующий слайд",
   "Enter other amount": "Введите другую сумму",
   "Enter recipient email address": "Введите email получателя",
   "Decrease quantity": "Уменьшить количество",
@@ -883,6 +955,10 @@ const russianPatterns: Array<[RegExp, (...matches: string[]) => string]> = [
   [/^(.+)\s+available$/, (count) => `Доступно: ${count}`],
   [/^Allowed quantity:\s*(.+)$/, (quantity) => `Допустимое количество: ${quantity}`],
   [/^Showing\s+(.+)\s+products?$/, (count) => `Показано товаров: ${count}`],
+  [/^(.+)\s+products?$/, (count) => `${count} товар(ов)`],
+  [/^Show More\s+(.+)$/, (section) => `Показать больше: ${russianText[section] ?? section}`],
+  [/^Open slide\s+(\d+)$/, (number) => `Открыть слайд ${number}`],
+  [/^(.+) preorder$/, (name) => `${name} — предзаказ`],
   [/^(.+)\s+Sold$/, (count) => `Продано: ${count}`],
 ];
 

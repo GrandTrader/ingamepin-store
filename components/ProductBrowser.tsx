@@ -9,6 +9,7 @@ import {
 import ProductCard, {
   type ProductCardData,
 } from "./ProductCard";
+import { useStorePreferences } from "./StorePreferences";
 
 type ProductCategory =
   | "GAME_TOPUP"
@@ -93,11 +94,25 @@ const categorySections: {
   },
 ];
 
+function russianProductCount(count: number) {
+  const lastTwoDigits = count % 100;
+  const lastDigit = count % 10;
+
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${count} товаров`;
+  }
+
+  if (lastDigit === 1) return `${count} товар`;
+  if (lastDigit >= 2 && lastDigit <= 4) return `${count} товара`;
+  return `${count} товаров`;
+}
+
 export default function ProductBrowser({
   products,
 }: {
   products: BrowseProduct[];
 }) {
+  const { language } = useStorePreferences();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] =
     useState<FilterValue>("ALL");
@@ -291,8 +306,9 @@ export default function ProductBrowser({
 
       <div className="mt-4 flex items-center justify-between gap-2 sm:mt-5 sm:flex-row sm:gap-3">
         <p className="text-xs text-slate-400 sm:text-sm">
-          Showing {filteredProducts.length} product
-          {filteredProducts.length === 1 ? "" : "s"}
+          {language === "ru"
+            ? `Показано: ${russianProductCount(filteredProducts.length)}`
+            : `Showing ${filteredProducts.length} product${filteredProducts.length === 1 ? "" : "s"}`}
         </p>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -364,10 +380,9 @@ export default function ProductBrowser({
                 </div>
 
                 <p className="text-xs font-bold text-cyan-400">
-                  {section.products.length} product
-                  {section.products.length === 1
-                    ? ""
-                    : "s"}
+                  {language === "ru"
+                    ? russianProductCount(section.products.length)
+                    : `${section.products.length} product${section.products.length === 1 ? "" : "s"}`}
                 </p>
               </div>
 

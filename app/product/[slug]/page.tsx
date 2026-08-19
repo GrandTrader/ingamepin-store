@@ -11,6 +11,7 @@ import AffiliateReferralTracker from "@/components/AffiliateReferralTracker";
 import { isUnlimitedStock } from "@/lib/product-stock";
 import { getProductUrl } from "@/lib/product-url";
 import ProductDetailsTabs from "@/components/ProductDetailsTabs";
+import LocalizedProductImage from "@/components/LocalizedProductImage";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ type ProductRow = {
   description: string | null;
   description_ru: string | null;
   image_url: string | null;
+  image_url_ru: string | null;
   region: string;
   currency: string;
   badge: string | null;
@@ -135,6 +137,7 @@ export async function renderProductPage({
         description,
         description_ru,
         image_url,
+        image_url_ru,
         region,
         currency,
         badge,
@@ -394,18 +397,18 @@ export async function renderProductPage({
                 </span>
               )}
 
-              {product.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  className="aspect-[16/10] w-full object-fill"
-                />
-              ) : (
-                <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
-                  {product.name.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <LocalizedProductImage
+                imageUrl={product.image_url}
+                imageUrlRu={product.image_url_ru}
+                alt={product.name}
+                altRu={product.name_ru}
+                className="aspect-[16/10] w-full object-fill"
+                fallback={
+                  <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
+                    {product.name.charAt(0).toUpperCase()}
+                  </div>
+                }
+              />
             </div>
 
             <div className="order-3 rounded-2xl border border-white/10 bg-slate-900 p-5 sm:rounded-3xl sm:p-8 lg:col-start-1 lg:row-start-2">
@@ -493,6 +496,7 @@ export async function renderProductPage({
                 name: product.name,
                 nameRu: product.name_ru,
                 imageUrl: product.image_url,
+                imageUrlRu: product.image_url_ru,
                 currency: product.currency,
                 productType: product.product_type,
                 deliveryType: product.delivery_type,

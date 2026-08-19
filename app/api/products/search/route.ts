@@ -43,6 +43,7 @@ export async function GET(
         name_ru,
         slug,
         image_url,
+        image_url_ru,
         price,
         badge,
         is_bulk_order,
@@ -100,6 +101,7 @@ export async function GET(
             })
           : `/product/${encodeURIComponent(product.slug)}`,
         image: product.image_url,
+        imageRu: product.image_url_ru,
         price: Number(product.price),
         badge: product.badge,
         isBulkOrder: product.is_bulk_order,

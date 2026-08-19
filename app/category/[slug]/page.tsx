@@ -32,6 +32,7 @@ type ProductRow = {
   name_ru: string | null;
   slug: string;
   image_url: string | null;
+  image_url_ru: string | null;
   price: number | string;
   badge: string | null;
   badge_ru: string | null;
@@ -113,6 +114,7 @@ export default async function CategoryPage({
         name_ru,
         slug,
         image_url,
+        image_url_ru,
         price,
         badge,
         badge_ru,
@@ -157,6 +159,7 @@ export default async function CategoryPage({
         productPublicId: product.public_id,
       }),
       image: product.image_url ?? "",
+      imageRu: product.image_url_ru,
       price: getStartingPrice(product),
       badge: product.badge ?? "Digital Delivery",
       badgeRu: product.badge_ru,
