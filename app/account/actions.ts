@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -157,6 +157,20 @@ export async function customerRegister(formData: FormData) {
     },
   });
 
+  const isExistingAccount =
+    result.error?.code === "email_exists" ||
+    result.error?.code === "user_already_exists" ||
+    (Array.isArray(result.data.user?.identities) &&
+      result.data.user.identities.length === 0);
+
+  if (isExistingAccount) {
+    accountRedirect(
+      "/account",
+      "error",
+      "An account already exists with this email. Sign in or reset your password.",
+    );
+  }
+
   if (result.error) {
     accountRedirect("/account/register", "error", result.error.message);
   }
@@ -188,7 +202,7 @@ export async function customerVerifySignupOtp(formData: FormData) {
   const result = await supabase.auth.verifyOtp({
     email,
     token,
-    type: "signup",
+    type: "email",
   });
 
   if (result.error) {
