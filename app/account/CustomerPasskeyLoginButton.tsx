@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { resetRegistrationTurnstile } from "@/components/RegistrationTurnstile";
 import { recordCustomerPasskeyLogin } from "./actions";
 
 export default function CustomerPasskeyLoginButton() {
@@ -25,20 +26,27 @@ export default function CustomerPasskeyLoginButton() {
       return;
     }
 
-    const supabase = createClient();
-    const result = await supabase.auth.signInWithPasskey({
-      options: { captchaToken },
-    });
+    try {
+      const supabase = createClient();
+      const result = await supabase.auth.signInWithPasskey({
+        options: { captchaToken },
+      });
 
-    if (result.error || !result.data.user) {
-      setMessage(result.error?.message ?? "Unable to sign in with this passkey.");
+      if (result.error || !result.data.user) {
+        resetRegistrationTurnstile();
+        setMessage("Unable to sign in with this passkey. Try again.");
+        return;
+      }
+
+      await recordCustomerPasskeyLogin();
+      router.replace("/account/dashboard");
+      router.refresh();
+    } catch {
+      resetRegistrationTurnstile();
+      setMessage("Unable to sign in with this passkey. Try again.");
+    } finally {
       setBusy(false);
-      return;
     }
-
-    await recordCustomerPasskeyLogin();
-    router.replace("/account/dashboard");
-    router.refresh();
   }
 
   return (

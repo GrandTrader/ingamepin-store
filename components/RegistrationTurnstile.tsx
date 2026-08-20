@@ -17,11 +17,17 @@ declare global {
         },
       ) => string;
       remove: (widgetId: string) => void;
+      reset: (widgetId: string) => void;
     };
   }
 }
 
 const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+const SECURITY_CHECK_RESET_EVENT = "ingamepin:reset-security-check";
+
+export function resetRegistrationTurnstile() {
+  window.dispatchEvent(new Event(SECURITY_CHECK_RESET_EVENT));
+}
 
 export default function RegistrationTurnstile({
   message = "Complete the security check to create your account.",
@@ -38,6 +44,23 @@ export default function RegistrationTurnstile({
     if (window.turnstile) {
       setScriptReady(true);
     }
+  }, []);
+
+  useEffect(() => {
+    function resetWidget() {
+      setToken("");
+      setError("");
+
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.reset(widgetIdRef.current);
+      }
+    }
+
+    window.addEventListener(SECURITY_CHECK_RESET_EVENT, resetWidget);
+
+    return () => {
+      window.removeEventListener(SECURITY_CHECK_RESET_EVENT, resetWidget);
+    };
   }, []);
 
   useEffect(() => {

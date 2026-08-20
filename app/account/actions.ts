@@ -7,6 +7,7 @@ import {
   getCountryCode,
   recordCustomerLogin,
 } from "@/lib/customer-login-activity";
+import { getAuthErrorMessage } from "@/lib/auth-error-message";
 import { countryCallingCodes } from "@/lib/countryCallingCodes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -69,8 +70,12 @@ export async function customerLogin(formData: FormData) {
   const supabase = await createClient();
   const result = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } });
 
-  if (result.error) {
-    accountRedirect("/account", "error", "Email or password is incorrect.");
+  if (result.error || !result.data.user) {
+    accountRedirect(
+      "/account",
+      "error",
+      getAuthErrorMessage(result.error, "login"),
+    );
   }
 
   if (result.data.user) {
@@ -157,6 +162,14 @@ export async function customerRegister(formData: FormData) {
     },
   });
 
+  if (result.error?.code === "over_email_send_rate_limit") {
+    await savePendingSignupEmail(email);
+    verificationRedirect(
+      "error",
+      "Please wait a minute before requesting another verification email.",
+    );
+  }
+
   const isExistingAccount =
     result.error?.code === "email_exists" ||
     result.error?.code === "user_already_exists" ||
@@ -172,7 +185,11 @@ export async function customerRegister(formData: FormData) {
   }
 
   if (result.error) {
-    accountRedirect("/account/register", "error", result.error.message);
+    accountRedirect(
+      "/account/register",
+      "error",
+      getAuthErrorMessage(result.error, "register"),
+    );
   }
 
   await savePendingSignupEmail(email);
@@ -208,7 +225,7 @@ export async function customerVerifySignupOtp(formData: FormData) {
   if (result.error) {
     verificationRedirect(
       "error",
-      "The verification code is incorrect or expired.",
+      getAuthErrorMessage(result.error, "verify-signup"),
     );
   }
 
@@ -257,7 +274,7 @@ export async function resendSignupOtp(formData: FormData) {
   if (result.error) {
     verificationRedirect(
       "error",
-      "Please wait before requesting another verification code.",
+      getAuthErrorMessage(result.error, "resend-signup"),
     );
   }
 
@@ -298,7 +315,11 @@ export async function requestPasswordReset(formData: FormData) {
   });
 
   if (result.error) {
-    accountRedirect("/account/forgot-password", "error", result.error.message);
+    accountRedirect(
+      "/account/forgot-password",
+      "error",
+      getAuthErrorMessage(result.error, "request-password-reset"),
+    );
   }
 
   accountRedirect(
@@ -325,10 +346,27 @@ export async function updateCustomerPassword(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    accountRedirect(
+      "/account",
+      "error",
+      getAuthErrorMessage(userError, "update-password"),
+    );
+  }
+
   const result = await supabase.auth.updateUser({ password });
 
   if (result.error) {
-    accountRedirect("/account/reset-password", "error", result.error.message);
+    accountRedirect(
+      "/account/reset-password",
+      "error",
+      getAuthErrorMessage(result.error, "update-password"),
+    );
   }
 
   await supabase.auth.signOut();

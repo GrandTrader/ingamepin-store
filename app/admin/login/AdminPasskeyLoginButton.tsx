@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { resetRegistrationTurnstile } from "@/components/RegistrationTurnstile";
 
 export default function AdminPasskeyLoginButton() {
   const router = useRouter();
@@ -25,37 +26,41 @@ export default function AdminPasskeyLoginButton() {
       return;
     }
 
-    const supabase = createClient();
-    const loginResult = await supabase.auth.signInWithPasskey({
-      options: {
-        captchaToken,
-      },
-    });
+    try {
+      const supabase = createClient();
+      const loginResult = await supabase.auth.signInWithPasskey({
+        options: {
+          captchaToken,
+        },
+      });
 
-    if (loginResult.error || !loginResult.data.user) {
-      setMessage(
-        loginResult.error?.message ??
-          "Unable to sign in with this passkey."
-      );
+      if (loginResult.error || !loginResult.data.user) {
+        resetRegistrationTurnstile();
+        setMessage("Unable to sign in with this passkey. Try again.");
+        return;
+      }
+
+      const adminResult = await supabase
+        .from("admin_users")
+        .select("user_id")
+        .eq("user_id", loginResult.data.user.id)
+        .maybeSingle();
+
+      if (adminResult.error || !adminResult.data) {
+        await supabase.auth.signOut();
+        resetRegistrationTurnstile();
+        setMessage("This passkey is not connected to an administrator account.");
+        return;
+      }
+
+      router.replace("/admin");
+      router.refresh();
+    } catch {
+      resetRegistrationTurnstile();
+      setMessage("Unable to sign in with this passkey. Try again.");
+    } finally {
       setBusy(false);
-      return;
     }
-
-    const adminResult = await supabase
-      .from("admin_users")
-      .select("user_id")
-      .eq("user_id", loginResult.data.user.id)
-      .maybeSingle();
-
-    if (adminResult.error || !adminResult.data) {
-      await supabase.auth.signOut();
-      setMessage("This passkey is not connected to an administrator account.");
-      setBusy(false);
-      return;
-    }
-
-    router.replace("/admin");
-    router.refresh();
   }
 
   return (

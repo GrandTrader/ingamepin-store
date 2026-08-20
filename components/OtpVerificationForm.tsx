@@ -13,6 +13,7 @@ import {
   customerVerifySignupOtp,
   resendSignupOtp,
 } from "@/app/account/actions";
+import AuthSubmitButton from "@/components/AuthSubmitButton";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 
 const OTP_LENGTH = 6;
@@ -107,12 +108,11 @@ export default function OtpVerificationForm() {
             />
           ))}
         </div>
-        <button
-          type="submit"
-          className="mt-6 w-full rounded-xl bg-cyan-500 px-5 py-3.5 font-black text-slate-950 transition hover:bg-cyan-400"
-        >
-          Verify &amp; Activate Account
-        </button>
+        <AuthSubmitButton
+          label="Verify & Activate Account"
+          pendingLabel="Verifying code..."
+          className="mt-6 w-full rounded-xl bg-cyan-500 px-5 py-3.5 font-black text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+        />
       </form>
 
       <form
@@ -123,15 +123,16 @@ export default function OtpVerificationForm() {
         {resendSeconds === 0 && (
           <RegistrationTurnstile message="Complete the security check to request another code." />
         )}
-        <button
-          type="submit"
+        <AuthSubmitButton
+          label={
+            resendSeconds > 0
+              ? `Resend code in ${resendSeconds}s`
+              : "Resend verification code"
+          }
+          pendingLabel="Sending verification code..."
           disabled={resendSeconds > 0}
           className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 transition hover:border-cyan-400 hover:text-cyan-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-        >
-          {resendSeconds > 0
-            ? `Resend code in ${resendSeconds}s`
-            : "Resend verification code"}
-        </button>
+        />
       </form>
     </>
   );

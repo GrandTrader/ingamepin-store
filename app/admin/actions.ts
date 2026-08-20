@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getAuthErrorMessage } from "@/lib/auth-error-message";
 import { sendEmail } from "@/lib/email";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,23 +38,9 @@ export async function adminLogin(
     });
 
   if (loginResult.error || !loginResult.data.user) {
-    const authenticationError = loginResult.error?.message.toLowerCase() ?? "";
-
-    if (
-      authenticationError.includes("captcha") ||
-      authenticationError.includes("turnstile") ||
-      authenticationError.includes("challenge")
-    ) {
-      redirect(
-        `/admin/login?error=${encodeURIComponent(
-          "Security check verification failed. Complete the security check again and retry."
-        )}`
-      );
-    }
-
     redirect(
       `/admin/login?error=${encodeURIComponent(
-        "Incorrect email or password"
+        getAuthErrorMessage(loginResult.error, "login")
       )}`
     );
   }

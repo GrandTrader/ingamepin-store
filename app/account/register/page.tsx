@@ -2,6 +2,7 @@
 import Link from "next/link";
 
 import OtpVerificationForm from "@/components/OtpVerificationForm";
+import AuthSubmitButton from "@/components/AuthSubmitButton";
 import PasswordInput from "@/components/PasswordInput";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 import { countryCallingCodes } from "@/lib/countryCallingCodes";
@@ -162,12 +163,11 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
                 autoComplete="new-password"
               />
               <RegistrationTurnstile />
-              <button
-                type="submit"
-                className="rounded-xl bg-cyan-500 px-5 py-3 font-black text-slate-950 sm:col-span-2"
-              >
-                Create account
-              </button>
+              <AuthSubmitButton
+                label="Create account"
+                pendingLabel="Creating account..."
+                className="rounded-xl bg-cyan-500 px-5 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
+              />
             </form>
             <p className="mt-6 text-center text-sm text-slate-500">
               Already registered?{" "}

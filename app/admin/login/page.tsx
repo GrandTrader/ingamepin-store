@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { adminLogin } from "../actions";
 import AdminPasskeyLoginButton from "./AdminPasskeyLoginButton";
 import { createClient } from "@/lib/supabase/server";
+import AuthSubmitButton from "@/components/AuthSubmitButton";
 import PasswordInput from "@/components/PasswordInput";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 
@@ -123,12 +124,11 @@ export default async function AdminLoginPage({
 
           <RegistrationTurnstile message="Complete the security check to sign in." />
 
-          <button
-            type="submit"
-            className="w-full rounded-xl bg-cyan-400 px-5 py-3 font-black text-slate-950 transition hover:bg-cyan-300"
-          >
-            Sign in to Admin
-          </button>
+          <AuthSubmitButton
+            label="Sign in to Admin"
+            pendingLabel="Signing in..."
+            className="w-full rounded-xl bg-cyan-400 px-5 py-3 font-black text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+          />
 
           <div className="flex items-center gap-3 text-xs text-slate-500">
             <span className="h-px flex-1 bg-white/10" />
