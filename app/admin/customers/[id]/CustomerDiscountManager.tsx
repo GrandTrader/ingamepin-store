@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AuthSubmitButton from "@/components/AuthSubmitButton";
 import { saveCustomerDiscount } from "../actions";
 
 type Product = { id: string; name: string; productType: string };
@@ -38,7 +39,7 @@ export default function CustomerDiscountManager({ customerId, products, discount
             <div key={product.id} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[auto_1fr_9rem] sm:items-center">
               <input
                 type="checkbox"
-                name="selected_product_ids"
+                name="product_ids"
                 value={product.id}
                 checked={enabled}
                 onChange={() => toggleProduct(product.id)}
@@ -66,9 +67,11 @@ export default function CustomerDiscountManager({ customerId, products, discount
         })}
       </div>
 
-      <button type="submit" className="mt-5 rounded-xl bg-slate-950 px-5 py-3 font-black text-white transition hover:bg-cyan-600">
-        Save customer discounts
-      </button>
+      <AuthSubmitButton
+        label="Save customer discounts"
+        pendingLabel="Saving customer discounts..."
+        className="mt-5 rounded-xl bg-slate-950 px-5 py-3 font-black text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-60"
+      />
     </form>
   );
 }
