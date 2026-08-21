@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import AdminSidebar from "../../../AdminSidebar";
 import CompletedManualDeliveryCard from "../../CompletedManualDeliveryCard";
 import ManualDeliveryItemCard from "../../ManualDeliveryItemCard";
+import AdminRefundCard from "../../AdminRefundCard";
 import {
   completeManualOrder,
   finalizeManualOrderFromCodes,
@@ -228,6 +229,21 @@ export default async function OrderReceipt({
     ]);
   }
 
+  const refundsResult = itemIds.length
+    ? await admin.from("order_item_refunds")
+        .select("id, order_item_id, quantity, amount, currency, status")
+        .in("order_item_id", itemIds)
+        .order("created_at")
+    : { data: [], error: null };
+  if (refundsResult.error) throw new Error(`Unable to load refunds: ${refundsResult.error.message}`);
+  const refundsByItem = new Map<string, Array<{ id: string; quantity: number; amount: number | string; currency: string; status: string }>>();
+  for (const refund of refundsResult.data ?? []) {
+    refundsByItem.set(refund.order_item_id, [...(refundsByItem.get(refund.order_item_id) ?? []), refund]);
+  }
+  const refundedQuantityFor = (itemId: string) => (refundsByItem.get(itemId) ?? [])
+    .filter((refund) => refund.status !== "CANCELLED")
+    .reduce((sum, refund) => sum + refund.quantity, 0);
+
   const deliveredContentItems = items
     .map((item) => ({
       item,
@@ -248,7 +264,7 @@ export default async function OrderReceipt({
     manualCodeItems.length > 0 &&
     manualCodeItems.every(
       (item) =>
-        (codesByItem.get(item.id)?.length ?? 0) === item.quantity,
+        (codesByItem.get(item.id)?.length ?? 0) + refundedQuantityFor(item.id) === item.quantity,
     );
   const canDeliver =
     order.status === "PAID" || order.status === "PROCESSING";
@@ -559,8 +575,9 @@ export default async function OrderReceipt({
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 {manualCodeItems.map((item) => {
                   const deliveredCodes = codesByItem.get(item.id) ?? [];
+                  const refundedQuantity = refundedQuantityFor(item.id);
                   const itemCompleted =
-                    deliveredCodes.length >= item.quantity;
+                    deliveredCodes.length + refundedQuantity >= item.quantity;
 
                   if (itemCompleted) {
                     return (
@@ -611,13 +628,17 @@ export default async function OrderReceipt({
                             ? String(item.denomination)
                             : null),
                         quantity: item.quantity,
-                        delivered_count: deliveredCodes.length,
+                        delivered_count: deliveredCodes.length + refundedQuantity,
                         is_bulk_order: isBulkProduct(item.products),
                       }}
                     />
                   );
                 })}
               </div>
+
+              {canDeliver && <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                {manualCodeItems.map((item) => <AdminRefundCard key={`refund-${item.id}`} orderId={order.id} item={item} deliveredQuantity={codesByItem.get(item.id)?.length ?? 0} refunds={refundsByItem.get(item.id) ?? []} />)}
+              </div>}
 
               {canDeliver && allManualCodesSent && playerTopupItems.length === 0 && (
                 <form action={finalizeManualOrderFromCodes} className="mt-5">

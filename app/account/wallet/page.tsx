@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getWalletPaymentGateways } from "@/lib/wallet-payment-gateways";
 import WalletTopupForm from "./WalletTopupForm";
 import { expireStaleWalletTopups } from "@/lib/wallet-topup-expiry";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { claimWalletRefund } from "./actions";
 
 export const dynamic = "force-dynamic";
 type WalletPageProps = {
@@ -38,7 +40,7 @@ export default async function CustomerWalletPage({
 
   await expireStaleWalletTopups(user.id);
 
-  const [walletResult, transactionResult, requestResult] = await Promise.all([
+  const [walletResult, transactionResult, requestResult, refundResult] = await Promise.all([
     supabase
       .from("customer_wallets")
       .select("balance, currency")
@@ -60,11 +62,16 @@ export default async function CustomerWalletPage({
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(10),
+    createAdminClient().from("order_item_refunds")
+      .select("id, quantity, amount, currency, status, reason, created_at, orders(order_number), order_items(product_name, option_name)")
+      .eq("customer_email", user.email!.toLowerCase())
+      .order("created_at", { ascending: false }),
   ]);
 
   const wallet = walletResult.data ?? { balance: 0, currency: "USD" };
   const transactions = transactionResult.data ?? [];
   const requests = requestResult.data ?? [];
+  const refunds = refundResult.data ?? [];
   const gateways = getWalletPaymentGateways();
 
   return (
@@ -118,6 +125,21 @@ export default async function CustomerWalletPage({
             />
           </section>
         </div>
+
+        <section className="mt-8">
+          <h2 className="text-2xl font-black">Approved refunds</h2>
+          <p className="mt-1 text-sm text-slate-500">Refunds approved for your verified account email.</p>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {refunds.length === 0 ? <p className="p-6 text-slate-500">No wallet refunds available.</p> : refunds.map((refund) => {
+              const order = Array.isArray(refund.orders) ? refund.orders[0] : refund.orders;
+              const item = Array.isArray(refund.order_items) ? refund.order_items[0] : refund.order_items;
+              return <article key={refund.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 p-5 last:border-b-0">
+                <div><p className="font-black">{refund.currency} {Number(refund.amount).toFixed(2)} · {item?.option_name ?? item?.product_name ?? "Product refund"}</p><p className="mt-1 text-xs text-slate-500">Order {order?.order_number ?? ""} · Quantity {refund.quantity} · {formatDate(refund.created_at)}</p><p className="mt-2 text-sm text-slate-600">{refund.reason}</p></div>
+                {refund.status === "PENDING_CLAIM" ? <form action={claimWalletRefund}><input type="hidden" name="refund_id" value={refund.id} /><button className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500">Claim to wallet</button></form> : <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{refund.status.replaceAll("_", " ")}</span>}
+              </article>;
+            })}
+          </div>
+        </section>
 
         <section className="mt-8">
           <h2 className="text-2xl font-black">Top-up requests</h2>

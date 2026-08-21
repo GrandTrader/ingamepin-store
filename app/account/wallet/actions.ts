@@ -43,3 +43,16 @@ export async function startBinanceWalletTopup(formData: FormData) {
   revalidatePath("/account/wallet");
   redirect(`/account/wallet/binance-pay/${result.data}`);
 }
+
+export async function claimWalletRefund(formData: FormData) {
+  const refundId = String(formData.get("refund_id") ?? "").trim();
+  if (!/^[0-9a-f-]{36}$/i.test(refundId)) walletRedirect("error", "Refund is invalid.");
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) redirect("/account?error=Please sign in to continue.");
+  const result = await supabase.rpc("credit_order_item_refund", { p_refund_id: refundId });
+  if (result.error) walletRedirect("error", result.error.message);
+  revalidatePath("/account/dashboard");
+  revalidatePath("/account/wallet");
+  walletRedirect("success", `Refund credited. Your wallet balance is now USD ${Number(result.data?.balance ?? 0).toFixed(2)}.`);
+}
