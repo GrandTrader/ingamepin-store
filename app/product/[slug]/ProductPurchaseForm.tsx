@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStorePreferences } from "@/components/StorePreferences";
+import LocalizedProductText from "@/components/LocalizedProductText";
 
 type ProductOption = {
   id: string;
@@ -547,8 +548,19 @@ export default function ProductPurchaseForm({
   return (
     <form onSubmit={handleSubmit} className="mt-5 sm:mt-8">
       {product.customerDiscountPercent > 0 && (
-        <div className="mb-5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200">
-          Your {product.customerDiscountPercent}% customer discount applies to this product.
+        <div
+          className="customer-discount-notice mb-5 rounded-xl border p-4 text-sm font-black"
+          style={{
+            backgroundColor: "#ecfdf5",
+            borderColor: "#34d399",
+            color: "#064e3b",
+            WebkitTextFillColor: "#064e3b",
+          }}
+        >
+          <LocalizedProductText
+            english={`Your ${product.customerDiscountPercent}% customer discount applies to this product.`}
+            russian={`На этот товар действует ваша скидка ${product.customerDiscountPercent}%.`}
+          />
         </div>
       )}
       {isGamingTopup &&

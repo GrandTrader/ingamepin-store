@@ -176,7 +176,10 @@ const russianText: Record<string, string> = {
   "View all": "Смотреть все",
   "Shop now": "Купить сейчас",
   "Digital Delivery": "Цифровая доставка",
+  "Bulk Delivery": "Оптовая доставка",
   "Instant Delivery": "Мгновенная доставка",
+  "Digital delivery information": "Информация о цифровой доставке",
+  "Show more popular products": "Показать больше популярных товаров",
   "UID Required": "Требуется UID",
   "Share products. Earn commission in USDT.":
     "Делитесь товарами. Получайте комиссию в USDT.",

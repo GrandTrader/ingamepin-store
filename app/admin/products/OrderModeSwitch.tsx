@@ -34,7 +34,7 @@ export default function OrderModeSwitch({
         >
           <span className="flex items-center justify-between gap-3">
             <span className="text-sm font-black">
-              Normal Order
+              Digital Delivery
             </span>
             <span
               className={`grid h-5 w-5 place-items-center rounded-full border text-xs ${
@@ -47,7 +47,7 @@ export default function OrderModeSwitch({
             </span>
           </span>
           <span className="mt-1 block text-xs text-slate-500">
-            Current standard product experience.
+            Admin completes a standard digital delivery order.
           </span>
         </button>
 
@@ -62,7 +62,7 @@ export default function OrderModeSwitch({
         >
           <span className="flex items-center justify-between gap-3">
             <span className="text-sm font-black">
-              Bulk Order
+              Bulk Delivery
             </span>
             <span
               className={`grid h-5 w-5 place-items-center rounded-full border text-xs ${

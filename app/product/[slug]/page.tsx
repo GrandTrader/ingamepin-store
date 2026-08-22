@@ -290,6 +290,21 @@ export async function renderProductPage({
       : "";
     permanentRedirect(`${canonicalUrl}${referral}`);
   }
+
+  const salesResult = await admin
+    .from("order_items")
+    .select("quantity, orders!inner(status)")
+    .eq("product_id", product.id)
+    .in("orders.status", ["PAID", "PROCESSING", "DELIVERED"]);
+
+  if (salesResult.error) {
+    throw new Error(`Unable to load product sales: ${salesResult.error.message}`);
+  }
+
+  const soldCount = (salesResult.data ?? []).reduce(
+    (total, item) => total + Number(item.quantity || 0),
+    0,
+  );
   const customerDiscounts = await getSignedInCustomerDiscounts();
   const customerDiscountPercent = customerDiscounts.get(product.id) ?? 0;
   let affiliateCommissionPercent = 0;
@@ -387,15 +402,13 @@ export async function renderProductPage({
         <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
           <div className="contents">
             <div className="relative order-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
-              {product.is_bulk_order && (
-                <span className="absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm">
+              <span className={`absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm ${product.delivery_type === "AUTOMATIC" ? "border border-emerald-200 bg-emerald-400 text-slate-950" : product.is_bulk_order ? "border border-amber-200 bg-amber-300 text-slate-950" : "border border-white/20 bg-slate-950/90 text-white"}`}>
                   <span aria-hidden="true">◆</span>
                   <LocalizedProductText
-                    english="Digital Delivery"
-                    russian="Цифровая доставка"
+                    english={product.delivery_type === "AUTOMATIC" ? "Instant Delivery" : product.is_bulk_order ? "Bulk Delivery" : "Digital Delivery"}
+                    russian={product.delivery_type === "AUTOMATIC" ? "Мгновенная доставка" : product.is_bulk_order ? "Оптовая доставка" : "Цифровая доставка"}
                   />
                 </span>
-              )}
 
               <LocalizedProductImage
                 imageUrl={product.image_url}
@@ -430,14 +443,38 @@ export async function renderProductPage({
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
                   <LocalizedProductText
-                    english={product.badge ?? "Digital Product"}
-                    russian={product.badge_ru}
+                    english={product.delivery_type === "AUTOMATIC" ? "Instant Delivery" : product.is_bulk_order ? "Bulk Delivery" : "Digital Delivery"}
+                    russian={product.delivery_type === "AUTOMATIC" ? "Мгновенная доставка" : product.is_bulk_order ? "Оптовая доставка" : "Цифровая доставка"}
                   />
+                </span>
+                <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
+                  <LocalizedProductText english={`${soldCount} Sold`} russian={`Продано: ${soldCount}`} />
                 </span>
               </div>
 
+              {product.delivery_type === "MANUAL" && !product.is_bulk_order && (
+                <div className="mt-5 rounded-2xl border border-cyan-300 bg-cyan-50 p-4 sm:mt-7 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cyan-400 font-black text-slate-950">◆</span>
+                    <span>
+                      <span className="block text-sm font-black text-cyan-950 sm:text-base">
+                        <LocalizedProductText english="Digital delivery information" russian="Информация о цифровой доставке" />
+                      </span>
+                      <span className="mt-1 block whitespace-pre-line text-sm font-medium leading-6 text-slate-800">
+                        {product.delivery_instructions || (
+                          <LocalizedProductText
+                            english="Digital delivery is completed by the admin after successful payment confirmation."
+                            russian="Цифровая доставка выполняется администратором после успешного подтверждения оплаты."
+                          />
+                        )}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {product.is_bulk_order && (
-                  <div className="mt-5 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 sm:mt-7 sm:p-5">
+                  <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 sm:mt-7 sm:p-5">
                     <div className="flex items-start gap-3">
                       <span
                         aria-hidden="true"
@@ -446,13 +483,13 @@ export async function renderProductPage({
                         ◆
                       </span>
                       <span>
-                        <span className="block text-sm font-black text-amber-200 sm:text-base">
+                        <span className="block text-sm font-black text-amber-950 sm:text-base">
                           <LocalizedProductText
                             english="Bulk delivery information"
                             russian="Информация об оптовой доставке"
                           />
                         </span>
-                        <span className="mt-1 block whitespace-pre-line text-sm leading-6 text-slate-300">
+                        <span className="mt-1 block whitespace-pre-line text-sm font-medium leading-6 text-slate-800">
                           {product.bulk_delivery_instructions || "Bulk Delivery Time: 1-15 Working Days"}
                         </span>
                       </span>

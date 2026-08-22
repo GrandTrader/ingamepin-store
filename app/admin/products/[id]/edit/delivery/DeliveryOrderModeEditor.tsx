@@ -43,28 +43,38 @@ export default function DeliveryOrderModeEditor({
         </div>
       </section>
 
-      <label>
-        <span className="text-sm font-bold">Delivery instructions</span>
-        <textarea name="delivery_instructions" rows={5} defaultValue={instructions} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" />
-      </label>
-
       <section className="border-t border-slate-200 pt-6">
         <h2 className="text-xl font-black">Order mode</h2>
         {type === "AUTOMATIC" ? (
-          <p className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">Instant Delivery uses normal order mode.</p>
+          <>
+            <p className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">Instant Delivery uses automatic order mode.</p>
+            <label className="mt-4 block">
+              <span className="text-sm font-bold">Instant delivery instructions</span>
+              <textarea name="delivery_instructions" rows={5} defaultValue={instructions} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" />
+            </label>
+          </>
         ) : (
           <>
             <input type="hidden" name="is_bulk_order" value={bulk ? "true" : "false"} />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={() => setBulk(false)} className={`rounded-xl border p-4 text-left ${!bulk ? "border-blue-600 bg-blue-50" : "border-slate-200"}`}>
-                <span className="font-black">Normal Order</span>
-                <span className="mt-1 block text-sm text-slate-500">One standard customer order.</span>
+                <span className="font-black">Digital Delivery</span>
+                <span className="mt-1 block text-sm text-slate-500">Admin completes a standard digital delivery order.</span>
               </button>
               <button type="button" onClick={() => setBulk(true)} className={`rounded-xl border p-4 text-left ${bulk ? "border-blue-600 bg-blue-50" : "border-slate-200"}`}>
                 <span className="font-black">Bulk Delivery Order</span>
                 <span className="mt-1 block text-sm text-slate-500">Admin fulfills a bulk request manually.</span>
               </button>
             </div>
+            {!bulk && (
+              <label className="mt-4 block">
+                <span className="text-sm font-bold">Digital delivery instructions</span>
+                <textarea name="delivery_instructions" rows={5} defaultValue={instructions} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" />
+              </label>
+            )}
+            {bulk && (
+              <input type="hidden" name="delivery_instructions" value={instructions} />
+            )}
             {bulk && (
               <label className="mt-4 block">
                 <span className="text-sm font-bold">Bulk delivery instructions</span>

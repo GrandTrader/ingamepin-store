@@ -7,6 +7,7 @@ import type { BrowseProduct } from "@/components/ProductBrowser";
 import PreorderPopup, {
   type PreorderPopupData,
 } from "@/components/PreorderPopup";
+import PopularProductsRow from "@/components/PopularProductsRow";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
@@ -425,7 +426,7 @@ export default async function Home() {
   const popularProducts = [
     ...purchasedProducts,
     ...unsoldProducts,
-  ].slice(0, 16);
+  ].slice(0, 24);
 
   return (
     <div className="market-home min-h-screen bg-[#f3f4f6] text-[#172033]">
@@ -447,9 +448,13 @@ export default async function Home() {
             <Link href="/products" className="rounded-lg bg-[#f4f5f7] px-4 py-2 text-xs font-bold hover:bg-[#ff9418] hover:text-white">All</Link>
           </div>
           {popularProducts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-8">
-              {popularProducts.map((product) => <MarketplaceCard key={product.id} product={product} />)}
-            </div>
+            <PopularProductsRow>
+              {popularProducts.map((product) => (
+                <div key={product.id} className="w-[calc(50%-6px)] shrink-0 snap-start sm:w-[calc(25%-9px)] lg:w-[calc(12.5%-11px)]">
+                  <MarketplaceCard product={product} />
+                </div>
+              ))}
+            </PopularProductsRow>
           ) : <EmptySection message="No active products are currently available." />}
         </section>
 
@@ -491,13 +496,16 @@ function MarketplaceCard({ product }: { product: ProductCardData }) {
     <Link href={product.href ?? `/product/${product.slug}`} className="group min-w-0">
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#eef0f3] shadow-sm ring-1 ring-black/5 transition duration-200 group-hover:-translate-y-1 group-hover:shadow-lg">
         <span className={`absolute left-2 top-2 z-10 rounded-md px-2 py-1 text-[9px] font-extrabold shadow-md ${
-          product.isInstantDelivery && !product.isBulkOrder
+          product.isInstantDelivery
             ? "bg-emerald-400 text-slate-950"
-            : "bg-slate-950/90 text-white"
+            : product.isBulkOrder
+              ? "bg-amber-300 text-slate-950"
+              : "bg-slate-950/90 text-white"
         }`}>
-          {product.isInstantDelivery && !product.isBulkOrder
-            ? "Instant Delivery"
-            : "Digital Delivery"}
+          <LocalizedProductText
+            english={product.isInstantDelivery ? "Instant Delivery" : product.isBulkOrder ? "Bulk Delivery" : "Digital Delivery"}
+            russian={product.isInstantDelivery ? "Мгновенная доставка" : product.isBulkOrder ? "Оптовая доставка" : "Цифровая доставка"}
+          />
         </span>
         <span className="absolute bottom-8 right-2 z-10 rounded-md bg-slate-950/90 px-2 py-1 text-[9px] font-bold text-white shadow-md">
           <CountryFlag region={product.region} /> {product.region || "Global"}

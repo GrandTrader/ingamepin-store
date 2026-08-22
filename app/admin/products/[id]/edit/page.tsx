@@ -372,7 +372,7 @@ export default async function EditProductPage({
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-xl font-black">Order mode</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Normal keeps the current product design. Bulk adds a clear customer-facing label.
+                Digital Delivery is a standard manual order. Bulk Delivery is a manual bulk request.
               </p>
 
               <div className="mt-5">
@@ -565,7 +565,6 @@ export default async function EditProductPage({
     </div>
   );
 }
-
 
 
 

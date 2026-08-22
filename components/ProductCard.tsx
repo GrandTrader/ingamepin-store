@@ -43,11 +43,11 @@ export default function ProductCard({ product }: Props) {
   const customerPrice = product.price * (1 - discountPercent / 100);
   const localizedName =
     language === "ru" && product.nameRu ? product.nameRu : product.name;
-  const localizedBadge = product.isBulkOrder
-    ? "Digital Delivery"
-    : language === "ru" && product.badgeRu
-      ? product.badgeRu
-      : product.badge;
+  const localizedBadge = product.isInstantDelivery
+    ? language === "ru" ? "Мгновенная доставка" : "Instant Delivery"
+    : product.isBulkOrder
+      ? language === "ru" ? "Оптовая доставка" : "Bulk Delivery"
+      : language === "ru" ? "Цифровая доставка" : "Digital Delivery";
   const russianImage = language === "ru" ? product.imageRu : null;
   const localizedImage =
     russianImage && !failedImages.includes(russianImage)
@@ -73,7 +73,7 @@ export default function ProductCard({ product }: Props) {
           {product.isBulkOrder && (
             <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-md bg-amber-300 px-2 py-1 text-[9px] font-black uppercase text-slate-950 shadow-lg">
               <span aria-hidden="true">▦</span>
-              Digital Delivery
+              {language === "ru" ? "Оптовая доставка" : "Bulk Delivery"}
             </span>
           )}
 
