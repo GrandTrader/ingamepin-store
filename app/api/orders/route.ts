@@ -123,6 +123,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      if (signedInUser.app_metadata?.wallet_disabled === true) {
+        return NextResponse.json(
+          { error: "Your wallet is currently disabled. Contact support for assistance." },
+          { status: 403 },
+        );
+      }
+
       if (
         signedInUser.email.toLowerCase() !==
         String(customer.email ?? "").trim().toLowerCase()
@@ -171,6 +178,7 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+
       for (const item of submittedItems) {
         const option = options.find((entry) => entry.id === item.productOptionId);
         const product = (productsResult.data ?? []).find((entry) => entry.id === option?.product_id);

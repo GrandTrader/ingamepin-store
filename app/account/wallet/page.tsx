@@ -73,6 +73,7 @@ export default async function CustomerWalletPage({
   const requests = requestResult.data ?? [];
   const refunds = refundResult.data ?? [];
   const gateways = getWalletPaymentGateways();
+  const walletEnabled = user.app_metadata?.wallet_disabled !== true;
 
   return (
     <main className="bg-slate-100 px-4 py-10 text-slate-950">
@@ -119,10 +120,16 @@ export default async function CustomerWalletPage({
               </p>
             )}
 
-            <WalletTopupForm
-              gateways={gateways}
-              currentBalance={Number(wallet.balance)}
-            />
+            {walletEnabled ? (
+              <WalletTopupForm
+                gateways={gateways}
+                currentBalance={Number(wallet.balance)}
+              />
+            ) : (
+              <div className="mt-7 rounded-2xl border border-red-200 bg-red-50 p-5 font-bold text-red-700">
+                Your wallet is currently disabled. Contact support for assistance.
+              </div>
+            )}
           </section>
         </div>
 

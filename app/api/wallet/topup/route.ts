@@ -18,6 +18,7 @@ import {
   isWalletGatewayId,
 } from "@/lib/wallet-payment-gateways";
 import { expireStaleWalletTopups } from "@/lib/wallet-topup-expiry";
+import { notifyAdminsOfWalletTopup } from "@/lib/wallet-admin-notification";
 
 export const runtime = "nodejs";
 
@@ -74,6 +75,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Please sign in to continue." },
         { status: 401 },
+      );
+    }
+
+    if (user.app_metadata?.wallet_disabled === true) {
+      return NextResponse.json(
+        { error: "Your wallet is currently disabled. Contact support for assistance." },
+        { status: 403 },
       );
     }
 
@@ -216,6 +224,14 @@ export async function POST(request: NextRequest) {
     if (update.error) {
       throw new Error("Unable to save the wallet payment session.");
     }
+
+    await notifyAdminsOfWalletTopup({
+      requestId,
+      customerEmail: user.email,
+      creditAmount: Number(amount.toFixed(2)),
+      paymentTotal: paymentAmount,
+      gateway,
+    });
 
     return NextResponse.json({
       checkoutUrl,

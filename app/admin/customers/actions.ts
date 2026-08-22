@@ -120,6 +120,43 @@ export async function deleteCustomerAccount(
   );
 }
 
+export async function setCustomerWalletAccess(formData: FormData) {
+  await requireAdministrator();
+  const customerId = String(formData.get("customer_id") ?? "").trim();
+  const enabled = String(formData.get("enabled") ?? "") === "true";
+
+  if (!/^[0-9a-f-]{36}$/i.test(customerId)) {
+    redirect("/admin/customers?error=The selected customer is invalid.");
+  }
+
+  const admin = createAdminClient();
+  const customerResult = await admin.auth.admin.getUserById(customerId);
+  const customer = customerResult.data.user;
+
+  if (customerResult.error || !customer) {
+    customerRedirect(customerId, "error", "Customer was not found.");
+  }
+
+  const updateResult = await admin.auth.admin.updateUserById(customerId, {
+    app_metadata: {
+      ...customer.app_metadata,
+      wallet_disabled: !enabled,
+    },
+  });
+
+  if (updateResult.error) {
+    customerRedirect(customerId, "error", updateResult.error.message);
+  }
+
+  revalidatePath(`/admin/customers/${customerId}`);
+  revalidatePath("/admin/customers");
+  customerRedirect(
+    customerId,
+    "success",
+    enabled ? "Customer wallet enabled." : "Customer wallet disabled.",
+  );
+}
+
 export async function saveCustomerDiscount(
   formData: FormData,
 ) {

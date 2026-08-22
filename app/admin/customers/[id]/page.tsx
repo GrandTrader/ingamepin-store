@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../../AdminSidebar";
 import CustomerDiscountManager from "./CustomerDiscountManager";
+import { setCustomerWalletAccess } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export default async function AdminCustomerPage({ params, searchParams }: PagePr
   const metadata = customer.user_metadata ?? {};
   const name = String(metadata.full_name ?? metadata.name ?? email.split("@")[0] ?? "Customer");
   const phone = String(metadata.phone ?? customer.phone ?? "").trim();
+  const walletEnabled = customer.app_metadata?.wallet_disabled !== true;
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950 md:flex">
@@ -94,6 +96,26 @@ export default async function AdminCustomerPage({ params, searchParams }: PagePr
             <Summary label="Total spent" value={money(totalSpent)} />
             <Summary label="Active discounts" value={String(discounts.length)} />
           </div>
+
+          <section className={`mt-6 rounded-2xl border p-5 shadow-sm ${walletEnabled ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-black">Customer wallet access</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  {walletEnabled
+                    ? "Enabled: customer can add money and pay using wallet balance."
+                    : "Disabled: wallet top-ups and wallet payments are blocked."}
+                </p>
+              </div>
+              <form action={setCustomerWalletAccess}>
+                <input type="hidden" name="customer_id" value={id} />
+                <input type="hidden" name="enabled" value={walletEnabled ? "false" : "true"} />
+                <button className={`rounded-xl px-5 py-3 font-black text-white ${walletEnabled ? "bg-red-600" : "bg-emerald-600"}`}>
+                  {walletEnabled ? "Disable wallet" : "Enable wallet"}
+                </button>
+              </form>
+            </div>
+          </section>
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-xl font-black">Profile information</h2>
