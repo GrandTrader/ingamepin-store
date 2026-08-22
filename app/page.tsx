@@ -296,7 +296,6 @@ export default async function Home() {
 
   const products: StoreProduct[] =
     productRows
-      .filter((product) => !product.is_bulk_order)
       .map((product) => ({
       id: product.id,
       name: product.name,
@@ -464,7 +463,7 @@ export default async function Home() {
             ))}
           </div>
           <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-8">
-            {rankedProducts.slice(0, 16).map((product) => <MarketplaceCard key={product.id} product={product} />)}
+            {rankedProducts.map((product) => <MarketplaceCard key={product.id} product={product} />)}
           </div>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link href="/products" className="rounded-xl bg-[#ff9418] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#e67f00]">View all products</Link>
