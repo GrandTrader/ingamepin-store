@@ -10,6 +10,7 @@ import PreorderPopup, {
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
+import CountryFlag from "@/components/CountryFlag";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -499,7 +500,7 @@ function MarketplaceCard({ product }: { product: ProductCardData }) {
             : "Digital Delivery"}
         </span>
         <span className="absolute bottom-8 right-2 z-10 rounded-md bg-slate-950/90 px-2 py-1 text-[9px] font-bold text-white shadow-md">
-          <span aria-hidden="true">🌐</span> {product.region || "Global"}
+          <CountryFlag region={product.region} /> {product.region || "Global"}
         </span>
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import CountryFlag from "./CountryFlag";
 import { useStorePreferences } from "./StorePreferences";
 
 export type ProductCardData = {
@@ -94,7 +95,7 @@ export default function ProductCard({ product }: Props) {
           </span>
 
           <span className="absolute bottom-8 right-2 z-20 rounded-md bg-slate-950/85 px-2 py-1 text-[9px] font-bold text-white shadow-lg backdrop-blur-sm">
-            <span aria-hidden="true">🌐</span> {product.region || "Global"}
+            <CountryFlag region={product.region} /> {product.region || "Global"}
           </span>
 
           {localizedImage ? (
