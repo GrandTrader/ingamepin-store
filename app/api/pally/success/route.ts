@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPallyApiToken } from "@/lib/pally";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -20,8 +21,26 @@ export async function POST(request: NextRequest) {
     actualBuffer.length === expectedBuffer.length &&
     timingSafeEqual(actualBuffer, expectedBuffer);
 
+  if (!valid) {
+    return NextResponse.redirect(new URL("/checkout/payment", request.url), 303);
+  }
+
+  const topup = orderId
+    ? await createAdminClient()
+        .from("wallet_topup_requests")
+        .select("id")
+        .eq("id", orderId)
+        .eq("payment_method", "PALLY")
+        .maybeSingle()
+    : null;
+
   return NextResponse.redirect(
-    new URL(valid ? "/checkout/success" : "/checkout/payment", request.url),
+    new URL(
+      topup?.data
+        ? `/account/wallet/topup-return?requestId=${encodeURIComponent(orderId)}`
+        : "/checkout/success",
+      request.url,
+    ),
     303,
   );
 }

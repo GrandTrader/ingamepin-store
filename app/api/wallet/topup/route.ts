@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
             },
           ],
           buyer: { buyerEmail: user.email },
-          returnUrl: `${siteUrl}/account/wallet?success=Payment+received`,
+          returnUrl: `${siteUrl}/account/wallet/topup-return?requestId=${encodeURIComponent(requestId)}`,
           cancelUrl: `${siteUrl}/account/wallet`,
           orderExpireTime: Date.now() + 30 * 60 * 1000,
           passThroughInfo: `wallet:${requestId}`,

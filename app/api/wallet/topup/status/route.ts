@@ -28,16 +28,18 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     const topup = result.data;
 
-    if (
-      result.error ||
-      !topup ||
-      topup.payment_method !== "USDT_DIRECT" ||
-      !topup.gateway_order_id
-    ) {
+    if (result.error || !topup || !topup.gateway_order_id) {
       return NextResponse.json(
-        { error: "Wallet USDT invoice was not found." },
+        { error: "Wallet top-up was not found." },
         { status: 404 },
       );
+    }
+
+    if (topup.payment_method !== "USDT_DIRECT") {
+      return NextResponse.json({
+        topupStatus: topup.status,
+        transactionId: topup.gateway_transaction_id,
+      });
     }
 
     const invoice = await getUsdtInvoice(topup.gateway_order_id);
