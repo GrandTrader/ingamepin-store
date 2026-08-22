@@ -10,6 +10,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createUsdtInvoice, type UsdtNetwork } from "@/lib/usdt-gateway";
 import {
+  calculateGatewayCommission,
+  type GatewayCommissionSettings,
+} from "@/lib/payment-gateway-commissions";
+import {
   getWalletPaymentGateways,
   isWalletGatewayId,
 } from "@/lib/wallet-payment-gateways";
@@ -75,6 +79,24 @@ export async function POST(request: NextRequest) {
 
     await expireStaleWalletTopups(user.id);
 
+    const admin = createAdminClient();
+    const commissionSettingsResult = await admin
+      .from("payment_gateway_settings")
+      .select("gateway_commissions")
+      .eq("id", true)
+      .maybeSingle();
+
+    if (commissionSettingsResult.error) {
+      throw new Error("Unable to calculate the payment gateway fee.");
+    }
+
+    const commission = calculateGatewayCommission(
+      commissionSettingsResult.data
+        ?.gateway_commissions as GatewayCommissionSettings | null,
+      gateway,
+      amount,
+    );
+    const paymentAmount = commission.total;
     const reference = `${gateway}-${crypto.randomUUID()}`;
     const createResult = await supabase.rpc("create_wallet_topup_request", {
       p_amount: Number(amount.toFixed(2)),
@@ -94,7 +116,6 @@ export async function POST(request: NextRequest) {
     }
 
     const requestId = String(createResult.data);
-    const admin = createAdminClient();
     const siteUrl = (
       process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin
     ).replace(/\/$/, "");
@@ -109,7 +130,7 @@ export async function POST(request: NextRequest) {
         {
           env: { terminalType: "WEB" },
           merchantTradeNo,
-          fiatAmount: Number(amount.toFixed(2)),
+          fiatAmount: paymentAmount,
           fiatCurrency: "USD",
           description: "InGamePin wallet top-up",
           goodsDetails: [
@@ -132,7 +153,7 @@ export async function POST(request: NextRequest) {
       gatewayOrderId = result.prepayId;
     } else if (gateway === "FREEKASSA") {
       const rate = await getUsdRubRate();
-      const rubAmount = (amount * rate).toFixed(2);
+      const rubAmount = (paymentAmount * rate).toFixed(2);
       checkoutUrl = createFreeKassaCheckoutUrl({
         amount: rubAmount,
         currency: "RUB",
@@ -144,7 +165,7 @@ export async function POST(request: NextRequest) {
       gatewayPaymentId = rubAmount;
     } else if (gateway === "PALLY") {
       const rate = await getUsdRubRate();
-      const rubAmount = Number((amount * rate).toFixed(2));
+      const rubAmount = Number((paymentAmount * rate).toFixed(2));
       const bill = await createPallyBill({
         amount: rubAmount,
         currency: "RUB",
@@ -169,7 +190,7 @@ export async function POST(request: NextRequest) {
       const invoice = await createUsdtInvoice({
         orderId: requestId,
         network,
-        amount,
+        amount: paymentAmount,
       });
       gatewayOrderId = invoice.invoiceId;
       gatewayPaymentId = invoice.amount;
@@ -196,7 +217,12 @@ export async function POST(request: NextRequest) {
       throw new Error("Unable to save the wallet payment session.");
     }
 
-    return NextResponse.json({ checkoutUrl });
+    return NextResponse.json({
+      checkoutUrl,
+      creditAmount: Number(amount.toFixed(2)),
+      paymentFee: commission.fee,
+      paymentTotal: paymentAmount,
+    });
   } catch (error) {
     return NextResponse.json(
       {

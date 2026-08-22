@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
   WalletGateway,
@@ -21,7 +21,37 @@ export default function WalletTopupForm({
   const [network, setNetwork] = useState<"TRC20" | "BEP20" | "SOLANA">("TRC20");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [paymentFee, setPaymentFee] = useState(0);
+  const [paymentTotal, setPaymentTotal] = useState(0);
   const amountNumber = Math.max(0, Number(amount) || 0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
+      setPaymentFee(0);
+      setPaymentTotal(0);
+      return () => controller.abort();
+    }
+
+    void fetch(
+      `/api/orders?paymentMethod=${encodeURIComponent(gateway)}&baseTotal=${encodeURIComponent(amountNumber)}`,
+      { signal: controller.signal, cache: "no-store" },
+    )
+      .then(async (response) => {
+        const result = (await response.json()) as { fee?: number; total?: number };
+        if (!response.ok) throw new Error("Unable to calculate fee.");
+        setPaymentFee(Math.max(0, Number(result.fee) || 0));
+        setPaymentTotal(Math.max(0, Number(result.total) || amountNumber));
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPaymentFee(0);
+        setPaymentTotal(amountNumber);
+      });
+
+    return () => controller.abort();
+  }, [amountNumber, gateway]);
 
   async function continueToPayment() {
     setIsSubmitting(true);
@@ -143,6 +173,16 @@ export default function WalletTopupForm({
         <div className="flex justify-between gap-4 text-sm">
           <span className="text-slate-400">Add amount</span>
           <strong>${amountNumber.toFixed(2)}</strong>
+        </div>
+        <div className="mt-3 flex justify-between gap-4 border-t border-white/10 pt-3 text-sm">
+          <span className="text-slate-400">Payment gateway fee</span>
+          <strong>${paymentFee.toFixed(2)}</strong>
+        </div>
+        <div className="mt-3 flex justify-between gap-4 border-t border-white/10 pt-3">
+          <span className="text-slate-400">Amount to pay</span>
+          <strong className="text-xl text-amber-300">
+            ${(paymentTotal || amountNumber).toFixed(2)}
+          </strong>
         </div>
         <div className="mt-3 flex justify-between gap-4 border-t border-white/10 pt-3">
           <span className="text-slate-400">New balance</span>
