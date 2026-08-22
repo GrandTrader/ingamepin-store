@@ -41,6 +41,7 @@ type AdminOrdersPageProps = {
     error?: string;
     success?: string;
     page?: string;
+    q?: string;
   }>;
 };
 
@@ -93,6 +94,7 @@ export default async function AdminOrdersPage({
     error: actionError,
     success,
     page: requestedPage,
+    q: requestedQuery,
   } = await searchParams;
 
   const supabase = await createClient();
@@ -158,9 +160,17 @@ export default async function AdminOrdersPage({
       .filter((customer) => customer.email)
       .map((customer) => [customer.email!.trim().toLowerCase(), customer.id]),
   );
-  const totalPages = Math.max(1, Math.ceil(orders.length / 10));
+  const query = (requestedQuery ?? "").trim().toLowerCase();
+  const filteredOrders = query
+    ? orders.filter(
+        (order) =>
+          order.order_number.toLowerCase().includes(query) ||
+          order.customer_email.toLowerCase().includes(query),
+      )
+    : orders;
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / 10));
   const page = Math.min(Math.max(Number.parseInt(requestedPage ?? "1", 10) || 1, 1), totalPages);
-  const visibleOrders = orders.slice((page - 1) * 10, page * 10);
+  const visibleOrders = filteredOrders.slice((page - 1) * 10, page * 10);
 
   const paymentReviewCount = orders.filter(
     (order) =>
@@ -265,15 +275,36 @@ export default async function AdminOrdersPage({
 
           {!error && orders.length > 0 && (
             <section className="mt-8">
-              <div className="mb-4">
-                <h2 className="text-xl font-black">
-                  All orders
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Newest orders appear first.
-                </p>
+              <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-black">All orders</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Newest orders appear first.
+                  </p>
+                </div>
+                <form method="get" className="flex w-full max-w-xl gap-2">
+                  <input
+                    name="q"
+                    defaultValue={requestedQuery ?? ""}
+                    placeholder="Search order number or customer email"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
+                  />
+                  <button className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-500">
+                    Search
+                  </button>
+                  {query && (
+                    <Link href="/admin/orders" className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-600 hover:border-blue-300">
+                      Clear
+                    </Link>
+                  )}
+                </form>
               </div>
+
+              {query && filteredOrders.length === 0 && (
+                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-5 text-center font-bold text-amber-800">
+                  No orders found for “{requestedQuery}”.
+                </div>
+              )}
 
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <AdminOrdersTableScroller>
@@ -444,7 +475,7 @@ export default async function AdminOrdersPage({
               {totalPages > 1 && (
                 <nav className="mt-5 flex flex-wrap justify-center gap-2" aria-label="Order pages">
                   {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                    <Link key={pageNumber} href={`/admin/orders?page=${pageNumber}`} className={`rounded-lg border px-3 py-2 text-sm font-bold ${pageNumber === page ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}>{pageNumber}</Link>
+                    <Link key={pageNumber} href={`/admin/orders?${new URLSearchParams({ page: String(pageNumber), ...(query ? { q: requestedQuery ?? "" } : {}) }).toString()}`} className={`rounded-lg border px-3 py-2 text-sm font-bold ${pageNumber === page ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}>{pageNumber}</Link>
                   ))}
                 </nav>
               )}
