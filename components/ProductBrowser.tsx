@@ -117,7 +117,7 @@ export default function ProductBrowser({
   const [activeFilter, setActiveFilter] =
     useState<FilterValue>("ALL");
   const [sortBy, setSortBy] =
-    useState<SortValue>("FEATURED");
+    useState<SortValue>("BEST_SELLING");
   const [inStockOnly, setInStockOnly] =
     useState(false);
   const [expandedSections, setExpandedSections] =
@@ -386,7 +386,7 @@ export default function ProductBrowser({
                 </p>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-5 lg:grid-cols-4">
+              <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-5 sm:mt-5 sm:grid-cols-4 lg:grid-cols-8">
                 {(search ||
                 expandedSections.includes(
                   section.value,

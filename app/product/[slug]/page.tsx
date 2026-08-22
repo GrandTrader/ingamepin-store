@@ -391,8 +391,8 @@ export async function renderProductPage({
                 <span className="absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-300 px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm">
                   <span aria-hidden="true">◆</span>
                   <LocalizedProductText
-                    english="Bulk Order"
-                    russian="Оптовый заказ"
+                    english="Digital Delivery"
+                    russian="Цифровая доставка"
                   />
                 </span>
               )}

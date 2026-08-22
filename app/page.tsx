@@ -1,12 +1,9 @@
 import Link from "next/link";
 
 import HeroSlider, { type HeroSlide } from "@/components/HeroSlider";
-import ProductCard, {
-  type ProductCardData,
-} from "@/components/ProductCard";
-import ProductBrowser, {
-  type BrowseProduct,
-} from "@/components/ProductBrowser";
+import LocalizedProductText from "@/components/LocalizedProductText";
+import type { ProductCardData } from "@/components/ProductCard";
+import type { BrowseProduct } from "@/components/ProductBrowser";
 import PreorderPopup, {
   type PreorderPopupData,
 } from "@/components/PreorderPopup";
@@ -45,6 +42,7 @@ type ProductRow = {
   price: number | string;
   badge: string | null;
   badge_ru: string | null;
+  region: string | null;
   stock_quantity: number;
   rating: number | string;
   sold_count: number;
@@ -208,6 +206,7 @@ export default async function Home() {
           price,
           badge,
           badge_ru,
+          region,
           stock_quantity,
           rating,
           sold_count,
@@ -311,11 +310,10 @@ export default async function Home() {
         product.badge ??
         "Digital Delivery",
       badgeRu: product.badge_ru,
+      region: product.region,
       stock: getAvailableStock(product),
       rating: Number(product.rating),
-      sold:
-        product.sold_count +
-        (paidProductSales.get(product.id) ?? 0),
+      sold: paidProductSales.get(product.id) ?? 0,
       category: getProductCategory(
         product.categories,
       ),
@@ -416,171 +414,65 @@ export default async function Home() {
         ]
       : featuredProducts;
 
+  const rankedProducts = [...products]
+    .sort((first, second) => second.sold - first.sold)
+  const purchasedProducts = rankedProducts.filter(
+    (product) => product.sold > 0,
+  );
+  const unsoldProducts = rankedProducts.filter(
+    (product) => product.sold === 0,
+  );
+  const popularProducts = [
+    ...purchasedProducts,
+    ...unsoldProducts,
+  ].slice(0, 16);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="market-home min-h-screen bg-[#f3f4f6] text-[#172033]">
       {preorderPopup && (
         <PreorderPopup popup={preorderPopup} />
       )}
 
-      {sliderSettingsResult.data?.is_enabled && (
+      {sliderSettingsResult.data?.is_enabled && heroSlides.length > 0 && (
         <HeroSlider
           slides={heroSlides}
           autoplayMs={sliderSettingsResult.data.autoplay_ms}
         />
       )}
 
-      <section className="mx-auto max-w-7xl px-3 py-5 sm:px-5 sm:py-10">
-        <SectionHeading
-          eyebrow="Browse"
-          title="Popular Categories"
-          description="Explore game credits, keys, gift cards and subscriptions."
-        />
-
-        {categories.length > 0 ? (
-          <div className="mt-4 grid grid-cols-4 gap-2 sm:mt-6 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {categories.map(
-              (category) => (
-                <Link
-                  key={category.id}
-                  href={`/category/${category.slug}`}
-                  aria-label={`View ${category.name}`}
-                  className="group block min-w-0 rounded-xl border border-white/10 bg-white/5 px-1.5 py-3 text-center transition duration-300 hover:-translate-y-1 hover:border-cyan-400 hover:bg-white/10 sm:p-5 sm:text-left"
-                >
-                  <div className="text-2xl transition duration-300 group-hover:scale-110 sm:text-3xl">
-                    {getCategoryIcon(
-                      category.icon,
-                    )}
-                  </div>
-
-                  <h3 className="mt-2 line-clamp-2 text-[10px] font-bold leading-3 text-white transition group-hover:text-cyan-400 sm:mt-4 sm:text-base sm:leading-normal">
-                    {category.short_name ??
-                      category.name}
-                  </h3>
-
-                  {category.description && (
-                    <p className="mt-2 hidden line-clamp-2 text-xs leading-5 text-slate-500 sm:block">
-                      {
-                        category.description
-                      }
-                    </p>
-                  )}
-
-                  <p className="mt-4 hidden text-xs font-bold text-cyan-400 opacity-0 transition duration-300 group-hover:opacity-100 sm:block">
-                    View Products {"→"}
-                  </p>
-                </Link>
-              ),
-            )}
+      <div className="mx-auto max-w-[1180px] space-y-4 px-3 py-5 sm:px-5 sm:py-8">
+        <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h1 className="text-xl font-extrabold sm:text-2xl">Popular</h1>
+            <Link href="/products" className="rounded-lg bg-[#f4f5f7] px-4 py-2 text-xs font-bold hover:bg-[#ff9418] hover:text-white">All</Link>
           </div>
-        ) : (
-          <EmptySection message="No categories are currently available." />
-        )}
-      </section>
-
-      <section className="mx-auto max-w-7xl px-3 pb-5 sm:px-5 sm:pb-10">
-        <Link
-          href="/products/bulk"
-          className="group relative flex flex-col gap-5 overflow-hidden rounded-2xl border-2 border-cyan-400 bg-gradient-to-r from-cyan-100 via-white to-blue-200 p-5 shadow-lg shadow-cyan-200/60 ring-4 ring-cyan-100/70 transition hover:-translate-y-1 hover:border-cyan-500 hover:shadow-xl hover:shadow-cyan-200 sm:flex-row sm:items-center sm:justify-between sm:p-7"
-        >
-          <span
-            aria-hidden="true"
-            className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-cyan-300/30 blur-2xl"
-          />
-          <span
-            aria-hidden="true"
-            className="absolute -bottom-20 left-1/3 h-36 w-36 rounded-full bg-blue-300/30 blur-2xl"
-          />
-
-          <div className="relative z-10">
-            <p className="inline-flex rounded-full bg-amber-300 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-950 shadow-sm sm:text-xs">
-              For resellers &amp; businesses
-            </p>
-            <h2 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
-              Need products in bulk quantity?
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-              Explore bulk products with flexible quantities, competitive B2B pricing and dedicated support.
-            </p>
-          </div>
-
-          <span className="relative z-10 inline-flex shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-slate-400/30 transition group-hover:border-cyan-600 group-hover:bg-cyan-600 group-hover:shadow-cyan-300/50">
-            View B2B Bulk Products <span aria-hidden="true" className="ml-2">→</span>
-          </span>
-        </Link>
-      </section>
-
-      {featuredProductsForDisplay.length > 0 && (
-        <div><ProductSection
-          id="featured-products"
-          eyebrow="Best Sellers"
-          title="Featured Products"
-          description="Popular products selected for InGamePin customers."
-          products={featuredProductsForDisplay}
-        /></div>
-      )}
-
-      <section className="mx-auto max-w-7xl px-3 pb-8 sm:px-5 sm:pb-12">
-        <Link
-          href="/affiliate-program"
-          className="affiliate-home-banner group relative flex flex-col gap-6 overflow-hidden rounded-3xl border border-cyan-400/30 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 shadow-xl shadow-slate-950/25 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-2xl hover:shadow-cyan-950/35 sm:flex-row sm:items-center sm:justify-between sm:p-8"
-        >
-          <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent" />
-          <span aria-hidden="true" className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl transition duration-500 group-hover:bg-cyan-300/25" />
-          <span aria-hidden="true" className="absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
-          <div className="relative z-10 max-w-3xl">
-            <span className="inline-flex items-center rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200 shadow-sm sm:text-xs">
-              Affiliate Program
-            </span>
-            <h2 className="affiliate-home-banner-title mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
-              Share products. Earn commission in USDT.
-            </h2>
-            <p className="affiliate-home-banner-description mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Create referral links for eligible products and earn from approved customer orders.
-            </p>
-          </div>
-          <span className="relative z-10 inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-300 px-7 py-3.5 text-sm font-black text-slate-950 shadow-lg shadow-cyan-950/40 transition group-hover:border-white group-hover:bg-white sm:min-w-48">
-            Learn &amp; Join <span aria-hidden="true" className="ml-2">{"→"}</span>
-          </span>
-        </Link>
-      </section>
-
-      {products.length > 0 && (
-        <ProductBrowser products={products} />
-      )}
-
-      {products.length === 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-12">
-          <EmptySection message="No active products are currently available." />
+          {popularProducts.length > 0 ? (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-8">
+              {popularProducts.map((product) => <MarketplaceCard key={product.id} product={product} />)}
+            </div>
+          ) : <EmptySection message="No active products are currently available." />}
         </section>
-      )}
 
-      <section className="mt-8 border-y border-white/10 bg-slate-900">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3 px-3 py-7 sm:gap-6 sm:px-5 sm:py-10 md:grid-cols-4">
-          <StoreFeature
-            icon="⚡"
-            title="Fast Delivery"
-            description="Receive digital products after payment verification and secure manual fulfillment."
-          />
-
-          <StoreFeature
-            icon="✅"
-            title="Genuine Products"
-            description="Products sourced from trusted and verified suppliers."
-          />
-
-          <StoreFeature
-            icon="🔒"
-            title="Secure Checkout"
-            description="Protected order processing and secure private-code delivery."
-          />
-
-          <StoreFeature
-            icon="💬"
-            title="Customer Support"
-            description="Get assistance with orders, payments and redemption."
-          />
-        </div>
-      </section>
+        <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-xl font-extrabold sm:text-2xl">Explore the catalog</h2>
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+            <Link href="/products" className="market-tab market-tab-active">All products</Link>
+            {categories.map((category) => (
+              <Link key={category.id} href={`/category/${category.slug}`} className="market-tab">
+                <span aria-hidden="true">{getCategoryIcon(category.icon)}</span>{category.short_name ?? category.name}
+              </Link>
+            ))}
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-8">
+            {rankedProducts.slice(0, 16).map((product) => <MarketplaceCard key={product.id} product={product} />)}
+          </div>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Link href="/products" className="rounded-xl bg-[#ff9418] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#e67f00]">View all products</Link>
+            <Link href="/products/bulk" className="b2b-home-button rounded-xl bg-[#17243d] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#243550]">B2B bulk products</Link>
+            <Link href="/affiliate-program" className="rounded-xl bg-[#eef0f3] px-6 py-3 text-sm font-extrabold text-[#17243d] hover:bg-[#dfe3e8]">Affiliate program</Link>
+          </div>
+        </section>
+      </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-white/10 bg-slate-900/95 px-2 py-2 backdrop-blur sm:hidden">
         <MobileNavLink href="/" icon="⌂" label="Home" />
@@ -594,71 +486,31 @@ export default async function Home() {
   );
 }
 
-type ProductSectionProps = {
-  id: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  products: ProductCardData[];
-};
-
-function ProductSection({
-  id,
-  eyebrow,
-  title,
-  description,
-  products,
-}: ProductSectionProps) {
+function MarketplaceCard({ product }: { product: ProductCardData }) {
   return (
-    <section
-      id={id}
-      className="mx-auto max-w-7xl scroll-mt-24 px-3 py-7 sm:px-5 sm:py-10"
-    >
-      <SectionHeading
-        eyebrow={eyebrow}
-        title={title}
-        description={description}
-      />
-
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-5 lg:grid-cols-4">
-        {products.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-          />
-        ))}
+    <Link href={product.href ?? `/product/${product.slug}`} className="group min-w-0">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#eef0f3] shadow-sm ring-1 ring-black/5 transition duration-200 group-hover:-translate-y-1 group-hover:shadow-lg">
+        <span className={`absolute left-2 top-2 z-10 rounded-md px-2 py-1 text-[9px] font-extrabold shadow-md ${
+          product.isInstantDelivery && !product.isBulkOrder
+            ? "bg-emerald-400 text-slate-950"
+            : "bg-slate-950/90 text-white"
+        }`}>
+          {product.isInstantDelivery && !product.isBulkOrder
+            ? "Instant Delivery"
+            : "Digital Delivery"}
+        </span>
+        <span className="absolute bottom-8 right-2 z-10 rounded-md bg-slate-950/90 px-2 py-1 text-[9px] font-bold text-white shadow-md">
+          <span aria-hidden="true">🌐</span> {product.region || "Global"}
+        </span>
+        {product.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+        ) : <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#17243d] to-[#0d1830] text-4xl">🎮</div>}
       </div>
-    </section>
-  );
-}
-
-type SectionHeadingProps = {
-  eyebrow: string;
-  title: string;
-  description?: string;
-};
-
-function SectionHeading({
-  eyebrow,
-  title,
-  description,
-}: SectionHeadingProps) {
-  return (
-    <div>
-      <p className="text-sm font-bold uppercase tracking-widest text-cyan-400">
-        {eyebrow}
-      </p>
-
-      <h2 className="mt-1 text-2xl font-black sm:text-3xl">
-        {title}
-      </h2>
-
-      {description && (
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-          {description}
-        </p>
-      )}
-    </div>
+      <h3 className="mt-2 line-clamp-2 text-center text-xs font-bold leading-4 text-[#354052] transition group-hover:text-[#f28b0c] sm:text-[13px]">
+        <LocalizedProductText english={product.name} russian={product.nameRu} />
+      </h3>
+    </Link>
   );
 }
 
@@ -674,36 +526,6 @@ function EmptySection({
   );
 }
 
-type StoreFeatureProps = {
-  icon: string;
-  title: string;
-  description: string;
-};
-
-function StoreFeature({
-  icon,
-  title,
-  description,
-}: StoreFeatureProps) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-      <p
-        aria-hidden="true"
-        className="text-2xl"
-      >
-        {icon}
-      </p>
-
-      <h3 className="mt-3 font-bold">
-        {title}
-      </h3>
-
-      <p className="mt-1 text-sm leading-6 text-slate-400">
-        {description}
-      </p>
-    </div>
-  );
-}
 
 function MobileNavLink({
   href,

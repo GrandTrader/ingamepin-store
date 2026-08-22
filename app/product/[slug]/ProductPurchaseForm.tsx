@@ -383,22 +383,25 @@ export default function ProductPurchaseForm({
       return showError(`Allowed quantity for ${localizedProductName}: ${minimumQuantity}-${maximumQuantity}.`);
     }
 
-    for (const field of customerFields) {
-      const value = (customerValues[field.id] ?? "").trim();
-      if (field.isRequired && !value) return showError(`${field.label} is required.`);
-      if (value.length > 500) return showError(`${field.label} is too long.`);
-      if (value && field.fieldType === "EMAIL" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        return showError(`Enter a valid ${field.label}.`);
-      }
-      if (value && field.fieldType === "NUMBER" && !/^-?[0-9]+([.][0-9]+)?$/.test(value)) {
-        return showError(`Enter a valid ${field.label}.`);
+    for (let unitIndex = 0; unitIndex < quantity; unitIndex += 1) {
+      for (const field of customerFields) {
+        const value = (customerValues[`${unitIndex}:${field.id}`] ?? "").trim();
+        const unitLabel = quantity > 1 ? ` for item ${unitIndex + 1}` : "";
+        if (field.isRequired && !value) return showError(`${field.label}${unitLabel} is required.`);
+        if (value.length > 500) return showError(`${field.label}${unitLabel} is too long.`);
+        if (value && field.fieldType === "EMAIL" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return showError(`Enter a valid ${field.label}${unitLabel}.`);
+        }
+        if (value && field.fieldType === "NUMBER" && !/^-?[0-9]+([.][0-9]+)?$/.test(value)) {
+          return showError(`Enter a valid ${field.label}${unitLabel}.`);
+        }
       }
     }
 
     return true;
   }
 
-  function createCartItem(): StoredCartItem {
+  function createCartItem(unitIndex = 0, separateUnit = false): StoredCartItem {
     if (!selectedOption) {
       throw new Error("No product option selected.");
     }
@@ -424,7 +427,7 @@ export default function ProductPurchaseForm({
 
     const cartId = `${product.id}-${selectedOption.id}-${
       selectedFulfillmentMode ?? valueMode
-    }-${Date.now()}`;
+    }-${Date.now()}-${unitIndex}`;
 
     return {
       id: cartId,
@@ -451,10 +454,10 @@ export default function ProductPurchaseForm({
       image: localizedProductImage ?? undefined,
       price: selectedUnitPrice,
       unitPrice: selectedUnitPrice,
-      totalPrice,
-      quantity,
-      minQuantity: minimumQuantity,
-      maxQuantity: product.isBulkOrder ? undefined : maximumQuantity,
+      totalPrice: separateUnit ? selectedUnitPrice : totalPrice,
+      quantity: separateUnit ? 1 : quantity,
+      minQuantity: separateUnit ? 1 : minimumQuantity,
+      maxQuantity: separateUnit ? 1 : product.isBulkOrder ? undefined : maximumQuantity,
       isBulkOrder: Boolean(product.isBulkOrder),
       productType: product.productType,
       deliveryType:
@@ -466,25 +469,32 @@ export default function ProductPurchaseForm({
         .map((field) => ({
           fieldId: field.id,
           label: field.label,
-          value: (customerValues[field.id] ?? "").trim(),
+          value: (customerValues[`${unitIndex}:${field.id}`] ?? "").trim(),
         }))
         .filter((field) => field.value),
     };
   }
 
+  function createCartItems() {
+    const separateUnits = customerFields.length > 0 && quantity > 1;
+    return separateUnits
+      ? Array.from({ length: quantity }, (_, index) => createCartItem(index, true))
+      : [createCartItem(0, false)];
+  }
+
   function completeAddToCart() {
     try {
-      const newItem = createCartItem();
+      const newItems = createCartItems();
       const savedCart = localStorage.getItem("shoppingCart");
       const currentCart = savedCart
         ? (JSON.parse(savedCart) as StoredCartItem[])
         : [];
 
-      currentCart.push(newItem);
+      currentCart.push(...newItems);
       localStorage.setItem("shoppingCart", JSON.stringify(currentCart));
       window.dispatchEvent(new Event("cartUpdated"));
       setMessageType("success");
-      setMessage(`${newItem.editionName} added to your cart.`);
+      setMessage(`${newItems.length} item${newItems.length === 1 ? "" : "s"} added to your cart.`);
     } catch {
       showError("Unable to add this product to your cart.");
     }
@@ -492,7 +502,11 @@ export default function ProductPurchaseForm({
 
   function completeBuyNow() {
     try {
-      localStorage.setItem("buyNowItem", JSON.stringify(createCartItem()));
+      const newItems = createCartItems();
+      localStorage.setItem(
+        "buyNowItem",
+        JSON.stringify(newItems.length === 1 ? newItems[0] : newItems),
+      );
       router.push("/checkout");
     } catch {
       showError("Unable to continue to checkout.");
@@ -641,17 +655,19 @@ export default function ProductPurchaseForm({
                       <><span className="font-black">{formatPrice(applyAffiliateMarkup(option.sellingPrice) * (1 - product.customerDiscountPercent / 100))}</span>{" "}<span className="text-xs line-through opacity-60">{formatPrice(applyAffiliateMarkup(option.sellingPrice))}</span></>
                     ) : formatPrice(applyAffiliateMarkup(option.sellingPrice))}
                   </span>
-                  <span className="mt-1 block text-xs opacity-70">
-                    {isUnavailable
-                      ? t("outOfStock")
-                      : product.isBulkOrder
-                        ? "Bulk quantity available"
-                        : product.isUnlimitedStock
-                          ? "Unlimited availability"
-                        : product.deliveryType === "AUTOMATIC"
-                          ? `${option.stockQuantity.toLocaleString("en-IN")} available`
-                          : t("inStock")}
-                  </span>
+                  {(isUnavailable ||
+                    (!product.isBulkOrder &&
+                      !product.isUnlimitedStock &&
+                      option.stockQuantity > 0 &&
+                      option.stockQuantity < 5)) && (
+                    <span className={`mt-1 block text-xs font-bold ${
+                      isUnavailable ? "opacity-70" : "text-amber-400"
+                    }`}>
+                      {isUnavailable
+                        ? t("outOfStock")
+                        : `Only ${option.stockQuantity.toLocaleString("en-IN")} Left`}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -715,52 +731,52 @@ export default function ProductPurchaseForm({
 
       {customerFields.length > 0 && (
         <section className="mt-5 grid gap-4 sm:mt-7">
-          {customerFields.map((field) => (
-            <label key={field.id}>
-              <span className="text-sm font-bold">
-                {field.label}
-                {field.isRequired && <span className="ml-1 text-red-300">*</span>}
-              </span>
-              {field.fieldType === "TEXTAREA" ? (
-                <textarea
-                  rows={3}
-                  required={field.isRequired}
-                  maxLength={500}
-                  value={customerValues[field.id] ?? ""}
-                  onChange={(event) => {
-                    setCustomerValues((current) => ({
-                      ...current,
-                      [field.id]: event.target.value,
-                    }));
-                    clearMessage();
-                  }}
-                  placeholder={field.placeholder ?? ""}
-                  className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-                />
-              ) : (
-                <input
-                  type={
-                    field.fieldType === "EMAIL"
-                      ? "email"
-                      : field.fieldType === "NUMBER"
-                        ? "number"
-                        : "text"
-                  }
-                  required={field.isRequired}
-                  maxLength={field.fieldType === "NUMBER" ? undefined : 500}
-                  value={customerValues[field.id] ?? ""}
-                  onChange={(event) => {
-                    setCustomerValues((current) => ({
-                      ...current,
-                      [field.id]: event.target.value,
-                    }));
-                    clearMessage();
-                  }}
-                  placeholder={field.placeholder ?? ""}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
-                />
+          {Array.from({ length: quantity }, (_, unitIndex) => (
+            <div key={unitIndex} className="grid gap-4 rounded-2xl border border-white/10 p-4">
+              {quantity > 1 && (
+                <h2 className="text-sm font-black text-cyan-400">
+                  Customer information {unitIndex + 1}
+                </h2>
               )}
-            </label>
+              {customerFields.map((field) => {
+                const valueKey = `${unitIndex}:${field.id}`;
+                return (
+                  <label key={field.id}>
+                    <span className="text-sm font-bold">
+                      {field.label}
+                      {field.isRequired && <span className="ml-1 text-red-300">*</span>}
+                    </span>
+                    {field.fieldType === "TEXTAREA" ? (
+                      <textarea
+                        rows={3}
+                        required={field.isRequired}
+                        maxLength={500}
+                        value={customerValues[valueKey] ?? ""}
+                        onChange={(event) => {
+                          setCustomerValues((current) => ({ ...current, [valueKey]: event.target.value }));
+                          clearMessage();
+                        }}
+                        placeholder={field.placeholder ?? ""}
+                        className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                      />
+                    ) : (
+                      <input
+                        type={field.fieldType === "EMAIL" ? "email" : field.fieldType === "NUMBER" ? "number" : "text"}
+                        required={field.isRequired}
+                        maxLength={field.fieldType === "NUMBER" ? undefined : 500}
+                        value={customerValues[valueKey] ?? ""}
+                        onChange={(event) => {
+                          setCustomerValues((current) => ({ ...current, [valueKey]: event.target.value }));
+                          clearMessage();
+                        }}
+                        placeholder={field.placeholder ?? ""}
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none focus:border-cyan-400"
+                      />
+                    )}
+                  </label>
+                );
+              })}
+            </div>
           ))}
         </section>
       )}
@@ -822,7 +838,7 @@ export default function ProductPurchaseForm({
             +
           </button>
         </div>
-        <p className="mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">
+        <p className="product-quantity-limit mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">
           {product.isBulkOrder
             ? language === "ru"
               ? "Без ограничения количества"
@@ -876,29 +892,29 @@ export default function ProductPurchaseForm({
       {affiliateMaximumCommissionPercent > 0 && (
         <Link
           href={`/affiliate-program?product=${encodeURIComponent(product.slug)}`}
-          className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-amber-300/40 bg-gradient-to-r from-amber-300/15 to-cyan-400/10 p-4 transition hover:border-amber-200 hover:bg-amber-300/20 sm:mt-6 sm:p-5"
+          className="product-affiliate-banner mt-5 flex items-center justify-between gap-4 rounded-2xl border border-amber-300/40 bg-gradient-to-r from-amber-300/15 to-cyan-400/10 p-4 transition hover:border-amber-200 hover:bg-amber-300/20 sm:mt-6 sm:p-5"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-300 text-xl text-slate-950">
             ◈
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-xs font-bold uppercase tracking-widest text-amber-200">
+            <span className="product-affiliate-label block text-xs font-bold uppercase tracking-widest text-amber-200">
               {language === "ru"
                 ? "Партнёрская возможность"
                 : "Affiliate opportunity"}
             </span>
-            <span className="mt-1 block font-black text-white">
+            <span className="product-affiliate-title mt-1 block font-black text-white">
               {language === "ru" ? "Заработайте до" : "Earn up to"}{" "}
               {formatPrice(affiliateMaximumEarning)}{" "}
               {language === "ru" ? "на этом товаре!" : "on this product!"}
             </span>
-            <span className="mt-1 block text-xs text-slate-400">
+            <span className="product-affiliate-copy mt-1 block text-xs text-slate-400">
               {language === "ru"
                 ? "Присоединяйтесь к программе и делитесь своей уникальной ссылкой."
                 : "Join the program and share your unique product link."}
             </span>
           </span>
-          <span aria-hidden="true" className="text-2xl text-amber-200">
+          <span aria-hidden="true" className="product-affiliate-arrow text-2xl text-amber-200">
             →
           </span>
         </Link>

@@ -28,6 +28,7 @@ type ProductRow = {
   price: number | string;
   badge: string | null;
   badge_ru: string | null;
+  region: string | null;
   stock_quantity: number;
   rating: number | string;
   sold_count: number;
@@ -216,6 +217,7 @@ export default async function ProductsPage({
         price,
         badge,
         badge_ru,
+        region,
         stock_quantity,
         rating,
         sold_count,
@@ -264,17 +266,17 @@ export default async function ProductsPage({
         price: Number(product.price),
         badge: product.badge ?? "Digital Delivery",
         badgeRu: product.badge_ru,
+        region: product.region,
         stock: getAvailableStock(product),
         rating: Number(product.rating),
-        sold:
-          product.sold_count +
-          (paidProductSales.get(product.id) ?? 0),
+        sold: paidProductSales.get(product.id) ?? 0,
         category: getCategory(product),
         discountPercent: customerDiscounts.get(product.id) ?? 0,
         isBulkOrder: product.is_bulk_order,
         isInstantDelivery: product.delivery_type === "AUTOMATIC",
       }),
-    );
+    )
+    .sort((first, second) => second.sold - first.sold);
   const details = collections[collection];
 
   return (
@@ -307,7 +309,7 @@ export default async function ProductsPage({
         </div>
 
         {products.length > 0 ? (
-          <section className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+          <section className="mt-8 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-8">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

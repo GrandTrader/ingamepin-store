@@ -242,60 +242,11 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* Desktop navigation */}
-          <nav
-            aria-label="Main navigation"
-            className="hidden items-center gap-1 xl:flex"
-          >
-            <Link
-              href="/"
-              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
-            >
-              {t("home")}
-            </Link>
-
-            <Link
-              href="/products/playstation"
-              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
-            >
-              PlayStation
-            </Link>
-
-            <Link
-              href="/products/steam"
-              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
-            >
-              Steam
-            </Link>
-
-            <Link
-              href="/products/apple"
-              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
-            >
-              Apple
-            </Link>
-
-            <Link
-              href="/products"
-              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
-            >
-              {t("allProducts")}
-            </Link>
-
-            <Link
-              href="/products/bulk"
-              className="rounded-lg border-2 border-cyan-600 bg-cyan-400 px-3 py-2 text-sm font-black text-slate-950 shadow-sm transition hover:border-slate-950 hover:bg-slate-950 hover:text-white"
-            >
-              B2B Bulk
-            </Link>
-
-            <Link
-              href="/track-order"
-              className="rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-400"
-            >
-              {t("trackOrder")}
-            </Link>
-          </nav>
+          <form action="/products" method="get" role="search" className="hidden min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-600 bg-white focus-within:border-[#ff9418] xl:flex">
+            <label htmlFor="desktop-product-search" className="sr-only">{t("searchProducts")}</label>
+            <input id="desktop-product-search" name="search" type="search" placeholder={t("searchPlaceholder")} className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400" />
+            <button type="submit" aria-label="Search" className="px-4 text-xl text-slate-500 transition hover:text-[#ff9418]">⌕</button>
+          </form>
 
           {/* Header actions */}
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -345,11 +296,9 @@ export default function Header() {
               </select>
             </div>
 
-            <Link
-              href={isAuthenticated ? "/account/wallet" : "/account"}
-              aria-label="Wallet"
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-300/70 bg-emerald-400 font-black text-slate-950 shadow-[0_0_18px_rgba(52,211,153,0.3)] transition hover:bg-emerald-300 sm:h-11 sm:w-11"
-            >
+            <Link href="/support" className="header-action hidden xl:flex"><span aria-hidden="true">●</span><span>Chat</span></Link>
+
+            <Link href="/track-order" aria-label="Purchases" className="header-action hidden xl:flex">
               <svg
                 aria-hidden="true"
                 viewBox="0 0 24 24"
@@ -365,13 +314,15 @@ export default function Header() {
                 <path d="M16 13h5" />
                 <circle cx="16" cy="13" r=".5" fill="currentColor" />
               </svg>
-              <span className="sr-only">Wallet</span>
+              <span>Purchases</span>
             </Link>
+
+            <Link href={isAuthenticated ? "/account/wallet" : "/account"} className="header-action hidden xl:flex"><span aria-hidden="true">▣</span><span>Wallet</span></Link>
 
             <Link
               href="/cart"
               aria-label={`${t("cart")}: ${cartQuantity}`}
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-slate-950 font-bold transition hover:border-cyan-400 sm:h-11 sm:w-11"
+              className="header-action relative flex"
             >
               <span
                 aria-hidden="true"
@@ -380,9 +331,7 @@ export default function Header() {
                 {"\uD83D\uDED2"}
               </span>
 
-              <span className="sr-only">
-                {t("cart")}
-              </span>
+              <span className="hidden xl:inline">{t("cart")}</span>
 
               {cartQuantity > 0 && (
                 <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-cyan-400 px-1 text-xs font-black text-slate-950">
@@ -440,10 +389,23 @@ export default function Header() {
           </div>
         </div>
 
+        <nav aria-label="Store categories" className="hidden border-t border-white/10 bg-slate-950/75 xl:block">
+          <div className="mx-auto flex max-w-7xl items-center gap-7 overflow-x-auto px-5 py-3 text-xs font-bold text-slate-300">
+            <Link href="/products/bulk" className="header-category-link text-[#ff9b22]">▦ B2B</Link>
+            <Link href="/category/gaming-top-ups" className="header-category-link">🎮 Games</Link>
+            <Link href="/category/gift-cards" className="header-category-link">▣ Gift Cards</Link>
+            <Link href="/products/playstation" className="header-category-link">◈ PlayStation</Link>
+            <Link href="/products/steam" className="header-category-link">Steam</Link>
+            <Link href="/products/apple" className="header-category-link">● Apple &amp; App Store</Link>
+            <Link href="/category/subscriptions" className="header-category-link">★ Subscriptions</Link>
+            <Link href="/category/game-keys" className="header-category-link">⌘ Game Keys</Link>
+          </div>
+        </nav>
+
         {!hideProductSearch &&
           !pathname.startsWith("/digiseller/usdt/") &&
           pathname !== "/checkout/payment" && (
-          <div className="border-t border-white/10 bg-slate-950/70 px-3 py-2.5 sm:px-5 sm:py-3">
+          <div className="border-t border-white/10 bg-slate-950/70 px-3 py-2.5 sm:px-5 sm:py-3 xl:hidden">
           <div className="relative mx-auto max-w-3xl">
             <form
               action="/products"

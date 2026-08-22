@@ -54,15 +54,15 @@ export default async function AffiliateProgramPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <section className="border-b border-white/10 bg-gradient-to-br from-cyan-500/15 via-slate-950 to-blue-600/15">
+      <section className="affiliate-program-hero border-b border-white/10 bg-gradient-to-br from-cyan-500/15 via-slate-950 to-blue-600/15">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:py-24">
           <p className="text-xs font-black uppercase tracking-[0.28em] text-cyan-400">
             InGamePin Marketing Partners
           </p>
-          <h1 className="mt-4 max-w-4xl text-4xl font-black leading-tight sm:text-6xl">
+          <h1 className="affiliate-program-hero-title mt-4 max-w-4xl text-4xl font-black leading-tight sm:text-6xl">
             Promote digital products. Earn commission in USDT.
           </h1>
-          <p className="mt-6 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
+          <p className="affiliate-program-hero-copy mt-6 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
             Join the InGamePin Affiliate Program, create referral links for
             eligible products and earn commission from completed, approved
             customer orders.
@@ -83,7 +83,7 @@ export default async function AffiliateProgramPage() {
             )}
             <a
               href="#affiliate-terms"
-              className="inline-flex items-center justify-center rounded-xl border border-white/15 px-7 py-3.5 font-bold text-white transition hover:border-cyan-400 hover:text-cyan-300"
+              className="affiliate-program-terms-button inline-flex items-center justify-center rounded-xl border border-white/15 px-7 py-3.5 font-bold text-white transition hover:border-cyan-400 hover:text-cyan-300"
             >
               Read Program Terms
             </a>

@@ -33,6 +33,73 @@ body {
   overflow-x: hidden;
 }
 
+.header-action {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.7rem;
+  background: #1d2a40;
+  padding: 0.5rem 0.75rem;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  transition: 160ms ease;
+}
+
+.header-action:hover,
+.header-category-link:hover {
+  color: #ff9b22;
+  border-color: rgba(255, 155, 34, 0.45);
+}
+
+.header-category-link {
+  flex: none;
+  transition: color 160ms ease;
+}
+
+.market-tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 0.65rem;
+  background: #f1f3f6;
+  padding: 0.65rem 0.9rem;
+  color: #4b5563;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: 160ms ease;
+}
+
+.market-tab:hover,
+.market-tab-active {
+  background: #ff9418;
+  color: #fff;
+}
+
+.b2b-home-button,
+html[data-store-theme="light"] .b2b-home-button {
+  background: #17243d !important;
+  color: #fff !important;
+}
+
+.b2b-home-button:hover,
+html[data-store-theme="light"] .b2b-home-button:hover {
+  background: #243550 !important;
+}
+
+body:has(.market-home) > div:first-of-type {
+  background: #f3f4f6;
+}
+
+body:has(.market-home) header {
+  box-shadow: none;
+}
+
 /* Slightly compact desktop layout */
 @media (min-width: 1024px) {
   html {
@@ -158,6 +225,71 @@ html[data-store-theme="light"] .affiliate-home-banner .affiliate-home-banner-des
     width: 100%;
     min-height: 48px;
   }
+}
+
+html[data-store-theme="light"] body .b2b-home-button,
+html[data-store-theme="light"] body .b2b-home-button * {
+  background-color: #17243d !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+html[data-store-theme="light"] body .b2b-home-button:hover,
+html[data-store-theme="light"] body .b2b-home-button:hover * {
+  background-color: #243550 !important;
+  color: #ffffff !important;
+}
+
+html[data-store-theme="light"] .affiliate-program-hero {
+  background: linear-gradient(135deg, #dff8ff 0%, #eef4ff 52%, #dce8ff 100%) !important;
+}
+
+html[data-store-theme="light"] .affiliate-program-hero-title {
+  color: #17243d !important;
+  -webkit-text-fill-color: #17243d !important;
+}
+
+html[data-store-theme="light"] .affiliate-program-hero-copy {
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569 !important;
+}
+
+html[data-store-theme="light"] .affiliate-program-terms-button {
+  border-color: #64748b !important;
+  color: #17243d !important;
+  -webkit-text-fill-color: #17243d !important;
+}
+
+html[data-store-theme="light"] .product-affiliate-banner {
+  border-color: #e7a600 !important;
+  background: linear-gradient(90deg, #fff8d8 0%, #e5fbff 100%) !important;
+}
+
+html[data-store-theme="light"] .product-affiliate-label {
+  color: #9a6700 !important;
+  -webkit-text-fill-color: #9a6700 !important;
+}
+
+html[data-store-theme="light"] .product-affiliate-title {
+  color: #17243d !important;
+  -webkit-text-fill-color: #17243d !important;
+}
+
+html[data-store-theme="light"] .product-affiliate-copy {
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569 !important;
+}
+
+html[data-store-theme="light"] .product-affiliate-arrow {
+  color: #b77900 !important;
+  -webkit-text-fill-color: #b77900 !important;
+}
+
+html[data-store-theme="light"] .product-quantity-limit {
+  border-color: #0891b2 !important;
+  background: #e0f7fb !important;
+  color: #155e75 !important;
+  -webkit-text-fill-color: #155e75 !important;
 }
 @media (max-width: 639px) {
   .admin-responsive-shell main > header {

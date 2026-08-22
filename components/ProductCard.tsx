@@ -9,6 +9,7 @@ export type ProductCardData = {
   name: string;
   nameRu?: string | null;
   category: string;
+  region?: string | null;
   price: number;
   image: string;
   imageRu?: string | null;
@@ -41,8 +42,11 @@ export default function ProductCard({ product }: Props) {
   const customerPrice = product.price * (1 - discountPercent / 100);
   const localizedName =
     language === "ru" && product.nameRu ? product.nameRu : product.name;
-  const localizedBadge =
-    language === "ru" && product.badgeRu ? product.badgeRu : product.badge;
+  const localizedBadge = product.isBulkOrder
+    ? "Digital Delivery"
+    : language === "ru" && product.badgeRu
+      ? product.badgeRu
+      : product.badge;
   const russianImage = language === "ru" ? product.imageRu : null;
   const localizedImage =
     russianImage && !failedImages.includes(russianImage)
@@ -63,30 +67,34 @@ export default function ProductCard({ product }: Props) {
       }
       className="block"
     >
-      <article className="group h-full overflow-hidden rounded-xl border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-2 hover:border-cyan-400 sm:rounded-2xl">
-        <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-gradient-to-br from-slate-800 to-slate-700">
+      <article className="product-card-standard group h-full overflow-hidden rounded-xl bg-white transition duration-200 hover:-translate-y-1 hover:shadow-lg">
+        <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-xl bg-[#eef0f3]">
           {product.isBulkOrder && (
-            <span className="absolute bottom-3 left-3 z-20 inline-flex items-center gap-1.5 rounded-lg border border-amber-300/50 bg-amber-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-xl sm:bottom-4 sm:left-4 sm:text-xs">
+            <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-md bg-amber-300 px-2 py-1 text-[9px] font-black uppercase text-slate-950 shadow-lg">
               <span aria-hidden="true">▦</span>
-              {language === "ru" ? "Оптовый заказ" : "Bulk Order"}
+              Digital Delivery
             </span>
           )}
 
           {product.isInstantDelivery && !product.isBulkOrder && (
-            <span className="absolute bottom-3 left-3 z-20 inline-flex items-center gap-1.5 rounded-lg border-2 border-white bg-emerald-400 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-[0_4px_16px_rgba(0,0,0,0.75)] sm:bottom-4 sm:left-4 sm:text-xs">
+            <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-md border border-white bg-emerald-400 px-2 py-1 text-[9px] font-black uppercase text-slate-950 shadow-lg">
               <span aria-hidden="true">⚡</span>
               {language === "ru" ? "Мгновенная доставка" : "Instant Delivery"}
             </span>
           )}
 
-          <span className="absolute left-2 top-2 z-20 hidden rounded-full border border-white/10 bg-slate-950/85 px-2 py-1 text-[10px] font-bold text-cyan-300 shadow-lg backdrop-blur-sm sm:left-3 sm:top-3 sm:inline-flex sm:px-3 sm:text-xs">
+          <span className="absolute left-2 top-2 z-20 hidden rounded-md bg-slate-950/85 px-2 py-1 text-[9px] font-bold text-white shadow-lg backdrop-blur-sm sm:inline-flex">
             {localizedBadge}
           </span>
 
           <span
-            className={`absolute right-2 top-2 z-20 rounded-full border px-2 py-1 text-[9px] font-bold shadow-lg backdrop-blur-sm sm:right-3 sm:top-3 sm:px-3 sm:text-xs ${stockClassName}`}
+            className={`absolute right-2 top-2 z-20 rounded-md border px-2 py-1 text-[9px] font-bold shadow-lg backdrop-blur-sm ${stockClassName}`}
           >
             {stockLabel}
+          </span>
+
+          <span className="absolute bottom-8 right-2 z-20 rounded-md bg-slate-950/85 px-2 py-1 text-[9px] font-bold text-white shadow-lg backdrop-blur-sm">
+            <span aria-hidden="true">🌐</span> {product.region || "Global"}
           </span>
 
           {localizedImage ? (
@@ -102,7 +110,7 @@ export default function ProductCard({ product }: Props) {
                     : [...current, localizedImage],
                 )
               }
-              className="h-full w-full object-fill transition duration-500 group-hover:scale-105"
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
             />
           ) : (
             <div
@@ -113,19 +121,18 @@ export default function ProductCard({ product }: Props) {
             </div>
           )}
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-slate-900 to-transparent" />
         </div>
 
-        <div className="p-3 sm:p-5">
-          <p className="truncate text-[10px] font-bold uppercase tracking-wider text-cyan-400 sm:text-xs sm:tracking-widest">
+        <div className="px-1 pb-2 pt-2">
+          <p className="truncate text-[9px] font-bold uppercase tracking-wider text-[#f28b0c] sm:text-[10px]">
             {product.category}
           </p>
 
-          <h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-bold sm:mt-2 sm:min-h-12 sm:text-base">
+          <h3 className="mt-1 line-clamp-2 min-h-9 text-xs font-bold leading-4 text-[#354052] sm:text-[13px]">
             {localizedName}
           </h3>
 
-          <div className="mt-2 flex justify-between gap-1 text-[10px] text-slate-400 sm:mt-3 sm:text-sm">
+          <div className="mt-1.5 flex justify-between gap-1 text-[9px] text-slate-500 sm:text-[10px]">
             <span>
               <span aria-hidden="true">{"\u2B50"}</span>{" "}
               {product.rating}
@@ -134,7 +141,7 @@ export default function ProductCard({ product }: Props) {
             <span>{product.sold} {t("sold")}</span>
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-2 sm:mt-5">
+          <div className="mt-2 flex items-center justify-between gap-1.5">
             <span className="min-w-0">
               {discountPercent > 0 && (
                 <span className="block text-[10px] font-bold text-emerald-300 sm:text-xs">
@@ -142,7 +149,7 @@ export default function ProductCard({ product }: Props) {
                 </span>
               )}
               <span className="flex flex-wrap items-baseline gap-1.5">
-                <span className="truncate text-lg font-black sm:text-2xl">
+                <span className="truncate text-sm font-black text-[#172033] sm:text-base">
                   {formatPrice(customerPrice)}
                 </span>
                 {discountPercent > 0 && (
@@ -154,10 +161,10 @@ export default function ProductCard({ product }: Props) {
             </span>
 
             <span
-              className={`shrink-0 rounded-lg px-2 py-1.5 text-[10px] font-bold transition sm:px-4 sm:py-2 sm:text-base ${
+              className={`shrink-0 rounded-md px-2 py-1.5 text-[9px] font-bold transition sm:text-[10px] ${
                 isOutOfStock
                   ? "cursor-not-allowed bg-slate-700 text-slate-400"
-                  : "bg-cyan-400 text-slate-950 group-hover:bg-cyan-300"
+                  : "bg-[#ff9418] text-white group-hover:bg-[#e67f00]"
               }`}
             >
               {isOutOfStock ? t("unavailable") : t("buy")}
