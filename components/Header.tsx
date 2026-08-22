@@ -54,6 +54,7 @@ export default function Header() {
     useState(false);
   const [isAuthenticated, setIsAuthenticated] =
     useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -75,6 +76,38 @@ export default function Header() {
       authListener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setWalletBalance(null);
+      return;
+    }
+
+    let active = true;
+    const loadWalletBalance = async () => {
+      try {
+        const response = await fetch("/api/wallet/balance", {
+          cache: "no-store",
+        });
+        const result = (await response.json()) as { balance?: number };
+        if (active && response.ok) {
+          setWalletBalance(Math.max(0, Number(result.balance) || 0));
+        }
+      } catch {
+        if (active) setWalletBalance(null);
+      }
+    };
+
+    void loadWalletBalance();
+    window.addEventListener("focus", loadWalletBalance);
+    window.addEventListener("walletUpdated", loadWalletBalance);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", loadWalletBalance);
+      window.removeEventListener("walletUpdated", loadWalletBalance);
+    };
+  }, [isAuthenticated]);
 
   const updateCartQuantity = useCallback(() => {
     try {
@@ -317,7 +350,7 @@ export default function Header() {
               <span>Purchases</span>
             </Link>
 
-            <Link href={isAuthenticated ? "/account/wallet" : "/account"} className="header-action hidden xl:flex"><span aria-hidden="true">▣</span><span>Wallet</span></Link>
+            <Link href={isAuthenticated ? "/account/wallet" : "/account"} className="header-action hidden xl:flex"><span aria-hidden="true">▣</span><span>{isAuthenticated && walletBalance !== null ? `$${walletBalance.toFixed(2)}` : "Wallet"}</span></Link>
 
             <Link
               href="/cart"
@@ -679,7 +712,9 @@ export default function Header() {
                     <path d="M3 6.5v11A2.5 2.5 0 0 0 5.5 20H20a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H5.5A2.5 2.5 0 0 1 3 5.5" />
                     <path d="M16 13h5" />
                   </svg>
-                  Wallet
+                  {isAuthenticated && walletBalance !== null
+                    ? `$${walletBalance.toFixed(2)}`
+                    : "Wallet"}
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
