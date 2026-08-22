@@ -143,11 +143,7 @@ export default async function AffiliateProgramPage() {
             </Term>
 
             <Term title="3. Referral links and tracking">
-              Commission is tracked only when a customer uses your valid affiliate
-              link and completes an eligible order within the current {settings.cookie_days}-day
-              tracking period. Browser settings, deleted cookies, another referral
-              link or technical restrictions may affect attribution. InGamePin
-              records are final for referral and commission calculations.
+              {`Commission is tracked only when a customer uses your valid affiliate link and completes an eligible order within the current ${settings.cookie_days}-day tracking period. Browser settings, deleted cookies, another referral link or technical restrictions may affect attribution. InGamePin records are final for referral and commission calculations.`}
             </Term>
 
             <Term title="4. Product pricing and commission">
@@ -184,19 +180,11 @@ export default async function AffiliateProgramPage() {
             </Term>
 
             <Term title="8. Holding period and available balance">
-              Valid commission remains pending for {settings.holding_days} days
-              after payment so the order can be checked for refunds, disputes and
-              fraud. Pending commission cannot be withdrawn. Only commission shown
-              as available may be included in a payout request.
+              {`Valid commission remains pending for ${settings.holding_days} days after payment so the order can be checked for refunds, disputes and fraud. Pending commission cannot be withdrawn. Only commission shown as available may be included in a payout request.`}
             </Term>
 
             <Term title="9. USDT payouts">
-              The minimum payout request is {settings.minimum_payout} USDT. A fixed {settings.payout_fee} USDT
-              processing fee is deducted from each payout. Payouts are reviewed and
-              sent manually through enabled USDT networks: {settings.payout_networks.join(", ")}.
-              You are responsible for entering a compatible network and wallet
-              address. Blockchain transactions are final and cannot be recovered
-              if the information is incorrect.
+              {`The minimum payout request is ${settings.minimum_payout} USDT. A fixed ${settings.payout_fee} USDT processing fee is deducted from each payout. Payouts are reviewed and sent manually through enabled USDT networks: ${settings.payout_networks.join(", ")}. You are responsible for entering a compatible network and wallet address. Blockchain transactions are final and cannot be recovered if the information is incorrect.`}
             </Term>
 
             <Term title="10. Taxes and legal responsibility">
