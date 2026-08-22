@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 
 function createSlug(value: string) {
@@ -129,7 +130,8 @@ export async function createCategory(
     );
   }
 
-  const insertResult = await supabase
+  const admin = createAdminClient();
+  const insertResult = await admin
     .from("categories")
     .insert({
       name,
@@ -194,7 +196,8 @@ export async function updateCategory(formData: FormData) {
     fail(error instanceof Error ? error.message : "Unable to upload category image.");
   }
 
-  const result = await supabase.from("categories").update({
+  const admin = createAdminClient();
+  const result = await admin.from("categories").update({
     name, slug, description: description || null, image_url: imageUrl || null,
     sort_order: sortOrder, is_active: isActive,
   }).eq("id", id);
