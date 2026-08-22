@@ -705,6 +705,51 @@ const russianText: Record<string, string> = {
   "Your application will be reviewed before referral tools are enabled.": "Ваша заявка будет проверена до активации реферальных инструментов.",
 };
 
+Object.assign(russianText, {
+  "Marketing partners": "Маркетинговые партнёры",
+  "Apply to promote InGamePin products and earn commission from approved sales.":
+    "Подайте заявку на продвижение товаров InGamePin и получайте комиссию с одобренных продаж.",
+  "Tell us where and how you plan to promote InGamePin.":
+    "Расскажите, где и как вы планируете продвигать InGamePin.",
+  "Main promotion channel": "Основной канал продвижения",
+  "Promotion page URL": "Ссылка на страницу продвижения",
+  "Promotion plan": "План продвижения",
+  "Website or blog": "Сайт или блог",
+  "Social media": "Социальные сети",
+  Other: "Другое",
+  "Explain how and where you will promote InGamePin products.":
+    "Объясните, как и где вы будете продвигать товары InGamePin.",
+  "I have read and agree to the": "Я прочитал(а) и принимаю",
+  "Affiliate Program Terms & Conditions":
+    "условия партнёрской программы",
+  "Submit Application": "Отправить заявку",
+  "Full name": "Полное имя",
+  Country: "Страна",
+  "Promotion channel": "Канал продвижения",
+  "Product default rate": "Стандартная ставка товара",
+  "Link clicks": "Переходы по ссылкам",
+  "Approved sales": "Одобренные продажи",
+  "Pending commission": "Ожидающая комиссия",
+  "Promote products": "Продвигать товары",
+  "Copy a product link and share it with your audience.":
+    "Скопируйте ссылку на товар и поделитесь ею со своей аудиторией.",
+  "Request payout": "Запросить выплату",
+  "Payouts are reviewed and sent manually by the administrator.":
+    "Выплаты проверяются и отправляются администратором вручную.",
+  Available: "Доступно",
+  "Fixed fee": "Фиксированная комиссия",
+  "You receive": "Вы получите",
+  "USDT network": "Сеть USDT",
+  "USDT wallet address": "Адрес USDT-кошелька",
+  "Enter the address for the selected network":
+    "Введите адрес для выбранной сети",
+  "Payout history": "История выплат",
+  PENDING: "ОЖИДАЕТ",
+  APPROVED: "ОДОБРЕНО",
+  REJECTED: "ОТКЛОНЕНО",
+  SUSPENDED: "ПРИОСТАНОВЛЕНО",
+});
+
 const thaiText: Record<string, string> = {
   "Digital Delivery": "การจัดส่งดิจิทัล",
   "Return to dashboard": "กลับไปที่แดชบอร์ด",
