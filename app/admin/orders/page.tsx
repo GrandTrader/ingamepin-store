@@ -4,6 +4,7 @@ import Link from "next/link";
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import AdminOrdersTableScroller from "./AdminOrdersTableScroller";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -148,6 +149,15 @@ export default async function AdminOrdersPage({
     });
 
   const orders = (data ?? []) as Order[];
+  const authUsersResult = await createAdminClient().auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+  const customerIdByEmail = new Map(
+    (authUsersResult.data?.users ?? [])
+      .filter((customer) => customer.email)
+      .map((customer) => [customer.email!.trim().toLowerCase(), customer.id]),
+  );
   const totalPages = Math.max(1, Math.ceil(orders.length / 10));
   const page = Math.min(Math.max(Number.parseInt(requestedPage ?? "1", 10) || 1, 1), totalPages);
   const visibleOrders = orders.slice((page - 1) * 10, page * 10);
@@ -283,7 +293,7 @@ export default async function AdminOrdersPage({
                         </th>
 
                         <th className="px-3 py-4">
-                          Customer
+                          Customer email
                         </th>
 
                         <th className="px-3 py-4">
@@ -316,25 +326,19 @@ export default async function AdminOrdersPage({
                               orderId={order.id}
                               orderNumber={order.order_number}
                             />
-
-                            <p className="mt-1 max-w-40 truncate text-xs text-slate-400">
-                              {order.id}
-                            </p>
                           </td>
 
                           <td className="break-words px-3 py-5 align-top">
-                            <p className="font-bold">
-                              {order.customer_name ||
-                                "Customer"}
-                            </p>
-
-                            <p className="mt-1 break-all text-sm text-slate-500">
-                              {order.customer_email}
-                            </p>
-
-                            {order.customer_phone && (
-                              <p className="mt-1 text-xs text-slate-400">
-                                {order.customer_phone}
+                            {customerIdByEmail.get(order.customer_email.trim().toLowerCase()) ? (
+                              <Link
+                                href={`/admin/customers/${encodeURIComponent(customerIdByEmail.get(order.customer_email.trim().toLowerCase())!)}`}
+                                className="break-all font-bold text-blue-600 hover:text-blue-500 hover:underline"
+                              >
+                                {order.customer_email}
+                              </Link>
+                            ) : (
+                              <p className="break-all font-bold text-slate-700">
+                                {order.customer_email}
                               </p>
                             )}
                           </td>
