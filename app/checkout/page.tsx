@@ -1578,12 +1578,12 @@ export default function CheckoutPage() {
                   key={item.id}
                   className="flex gap-4 border-b border-white/10 pb-4"
                 >
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-950">
+                  <div className="flex h-20 w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-950">
                     {item.image ? (
                       <img
                         src={item.image}
                         alt={item.name || item.title || "Product"}
-                        className="h-full w-full object-fill"
+                        className="h-full w-full object-cover object-center"
                       />
                     ) : (
                       <span className="text-3xl">🎮</span>
@@ -1835,9 +1835,9 @@ export default function CheckoutPage() {
       {showBulkPaymentConfirmation && (
         <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-payment-confirmation-title">
           <div className="w-full max-w-md rounded-2xl border border-amber-300/40 bg-slate-900 p-6 text-white shadow-2xl">
-            <h2 id="bulk-payment-confirmation-title" className="text-xl font-black text-amber-200">Bulk delivery information</h2>
-            <p className="mt-3 text-sm font-bold text-slate-200">Bulk Delivery Time: 1-15 Working Days</p>
-            <p className="mt-3 text-sm text-slate-400">Your cart contains a bulk delivery product. Confirm before continuing to payment.</p>
+            <h2 id="bulk-payment-confirmation-title" className="text-xl font-black text-amber-200">Digital delivery information</h2>
+            <p className="mt-3 text-sm font-bold text-slate-200">Digital Delivery Time: 1-15 Working Days</p>
+            <p className="mt-3 text-sm text-slate-400">Your cart contains a digital delivery product. Confirm before continuing to payment.</p>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setShowBulkPaymentConfirmation(false)} className="rounded-xl border border-white/15 px-4 py-3 font-black">Cancel</button>
               <button type="button" onClick={() => { bulkPaymentConfirmed.current = true; setShowBulkPaymentConfirmation(false); (document.getElementById("checkout-form") as HTMLFormElement | null)?.requestSubmit(); }} className="rounded-xl bg-amber-300 px-4 py-3 font-black text-slate-950">Continue to payment</button>

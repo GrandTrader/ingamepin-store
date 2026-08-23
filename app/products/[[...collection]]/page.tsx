@@ -80,9 +80,9 @@ const collections = {
       "Apple Store and iTunes gift cards starting from INR 100.",
   },
   bulk: {
-    title: "B2B Bulk Products",
+    title: "B2B Digital Products",
     description:
-      "Bulk digital products for resellers and businesses with flexible quantities and dedicated support.",
+      "Digital products for resellers and businesses with flexible quantities and dedicated support.",
   },
 } as const;
 

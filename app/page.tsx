@@ -473,7 +473,7 @@ export default async function Home() {
           </div>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link href="/products" className="rounded-xl bg-[#ff9418] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#e67f00]">View all products</Link>
-            <Link href="/products/bulk" className="b2b-home-button rounded-xl bg-[#17243d] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#243550]">B2B bulk products</Link>
+            <Link href="/products/bulk" className="b2b-home-button rounded-xl bg-[#17243d] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#243550]">B2B digital products</Link>
             <Link href="/affiliate-program" className="rounded-xl bg-[#eef0f3] px-6 py-3 text-sm font-extrabold text-[#17243d] hover:bg-[#dfe3e8]">Affiliate program</Link>
           </div>
         </section>
@@ -503,8 +503,8 @@ function MarketplaceCard({ product }: { product: ProductCardData }) {
               : "bg-slate-950/90 text-white"
         }`}>
           <LocalizedProductText
-            english={product.isInstantDelivery ? "Instant Delivery" : product.isBulkOrder ? "Bulk Delivery" : "Digital Delivery"}
-            russian={product.isInstantDelivery ? "Мгновенная доставка" : product.isBulkOrder ? "Оптовая доставка" : "Цифровая доставка"}
+            english={product.isInstantDelivery ? "Instant Delivery" : "Digital Delivery"}
+            russian={product.isInstantDelivery ? "Мгновенная доставка" : "Цифровая доставка"}
           />
         </span>
         <span className="absolute bottom-8 right-2 z-10 rounded-md bg-slate-950/90 px-2 py-1 text-[9px] font-bold text-white shadow-md">

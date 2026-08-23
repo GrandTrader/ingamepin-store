@@ -511,7 +511,7 @@ export default function Header() {
                         }}
                         className="flex items-center gap-3 border-b border-white/10 p-3 transition last:border-b-0 hover:bg-white/5"
                       >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-cyan-400/10 font-black text-cyan-300">
+                        <div className="flex h-14 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-cyan-400/10 font-black text-cyan-300">
                           {(language === "ru" && product.imageRu
                             ? product.imageRu
                             : product.image) ? (
@@ -535,7 +535,7 @@ export default function Header() {
 
                                 event.currentTarget.style.display = "none";
                               }}
-                              className="h-full w-full object-fill"
+                              className="h-full w-full object-cover object-center"
                             />
                           ) : (
                             product.name
@@ -685,7 +685,7 @@ export default function Header() {
               >
                 <span className="flex items-center gap-3">
                   <span aria-hidden="true">{"\uD83D\uDCE6"}</span>
-                  B2B Bulk
+                  B2B Digital
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>

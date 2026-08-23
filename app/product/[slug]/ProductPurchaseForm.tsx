@@ -854,7 +854,7 @@ export default function ProductPurchaseForm({
           {product.isBulkOrder
             ? language === "ru"
               ? "Без ограничения количества"
-              : "No quantity limit for this bulk product"
+              : "No quantity limit for this digital product"
             : language === "ru"
               ? `Допустимое количество: ${minimumQuantity}–${maximumQuantity}`
               : `Allowed quantity: ${minimumQuantity}-${maximumQuantity}`}
@@ -951,8 +951,8 @@ export default function ProductPurchaseForm({
       {bulkConfirmationAction && (
         <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-confirmation-title">
           <div className="w-full max-w-md rounded-2xl border border-amber-300/40 bg-slate-900 p-6 shadow-2xl">
-            <h2 id="bulk-confirmation-title" className="text-xl font-black text-amber-200">Bulk delivery information</h2>
-            <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-200">{product.bulkDeliveryInstructions || "Bulk Delivery Time: 1-15 Working Days"}</p>
+            <h2 id="bulk-confirmation-title" className="text-xl font-black text-amber-200">Digital delivery information</h2>
+            <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-200">{product.bulkDeliveryInstructions || "Digital Delivery Time: 1-15 Working Days"}</p>
             <p className="mt-3 text-sm text-slate-400">Please confirm that you understand the delivery time.</p>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setBulkConfirmationAction(null)} className="rounded-xl border border-white/15 px-4 py-3 font-black">Cancel</button>

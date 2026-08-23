@@ -405,8 +405,8 @@ export async function renderProductPage({
               <span className={`absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm ${product.delivery_type === "AUTOMATIC" ? "border border-emerald-200 bg-emerald-400 text-slate-950" : product.is_bulk_order ? "border border-amber-200 bg-amber-300 text-slate-950" : "border border-white/20 bg-slate-950/90 text-white"}`}>
                   <span aria-hidden="true">◆</span>
                   <LocalizedProductText
-                    english={product.delivery_type === "AUTOMATIC" ? "Instant Delivery" : product.is_bulk_order ? "Bulk Delivery" : "Digital Delivery"}
-                    russian={product.delivery_type === "AUTOMATIC" ? "Мгновенная доставка" : product.is_bulk_order ? "Оптовая доставка" : "Цифровая доставка"}
+                    english={product.delivery_type === "AUTOMATIC" ? "Instant Delivery" : "Digital Delivery"}
+                    russian={product.delivery_type === "AUTOMATIC" ? "Мгновенная доставка" : "Цифровая доставка"}
                   />
                 </span>
 
@@ -415,9 +415,9 @@ export async function renderProductPage({
                 imageUrlRu={product.image_url_ru}
                 alt={product.name}
                 altRu={product.name_ru}
-                className="aspect-[16/10] w-full object-fill"
+                className="aspect-[3/4] w-full object-cover object-center"
                 fallback={
-                  <div className="flex aspect-[16/10] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
+                  <div className="flex aspect-[3/4] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
                     {product.name.charAt(0).toUpperCase()}
                   </div>
                 }
@@ -443,8 +443,8 @@ export async function renderProductPage({
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
                   <LocalizedProductText
-                    english={product.delivery_type === "AUTOMATIC" ? "Instant Delivery" : product.is_bulk_order ? "Bulk Delivery" : "Digital Delivery"}
-                    russian={product.delivery_type === "AUTOMATIC" ? "Мгновенная доставка" : product.is_bulk_order ? "Оптовая доставка" : "Цифровая доставка"}
+                    english={product.delivery_type === "AUTOMATIC" ? "Instant Delivery" : "Digital Delivery"}
+                    russian={product.delivery_type === "AUTOMATIC" ? "Мгновенная доставка" : "Цифровая доставка"}
                   />
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
@@ -485,12 +485,12 @@ export async function renderProductPage({
                       <span>
                         <span className="block text-sm font-black text-amber-950 sm:text-base">
                           <LocalizedProductText
-                            english="Bulk delivery information"
-                            russian="Информация об оптовой доставке"
+                            english="Digital delivery information"
+                            russian="Информация о цифровой доставке"
                           />
                         </span>
                         <span className="mt-1 block whitespace-pre-line text-sm font-medium leading-6 text-slate-800">
-                          {product.bulk_delivery_instructions || "Bulk Delivery Time: 1-15 Working Days"}
+                          {product.bulk_delivery_instructions || "Digital Delivery Time: 1-15 Working Days"}
                         </span>
                       </span>
                     </div>

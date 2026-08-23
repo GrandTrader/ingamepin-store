@@ -87,17 +87,17 @@ export default function ResponsiveImageField({
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-bold text-slate-600">Live preview</p>
             <p className="text-xs text-slate-500">
-              {isProduct ? "4:3 product field" : "1920 × 700 slide field"}
+              {isProduct ? "3:4 portrait product field" : "1920 × 700 slide field"}
             </p>
           </div>
           <div
             className={`mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-slate-900 ${
-              isProduct ? "aspect-[4/3]" : "aspect-[1920/700]"
+              isProduct ? "aspect-[3/4]" : "aspect-[1920/700]"
             }`}
           >
             {preview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="Image preview" className="h-full w-full object-fill" />
+              <img src={preview} alt="Image preview" className={`h-full w-full ${isProduct ? "object-cover object-center" : "object-fill"}`} />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
                 Image preview
@@ -105,7 +105,7 @@ export default function ResponsiveImageField({
             )}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-700">No Crop</span>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-700">Automatic Portrait Fit</span>
             <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-700">No Empty Space</span>
             <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-blue-600">Responsive</span>
           </div>

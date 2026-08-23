@@ -46,7 +46,7 @@ export default function ProductCard({ product }: Props) {
   const localizedBadge = product.isInstantDelivery
     ? language === "ru" ? "Мгновенная доставка" : "Instant Delivery"
     : product.isBulkOrder
-      ? language === "ru" ? "Оптовая доставка" : "Bulk Delivery"
+      ? language === "ru" ? "Цифровая доставка" : "Digital Delivery"
       : language === "ru" ? "Цифровая доставка" : "Digital Delivery";
   const russianImage = language === "ru" ? product.imageRu : null;
   const localizedImage =
@@ -73,7 +73,7 @@ export default function ProductCard({ product }: Props) {
           {product.isBulkOrder && (
             <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-md bg-amber-300 px-2 py-1 text-[9px] font-black uppercase text-slate-950 shadow-lg">
               <span aria-hidden="true">▦</span>
-              {language === "ru" ? "Оптовая доставка" : "Bulk Delivery"}
+              {language === "ru" ? "Цифровая доставка" : "Digital Delivery"}
             </span>
           )}
 
