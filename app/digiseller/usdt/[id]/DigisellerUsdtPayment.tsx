@@ -10,7 +10,7 @@ type Invoice = {
   network: "TRC20" | "BEP20" | "SOLANA";
   address: string;
   amount: string;
-  status: "PENDING" | "PAID" | "EXPIRED";
+  status: "PENDING" | "PAID" | "EXPIRED" | "COMPLIANCE_HOLD";
   expiresAt: number;
   transactionHash: string | null;
 };

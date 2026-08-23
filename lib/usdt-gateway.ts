@@ -7,13 +7,15 @@ export type UsdtInvoice = {
   token: "USDT";
   address: string;
   amount: string;
-  status: "PENDING" | "PAID" | "EXPIRED";
+  status: "PENDING" | "PAID" | "EXPIRED" | "COMPLIANCE_HOLD";
   createdAt: number;
   expiresAt: number;
   paidAt: number | null;
   transactionHash: string | null;
   payerAddress: string | null;
   receivedAmount: string | null;
+  complianceEntity: string | null;
+  complianceLabel: string | null;
 };
 
 function configuration() {

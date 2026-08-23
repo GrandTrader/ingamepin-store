@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-23",
+  "addresses": [
+    {
+      "network": "BEP20",
+      "address": "0xe3043b669291aa3df37b9eb414ce443c80e630e2",
+      "entity": "HTX",
+      "label": "HTX: Hot Wallet",
+      "source": "Arkham Intelligence",
+      "action": "hold"
+    },
+    {
+      "network": "SOLANA",
+      "address": "5bJcc9eb2XE7mqcET2xDuAdMGuXWybb4YPmAHLjKLhQG",
+      "entity": "HTX",
+      "label": "HTX: Proof of Reserves Wallet",
+      "source": "HTX Proof of Reserves and Arkham Intelligence",
+      "action": "hold"
+    },
+    {
+      "network": "SOLANA",
+      "address": "Cw32Ny2xcYdpfJmvFd7h2pRhcbcjoJFq8KrrA8YLwZeh",
+      "entity": "HTX",
+      "label": "HTX: Cold Wallet",
+      "source": "Solscan and Arkham Intelligence",
+      "action": "hold"
+    },
+    {
+      "network": "TRC20",
+      "address": "TFTWNgDBkQ5wQoP8RXpRznnHvAVV8x5jLu",
+      "entity": "HTX",
+      "label": "HTX 4: Hot Wallet",
+      "source": "TRONSCAN and Arkham Intelligence",
+      "action": "hold"
+    },
+    {
+      "network": "TRC20",
+      "address": "TK86Qm97uM848dMk8G7xNbJB7zG1uW3h1n",
+      "entity": "HTX",
+      "label": "HTX 5",
+      "source": "TRONSCAN",
+      "action": "hold"
+    },
+    {
+      "network": "TRC20",
+      "address": "TDToUxX8sH4z6moQpK3ZLAN24eupu2ivA4",
+      "entity": "HTX",
+      "label": "HTX 6",
+      "source": "HTX Proof of Reserves and TRONSCAN",
+      "action": "hold"
+    },
+    {
+      "network": "TRC20",
+      "address": "TCQqA58EmX6AnUZKPCogL2Q441B4ThbJGN",
+      "entity": "EXMO",
+      "label": "EXMO: Hot Wallet",
+      "source": "UK Sanctions List and Arkham Intelligence",
+      "action": "hold"
+    },
+    {
+      "network": "TRC20",
+      "address": "TDccL8TTZE5Woom11P9NtfKqGNB6uKXEkA",
+      "entity": "EXMO",
+      "label": "EXMO: Deposit",
+      "source": "Arkham Intelligence",
+      "action": "hold"
+    },
+    {
+      "network": "TRC20",
+      "address": "TXN3hVukebhyYR31YPCYd7aJAvmUeXu1ab",
+      "entity": "Shelbit",
+      "label": "Shelbit Exchange",
+      "source": "U.S. Treasury OFAC SDN List",
+      "action": "hold"
+    },
+    {
+      "network": "SOLANA",
+      "address": "6wjqWWra8ombzaw6VHrG5xpQ972jCYF6bbHiFCbWmr4U",
+      "entity": "Shelbit",
+      "label": "Shelbit Exchange",
+      "source": "U.S. Treasury OFAC SDN List",
+      "action": "hold"
+    },
+    {
+      "network": "TRC20",
+      "address": "TRwyQ3KVEvfeoZtvcd9YykGy24DJ4AMPJR",
+      "entity": "Rapira",
+      "label": "Rapira: Deposit Address",
+      "source": "Phalcon Compliance",
+      "action": "hold"
+    },
+    {
+      "network": "BEP20",
+      "address": "0x25a4301ae75ddc8e8990884d6393a7fe050d023d",
+      "entity": "Rapira",
+      "label": "Rapira: Hot Wallet",
+      "source": "Arkham Intelligence",
+      "action": "hold"
+    }
+  ]
+}

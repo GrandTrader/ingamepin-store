@@ -89,6 +89,47 @@ export async function POST(request: NextRequest) {
     }
 
     const body = JSON.parse(rawBody) as UsdtInvoice;
+    if (body.status === "COMPLIANCE_HOLD") {
+      if (!body.invoiceId || !body.orderId || !body.transactionHash) {
+        return NextResponse.json({ error: "Invalid compliance data." }, { status: 400 });
+      }
+      const verifiedInvoice = await getUsdtInvoice(body.invoiceId);
+      if (
+        verifiedInvoice.status !== "COMPLIANCE_HOLD" ||
+        verifiedInvoice.orderId !== body.orderId ||
+        verifiedInvoice.transactionHash !== body.transactionHash
+      ) {
+        return NextResponse.json({ error: "Compliance hold verification failed." }, { status: 400 });
+      }
+      const admin = createAdminClient();
+      const paymentResult = await admin
+        .from("payments")
+        .update({ status: "PAYMENT_REVIEW" })
+        .eq("order_id", body.orderId)
+        .eq("gateway_order_id", body.invoiceId)
+        .eq("method", "USDT_DIRECT")
+        .select("order_id")
+        .maybeSingle();
+      if (paymentResult.data?.order_id) {
+        await admin
+          .from("orders")
+          .update({ status: "PAYMENT_REVIEW", updated_at: new Date().toISOString() })
+          .eq("id", body.orderId);
+      } else {
+        await admin
+          .from("wallet_topup_requests")
+          .update({
+            status: "PAYMENT_REVIEW",
+            gateway_transaction_id: body.transactionHash,
+            payment_reference: `${body.complianceEntity ?? "Restricted source"}: ${body.complianceLabel ?? "Restricted address"}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", body.orderId)
+          .eq("gateway_order_id", body.invoiceId)
+          .eq("payment_method", "USDT_DIRECT");
+      }
+      return NextResponse.json({ received: true, held: true });
+    }
     if (body.status !== "PAID") {
       return NextResponse.json({ received: true });
     }

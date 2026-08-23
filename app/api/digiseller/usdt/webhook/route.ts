@@ -36,6 +36,25 @@ export async function POST(request: NextRequest) {
     }
 
     const body = JSON.parse(rawBody) as UsdtInvoice;
+    if (body.status === "COMPLIANCE_HOLD") {
+      const verified = await getUsdtInvoice(body.invoiceId);
+      if (
+        verified.status !== "COMPLIANCE_HOLD" ||
+        verified.transactionHash !== body.transactionHash
+      ) {
+        return NextResponse.json({ error: "Compliance hold verification failed." }, { status: 400 });
+      }
+      const admin = createAdminClient();
+      await admin
+        .from("digiseller_usdt_payments")
+        .update({
+          status: "payment_review",
+          transaction_hash: body.transactionHash,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("gateway_invoice_id", body.invoiceId);
+      return NextResponse.json({ received: true, held: true });
+    }
     if (body.status !== "PAID") return NextResponse.json({ received: true });
     const verified = await getUsdtInvoice(body.invoiceId);
     if (
