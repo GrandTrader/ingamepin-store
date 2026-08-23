@@ -26,9 +26,10 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
 
       const separator = lines[0].includes(";") ? ";" : lines[0].includes("\t") ? "\t" : ",";
       const headers = lines[0].split(separator).map((header) => header.trim().toLowerCase());
+      const nameIndex = headers.findIndex((header) => header === "name" || header === "option_name" || header === "optionname");
       const denominationIndex = headers.indexOf("denomination");
       const priceIndex = headers.findIndex((header) => header === "price" || header === "selling_price" || header === "sellingprice");
-      if (denominationIndex < 0 || priceIndex < 0) throw new Error("Use CSV headers: denomination,price");
+      if (denominationIndex < 0 || priceIndex < 0) throw new Error("Use CSV headers: name,denomination,price");
 
       const imported = lines.slice(1).map((line, rowIndex) => {
         const columns = line.split(separator).map((column) => column.trim().replace(/^"|"$/g, ""));
@@ -37,7 +38,8 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
         if (!Number.isInteger(denomination) || denomination <= 0 || !Number.isFinite(sellingPrice) || sellingPrice < 0) {
           throw new Error(`Invalid denomination or price on row ${rowIndex + 2}.`);
         }
-        return { id: "", name: `${denomination} ${importCurrency}`, denomination, currency: importCurrency, sellingPrice, isActive: true, isInStock: true };
+        const importedName = nameIndex >= 0 ? columns[nameIndex]?.trim() : "";
+        return { id: "", name: importedName || `${denomination} ${importCurrency}`, denomination, currency: importCurrency, sellingPrice, isActive: true, isInStock: true };
       });
 
       if (imported.length > 50) throw new Error("A product can have a maximum of 50 options.");
@@ -58,7 +60,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
       <section className="min-w-0"><div className="mb-5"><h2 className="text-xl font-black">Denomination options</h2><p className="mt-1 text-sm text-slate-500">Edit the customer-visible options and selling prices.</p></div>
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
           <p className="font-black text-slate-900">Import denomination CSV</p>
-          <p className="mt-1 text-sm text-slate-600">Upload a file with <strong>denomination,price</strong> columns. Price must be in USD. Importing replaces the current option list.</p>
+          <p className="mt-1 text-sm text-slate-600">Upload a file with <strong>name,denomination,price</strong> columns. Name is optional and price must be in USD. Importing replaces the current option list.</p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <label className="text-sm font-bold text-slate-700">Product currency <select value={importCurrency} onChange={(event) => setImportCurrency(event.target.value)} className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2">{currencies.map((currency) => <option key={currency}>{currency}</option>)}</select></label>
             <label className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white">Choose CSV file<input type="file" accept=".csv,text/csv" onChange={importCsv} className="sr-only" /></label>
