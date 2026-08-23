@@ -379,6 +379,11 @@ const russianText: Record<string, string> = {
   "Download All Codes (.txt)": "Скачать все коды (.txt)",
   "Download Product Codes": "Скачать коды товара",
   "Secure digital delivery": "Безопасная цифровая доставка",
+  "Service delivery completed": "Доставка услуги завершена",
+  "UID / account delivery completed": "Доставка по UID / аккаунту завершена",
+  "Your UID top-up, account purchase, or activation service has been completed successfully.":
+    "Пополнение по UID, покупка аккаунта или услуга активации успешно выполнены.",
+  "SERVICE COMPLETED": "УСЛУГА ВЫПОЛНЕНА",
   "Keep these codes private. Each code can normally be redeemed only once.":
     "Храните эти коды в тайне. Обычно каждый код можно активировать только один раз.",
   "Verified purchase": "Подтверждённая покупка",

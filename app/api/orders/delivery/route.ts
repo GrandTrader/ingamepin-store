@@ -137,6 +137,7 @@ export async function POST(
           option_name,
           denomination,
           platform,
+          fulfillment_mode,
           quantity
         `,
       )
@@ -254,6 +255,8 @@ export async function POST(
         denomination:
           item.denomination ?? null,
         platform: item.platform ?? null,
+        fulfillmentMode:
+          item.fulfillment_mode ?? null,
         region:
           regionByProduct.get(
             item.product_id,

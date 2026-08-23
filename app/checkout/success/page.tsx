@@ -36,6 +36,7 @@ type DeliveredItem = {
   denomination: number | null;
   platform: string | null;
   region: string | null;
+  fulfillmentMode: string | null;
   codes: string[];
 };
 
@@ -380,6 +381,22 @@ export default function CheckoutSuccessPage() {
   const deliveredItems =
     delivery?.codes ?? [];
 
+  const serviceItems = deliveredItems.filter(
+    (item) =>
+      item.fulfillmentMode ===
+      "PLAYER_ID_TOPUP",
+  );
+
+  const codeItems = deliveredItems.filter(
+    (item) =>
+      item.fulfillmentMode !==
+      "PLAYER_ID_TOPUP",
+  );
+
+  const serviceOnly =
+    serviceItems.length > 0 &&
+    codeItems.length === 0;
+
   return (
     <main className="min-h-screen bg-slate-950 px-3 py-5 text-white sm:px-5 sm:py-12">
       <div className="mx-auto max-w-4xl">
@@ -495,13 +512,15 @@ export default function CheckoutSuccessPage() {
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                   <div>
                     <h2 className="text-xl font-black text-emerald-300">
-                      Secure digital delivery
+                      {serviceOnly
+                        ? "Service delivery completed"
+                        : "Secure digital delivery"}
                     </h2>
 
                     <p className="mt-2 text-sm text-slate-400">
-                      Keep these codes private.
-                      Each code can normally be
-                      redeemed only once.
+                      {serviceOnly
+                        ? "Your UID top-up, account purchase, or activation service has been completed successfully."
+                        : "Keep these codes private. Each code can normally be redeemed only once."}
                     </p>
                   </div>
 
@@ -558,6 +577,20 @@ export default function CheckoutSuccessPage() {
                           )}
                         </div>
 
+                        {item.fulfillmentMode ===
+                        "PLAYER_ID_TOPUP" ? (
+                          <div className="mt-4 rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-4">
+                            <p className="font-black text-emerald-300">
+                              UID / account delivery completed
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-300">
+                              Your UID top-up, account purchase, or activation service has been completed successfully.
+                            </p>
+                            <span className="mt-3 inline-flex rounded-full bg-emerald-400 px-3 py-1 text-xs font-black text-slate-950">
+                              SERVICE COMPLETED
+                            </span>
+                          </div>
+                        ) : (
                         <details
                           className="mt-3 rounded-xl border border-white/10 p-3"
                           open={item.codes.length === 1}
@@ -604,6 +637,7 @@ export default function CheckoutSuccessPage() {
                           )}
                           </div>
                         </details>
+                        )}
 
                         {item.codes.length > 0 && (
                           <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-sm text-slate-300">
