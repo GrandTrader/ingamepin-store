@@ -40,6 +40,7 @@ export default async function ProductOptionsPage({
       .select("id, option_name, denomination, denomination_currency, selling_price, is_active, is_in_stock")
       .eq("product_id", id)
       .eq("is_custom_value", false)
+      .eq("is_active", true)
       .order("sort_order"),
   ]);
 
@@ -62,8 +63,8 @@ export default async function ProductOptionsPage({
             </Link>
           </header>
 
-          {success && <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}
-          {error && <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
+          {success && <div role="status" className="fixed bottom-6 right-6 z-[100] max-w-sm rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-4 font-bold text-emerald-800 shadow-xl">✓ {success}</div>}
+          {error && <div role="alert" className="fixed bottom-6 right-6 z-[100] max-w-sm rounded-xl border border-red-300 bg-red-50 px-5 py-4 font-bold text-red-700 shadow-xl">{error}</div>}
 
           <div className="mt-8"><ProductEditPageTabs productId={id} current="product-options" /></div>
 
