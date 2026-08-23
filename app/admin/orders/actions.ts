@@ -417,6 +417,26 @@ export async function completeManualOrder(
     );
   }
 
+  const serviceItemId = String(formData.get("service_item_id") ?? "").trim();
+  if (serviceItemId) {
+    if ((itemResult.data ?? []).length !== 1) {
+      ordersRedirect("error", "Complete the other order items before using UID/account delivery.", orderId);
+    }
+    const serviceItem = (itemResult.data ?? []).find((item) => item.id === serviceItemId);
+    if (!serviceItem) {
+      ordersRedirect("error", "The UID/account delivery item is invalid.", orderId);
+    }
+    const serviceModeUpdate = await admin
+      .from("order_items")
+      .update({ fulfillment_mode: "PLAYER_ID_TOPUP" })
+      .eq("id", serviceItemId)
+      .eq("order_id", orderId);
+    if (serviceModeUpdate.error) {
+      ordersRedirect("error", serviceModeUpdate.error.message, orderId);
+    }
+    serviceItem.fulfillment_mode = "PLAYER_ID_TOPUP";
+  }
+
   const deliveries = (
     itemResult.data ?? []
   ).map((item) => {
@@ -427,6 +447,7 @@ export async function completeManualOrder(
       return {
         orderItemId: item.id,
         completed:
+          item.id === serviceItemId ||
           formData.get(
             `completed_${item.id}`,
           ) === "on",

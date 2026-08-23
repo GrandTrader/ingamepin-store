@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import AdminSidebar from "../../../AdminSidebar";
 import CompletedManualDeliveryCard from "../../CompletedManualDeliveryCard";
 import ManualDeliveryItemCard from "../../ManualDeliveryItemCard";
+import CopyableCustomerInformation from "../../CopyableCustomerInformation";
 import AdminRefundCard from "../../AdminRefundCard";
 import {
   completeManualOrder,
@@ -442,19 +443,10 @@ export default async function OrderReceipt({
                             Platform: {item.platform}
                           </p>
                         )}
-                        {item.player_id && (
-                          <p className="mt-1 text-xs font-bold text-amber-700">
-                            Player ID: {item.player_id}
-                          </p>
-                        )}
-                        {(item.customer_information ?? []).map((field) => (
-                          <p
-                            key={field.fieldId}
-                            className="mt-1 break-all text-xs text-blue-700"
-                          >
-                            {field.label}: <strong>{field.value}</strong>
-                          </p>
-                        ))}
+                        <CopyableCustomerInformation
+                          playerId={item.player_id}
+                          fields={item.customer_information ?? []}
+                        />
                       </td>
                       <td className="px-4 py-4 align-top">
                         {item.option_name ??
