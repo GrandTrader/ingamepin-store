@@ -216,7 +216,7 @@ export default async function CustomerDashboardPage() {
                       </div>
                       <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Delivered</span>
                     </div>
-                    <div className="mt-4 break-all rounded-xl bg-slate-950 p-4 font-mono text-sm font-bold text-cyan-300">{code.code}</div>
+                    <div className="mt-4 whitespace-pre-wrap break-all rounded-xl bg-slate-950 p-4 font-mono text-sm font-bold text-cyan-300">{code.code}</div>
                     <div className="mt-4">
                       <DeliveredCodesDownloadButton
                         orderNumber={code.orderNumber}

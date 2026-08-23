@@ -107,6 +107,8 @@ export async function addProductCodes(formData: FormData) {
   ).trim();
   const note = String(formData.get("note") ?? "").trim();
   const rawCodes = String(formData.get("codes") ?? "");
+  const usesRecordSeparator =
+    String(formData.get("entry_separator") ?? "") === "RECORD_SEPARATOR";
 
   if (!productId) {
     redirect("/admin/products");
@@ -147,7 +149,7 @@ export async function addProductCodes(formData: FormData) {
   const uniqueCodes = Array.from(
     new Set(
       rawCodes
-        .split(/\r?\n/)
+        .split(usesRecordSeparator ? "\u001e" : /\r?\n/)
         .map((code) => code.trim())
         .filter(Boolean),
     ),
@@ -157,11 +159,11 @@ export async function addProductCodes(formData: FormData) {
     redirectWithMessage(productId, "error", "Enter at least one voucher code.");
   }
 
-  if (uniqueCodes.length > 100) {
+  if (uniqueCodes.length > 10000) {
     redirectWithMessage(
       productId,
       "error",
-      "You can upload a maximum of 100 codes at once.",
+      "You can upload a maximum of 10,000 codes at once.",
     );
   }
 
@@ -173,20 +175,30 @@ export async function addProductCodes(formData: FormData) {
     );
   }
 
-  const existingResult = await admin
-    .from("gift_card_codes")
-    .select("id, code, product_id, product_option_id, status, note")
-    .in("code", uniqueCodes);
+  type ExistingCode = {
+    id: string;
+    code: string;
+    product_id: string;
+    product_option_id: string | null;
+    status: string;
+    note: string | null;
+  };
+  const existingCodes: ExistingCode[] = [];
+  for (let index = 0; index < uniqueCodes.length; index += 250) {
+    const existingResult = await admin
+      .from("gift_card_codes")
+      .select("id, code, product_id, product_option_id, status, note")
+      .in("code", uniqueCodes.slice(index, index + 250));
 
-  if (existingResult.error) {
-    redirectWithMessage(
-      productId,
-      "error",
-      `Unable to check existing codes: ${existingResult.error.message}`,
-    );
+    if (existingResult.error) {
+      redirectWithMessage(
+        productId,
+        "error",
+        `Unable to check existing codes: ${existingResult.error.message}`,
+      );
+    }
+    existingCodes.push(...((existingResult.data ?? []) as ExistingCode[]));
   }
-
-  const existingCodes = existingResult.data ?? [];
   const blockedExisting = existingCodes.find(
     (code) =>
       code.product_id !== productId ||
@@ -210,27 +222,26 @@ export async function addProductCodes(formData: FormData) {
     (code) => !existingCodeValues.has(code),
   );
 
-  const insertResult =
-    newCodes.length > 0
-      ? await admin.from("gift_card_codes").insert(
-          newCodes.map((code) => ({
-      product_id: productId,
-      product_option_id: verifiedOption.id,
-      denomination: verifiedOption.denomination ?? null,
-      code,
-      note: note || null,
-      status: "AVAILABLE",
-      created_by: user.id,
-          })),
-        )
-      : { error: null };
+  for (let index = 0; index < newCodes.length; index += 500) {
+    const insertResult = await admin.from("gift_card_codes").insert(
+      newCodes.slice(index, index + 500).map((code) => ({
+        product_id: productId,
+        product_option_id: verifiedOption.id,
+        denomination: verifiedOption.denomination ?? null,
+        code,
+        note: note || null,
+        status: "AVAILABLE",
+        created_by: user.id,
+      })),
+    );
 
-  if (insertResult.error) {
-    const message =
-      insertResult.error.code === "23505"
-        ? "One or more codes already exist. No codes were uploaded."
-        : `Unable to upload codes: ${insertResult.error.message}`;
-    redirectWithMessage(productId, "error", message);
+    if (insertResult.error) {
+      const message =
+        insertResult.error.code === "23505"
+          ? "One or more codes already exist. The remaining codes were not uploaded."
+          : `Unable to upload codes: ${insertResult.error.message}`;
+      redirectWithMessage(productId, "error", message);
+    }
   }
 
   const previousOptionIds = new Set<string>();
@@ -370,6 +381,7 @@ export async function addCodesForOption(
   payload.set("product_option_id", productOptionId);
   payload.set("codes", String(formData.get(`codes_${fieldKey}`) ?? ""));
   payload.set("note", String(formData.get(`code_note_${fieldKey}`) ?? ""));
+  payload.set("entry_separator", String(formData.get("entry_separator") ?? ""));
   return addProductCodes(payload);
 }
 
