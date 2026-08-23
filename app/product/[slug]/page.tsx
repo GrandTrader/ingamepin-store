@@ -401,7 +401,7 @@ export async function renderProductPage({
 
         <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
           <div className="contents">
-            <div className="relative order-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
+            <div className="relative order-1 w-full max-w-[380px] justify-self-center overflow-hidden rounded-2xl border border-white/10 bg-slate-950 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
               <span className={`absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm ${product.delivery_type === "AUTOMATIC" ? "border border-emerald-200 bg-emerald-400 text-slate-950" : product.is_bulk_order ? "border border-amber-200 bg-amber-300 text-slate-950" : "border border-white/20 bg-slate-950/90 text-white"}`}>
                   <span aria-hidden="true">◆</span>
                   <LocalizedProductText
@@ -415,7 +415,7 @@ export async function renderProductPage({
                 imageUrlRu={product.image_url_ru}
                 alt={product.name}
                 altRu={product.name_ru}
-                className="aspect-[3/4] w-full object-cover object-center"
+                className="aspect-[3/4] w-full bg-slate-950 object-contain object-center"
                 fallback={
                   <div className="flex aspect-[3/4] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
                     {product.name.charAt(0).toUpperCase()}
