@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import UsdtQrCode from "@/components/UsdtQrCode";
+import UsdtComplianceWarning from "@/components/UsdtComplianceWarning";
 
 type Invoice = {
   invoiceId: string;
@@ -68,6 +69,7 @@ export default function DigisellerUsdtPayment({
         <h1 className="mt-2 text-3xl font-black">
           Pay with USDT {invoice?.network ?? ""}
         </h1>
+        <UsdtComplianceWarning />
         {error ? (
           <p className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
             {error}

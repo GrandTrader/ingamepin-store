@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import UsdtQrCode from "@/components/UsdtQrCode";
+import UsdtComplianceWarning from "@/components/UsdtComplianceWarning";
 
 type Invoice = {
   invoiceId: string;
@@ -97,6 +98,8 @@ export default function WalletUsdtPayment({
             confirmation.
           </p>
         </div>
+
+        <UsdtComplianceWarning />
 
         {!invoice ? (
           <div className="mx-auto mt-8 h-80 animate-pulse rounded-2xl bg-white/5" />

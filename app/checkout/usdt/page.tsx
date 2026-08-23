@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import UsdtQrCode from "@/components/UsdtQrCode";
+import UsdtComplianceWarning from "@/components/UsdtComplianceWarning";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PendingOrder = {
@@ -194,6 +195,8 @@ export default function DirectUsdtPaymentPage() {
             Your payment is verified automatically on the blockchain.
           </p>
         </div>
+
+        <UsdtComplianceWarning />
 
         {!invoice ? (
           <div className="mt-8">

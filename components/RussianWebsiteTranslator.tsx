@@ -109,6 +109,14 @@ const russianText: Record<string, string> = {
   "Direct wallet payment": "Прямая оплата на кошелёк",
   "Your payment is verified automatically on the blockchain.":
     "Платёж автоматически проверяется в блокчейне.",
+  "⚠️ IMPORTANT USDT PAYMENT WARNING":
+    "⚠️ ВАЖНОЕ ПРЕДУПРЕЖДЕНИЕ ОБ ОПЛАТЕ USDT",
+  "Please do not send payment directly or indirectly through the following platforms:":
+    "Не отправляйте платёж прямо или косвенно через следующие платформы:",
+  "Payments connected to these platforms may be detected by compliance screening. The order will be placed on hold, and the funds may be subject to an extended compliance review. Products will not be delivered until the payment is cleared.":
+    "Платежи, связанные с этими платформами, могут быть обнаружены системой комплаенс-контроля. Заказ будет приостановлен, а средства могут быть направлены на расширенную проверку. Товары не будут доставлены до завершения проверки платежа.",
+  "By proceeding, you confirm that your payment does not originate from or pass through any of the platforms listed above.":
+    "Продолжая, вы подтверждаете, что ваш платёж не поступает и не проходит через какие-либо из перечисленных выше платформ.",
   "Select the network you will send from": "Выберите сеть отправки",
   "Solana network": "\u0421\u0435\u0442\u044c Solana",
   Network: "Сеть",
