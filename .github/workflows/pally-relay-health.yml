@@ -22,8 +22,11 @@ jobs:
         id: health
         continue-on-error: true
         run: |
-          response="$(curl --fail --silent --show-error --location --connect-timeout 10 --max-time 20 --retry 2 --retry-delay 3 https://pally-relay.ingamepin.com/health)"
-          test "$response" = "ok"
+          check_relay() {
+            response="$(curl --ipv4 --fail --silent --show-error --location --connect-timeout 10 --max-time 20 --retry 2 --retry-all-errors --retry-delay 3 https://pally-relay.ingamepin.com/health)"
+            test "$response" = "ok"
+          }
+          check_relay || { sleep 30; check_relay; }
 
       - name: Open outage issue
         if: steps.health.outcome == 'failure'
