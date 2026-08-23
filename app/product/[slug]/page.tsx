@@ -415,9 +415,9 @@ export async function renderProductPage({
                 imageUrlRu={product.image_url_ru}
                 alt={product.name}
                 altRu={product.name_ru}
-                className="aspect-[3/4] w-full bg-slate-950 object-contain object-center"
+                className="aspect-square w-full bg-slate-950 object-contain object-center"
                 fallback={
-                  <div className="flex aspect-[3/4] items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
+                  <div className="flex aspect-square items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
                     {product.name.charAt(0).toUpperCase()}
                   </div>
                 }
