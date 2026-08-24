@@ -519,6 +519,7 @@ const russianText: Record<string, string> = {
   Subscriptions: "Подписки",
   "Game Keys": "Ключи игр",
   "Product Categories": "Категории товаров",
+  "Product categories": "Категории товаров",
   "Customer Help": "Помощь клиентам",
   "View All Products": "Все товары",
   "Track Your Order": "Отследить заказ",

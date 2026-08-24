@@ -28,6 +28,15 @@ type SearchProduct = {
   category: string;
 };
 
+type HeaderCategory = {
+  id: string;
+  name: string;
+  shortName: string | null;
+  slug: string;
+  icon: string | null;
+  sales: number;
+};
+
 export default function Header() {
   const pathname = usePathname();
   const hideProductSearch = [
@@ -58,6 +67,66 @@ export default function Header() {
   const [isAuthenticated, setIsAuthenticated] =
     useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [headerCategories, setHeaderCategories] = useState<HeaderCategory[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+
+    const loadHeaderCategories = async () => {
+      const [{ data: categoryRows }, { data: productRows }] = await Promise.all([
+        supabase
+          .from("categories")
+          .select("id, name, short_name, slug, icon")
+          .eq("is_active", true),
+        supabase
+          .from("products")
+          .select("sold_count, stock_quantity, is_bulk_order, category_id, product_options(stock_quantity, is_active, is_in_stock)")
+          .eq("status", "ACTIVE")
+          .eq("is_preorder_only", false),
+      ]);
+
+      const salesByCategory = new Map<string, number>();
+      for (const product of productRows ?? []) {
+        const optionStock = (product.product_options ?? [])
+          .filter((option) => option.is_active && option.is_in_stock !== false)
+          .reduce((total, option) => total + Number(option.stock_quantity || 0), 0);
+        const isAvailable =
+          product.is_bulk_order ||
+          Number(product.stock_quantity || 0) > 0 ||
+          optionStock > 0;
+
+        if (isAvailable && product.category_id) {
+          salesByCategory.set(
+            product.category_id,
+            (salesByCategory.get(product.category_id) ?? 0) + Number(product.sold_count || 0),
+          );
+        }
+      }
+
+      if (active) {
+        setHeaderCategories(
+          (categoryRows ?? [])
+            .filter((category) => salesByCategory.has(category.id))
+            .map((category) => ({
+              id: category.id,
+              name: category.name,
+              shortName: category.short_name,
+              slug: category.slug,
+              icon: category.icon,
+              sales: salesByCategory.get(category.id) ?? 0,
+            }))
+            .sort((a, b) => b.sales - a.sales || a.name.localeCompare(b.name))
+            .slice(0, 10),
+        );
+      }
+    };
+
+    void loadHeaderCategories();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -427,13 +496,16 @@ export default function Header() {
         <nav aria-label="Store categories" className="hidden border-t border-white/10 bg-slate-950/75 xl:block">
           <div className="mx-auto flex max-w-7xl items-center gap-7 overflow-x-auto px-5 py-3 text-xs font-bold text-slate-300">
             <Link href="/products/bulk" className="header-category-link text-[#ff9b22]">▦ B2B</Link>
-            <Link href="/category/gaming-top-ups" className="header-category-link">🎮 Games</Link>
-            <Link href="/category/gift-cards" className="header-category-link">▣ Gift Cards</Link>
-            <Link href="/products/playstation" className="header-category-link">◈ PlayStation</Link>
-            <Link href="/products/steam" className="header-category-link">Steam</Link>
-            <Link href="/products/apple" className="header-category-link">● Apple &amp; App Store</Link>
-            <Link href="/category/subscriptions" className="header-category-link">★ Subscriptions</Link>
-            <Link href="/category/game-keys" className="header-category-link">⌘ Game Keys</Link>
+            {headerCategories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/category/${category.slug}`}
+                className="header-category-link whitespace-nowrap"
+              >
+                {category.icon ? `${category.icon} ` : ""}
+                {category.shortName ?? category.name}
+              </Link>
+            ))}
           </div>
         </nav>
 

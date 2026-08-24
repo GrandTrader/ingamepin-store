@@ -23,6 +23,7 @@ type CategoryRow = {
   short_name: string | null;
   slug: string;
   description: string | null;
+  image_url: string | null;
   icon: string | null;
 };
 
@@ -186,6 +187,7 @@ export default async function Home() {
           short_name,
           slug,
           description,
+          image_url,
           icon
         `,
       )
@@ -329,18 +331,11 @@ export default async function Home() {
       discountPercent: customerDiscounts.get(product.id) ?? 0,
       }));
 
-  const featuredProducts =
-    products.filter(
-      (product) => product.isFeatured,
-    );
-
   const popupRow =
     preorderPopupResult.data as PreorderPopupRow | null;
   const popupStoreProduct = popupRow?.product_id
     ? productRows.find((product) => product.id === popupRow.product_id) ?? null
     : null;
-  const isIndependentPreorder = Boolean(popupRow?.launch_date && !popupStoreProduct);
-
   const now = Date.now();
   const heroSlides: HeroSlide[] = (slidesResult.data ?? [])
     .filter((slide) => {
@@ -386,35 +381,6 @@ export default async function Home() {
         }
       : null;
 
-  const featuredProductsForDisplay: ProductCardData[] =
-    preorderPopup && isIndependentPreorder
-      ? [
-          {
-            id: "independent-preorder",
-            name: preorderPopup.gameTitle,
-            category: "Game Preorder",
-            price:
-              preorderPopup.preorderPrice ?? 0,
-            image: preorderPopup.imageUrl,
-            badge: "Preorder",
-            stock: 999999,
-            rating: 5,
-            sold:
-              Number(
-                popupRow?.sold_count ?? 0,
-              ) +
-              (popupRow?.product_id
-                ? paidProductSales.get(
-                    popupRow.product_id,
-                  ) ?? 0
-                : 0),
-            slug: "preorder",
-            href: "/preorder",
-          },
-          ...featuredProducts,
-        ]
-      : featuredProducts;
-
   const rankedProducts = [...products]
     .sort((first, second) => second.sold - first.sold);
   const purchasedProducts = rankedProducts.filter(
@@ -459,22 +425,48 @@ export default async function Home() {
         </section>
 
         <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
-          <h2 className="text-xl font-extrabold sm:text-2xl">Explore the catalog</h2>
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-            <Link href="/products" className="market-tab market-tab-active">All products</Link>
+          <h2 className="text-xl font-extrabold sm:text-2xl">Product categories</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {categories.map((category) => (
-              <Link key={category.id} href={`/category/${category.slug}`} className="market-tab">
-                <span aria-hidden="true">{getCategoryIcon(category.icon)}</span>{category.short_name ?? category.name}
+              <Link
+                key={category.id}
+                href={`/category/${category.slug}`}
+                className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+              >
+                <div className="flex aspect-square items-center justify-center overflow-hidden bg-slate-100">
+                  {category.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={category.image_url}
+                      alt={category.short_name ?? category.name}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <span aria-hidden="true" className="text-4xl">
+                      {getCategoryIcon(category.icon)}
+                    </span>
+                  )}
+                </div>
+                <span className="flex min-h-14 items-center justify-center border-t border-slate-200 bg-slate-50 px-3 py-2 text-center text-sm font-extrabold leading-5 text-slate-800">
+                  {category.short_name ?? category.name}
+                </span>
               </Link>
             ))}
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-4 lg:grid-cols-8">
-            {rankedProducts.map((product) => <MarketplaceCard key={product.id} product={product} />)}
-          </div>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <Link href="/products" className="rounded-xl bg-[#ff9418] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#e67f00]">View all products</Link>
-            <Link href="/products/bulk" className="b2b-home-button rounded-xl bg-[#17243d] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#243550]">B2B digital products</Link>
-            <Link href="/affiliate-program" className="rounded-xl bg-[#eef0f3] px-6 py-3 text-sm font-extrabold text-[#17243d] hover:bg-[#dfe3e8]">Affiliate program</Link>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/products/bulk"
+              className="b2b-home-button rounded-xl bg-[#17243d] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#243550]"
+            >
+              B2B digital products
+            </Link>
+            <Link
+              href="/affiliate-program"
+              className="rounded-xl bg-[#eef0f3] px-6 py-3 text-sm font-extrabold text-[#17243d] hover:bg-[#dfe3e8]"
+            >
+              Affiliate program
+            </Link>
           </div>
         </section>
       </div>

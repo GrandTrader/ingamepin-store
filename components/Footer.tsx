@@ -2,14 +2,43 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useStorePreferences } from "./StorePreferences";
 import PaymentMethodsBanner from "./PaymentMethodsBanner";
 import ThemeModeSwitch from "./ThemeModeSwitch";
+
+type FooterCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
 export default function Footer() {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear();
   const { t } = useStorePreferences();
+  const [categories, setCategories] = useState<FooterCategory[]>([]);
+  const footerCategories = categories.slice(0, 5);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+
+    void supabase
+      .from("categories")
+      .select("id, name, slug, sort_order")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true })
+      .then(({ data }) => {
+        if (active) setCategories(data ?? []);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (pathname === "/checkout" || pathname.startsWith("/checkout/")) {
     return (
@@ -72,10 +101,12 @@ export default function Footer() {
 
         <div className="mt-5 divide-y divide-white/10 border-y border-white/10">
           <MobileFooterSection title={t("productCategories")}>
-            <Link href="/#game_topup">{t("gamingTopups")}</Link>
-            <Link href="/#gift_card">{t("giftCards")}</Link>
-            <Link href="/#subscription">{t("subscriptions")}</Link>
-            <Link href="/#game_key">{t("gameKeys")}</Link>
+            {footerCategories.map((category) => (
+              <Link key={category.id} href={`/category/${category.slug}`}>
+                {category.name}
+              </Link>
+            ))}
+            <Link href="/products">{t("viewAllProducts")}</Link>
           </MobileFooterSection>
 
           <MobileFooterSection title={t("customerHelp")}>
@@ -153,36 +184,18 @@ export default function Footer() {
           </h2>
 
           <nav className="mt-5 grid gap-3 text-sm text-slate-400">
-            <Link
-              href="/#game_topup"
-              className="transition hover:text-cyan-400"
-            >
-              {t("gamingTopups")}
-            </Link>
+            {footerCategories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/category/${category.slug}`}
+                className="transition hover:text-cyan-400"
+              >
+                {category.name}
+              </Link>
+            ))}
 
             <Link
-              href="/#gift_card"
-              className="transition hover:text-cyan-400"
-            >
-              {t("giftCards")}
-            </Link>
-
-            <Link
-              href="/#subscription"
-              className="transition hover:text-cyan-400"
-            >
-              {t("subscriptions")}
-            </Link>
-
-            <Link
-              href="/#game_key"
-              className="transition hover:text-cyan-400"
-            >
-              {t("gameKeys")}
-            </Link>
-
-            <Link
-              href="/#all-products"
+              href="/products"
               className="font-bold text-cyan-400 transition hover:text-cyan-300"
             >
               {t("viewAllProducts")}

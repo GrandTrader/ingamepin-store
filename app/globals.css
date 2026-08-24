@@ -126,6 +126,103 @@ html[data-store-theme="light"] {
   --foreground: #0f172a;
 }
 
+/* Complete storefront dark theme. Keep brand/action colors intact while
+   translating every neutral page surface, card, label and form control. */
+html[data-store-theme="dark"] {
+  color-scheme: dark;
+  --background: #08111f;
+  --foreground: #e7edf7;
+}
+
+html[data-store-theme="dark"] body,
+html[data-store-theme="dark"] body:has(.market-home) > div:first-of-type {
+  background: #08111f !important;
+  color: #e7edf7;
+}
+
+html[data-store-theme="dark"] .market-home {
+  background-color: #08111f !important;
+  color: #e7edf7 !important;
+}
+
+html[data-store-theme="dark"] [class~="bg-white"],
+html[data-store-theme="dark"] [class~="bg-slate-50"] {
+  background-color: #111d30 !important;
+}
+
+html[data-store-theme="dark"] [class~="bg-slate-100"],
+html[data-store-theme="dark"] [class~="bg-slate-200"],
+html[data-store-theme="dark"] [class~="bg-slate-300"],
+html[data-store-theme="dark"] [class~="bg-[#eef0f3]"],
+html[data-store-theme="dark"] [class~="bg-[#f3f4f6]"],
+html[data-store-theme="dark"] [class~="bg-[#f4f5f7]"] {
+  background-color: #19283d !important;
+}
+
+html[data-store-theme="dark"] [class*="bg-white/"] {
+  background-color: rgba(30, 44, 65, 0.82) !important;
+}
+
+html[data-store-theme="dark"] [class~="text-black"],
+html[data-store-theme="dark"] [class~="text-slate-950"],
+html[data-store-theme="dark"] [class~="text-slate-900"],
+html[data-store-theme="dark"] [class~="text-slate-800"],
+html[data-store-theme="dark"] [class~="text-slate-700"],
+html[data-store-theme="dark"] [class~="text-[#172033]"],
+html[data-store-theme="dark"] [class~="text-[#17243d]"] {
+  color: #f4f7fb !important;
+}
+
+html[data-store-theme="dark"] [class~="text-slate-600"],
+html[data-store-theme="dark"] [class~="text-slate-500"],
+html[data-store-theme="dark"] [class~="text-[#354052]"] {
+  color: #b7c3d4 !important;
+}
+
+html[data-store-theme="dark"] [class~="text-slate-400"] {
+  color: #94a6bc !important;
+}
+
+html[data-store-theme="dark"] [class~="border-white"],
+html[data-store-theme="dark"] [class~="border-slate-100"],
+html[data-store-theme="dark"] [class~="border-slate-200"],
+html[data-store-theme="dark"] [class~="border-slate-300"],
+html[data-store-theme="dark"] [class~="border-slate-400"],
+html[data-store-theme="dark"] [class*="border-white/"] {
+  border-color: #2b3d57 !important;
+}
+
+html[data-store-theme="dark"] input,
+html[data-store-theme="dark"] select,
+html[data-store-theme="dark"] textarea {
+  color-scheme: dark;
+  border-color: #344761 !important;
+  background-color: #0d192b !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-store-theme="dark"] input::placeholder,
+html[data-store-theme="dark"] textarea::placeholder {
+  color: #7f91a9 !important;
+}
+
+html[data-store-theme="dark"] .market-tab {
+  background: #19283d;
+  color: #cbd5e1;
+}
+
+html[data-store-theme="dark"] .market-tab:hover,
+html[data-store-theme="dark"] .market-tab-active {
+  background: #ff9418;
+  color: #ffffff;
+}
+
+html[data-store-theme="dark"] .theme-mode-switch {
+  border-color: #344761 !important;
+  background: #17243d !important;
+  color: #e2e8f0 !important;
+}
+
 html[data-store-theme="light"] body {
   background: #f4f7fb;
   color: #0f172a;
