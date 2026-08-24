@@ -203,23 +203,32 @@ export default async function OrderReceipt({
   const payment = paymentResult.data;
   const items = (itemsResult.data ?? []) as OrderItem[];
   const itemIds = items.map((item) => item.id);
-  const codesResult = itemIds.length
-    ? await admin
+  const deliveredCodes: DeliveredCode[] = [];
+  const deliveredCodePageSize = 1000;
+
+  for (let from = 0; itemIds.length > 0; from += deliveredCodePageSize) {
+    const page = await admin
         .from("gift_card_codes")
-        .select("order_item_id, code, sold_at")
+        .select("id, order_item_id, code, sold_at")
         .in("order_item_id", itemIds)
         .eq("status", "SOLD")
         .order("sold_at")
-    : { data: [], error: null };
+        .order("id")
+        .range(from, from + deliveredCodePageSize - 1);
 
-  if (codesResult.error) {
-    throw new Error(
-      `Unable to load delivered codes: ${codesResult.error.message}`,
-    );
+    if (page.error) {
+      throw new Error(`Unable to load delivered codes: ${page.error.message}`);
+    }
+
+    const pageCodes = (page.data ?? []) as DeliveredCode[];
+    deliveredCodes.push(...pageCodes);
+    if (pageCodes.length < deliveredCodePageSize) {
+      break;
+    }
   }
 
   const codesByItem = new Map<string, DeliveredCode[]>();
-  for (const code of (codesResult.data ?? []) as DeliveredCode[]) {
+  for (const code of deliveredCodes) {
     if (!code.order_item_id) {
       continue;
     }
