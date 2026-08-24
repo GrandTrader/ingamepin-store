@@ -416,7 +416,7 @@ export default async function Home() {
       : featuredProducts;
 
   const rankedProducts = [...products]
-    .sort((first, second) => second.sold - first.sold)
+    .sort((first, second) => second.sold - first.sold);
   const purchasedProducts = rankedProducts.filter(
     (product) => product.sold > 0,
   );

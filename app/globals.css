@@ -93,12 +93,19 @@ html[data-store-theme="light"] .b2b-home-button:hover {
   background: #243550 !important;
 }
 
+/* Marketplace-style chrome on the storefront home page. */
 body:has(.market-home) > div:first-of-type {
   background: #f3f4f6;
 }
 
 body:has(.market-home) header {
   box-shadow: none;
+}
+
+@media (min-width: 640px) {
+  body:has(.market-home) header > div:first-child {
+    max-width: 1180px;
+  }
 }
 
 /* Slightly compact desktop layout */

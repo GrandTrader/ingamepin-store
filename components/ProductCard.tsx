@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import CountryFlag from "./CountryFlag";
+import { countryCode } from "@/lib/country-flag";
 import { useStorePreferences } from "./StorePreferences";
 
 export type ProductCardData = {
@@ -43,11 +44,8 @@ export default function ProductCard({ product }: Props) {
   const customerPrice = product.price * (1 - discountPercent / 100);
   const localizedName =
     language === "ru" && product.nameRu ? product.nameRu : product.name;
-  const localizedBadge = product.isInstantDelivery
-    ? language === "ru" ? "Мгновенная доставка" : "Instant Delivery"
-    : product.isBulkOrder
-      ? language === "ru" ? "Цифровая доставка" : "Digital Delivery"
-      : language === "ru" ? "Цифровая доставка" : "Digital Delivery";
+  const regionCode = countryCode(product.region);
+  const regionLabel = regionCode ? regionCode.toUpperCase() : "Global";
   const russianImage = language === "ru" ? product.imageRu : null;
   const localizedImage =
     russianImage && !failedImages.includes(russianImage)
@@ -57,8 +55,8 @@ export default function ProductCard({ product }: Props) {
         : "";
 
   const stockClassName = isOutOfStock
-    ? "border-red-400/30 bg-red-400/10 text-red-300"
-    : "border-emerald-400/30 bg-emerald-400/10 text-emerald-300";
+    ? "border-red-300 bg-red-500 text-white"
+    : "border-emerald-300 bg-emerald-500 text-white";
 
   return (
     <Link
@@ -68,36 +66,20 @@ export default function ProductCard({ product }: Props) {
       }
       className="block"
     >
-      <article className="product-card-standard group h-full overflow-hidden rounded-xl bg-white transition duration-200 hover:-translate-y-1 hover:shadow-lg">
-        <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-xl bg-[#eef0f3]">
-          {product.isBulkOrder && (
-            <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-md bg-amber-300 px-2 py-1 text-[9px] font-black uppercase text-slate-950 shadow-lg">
-              <span aria-hidden="true">▦</span>
-              {language === "ru" ? "Цифровая доставка" : "Digital Delivery"}
-            </span>
-          )}
-
-          {product.isInstantDelivery && !product.isBulkOrder && (
-            <span className="absolute bottom-2 left-2 z-20 inline-flex items-center gap-1 rounded-md border border-white bg-emerald-400 px-2 py-1 text-[9px] font-black uppercase text-slate-950 shadow-lg">
-              <span aria-hidden="true">⚡</span>
-              {language === "ru" ? "Мгновенная доставка" : "Instant Delivery"}
-            </span>
-          )}
-
-          <span className="absolute left-2 top-2 z-20 hidden rounded-md bg-slate-950/85 px-2 py-1 text-[9px] font-bold text-white shadow-lg backdrop-blur-sm sm:inline-flex">
-            {localizedBadge}
-          </span>
-
+      <article className="product-card-standard group h-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md transition duration-200 hover:-translate-y-1 hover:shadow-xl">
+        <div className="flex min-h-10 items-center justify-between gap-2 bg-slate-50 px-2 py-1.5">
           <span
-            className={`absolute right-2 top-2 z-20 rounded-md border px-2 py-1 text-[9px] font-bold shadow-lg backdrop-blur-sm ${stockClassName}`}
+            className={`rounded-md border px-2.5 py-1.5 text-[10px] font-black shadow-sm ${stockClassName}`}
           >
             {stockLabel}
           </span>
 
-          <span className="absolute bottom-8 right-2 z-20 rounded-md bg-slate-950/85 px-2 py-1 text-[9px] font-bold text-white shadow-lg backdrop-blur-sm">
-            <CountryFlag region={product.region} /> {product.region || "Global"}
+          <span className="inline-flex items-center gap-2 bg-transparent text-sm font-black text-slate-900">
+            <CountryFlag region={product.region} className="h-6 w-8 shrink-0" /> {regionLabel}
           </span>
+        </div>
 
+        <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-[#eef0f3]">
           {localizedImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -111,7 +93,7 @@ export default function ProductCard({ product }: Props) {
                     : [...current, localizedImage],
                 )
               }
-              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              className="h-full w-full object-contain transition duration-300"
             />
           ) : (
             <div
@@ -122,6 +104,27 @@ export default function ProductCard({ product }: Props) {
             </div>
           )}
 
+        </div>
+
+        <div className="flex min-h-10 items-center bg-slate-50 px-2 py-1.5">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-black uppercase shadow-sm ${
+              product.isInstantDelivery && !product.isBulkOrder
+                ? "border-emerald-300 bg-emerald-400 text-slate-950"
+                : "border-amber-300 bg-amber-300 text-slate-950"
+            }`}
+          >
+            <span aria-hidden="true">
+              {product.isInstantDelivery && !product.isBulkOrder ? "⚡" : "▦"}
+            </span>
+            {product.isInstantDelivery && !product.isBulkOrder
+              ? language === "ru"
+                ? "Мгновенная доставка"
+                : "Instant Delivery"
+              : language === "ru"
+                ? "Цифровая доставка"
+                : "Digital Delivery"}
+          </span>
         </div>
 
         <div className="px-1 pb-2 pt-2">
