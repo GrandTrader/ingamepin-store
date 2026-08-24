@@ -9,6 +9,7 @@ import {
 } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAllDeliveredCodes } from "@/lib/delivered-codes";
 
 export const runtime = "nodejs";
 
@@ -193,37 +194,14 @@ export async function POST(
       );
     }
 
-    const codeResult =
-      itemIds.length > 0
-        ? await admin
-            .from("gift_card_codes")
-            .select(
-              `
-                order_item_id,
-                product_option_id,
-                code
-              `,
-            )
-            .in("order_item_id", itemIds)
-            .eq("status", "SOLD")
-            .order("sold_at", {
-              ascending: true,
-            })
-        : {
-            data: [],
-            error: null,
-          };
-
-    if (codeResult.error) {
-      throw codeResult.error;
-    }
+    const deliveredCodes = await getAllDeliveredCodes(itemIds);
 
     const codesByItem = new Map<
       string,
       string[]
     >();
 
-    for (const row of codeResult.data ?? []) {
+    for (const row of deliveredCodes) {
       if (!row.order_item_id) {
         continue;
       }

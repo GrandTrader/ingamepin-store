@@ -5,6 +5,7 @@ import CustomerAccountShell from "../../CustomerAccountShell";
 import DeliveredCodesDownloadButton from "@/components/DeliveredCodesDownloadButton";
 import VerifiedPurchaseReview from "@/components/VerifiedPurchaseReview";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAllDeliveredCodes } from "@/lib/delivered-codes";
 import {
   customerStatusClass,
   formatCustomerDate,
@@ -92,21 +93,10 @@ export default async function CustomerOrderReceiptPage({
   const items = (itemsResult.data ?? []) as OrderItem[];
   const payment = paymentResult.data;
   const itemIds = items.map((item) => item.id);
-  const codesResult = itemIds.length
-    ? await admin
-        .from("gift_card_codes")
-        .select("order_item_id, code")
-        .in("order_item_id", itemIds)
-        .eq("status", "SOLD")
-        .order("sold_at")
-    : { data: [], error: null };
-
-  if (codesResult.error) {
-    throw new Error(`Unable to load delivered codes: ${codesResult.error.message}`);
-  }
+  const deliveredCodes = await getAllDeliveredCodes(itemIds);
 
   const codesByItem = new Map<string, string[]>();
-  for (const deliveredCode of (codesResult.data ?? []) as DeliveredCode[]) {
+  for (const deliveredCode of deliveredCodes as DeliveredCode[]) {
     if (!deliveredCode.order_item_id) continue;
 
     codesByItem.set(deliveredCode.order_item_id, [

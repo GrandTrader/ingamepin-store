@@ -4,6 +4,7 @@ import {
 } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAllDeliveredCodes } from "@/lib/delivered-codes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,21 +122,9 @@ export async function POST(
       ),
     );
 
-    const [codeResult, productResult] =
+    const [deliveredCodes, productResult] =
       await Promise.all([
-        itemIds.length > 0
-          ? admin
-              .from("gift_card_codes")
-              .select("order_item_id, code")
-              .in("order_item_id", itemIds)
-              .eq("status", "SOLD")
-              .order("sold_at", {
-                ascending: true,
-              })
-          : Promise.resolve({
-              data: [],
-              error: null,
-            }),
+        getAllDeliveredCodes(itemIds),
 
         productIds.length > 0
           ? admin
@@ -148,10 +137,6 @@ export async function POST(
             }),
       ]);
 
-    if (codeResult.error) {
-      throw codeResult.error;
-    }
-
     if (productResult.error) {
       throw productResult.error;
     }
@@ -161,7 +146,7 @@ export async function POST(
       string[]
     >();
 
-    for (const row of codeResult.data ?? []) {
+    for (const row of deliveredCodes) {
       if (!row.order_item_id) {
         continue;
       }

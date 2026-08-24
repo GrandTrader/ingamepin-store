@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAllDeliveredCodes } from "@/lib/delivered-codes";
 import { createClient } from "@/lib/supabase/server";
 
 import { customerLogout } from "../actions";
@@ -99,16 +100,9 @@ export default async function CustomerDashboardPage() {
   const orders = (orderResult.data ?? []) as CustomerOrder[];
   const orderItems = orders.flatMap((order) => order.order_items);
   const orderItemIds = orderItems.map((item) => item.id);
-  const codeResult = orderItemIds.length
-    ? await admin
-        .from("gift_card_codes")
-        .select("id, order_item_id, code, sold_at")
-        .in("order_item_id", orderItemIds)
-        .eq("status", "SOLD")
-        .order("sold_at", { ascending: false })
-    : { data: [], error: null };
+  const deliveredCodes = await getAllDeliveredCodes(orderItemIds);
 
-  const codes = (codeResult.data ?? []).map((code) => {
+  const codes = [...deliveredCodes].reverse().map((code) => {
     const item = orderItems.find((orderItem) => orderItem.id === code.order_item_id);
     const order = orders.find((customerOrder) =>
       customerOrder.order_items.some((orderItem) => orderItem.id === code.order_item_id),
