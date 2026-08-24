@@ -5,7 +5,10 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
-import { useStorePreferences } from "./StorePreferences";
+import {
+  useStorePreferences,
+  type StoreLanguage,
+} from "./StorePreferences";
 
 type CartItem = {
   cartId: string;
@@ -291,18 +294,17 @@ export default function Header() {
                 id="store-language"
                 value={language}
                 onChange={(event) =>
-                  setLanguage(
-                    event.target.value === "ru"
-                      ? "ru"
-                      : event.target.value === "th"
-                        ? "th"
-                        : "en",
-                  )
+                  setLanguage(event.target.value as StoreLanguage)
                 }
                 className="h-10 rounded-xl border border-white/10 bg-slate-950 px-2 text-xs font-bold text-white outline-none transition hover:border-cyan-400"
               >
                 <option value="en">🇺🇸 EN</option>
+                <option value="de">🇩🇪 DE</option>
                 <option value="ru">🇷🇺 RU</option>
+                <option value="fr">🇫🇷 FR</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="es">🇪🇸 ES</option>
+                <option value="ar">🇸🇦 AR</option>
                 <option value="th">🇹🇭 TH</option>
               </select>
 
@@ -583,18 +585,17 @@ export default function Header() {
                   aria-label="Language"
                   value={language}
                   onChange={(event) =>
-                    setLanguage(
-                      event.target.value === "ru"
-                        ? "ru"
-                        : event.target.value === "th"
-                          ? "th"
-                          : "en",
-                    )
+                    setLanguage(event.target.value as StoreLanguage)
                   }
                   className="h-11 rounded-xl border border-white/10 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition focus:border-cyan-400"
                 >
                   <option value="en">🇺🇸 English</option>
+                  <option value="de">🇩🇪 Deutsch</option>
                   <option value="ru">🇷🇺 Русский</option>
+                  <option value="fr">🇫🇷 Français</option>
+                  <option value="zh">🇨🇳 中文</option>
+                  <option value="es">🇪🇸 Español</option>
+                  <option value="ar">🇸🇦 العربية</option>
                   <option value="th">🇹🇭 ไทย</option>
                 </select>
 

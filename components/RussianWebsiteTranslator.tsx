@@ -1229,6 +1229,27 @@ const thaiPatterns: Array<[RegExp, (...matches: string[]) => string]> = [
   [/^(.+)\s+Sold$/, (count) => `ขายแล้ว ${count}`],
 ];
 
+const additionalText: Record<
+  Exclude<StoreLanguage, "en" | "ru" | "th">,
+  Record<string, string>
+> = {
+  de: {
+    Chat: "Chat", Purchases: "Bestellungen", Wallet: "Guthaben", Cart: "Warenkorb", Games: "Spiele", "Gift Cards": "Geschenkkarten", Subscriptions: "Abonnements", "Game Keys": "Spielschlüssel", Popular: "Beliebt", "Explore the catalog": "Katalog entdecken", "All products": "Alle Produkte", "Gaming Top-Ups": "Gaming-Aufladungen", "Instant Delivery": "Sofortige Lieferung", "Digital Delivery": "Digitale Lieferung", "Secure checkout": "Sicherer Checkout", Quantity: "Menge", Total: "Gesamt", "Add to Cart": "In den Warenkorb", "Buy Now": "Jetzt kaufen", Description: "Beschreibung", Reviews: "Bewertungen", Region: "Region", "In Stock": "Auf Lager", "Out of Stock": "Nicht auf Lager", "Continue Shopping": "Weiter einkaufen", "Contact Support": "Support kontaktieren", "Check Delivery Status": "Lieferstatus prüfen", "Customer email": "Kunden-E-Mail", "Payment method": "Zahlungsmethode", "Order number": "Bestellnummer", Status: "Status", "Terms of Use": "Nutzungsbedingungen", "Returns and Refunds": "Rückgabe und Erstattung", "Privacy Policy": "Datenschutzrichtlinie", "Affiliate Program": "Partnerprogramm", "Live Chat": "Live-Chat",
+  },
+  fr: {
+    Chat: "Chat", Purchases: "Commandes", Wallet: "Portefeuille", Cart: "Panier", Games: "Jeux", "Gift Cards": "Cartes cadeaux", Subscriptions: "Abonnements", "Game Keys": "Clés de jeux", Popular: "Populaires", "Explore the catalog": "Explorer le catalogue", "All products": "Tous les produits", "Gaming Top-Ups": "Recharges de jeux", "Instant Delivery": "Livraison instantanée", "Digital Delivery": "Livraison numérique", "Secure checkout": "Paiement sécurisé", Quantity: "Quantité", Total: "Total", "Add to Cart": "Ajouter au panier", "Buy Now": "Acheter maintenant", Description: "Description", Reviews: "Avis", Region: "Région", "In Stock": "En stock", "Out of Stock": "Rupture de stock", "Continue Shopping": "Continuer les achats", "Contact Support": "Contacter l’assistance", "Check Delivery Status": "Vérifier la livraison", "Customer email": "E-mail du client", "Payment method": "Mode de paiement", "Order number": "Numéro de commande", Status: "Statut", "Terms of Use": "Conditions d’utilisation", "Returns and Refunds": "Retours et remboursements", "Privacy Policy": "Politique de confidentialité", "Affiliate Program": "Programme d’affiliation", "Live Chat": "Chat en direct",
+  },
+  zh: {
+    Chat: "在线客服", Purchases: "订单", Wallet: "钱包", Cart: "购物车", Games: "游戏", "Gift Cards": "礼品卡", Subscriptions: "订阅", "Game Keys": "游戏密钥", Popular: "热门商品", "Explore the catalog": "浏览商品目录", "All products": "全部商品", "Gaming Top-Ups": "游戏充值", "Instant Delivery": "即时交付", "Digital Delivery": "数字交付", "Secure checkout": "安全结账", Quantity: "数量", Total: "总计", "Add to Cart": "加入购物车", "Buy Now": "立即购买", Description: "商品说明", Reviews: "评价", Region: "地区", "In Stock": "有货", "Out of Stock": "缺货", "Continue Shopping": "继续购物", "Contact Support": "联系支持", "Check Delivery Status": "查看交付状态", "Customer email": "客户邮箱", "Payment method": "支付方式", "Order number": "订单号", Status: "状态", "Terms of Use": "使用条款", "Returns and Refunds": "退货与退款", "Privacy Policy": "隐私政策", "Affiliate Program": "联盟计划", "Live Chat": "在线客服",
+  },
+  es: {
+    Chat: "Chat", Purchases: "Pedidos", Wallet: "Monedero", Cart: "Carrito", Games: "Juegos", "Gift Cards": "Tarjetas regalo", Subscriptions: "Suscripciones", "Game Keys": "Claves de juegos", Popular: "Popular", "Explore the catalog": "Explorar el catálogo", "All products": "Todos los productos", "Gaming Top-Ups": "Recargas de juegos", "Instant Delivery": "Entrega instantánea", "Digital Delivery": "Entrega digital", "Secure checkout": "Pago seguro", Quantity: "Cantidad", Total: "Total", "Add to Cart": "Añadir al carrito", "Buy Now": "Comprar ahora", Description: "Descripción", Reviews: "Reseñas", Region: "Región", "In Stock": "En stock", "Out of Stock": "Agotado", "Continue Shopping": "Continuar comprando", "Contact Support": "Contactar soporte", "Check Delivery Status": "Consultar entrega", "Customer email": "Correo del cliente", "Payment method": "Método de pago", "Order number": "Número de pedido", Status: "Estado", "Terms of Use": "Términos de uso", "Returns and Refunds": "Devoluciones y reembolsos", "Privacy Policy": "Política de privacidad", "Affiliate Program": "Programa de afiliados", "Live Chat": "Chat en vivo",
+  },
+  ar: {
+    Chat: "الدردشة", Purchases: "الطلبات", Wallet: "المحفظة", Cart: "السلة", Games: "الألعاب", "Gift Cards": "بطاقات الهدايا", Subscriptions: "الاشتراكات", "Game Keys": "مفاتيح الألعاب", Popular: "الأكثر شيوعًا", "Explore the catalog": "استكشف الكتالوج", "All products": "جميع المنتجات", "Gaming Top-Ups": "شحن الألعاب", "Instant Delivery": "تسليم فوري", "Digital Delivery": "تسليم رقمي", "Secure checkout": "دفع آمن", Quantity: "الكمية", Total: "الإجمالي", "Add to Cart": "أضف إلى السلة", "Buy Now": "اشتر الآن", Description: "الوصف", Reviews: "التقييمات", Region: "المنطقة", "In Stock": "متوفر", "Out of Stock": "نفد المخزون", "Continue Shopping": "متابعة التسوق", "Contact Support": "اتصل بالدعم", "Check Delivery Status": "تحقق من حالة التسليم", "Customer email": "بريد العميل", "Payment method": "طريقة الدفع", "Order number": "رقم الطلب", Status: "الحالة", "Terms of Use": "شروط الاستخدام", "Returns and Refunds": "الإرجاع والاسترداد", "Privacy Policy": "سياسة الخصوصية", "Affiliate Program": "برنامج الشركاء", "Live Chat": "الدردشة المباشرة",
+  },
+};
+
 const originalText = new WeakMap<Text, string>();
 const originalAttributes = new WeakMap<Element, Map<string, string>>();
 const translatedAttributes = ["placeholder", "title", "aria-label"];
@@ -1238,8 +1259,20 @@ function translateValue(value: string, language: StoreLanguage) {
   if (!trimmed) return value;
   const normalized = trimmed.replace(/\s+/g, " ");
 
-  const textMap = language === "th" ? thaiText : russianText;
-  const patterns = language === "th" ? thaiPatterns : russianPatterns;
+  const textMap =
+    language === "th"
+      ? thaiText
+      : language === "ru"
+        ? russianText
+        : language === "en"
+          ? {}
+          : additionalText[language];
+  const patterns =
+    language === "th"
+      ? thaiPatterns
+      : language === "ru"
+        ? russianPatterns
+        : [];
   let translated = textMap[normalized];
   if (!translated) {
     for (const [pattern, formatter] of patterns) {

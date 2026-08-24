@@ -10,7 +10,15 @@ import {
   type ReactNode,
 } from "react";
 
-export type StoreLanguage = "en" | "ru" | "th";
+export type StoreLanguage =
+  | "en"
+  | "de"
+  | "ru"
+  | "fr"
+  | "zh"
+  | "es"
+  | "ar"
+  | "th";
 export type StoreCurrency = "USD" | "INR" | "RUB";
 
 const translations = {
@@ -261,6 +269,27 @@ const translations = {
 
 type TranslationKey = keyof typeof translations.en;
 
+const additionalTranslations: Record<
+  "de" | "fr" | "zh" | "es" | "ar",
+  Partial<Record<TranslationKey, string>>
+> = {
+  de: {
+    digitalDelivery: "Sofortige digitale Lieferung", genuineProducts: "Originalprodukte", securePayment: "Sichere Zahlung", customerSupport: "Kundendienst", storeTagline: "Digitaler Spiele-Shop", home: "Startseite", allProducts: "Alle Produkte", support: "Support", trackOrder: "Bestellung verfolgen", cart: "Warenkorb", myAccount: "Mein Konto", login: "Anmelden", searchProducts: "Produkte suchen", searchPlaceholder: "Spiele, Geschenkkarten, Abonnements suchen...", search: "Suchen", searching: "Produkte werden gesucht...", noResults: "Keine passenden Produkte gefunden.", openMenu: "Navigationsmenü öffnen", closeMenu: "Navigationsmenü schließen", gamingTopups: "Gaming-Aufladungen", giftCards: "Geschenkkarten", subscriptions: "Abonnements", gameKeys: "Spielschlüssel", inStock: "Auf Lager", outOfStock: "Nicht auf Lager", sold: "Verkauft", unavailable: "Nicht verfügbar", buy: "Kaufen", yourDiscount: "Ihr Rabatt: {percent}%", productCategories: "Produktkategorien", customerHelp: "Kundenhilfe", legal: "Rechtliches", paymentDelivery: "Zahlung & Lieferung", trackYourOrder: "Bestellung verfolgen", contactSupport: "Support kontaktieren", shoppingCart: "Warenkorb", terms: "Allgemeine Geschäftsbedingungen", refundPolicy: "Rückgabe- und Erstattungsrichtlinie", privacyPolicy: "Datenschutzrichtlinie", affiliateProgram: "Partnerprogramm", viewAllProducts: "Alle Produkte anzeigen", secureCheckout: "Sicherer Checkout", checkOrderStatus: "Bestellstatus prüfen", selectDeliveryMethod: "Liefermethode wählen", playerIdTopup: "Aufladung per Spieler-ID", gamingVoucher: "Gaming-Gutschein", selectProductOption: "Produktoption wählen", playerId: "Spieler-ID", deliveryEmail: "Liefer-E-Mail", quantity: "Menge", selectedOption: "Ausgewählte Option", notSelected: "Nicht ausgewählt", deliveryMethod: "Liefermethode", total: "Gesamt", addToCart: "In den Warenkorb", buyNow: "Jetzt kaufen", secureCheckoutLabel: "Sicherer Checkout", chooseProductOption: "Produktoption auswählen", region: "Region", deliveryInstructions: "Lieferhinweise",
+  },
+  fr: {
+    digitalDelivery: "Livraison numérique instantanée", genuineProducts: "Produits authentiques", securePayment: "Paiement sécurisé", customerSupport: "Service client", storeTagline: "Boutique de jeux numériques", home: "Accueil", allProducts: "Tous les produits", support: "Assistance", trackOrder: "Suivre la commande", cart: "Panier", myAccount: "Mon compte", login: "Connexion", searchProducts: "Rechercher des produits", searchPlaceholder: "Rechercher des jeux, cartes cadeaux, abonnements...", search: "Rechercher", searching: "Recherche de produits...", noResults: "Aucun produit correspondant.", openMenu: "Ouvrir le menu", closeMenu: "Fermer le menu", gamingTopups: "Recharges de jeux", giftCards: "Cartes cadeaux", subscriptions: "Abonnements", gameKeys: "Clés de jeux", inStock: "En stock", outOfStock: "Rupture de stock", sold: "Vendus", unavailable: "Indisponible", buy: "Acheter", yourDiscount: "Votre remise de {percent}%", productCategories: "Catégories de produits", customerHelp: "Aide client", legal: "Mentions légales", paymentDelivery: "Paiement et livraison", trackYourOrder: "Suivre votre commande", contactSupport: "Contacter l’assistance", shoppingCart: "Panier", terms: "Conditions générales", refundPolicy: "Politique de retour et remboursement", privacyPolicy: "Politique de confidentialité", affiliateProgram: "Programme d’affiliation", viewAllProducts: "Voir tous les produits", secureCheckout: "Paiement sécurisé", checkOrderStatus: "Vérifier le statut", selectDeliveryMethod: "Choisir le mode de livraison", playerIdTopup: "Recharge par ID joueur", gamingVoucher: "Bon de jeu", selectProductOption: "Sélectionner une option", playerId: "ID joueur", deliveryEmail: "E-mail de livraison", quantity: "Quantité", selectedOption: "Option sélectionnée", notSelected: "Non sélectionné", deliveryMethod: "Mode de livraison", total: "Total", addToCart: "Ajouter au panier", buyNow: "Acheter maintenant", secureCheckoutLabel: "Paiement sécurisé", chooseProductOption: "Choisissez votre option", region: "Région", deliveryInstructions: "Instructions de livraison",
+  },
+  zh: {
+    digitalDelivery: "即时数字交付", genuineProducts: "正品保障", securePayment: "安全支付", customerSupport: "客户支持", storeTagline: "数字游戏商店", home: "首页", allProducts: "全部商品", support: "支持", trackOrder: "订单查询", cart: "购物车", myAccount: "我的账户", login: "登录", searchProducts: "搜索商品", searchPlaceholder: "搜索游戏、礼品卡、订阅...", search: "搜索", searching: "正在搜索商品...", noResults: "未找到匹配商品。", openMenu: "打开导航菜单", closeMenu: "关闭导航菜单", gamingTopups: "游戏充值", giftCards: "礼品卡", subscriptions: "订阅", gameKeys: "游戏密钥", inStock: "有货", outOfStock: "缺货", sold: "已售", unavailable: "不可用", buy: "购买", yourDiscount: "您的折扣 {percent}%", productCategories: "商品分类", customerHelp: "客户帮助", legal: "法律信息", paymentDelivery: "支付与交付", trackYourOrder: "查询您的订单", contactSupport: "联系支持", shoppingCart: "购物车", terms: "条款与条件", refundPolicy: "退货与退款政策", privacyPolicy: "隐私政策", affiliateProgram: "联盟计划", viewAllProducts: "查看全部商品", secureCheckout: "安全结账", checkOrderStatus: "查看订单状态", selectDeliveryMethod: "选择交付方式", playerIdTopup: "玩家 ID 充值", gamingVoucher: "游戏兑换券", selectProductOption: "选择商品选项", playerId: "玩家 ID", deliveryEmail: "接收邮箱", quantity: "数量", selectedOption: "已选选项", notSelected: "未选择", deliveryMethod: "交付方式", total: "总计", addToCart: "加入购物车", buyNow: "立即购买", secureCheckoutLabel: "安全结账", chooseProductOption: "选择商品选项", region: "地区", deliveryInstructions: "交付说明",
+  },
+  es: {
+    digitalDelivery: "Entrega digital instantánea", genuineProducts: "Productos originales", securePayment: "Pago seguro", customerSupport: "Atención al cliente", storeTagline: "Tienda de juegos digitales", home: "Inicio", allProducts: "Todos los productos", support: "Soporte", trackOrder: "Rastrear pedido", cart: "Carrito", myAccount: "Mi cuenta", login: "Iniciar sesión", searchProducts: "Buscar productos", searchPlaceholder: "Buscar juegos, tarjetas regalo, suscripciones...", search: "Buscar", searching: "Buscando productos...", noResults: "No se encontraron productos.", openMenu: "Abrir menú", closeMenu: "Cerrar menú", gamingTopups: "Recargas de juegos", giftCards: "Tarjetas regalo", subscriptions: "Suscripciones", gameKeys: "Claves de juegos", inStock: "En stock", outOfStock: "Agotado", sold: "Vendidos", unavailable: "No disponible", buy: "Comprar", yourDiscount: "Tu descuento del {percent}%", productCategories: "Categorías de productos", customerHelp: "Ayuda al cliente", legal: "Información legal", paymentDelivery: "Pago y entrega", trackYourOrder: "Rastrear tu pedido", contactSupport: "Contactar soporte", shoppingCart: "Carrito", terms: "Términos y condiciones", refundPolicy: "Política de devoluciones y reembolsos", privacyPolicy: "Política de privacidad", affiliateProgram: "Programa de afiliados", viewAllProducts: "Ver todos los productos", secureCheckout: "Pago seguro", checkOrderStatus: "Consultar estado", selectDeliveryMethod: "Seleccionar método de entrega", playerIdTopup: "Recarga por ID de jugador", gamingVoucher: "Cupón de juego", selectProductOption: "Seleccionar opción", playerId: "ID de jugador", deliveryEmail: "Correo de entrega", quantity: "Cantidad", selectedOption: "Opción seleccionada", notSelected: "No seleccionado", deliveryMethod: "Método de entrega", total: "Total", addToCart: "Añadir al carrito", buyNow: "Comprar ahora", secureCheckoutLabel: "Pago seguro", chooseProductOption: "Elige una opción", region: "Región", deliveryInstructions: "Instrucciones de entrega",
+  },
+  ar: {
+    digitalDelivery: "تسليم رقمي فوري", genuineProducts: "منتجات أصلية", securePayment: "دفع آمن", customerSupport: "دعم العملاء", storeTagline: "متجر الألعاب الرقمية", home: "الرئيسية", allProducts: "جميع المنتجات", support: "الدعم", trackOrder: "تتبع الطلب", cart: "السلة", myAccount: "حسابي", login: "تسجيل الدخول", searchProducts: "البحث عن المنتجات", searchPlaceholder: "ابحث عن الألعاب وبطاقات الهدايا والاشتراكات...", search: "بحث", searching: "جارٍ البحث عن المنتجات...", noResults: "لم يتم العثور على منتجات مطابقة.", openMenu: "فتح قائمة التنقل", closeMenu: "إغلاق قائمة التنقل", gamingTopups: "شحن الألعاب", giftCards: "بطاقات الهدايا", subscriptions: "الاشتراكات", gameKeys: "مفاتيح الألعاب", inStock: "متوفر", outOfStock: "نفد المخزون", sold: "تم البيع", unavailable: "غير متوفر", buy: "شراء", yourDiscount: "خصمك {percent}%", productCategories: "فئات المنتجات", customerHelp: "مساعدة العملاء", legal: "المعلومات القانونية", paymentDelivery: "الدفع والتسليم", trackYourOrder: "تتبع طلبك", contactSupport: "اتصل بالدعم", shoppingCart: "سلة التسوق", terms: "الشروط والأحكام", refundPolicy: "سياسة الإرجاع والاسترداد", privacyPolicy: "سياسة الخصوصية", affiliateProgram: "برنامج الشركاء", viewAllProducts: "عرض جميع المنتجات", secureCheckout: "دفع آمن", checkOrderStatus: "تحقق من حالة الطلب", selectDeliveryMethod: "اختر طريقة التسليم", playerIdTopup: "شحن بمعرّف اللاعب", gamingVoucher: "قسيمة ألعاب", selectProductOption: "اختر خيار المنتج", playerId: "معرّف اللاعب", deliveryEmail: "بريد التسليم", quantity: "الكمية", selectedOption: "الخيار المحدد", notSelected: "غير محدد", deliveryMethod: "طريقة التسليم", total: "الإجمالي", addToCart: "أضف إلى السلة", buyNow: "اشتر الآن", secureCheckoutLabel: "دفع آمن", chooseProductOption: "اختر خيار المنتج", region: "المنطقة", deliveryInstructions: "تعليمات التسليم",
+  },
+};
+
 type StorePreferencesValue = {
   language: StoreLanguage;
   currency: StoreCurrency;
@@ -296,7 +325,12 @@ export function StorePreferencesProvider({
 
     if (
       savedLanguage === "en" ||
+      savedLanguage === "de" ||
       savedLanguage === "ru" ||
+      savedLanguage === "fr" ||
+      savedLanguage === "zh" ||
+      savedLanguage === "es" ||
+      savedLanguage === "ar" ||
       savedLanguage === "th"
     ) {
       setLanguageState(savedLanguage);
@@ -325,6 +359,7 @@ export function StorePreferencesProvider({
 
   useEffect(() => {
     document.documentElement.lang = language;
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
   }, [language]);
 
   const setLanguage = useCallback((nextLanguage: StoreLanguage) => {
@@ -342,7 +377,11 @@ export function StorePreferencesProvider({
       key: TranslationKey,
       values: Record<string, string | number> = {},
     ) => {
-      let text: string = translations[language][key];
+      const localized =
+        language === "en" || language === "ru" || language === "th"
+          ? translations[language][key]
+          : additionalTranslations[language][key];
+      let text: string = localized ?? translations.en[key];
 
       for (const [name, value] of Object.entries(values)) {
         text = text.replaceAll(`{${name}}`, String(value));
@@ -368,7 +407,21 @@ export function StorePreferencesProvider({
       options: Intl.NumberFormatOptions = {},
     ) =>
       new Intl.NumberFormat(
-        language === "ru" ? "ru-RU" : language === "th" ? "th-TH" : "en-US",
+        language === "ru"
+          ? "ru-RU"
+          : language === "th"
+            ? "th-TH"
+            : language === "de"
+              ? "de-DE"
+              : language === "fr"
+                ? "fr-FR"
+                : language === "zh"
+                  ? "zh-CN"
+                  : language === "es"
+                    ? "es-ES"
+                    : language === "ar"
+                      ? "ar-SA"
+                      : "en-US",
         {
         style: "currency",
         currency,
