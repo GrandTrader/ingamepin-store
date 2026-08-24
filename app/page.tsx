@@ -1,8 +1,7 @@
 import Link from "next/link";
 
 import HeroSlider, { type HeroSlide } from "@/components/HeroSlider";
-import LocalizedProductText from "@/components/LocalizedProductText";
-import type { ProductCardData } from "@/components/ProductCard";
+import ProductCard from "@/components/ProductCard";
 import type { BrowseProduct } from "@/components/ProductBrowser";
 import PreorderPopup, {
   type PreorderPopupData,
@@ -11,7 +10,6 @@ import PopularProductsRow from "@/components/PopularProductsRow";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
-import CountryFlag from "@/components/CountryFlag";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -416,8 +414,8 @@ export default async function Home() {
           {popularProducts.length > 0 ? (
             <PopularProductsRow>
               {popularProducts.map((product) => (
-                <div key={product.id} className="w-[calc(50%-6px)] shrink-0 snap-start sm:w-[calc(25%-9px)] lg:w-[calc(12.5%-11px)]">
-                  <MarketplaceCard product={product} />
+                <div key={product.id} className="w-[165px] shrink-0 snap-start sm:w-[185px] lg:w-[195px]">
+                  <ProductCard product={product} />
                 </div>
               ))}
             </PopularProductsRow>
@@ -483,36 +481,6 @@ export default async function Home() {
   );
 }
 
-function MarketplaceCard({ product }: { product: ProductCardData }) {
-  return (
-    <Link href={product.href ?? `/product/${product.slug}`} className="group min-w-0">
-      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#eef0f3] shadow-sm ring-1 ring-black/5 transition duration-200 group-hover:-translate-y-1 group-hover:shadow-lg">
-        <span className={`absolute left-2 top-2 z-10 rounded-md px-2 py-1 text-[9px] font-extrabold shadow-md ${
-          product.isInstantDelivery
-            ? "bg-emerald-400 text-slate-950"
-            : product.isBulkOrder
-              ? "bg-amber-300 text-slate-950"
-              : "bg-slate-950/90 text-white"
-        }`}>
-          <LocalizedProductText
-            english={product.isInstantDelivery ? "Instant Delivery" : "Digital Delivery"}
-            russian={product.isInstantDelivery ? "Мгновенная доставка" : "Цифровая доставка"}
-          />
-        </span>
-        <span className="absolute bottom-8 right-2 z-10 rounded-md bg-slate-950/90 px-2 py-1 text-[9px] font-bold text-white shadow-md">
-          <CountryFlag region={product.region} /> {product.region || "Global"}
-        </span>
-        {product.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-        ) : <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#17243d] to-[#0d1830] text-4xl">🎮</div>}
-      </div>
-      <h3 className="mt-2 line-clamp-2 text-center text-xs font-bold leading-4 text-[#354052] transition group-hover:text-[#f28b0c] sm:text-[13px]">
-        <LocalizedProductText english={product.name} russian={product.nameRu} />
-      </h3>
-    </Link>
-  );
-}
 
 function EmptySection({
   message,
