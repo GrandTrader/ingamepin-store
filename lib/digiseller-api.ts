@@ -170,7 +170,7 @@ export async function createDigiSellerFormProduct(input: {
     separate_content: false,
     modifier_visible: false,
     variants: input.variants.map((variant, index) => ({
-      name: [{ locale: "en-US", value: variant.name }],
+      name: [{ locale: "en-US", value: variant.name }, { locale: "ru-RU", value: variant.name }],
       type: "priceplus",
       rate: Math.max(0, Number((variant.price - input.basePrice).toFixed(2))),
       default: index === 0,
