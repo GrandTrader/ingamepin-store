@@ -352,6 +352,7 @@ export function StorePreferencesProvider({
         .then(
           (
             result: {
+              country?: string;
               language?: StoreLanguage;
               currency?: StoreCurrency;
             } | null,
