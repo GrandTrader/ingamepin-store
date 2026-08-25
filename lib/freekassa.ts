@@ -36,6 +36,7 @@ export function createFreeKassaCheckoutUrl(input: {
   orderId: string;
   email: string;
   language?: "en" | "ru";
+  paymentSystemId?: number;
 }) {
   const merchantId = getFreeKassaMerchantId();
   const signature = createHash("md5")
@@ -52,6 +53,9 @@ export function createFreeKassaCheckoutUrl(input: {
   url.searchParams.set("s", signature);
   url.searchParams.set("em", input.email);
   url.searchParams.set("lang", input.language ?? "en");
+  if (input.paymentSystemId) {
+    url.searchParams.set("i", String(input.paymentSystemId));
+  }
 
   return url.toString();
 }

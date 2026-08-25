@@ -204,6 +204,7 @@ export async function POST(request: NextRequest) {
           String(form.get("lang") ?? "").trim().toLowerCase() === "ru"
             ? "ru"
             : "en",
+        paymentSystemId: 42,
       });
       publicToken = randomBytes(32).toString("hex");
 

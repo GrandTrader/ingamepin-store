@@ -7,3 +7,10 @@ alter table public.digiseller_usdt_payments
 
 comment on column public.digiseller_usdt_payments.network is
   'DigiSeller payment gateway: TRC20, BEP20, SOLANA, BINANCE_PAY, or FREEKASSA_FPS.';
+
+alter table public.digiseller_usdt_payments
+  drop constraint if exists digiseller_usdt_payments_gateway_currency_check;
+
+alter table public.digiseller_usdt_payments
+  add constraint digiseller_usdt_payments_gateway_currency_check
+  check (gateway_currency is null or gateway_currency in ('USD', 'RUB'));
