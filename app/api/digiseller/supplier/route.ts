@@ -44,8 +44,10 @@ export async function POST(request: Request) {
   try {
     body = await request.json() as SupplierRequest;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON request." }, { status: 400 });
+    return NextResponse.json({ id: "", inv: 0, goods: "", error: "" });
   }
+
+  if (Object.keys(body).length === 0) return NextResponse.json({ id: "", inv: 0, goods: "", error: "" });
 
   const admin = createAdminClient();
   const secret = supplierSecret();
@@ -83,4 +85,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: String(productId), inv: invoiceId });
   }
   return NextResponse.json({ id: String(productId), inv: invoiceId, goods: delivery.data[0].goods, error: "" });
+}
+
+export function GET() {
+  return NextResponse.json({ id: "", inv: 0, goods: "", error: "" });
 }
