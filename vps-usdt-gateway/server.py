@@ -47,6 +47,7 @@ INVOICE_TTL_SECONDS = 30 * 60
 MAX_CALLBACK_ATTEMPTS = 100
 POLL_SECONDS = 3
 BSC_CONFIRMATIONS = 5
+BSC_RESCAN_BLOCKS = 50
 PAYMENT_GRACE_SECONDS = 5 * 60
 
 
@@ -592,13 +593,15 @@ def poll_bsc() -> None:
         set_state("last_bsc_block", str(safe_latest))
         return
 
-    start = int(saved) + 1
+    # Public BSC RPC nodes can briefly disagree about the chain head. Always
+    # overlap the recent confirmed range so a checkpoint from a faster node
+    # cannot permanently skip a payment observed later by a slower node.
+    start = max(0, min(int(saved) + 1, safe_latest - BSC_RESCAN_BLOCKS + 1))
     if start > safe_latest:
         return
 
     processed_blocks = 0
     while start <= safe_latest and processed_blocks < 100:
-        end = start
         block = rpc_call("eth_getBlockByNumber", [hex(start), True])
         paid_at = int(block["timestamp"], 16)
         for transaction in block.get("transactions", []):
@@ -615,9 +618,7 @@ def poll_bsc() -> None:
             else:
                 continue
 
-            if recipient != BEP20_WALLET:
-                continue
-            if raw_value % (10**12):
+            if recipient != BEP20_WALLET or raw_value % (10**12):
                 continue
 
             tx_hash = str(transaction.get("hash", ""))
@@ -641,17 +642,16 @@ def poll_bsc() -> None:
             if not matching_log:
                 continue
 
-            amount_micros = raw_value // (10**12)
             mark_paid(
                 "BEP20",
-                amount_micros,
+                raw_value // (10**12),
                 tx_hash,
                 str(transaction.get("from", "")).lower(),
                 paid_at,
             )
-        set_state("last_bsc_block", str(end))
-        processed_blocks += end - start + 1
-        start = end + 1
+        set_state("last_bsc_block", str(start))
+        processed_blocks += 1
+        start += 1
 
 
 def pending_invoice_exists(network: str) -> bool:
