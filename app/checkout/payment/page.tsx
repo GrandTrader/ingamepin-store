@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useStorePreferences } from "@/components/StorePreferences";
 
 type PendingOrder = {
   id: string;
@@ -11,14 +12,8 @@ type PendingOrder = {
   totalAmount: number;
 };
 
-function formatPrice(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value);
-}
-
 export default function PaymentPage() {
+  const { formatPrice } = useStorePreferences();
   const [order, setOrder] = useState<PendingOrder | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,8 +165,9 @@ export default function PaymentPage() {
                 : "Binance"}
         </h1>
         <p className="mt-3 text-slate-400">
-          Choose an available payment method and complete your USD-priced order
-          securely. Pally will display the converted payment amount.
+          {order.paymentMethod?.toLowerCase() === "freekassa"
+            ? "Continue to the secure SBP payment page. FreeKassa will display the final RUB amount and bank QR code."
+            : "Choose an available payment method and complete your order securely. The provider will display the converted payment amount."}
         </p>
         <div className="mt-6 rounded-2xl bg-slate-950 p-5">
           <p className="text-sm text-slate-500">Order total</p>

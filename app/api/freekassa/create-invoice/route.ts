@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-import { createFreeKassaCheckoutUrl } from "@/lib/freekassa";
+import { createFreeKassaApiOrder } from "@/lib/freekassa";
 import { getUsdRubRate } from "@/lib/pally";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
 
     const paymentResult = await admin
       .from("payments")
-      .select("id, method, status, gateway_order_id, gateway_payment_id")
+      .select(
+        "id, method, status, gateway_order_id, gateway_payment_id, gateway_checkout_url",
+      )
       .eq("order_id", order.id)
       .maybeSingle();
     const payment = paymentResult.data;
@@ -92,34 +94,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!payment.gateway_order_id) {
-      const updateResult = await admin
-        .from("payments")
-        .update({
-          gateway_order_id: order.id,
-          gateway_payment_id: rubAmount,
-        })
-        .eq("id", payment.id)
-        .is("gateway_order_id", null)
-        .select("id")
-        .maybeSingle();
+    if (payment.gateway_checkout_url) {
+      return NextResponse.json({
+        checkoutUrl: payment.gateway_checkout_url,
+      });
+    }
 
-      if (updateResult.error || !updateResult.data) {
-        return NextResponse.json(
-          { error: "Unable to save the FreeKassa payment link." },
-          { status: 500 },
-        );
-      }
+    const customerIp =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip")?.trim() ||
+      "";
+    if (!customerIp) {
+      return NextResponse.json(
+        { error: "FreeKassa requires the customer IP address." },
+        { status: 400 },
+      );
+    }
+
+    const checkoutUrl = await createFreeKassaApiOrder({
+      amount: rubAmount,
+      currency: "RUB",
+      paymentId: order.id,
+      email: order.customer_email,
+      ip: customerIp,
+      paymentSystemId: 44,
+    });
+
+    const updateResult = await admin
+      .from("payments")
+      .update({
+        gateway_order_id: order.id,
+        gateway_payment_id: rubAmount,
+        gateway_checkout_url: checkoutUrl,
+      })
+      .eq("id", payment.id)
+      .eq("status", "PENDING")
+      .select("id")
+      .maybeSingle();
+
+    if (updateResult.error || !updateResult.data) {
+      return NextResponse.json(
+        { error: "Unable to save the FreeKassa payment link." },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({
-      checkoutUrl: createFreeKassaCheckoutUrl({
-        amount: rubAmount,
-        currency: "RUB",
-        orderId: order.id,
-        email: order.customer_email,
-        language: "en",
-      }),
+      checkoutUrl,
     });
   } catch (error) {
     return NextResponse.json(
