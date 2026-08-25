@@ -59,12 +59,26 @@ export async function getDigiSellerToken() {
 
 type DigiSellerApiResult = {
   retval?: number;
-  retdesc?: string | null;
+  retdesc?: unknown;
   content?: unknown;
   product_id?: number;
   id?: number;
-  errors?: Array<{ message?: string; code?: string }> | null;
+  errors?: unknown;
 };
+
+function digiSellerErrorText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map(digiSellerErrorText).filter(Boolean).join("; ");
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const field = digiSellerErrorText(record.field || record.property || record.code);
+    const message = digiSellerErrorText(record.message || record.error || record.description);
+    if (field || message) return [field, message].filter(Boolean).join(": ");
+    try { return JSON.stringify(value); } catch { return "Unknown DigiSeller validation error"; }
+  }
+  return "";
+}
 
 async function postDigiSeller(path: string, body: unknown): Promise<DigiSellerApiResult> {
   const { token } = await getDigiSellerToken();
@@ -75,10 +89,10 @@ async function postDigiSeller(path: string, body: unknown): Promise<DigiSellerAp
     cache: "no-store",
   });
   const result = await response.json().catch(() => null) as DigiSellerApiResult | null;
-  const details = result?.errors?.map((error) => error.message || error.code).filter(Boolean).join("; ");
-  if (!response.ok) throw new Error(details || result?.retdesc || `DigiSeller request failed (${response.status}).`);
+  const details = digiSellerErrorText(result?.errors) || digiSellerErrorText(result?.retdesc);
+  if (!response.ok) throw new Error(details || `DigiSeller request failed (${response.status}).`);
   if (!result || (typeof result.retval === "number" && result.retval !== 0)) {
-    throw new Error(details || result?.retdesc || "DigiSeller rejected the request.");
+    throw new Error(details || "DigiSeller rejected the request.");
   }
   return result;
 }
