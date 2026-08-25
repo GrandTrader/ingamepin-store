@@ -163,6 +163,18 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
                 autoComplete="new-password"
               />
               <RegistrationTurnstile />
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-600 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  name="marketing_consent"
+                  value="yes"
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300"
+                />
+                <span>
+                  Email me about product restocks, promotions and special offers.
+                  I can unsubscribe at any time.
+                </span>
+              </label>
               <AuthSubmitButton
                 label="Create account"
                 pendingLabel="Creating account..."

@@ -9,6 +9,7 @@ import {
 } from "@/lib/customer-login-activity";
 import { getAuthErrorMessage } from "@/lib/auth-error-message";
 import { countryCallingCodes } from "@/lib/countryCallingCodes";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const PENDING_SIGNUP_COOKIE = "ingamepin_pending_signup";
@@ -107,6 +108,7 @@ export async function customerRegister(formData: FormData) {
   const phone = localPhone ? `${countryCode} ${localPhone}` : "";
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirm_password") ?? "");
+  const marketingConsent = formData.get("marketing_consent") === "yes";
   const captchaToken = String(formData.get("captcha_token") ?? "").trim();
 
   if (!captchaToken) {
@@ -158,6 +160,10 @@ export async function customerRegister(formData: FormData) {
       data: {
         full_name: fullName,
         phone,
+        marketing_email_consent: marketingConsent,
+        marketing_email_consented_at: marketingConsent
+          ? new Date().toISOString()
+          : null,
       },
     },
   });
@@ -190,6 +196,30 @@ export async function customerRegister(formData: FormData) {
       "error",
       getAuthErrorMessage(result.error, "register"),
     );
+  }
+
+  if (result.data.user) {
+    const consentResult = await createAdminClient()
+      .from("marketing_email_subscriptions")
+      .upsert(
+        {
+          email,
+          user_id: result.data.user.id,
+          subscribed: marketingConsent,
+          consent_source: "registration",
+          consented_at: marketingConsent ? new Date().toISOString() : null,
+          unsubscribed_at: marketingConsent ? null : new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "email" },
+      );
+
+    if (consentResult.error) {
+      console.error(
+        "Unable to save registration marketing consent:",
+        consentResult.error.message,
+      );
+    }
   }
 
   await savePendingSignupEmail(email);

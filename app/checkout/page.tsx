@@ -224,6 +224,7 @@ export default function CheckoutPage() {
   const [form, setForm] = useState<CheckoutForm>(initialForm);
   const [paymentMethod, setPaymentMethod] = useState("binance");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -780,6 +781,7 @@ export default function CheckoutPage() {
         customer: {
           email: form.email.trim(),
           orderNote: form.orderNote.trim(),
+          marketingConsent,
         },
 
         paymentMethod,
@@ -1780,6 +1782,19 @@ export default function CheckoutPage() {
               <span className="text-xs leading-5 text-slate-400">
                 I agree to the terms, privacy policy and applicable
                 return or replacement policy.
+              </span>
+            </label>
+
+            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-slate-950 p-4">
+              <input
+                type="checkbox"
+                checked={marketingConsent}
+                onChange={(event) => setMarketingConsent(event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 rounded"
+              />
+              <span className="text-xs leading-5 text-slate-400">
+                Email me about product restocks, promotions and special offers.
+                I can unsubscribe at any time.
               </span>
             </label>
 

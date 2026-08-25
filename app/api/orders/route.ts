@@ -23,6 +23,7 @@ type OrderRequest = {
     email?: unknown;
     phone?: unknown;
     orderNote?: unknown;
+    marketingConsent?: unknown;
   };
   paymentMethod?: unknown;
   items?: unknown;
@@ -160,6 +161,50 @@ export async function POST(request: NextRequest) {
       customerEmailForLimit.split("@")[0] ||
       "Customer"
     ).slice(0, 120);
+
+    if (signedInUser && customer.marketingConsent === true) {
+      const marketingMetadataResult = await admin.auth.admin.updateUserById(
+        signedInUser.id,
+        {
+          user_metadata: {
+            ...signedInUser.user_metadata,
+            marketing_email_consent: true,
+            marketing_email_consented_at: new Date().toISOString(),
+          },
+        },
+      );
+
+      if (marketingMetadataResult.error) {
+        console.error(
+          "Unable to save checkout marketing consent:",
+          marketingMetadataResult.error.message,
+        );
+      }
+    }
+
+    if (customer.marketingConsent === true && customerEmailForLimit) {
+      const consentResult = await admin
+        .from("marketing_email_subscriptions")
+        .upsert(
+          {
+            email: customerEmailForLimit,
+            user_id: signedInUser?.id ?? null,
+            subscribed: true,
+            consent_source: "checkout",
+            consented_at: new Date().toISOString(),
+            unsubscribed_at: null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "email" },
+        );
+
+      if (consentResult.error) {
+        console.error(
+          "Unable to save checkout marketing subscription:",
+          consentResult.error.message,
+        );
+      }
+    }
     const customerIp = (request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
     const submittedItems = body.items as Array<{ productOptionId?: string; quantity?: number; customValue?: number }>;
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);

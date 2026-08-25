@@ -23,6 +23,49 @@ async function requireAdministrator() {
   if (!access.data) redirect("/admin/login?error=Access denied");
 }
 
+async function syncProductQuantityEnvelope(productId: string) {
+  const admin = createAdminClient();
+  const optionsResult = await admin
+    .from("product_options")
+    .select("minimum_quantity, maximum_quantity")
+    .eq("product_id", productId);
+
+  if (optionsResult.error) throw optionsResult.error;
+
+  const minimums = (optionsResult.data ?? [])
+    .map((option) => option.minimum_quantity)
+    .filter((value): value is number => Number.isSafeInteger(value));
+  const maximums = (optionsResult.data ?? [])
+    .map((option) => option.maximum_quantity)
+    .filter((value): value is number => Number.isSafeInteger(value));
+
+  if (!minimums.length || !maximums.length) return;
+
+  const productResult = await admin
+    .from("products")
+    .select("minimum_quantity, maximum_quantity")
+    .eq("id", productId)
+    .single();
+
+  if (productResult.error) throw productResult.error;
+
+  const updateResult = await admin
+    .from("products")
+    .update({
+      minimum_quantity: Math.min(
+        Number(productResult.data.minimum_quantity ?? 1),
+        ...minimums,
+      ),
+      maximum_quantity: Math.max(
+        Number(productResult.data.maximum_quantity ?? 1),
+        ...maximums,
+      ),
+    })
+    .eq("id", productId);
+
+  if (updateResult.error) throw updateResult.error;
+}
+
 export async function saveProductRestriction(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   const path = `/admin/products/${id}/edit/restrictions`;
@@ -99,6 +142,12 @@ export async function saveDenominationQuantity(formData: FormData) {
   }
   const result = await createAdminClient().from("product_options").update({ minimum_quantity: minimum, maximum_quantity: maximum }).eq("id", optionId).eq("product_id", id);
   if (result.error) redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
+  try {
+    await syncProductQuantityEnvelope(id);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to synchronize product quantity limits";
+    redirect(`${path}?error=${encodeURIComponent(message)}`);
+  }
   revalidatePath(path);
   redirect(`${path}?success=Denomination quantity saved`);
 }
