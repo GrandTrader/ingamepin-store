@@ -161,18 +161,6 @@ export async function createDigiSellerFormProduct(input: {
     (typeof content === "object" && content ? positiveId(content.product_id) || positiveId(content.id) : null);
   if (!productId) throw new Error("DigiSeller created the product but did not return its ID.");
 
-  const supplierUrl = "https://www.ingamepin.com/api/digiseller/supplier";
-  await postDigiSeller("/api/product/content/update/form", {
-    product_id: productId,
-    address: supplierUrl,
-    method: "JSON",
-    encoding: "UTF8",
-    options: true,
-    answer: true,
-    allow_purchase_multiple_items: "true",
-    url_for_quantity: supplierUrl,
-  });
-
   await postDigiSeller("/api/products/options", {
     product_id: productId,
     name: [{ locale: "en-US", value: "Denomination" }, { locale: "ru-RU", value: "Номинал" }],
@@ -188,6 +176,18 @@ export async function createDigiSellerFormProduct(input: {
       default: index === 0,
       order: index + 1,
     })),
+  });
+
+  const supplierUrl = "https://www.ingamepin.com/api/digiseller/supplier";
+  await postDigiSeller("/api/product/content/update/form", {
+    product_id: productId,
+    address: supplierUrl,
+    method: "JSON",
+    encoding: "UTF8",
+    options: true,
+    answer: true,
+    allow_purchase_multiple_items: "true",
+    url_for_quantity: supplierUrl,
   });
   return { productId, variants: await listDigiSellerVariants(productId) };
 }
