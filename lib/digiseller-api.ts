@@ -57,6 +57,120 @@ export async function getDigiSellerToken() {
   return { token: result.token, sellerId };
 }
 
+type DigiSellerApiResult = {
+  retval?: number;
+  retdesc?: string | null;
+  content?: unknown;
+  product_id?: number;
+  id?: number;
+};
+
+async function postDigiSeller(path: string, body: unknown): Promise<DigiSellerApiResult> {
+  const { token } = await getDigiSellerToken();
+  const response = await fetch(`https://api.digiseller.com${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const result = await response.json().catch(() => null) as DigiSellerApiResult | null;
+  if (!response.ok) throw new Error(result?.retdesc || `DigiSeller request failed (${response.status}).`);
+  if (!result || (typeof result.retval === "number" && result.retval !== 0)) {
+    throw new Error(result?.retdesc || "DigiSeller rejected the request.");
+  }
+  return result;
+}
+
+function positiveId(value: unknown): number | null {
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+export type DigiSellerCategory = {
+  ownerId: number;
+  categoryId: number;
+  attributes: Array<{ attribute_id: number; attribute_value_id: string }>;
+};
+
+export function parseDigiSellerCategoryUrl(rawUrl: string): DigiSellerCategory {
+  let url: URL;
+  try { url = new URL(rawUrl); } catch { throw new Error("Paste a valid DigiSeller category URL."); }
+  if (url.protocol !== "https:" || url.hostname !== "my.digiseller.com") throw new Error("Use a my.digiseller.com category URL.");
+  const ownerId = positiveId(url.searchParams.get("ownerId"));
+  const categoryId = positiveId(url.searchParams.get("categoryId"));
+  if (!ownerId || !categoryId) throw new Error("The DigiSeller URL is missing its category information.");
+  let attributes: DigiSellerCategory["attributes"] = [];
+  try {
+    const parsed = JSON.parse(url.searchParams.get("selectedAttributes") || "[]") as Array<{ attribute_id?: unknown; attribute_value_id?: unknown }>;
+    if (!Array.isArray(parsed)) throw new Error();
+    attributes = parsed.map((item) => {
+      const attributeId = positiveId(item.attribute_id);
+      const attributeValueId = positiveId(item.attribute_value_id);
+      if (!attributeId || !attributeValueId) throw new Error();
+      return { attribute_id: attributeId, attribute_value_id: String(attributeValueId) };
+    });
+  } catch { throw new Error("The DigiSeller category attributes are invalid."); }
+  return { ownerId, categoryId, attributes };
+}
+
+export async function createDigiSellerFormProduct(input: {
+  name: string;
+  nameRu?: string | null;
+  description: string;
+  descriptionRu?: string | null;
+  basePrice: number;
+  category: DigiSellerCategory;
+  variants: Array<{ name: string; price: number }>;
+}) {
+  const created = await postDigiSeller("/api/product/create/arbitrary", {
+    content_type: "Form",
+    name: [{ locale: "en-US", value: input.name }, ...(input.nameRu ? [{ locale: "ru-RU", value: input.nameRu }] : [])],
+    description: [{ locale: "en-US", value: input.description }, ...(input.descriptionRu ? [{ locale: "ru-RU", value: input.descriptionRu }] : [])],
+    add_info: [{ locale: "en-US", value: "Delivery is completed automatically after payment." }],
+    price: { value: input.basePrice, currency: "USD" },
+    affiliate_program: false,
+    commission_partner: 0,
+    categories: [{ owner_id: input.category.ownerId, category_id: input.category.categoryId, attributes: input.category.attributes }],
+    enabled: false,
+    bonus: 0,
+    guarantee: 0,
+    address_required: false,
+    pay_as_you_want: false,
+  });
+  const content = created.content as { product_id?: unknown; id?: unknown } | number | undefined;
+  const productId = positiveId(created.product_id) || positiveId(created.id) || positiveId(content) ||
+    (typeof content === "object" && content ? positiveId(content.product_id) || positiveId(content.id) : null);
+  if (!productId) throw new Error("DigiSeller created the product but did not return its ID.");
+
+  const supplierUrl = "https://www.ingamepin.com/api/digiseller/supplier";
+  await postDigiSeller("/api/product/content/update/form", {
+    product_id: productId,
+    address: supplierUrl,
+    method: "JSON",
+    encoding: "UTF8",
+    options: true,
+    answer: true,
+    allow_purchase_multiple_items: true,
+    url_for_quantity: supplierUrl,
+  });
+
+  await postDigiSeller("/api/products/options", {
+    product_id: productId,
+    name: [{ locale: "en-US", value: "Denomination" }, { locale: "ru-RU", value: "Номинал" }],
+    type: "radio",
+    required: true,
+    separate_content: false,
+    modifier_visible: false,
+    variants: input.variants.map((variant, index) => ({
+      name: [{ locale: "en-US", value: variant.name }],
+      modifier: { type: "priceplus", rate: Math.max(0, Number((variant.price - input.basePrice).toFixed(2))) },
+      default: index === 0,
+      order: index + 1,
+    })),
+  });
+  return { productId, variants: await listDigiSellerVariants(productId) };
+}
+
 export type DigiSellerVariant = {
   optionId: number;
   variantId: number;

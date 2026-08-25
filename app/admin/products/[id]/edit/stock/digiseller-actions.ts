@@ -5,15 +5,19 @@ import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { listDigiSellerVariants } from "@/lib/digiseller-api";
+import { createDigiSellerFormProduct, listDigiSellerVariants, parseDigiSellerCategoryUrl } from "@/lib/digiseller-api";
 
-export async function saveDigiSellerMapping(productId: string, formData: FormData) {
-  const path = `/admin/products/${productId}/edit/stock`;
+async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
   const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
   if (!access.data) redirect("/admin/login?error=Access denied");
+}
+
+export async function saveDigiSellerMapping(productId: string, formData: FormData) {
+  const path = `/admin/products/${productId}/edit/stock`;
+  await requireAdmin();
 
   const admin = createAdminClient();
   const options = await admin.from("product_options").select("id, option_name, denomination").eq("product_id", productId).eq("is_custom_value", false);
@@ -57,4 +61,48 @@ export async function saveDigiSellerMapping(productId: string, formData: FormDat
   }
   revalidatePath(path);
   redirect(`${path}?success=${encodeURIComponent("DigiSeller product matches saved.")}`);
+}
+
+export async function createDigiSellerProduct(productId: string, formData: FormData) {
+  const path = `/admin/products/${productId}/edit/stock`;
+  await requireAdmin();
+  let createdProductId: number;
+  try {
+    const category = parseDigiSellerCategoryUrl(String(formData.get("category_url") ?? "").trim());
+    const admin = createAdminClient();
+    const [productResult, optionsResult] = await Promise.all([
+      admin.from("products").select("name, name_ru, description, description_ru").eq("id", productId).single(),
+      admin.from("product_options").select("id, option_name, selling_price").eq("product_id", productId).eq("is_active", true).eq("is_custom_value", false).order("sort_order"),
+    ]);
+    if (productResult.error) throw new Error(productResult.error.message);
+    if (optionsResult.error) throw new Error(optionsResult.error.message);
+    const options = (optionsResult.data ?? []).map((option) => ({ ...option, price: Number(option.selling_price) })).filter((option) => Number.isFinite(option.price) && option.price > 0);
+    if (!options.length) throw new Error("Add at least one active denomination with a selling price first.");
+    const basePrice = Math.min(...options.map((option) => option.price));
+    const created = await createDigiSellerFormProduct({
+      name: productResult.data.name,
+      nameRu: productResult.data.name_ru,
+      description: productResult.data.description || productResult.data.name,
+      descriptionRu: productResult.data.description_ru,
+      basePrice,
+      category,
+      variants: options.map((option) => ({ name: option.option_name, price: option.price })),
+    });
+    for (const option of options) {
+      const denomination = Number.parseFloat(option.option_name);
+      const match = created.variants.find((variant) => Number.isFinite(denomination) && new RegExp(`(^|\\D)${denomination}(\\D|$)`).test(variant.name));
+      const update = await admin.from("product_options").update({
+        digiseller_product_id: created.productId,
+        digiseller_option_id: match?.optionId ?? null,
+        digiseller_variant_id: match?.variantId ?? null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", option.id).eq("product_id", productId);
+      if (update.error) throw new Error(update.error.message);
+    }
+    createdProductId = created.productId;
+  } catch (error) {
+    redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Unable to create DigiSeller product.")}`);
+  }
+  revalidatePath(path);
+  redirect(`${path}?success=${encodeURIComponent(`Hidden DigiSeller product ${createdProductId} created and connected.`)}`);
 }

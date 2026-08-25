@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { saveDigiSellerMapping } from "./digiseller-actions";
+import { createDigiSellerProduct, saveDigiSellerMapping } from "./digiseller-actions";
 
 type Option = { id: string; name: string; digisellerProductId: number | null; digisellerOptionId: number | null; digisellerVariantId: number | null };
 type Product = { id: number; name: string; price: number; currency: string; stock: number; visible: boolean };
@@ -28,6 +28,14 @@ export default function DigiSellerMapping({ productId, options, products, loadEr
       <h2 className="mt-2 text-xl font-black">Match denominations</h2>
       <p className="mt-1 text-sm text-slate-500">Choose the DigiSeller product that represents each website denomination.</p>
     </div>
+    <form action={createDigiSellerProduct.bind(null, productId)} className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+      <label htmlFor="digiseller-category-url" className="text-sm font-black text-slate-900">Create a new hidden DigiSeller API product</label>
+      <p className="mt-1 text-xs text-slate-600">Paste the DigiSeller URL after choosing the marketplace category and attributes.</p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input id="digiseller-category-url" name="category_url" type="url" required placeholder="https://my.digiseller.com/inside/new_description.asp?..." className="min-w-0 flex-1 rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm" />
+        <button className="admin-save-action rounded-xl px-5 py-3 text-sm font-black">Create DigiSeller product</button>
+      </div>
+    </form>
     {loadError ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{loadError}</div> :
       <form action={saveDigiSellerMapping.bind(null, productId)} className="mt-5 space-y-3">
         {options.map((option) => <div key={option.id} className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[220px_1fr] sm:items-center">
