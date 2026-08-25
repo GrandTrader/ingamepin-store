@@ -322,8 +322,9 @@ export function StorePreferencesProvider({
   useEffect(() => {
     const savedLanguage = window.localStorage.getItem("storeLanguage");
     const savedCurrency = window.localStorage.getItem("storeCurrency");
-
-    if (
+    const hasManualPreferences =
+      window.localStorage.getItem("storePreferencesManual") === "true";
+    const hasSavedLanguage =
       savedLanguage === "en" ||
       savedLanguage === "de" ||
       savedLanguage === "ru" ||
@@ -331,17 +332,57 @@ export function StorePreferencesProvider({
       savedLanguage === "zh" ||
       savedLanguage === "es" ||
       savedLanguage === "ar" ||
-      savedLanguage === "th"
-    ) {
+      savedLanguage === "th";
+    const hasSavedCurrency =
+      savedCurrency === "USD" ||
+      savedCurrency === "INR" ||
+      savedCurrency === "RUB";
+
+    if (hasManualPreferences && hasSavedLanguage) {
       setLanguageState(savedLanguage);
     }
 
-    if (
-      savedCurrency === "USD" ||
-      savedCurrency === "INR" ||
-      savedCurrency === "RUB"
-    ) {
+    if (hasManualPreferences && hasSavedCurrency) {
       setCurrencyState(savedCurrency);
+    }
+
+    if (!hasManualPreferences || !hasSavedLanguage || !hasSavedCurrency) {
+      fetch("/api/store-location", { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then(
+          (
+            result: {
+              language?: StoreLanguage;
+              currency?: StoreCurrency;
+            } | null,
+          ) => {
+            if (!result) return;
+
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const isIndiaLocalhost =
+              !result.country &&
+              (timeZone === "Asia/Calcutta" || timeZone === "Asia/Kolkata");
+            const detectedLanguage = isIndiaLocalhost
+              ? "en"
+              : result.language;
+            const detectedCurrency = isIndiaLocalhost
+              ? "INR"
+              : result.currency;
+
+            if ((!hasManualPreferences || !hasSavedLanguage) && detectedLanguage) {
+              setLanguageState(detectedLanguage);
+              window.localStorage.setItem("storeLanguage", detectedLanguage);
+            }
+
+            if ((!hasManualPreferences || !hasSavedCurrency) && detectedCurrency) {
+              setCurrencyState(detectedCurrency);
+              window.localStorage.setItem("storeCurrency", detectedCurrency);
+            }
+          },
+        )
+        .catch(() => {
+          // Keep English and USD when location detection is unavailable.
+        });
     }
 
     fetch("/api/store-settings")
@@ -365,11 +406,13 @@ export function StorePreferencesProvider({
   const setLanguage = useCallback((nextLanguage: StoreLanguage) => {
     setLanguageState(nextLanguage);
     window.localStorage.setItem("storeLanguage", nextLanguage);
+    window.localStorage.setItem("storePreferencesManual", "true");
   }, []);
 
   const setCurrency = useCallback((nextCurrency: StoreCurrency) => {
     setCurrencyState(nextCurrency);
     window.localStorage.setItem("storeCurrency", nextCurrency);
+    window.localStorage.setItem("storePreferencesManual", "true");
   }, []);
 
   const t = useCallback(
