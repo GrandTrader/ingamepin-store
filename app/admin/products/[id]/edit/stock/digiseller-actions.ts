@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { listDigiSellerVariants } from "@/lib/digiseller-api";
 
 export async function saveDigiSellerMapping(productId: string, formData: FormData) {
   const path = `/admin/products/${productId}/edit/stock`;
@@ -15,8 +16,10 @@ export async function saveDigiSellerMapping(productId: string, formData: FormDat
   if (!access.data) redirect("/admin/login?error=Access denied");
 
   const admin = createAdminClient();
-  const options = await admin.from("product_options").select("id").eq("product_id", productId).eq("is_custom_value", false);
+  const options = await admin.from("product_options").select("id, option_name, denomination").eq("product_id", productId).eq("is_custom_value", false);
   if (options.error) redirect(`${path}?error=${encodeURIComponent(options.error.message)}`);
+
+  const variantsByProduct = new Map<number, Awaited<ReturnType<typeof listDigiSellerVariants>>>();
 
   for (const option of options.data ?? []) {
     const raw = String(formData.get(`digiseller_${option.id}`) ?? "").trim();
@@ -25,7 +28,27 @@ export async function saveDigiSellerMapping(productId: string, formData: FormDat
     if (digisellerProductId !== null && (!Number.isSafeInteger(digisellerProductId) || digisellerProductId <= 0)) {
       redirect(`${path}?error=${encodeURIComponent("Invalid DigiSeller product selected.")}`);
     }
-    const [optionPart, variantPart] = variantRaw ? variantRaw.split(":") : [];
+    let [optionPart, variantPart] = variantRaw ? variantRaw.split(":") : [];
+    if (digisellerProductId && !variantRaw) {
+      let variants = variantsByProduct.get(digisellerProductId);
+      if (!variants) {
+        try {
+          variants = await listDigiSellerVariants(digisellerProductId);
+          variantsByProduct.set(digisellerProductId, variants);
+        } catch (error) {
+          redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Unable to load DigiSeller denominations.")}`);
+        }
+      }
+      const denomination = Number(option.denomination);
+      const numberPattern = new RegExp(`(^|\\D)${denomination}(\\D|$)`);
+      const match = variants.find((variant) => Number.isFinite(denomination) && numberPattern.test(variant.name));
+      if (match) {
+        optionPart = String(match.optionId);
+        variantPart = String(match.variantId);
+      } else if (variants.length > 0) {
+        redirect(`${path}?error=${encodeURIComponent(`Choose a DigiSeller denomination for ${option.option_name}.`)}`);
+      }
+    }
     const digisellerOptionId = optionPart ? Number(optionPart) : null;
     const digisellerVariantId = variantPart ? Number(variantPart) : null;
     if (digisellerProductId !== null && variantRaw && (!Number.isSafeInteger(digisellerOptionId) || !Number.isSafeInteger(digisellerVariantId))) redirect(`${path}?error=${encodeURIComponent("Invalid DigiSeller denomination selected.")}`);
