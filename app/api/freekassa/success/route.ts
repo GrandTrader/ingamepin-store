@@ -3,7 +3,23 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 async function redirectToSuccess(request: NextRequest, orderId: string) {
   if (orderId) {
-    const result = await createAdminClient()
+    const admin = createAdminClient();
+
+    if (orderId.startsWith("DS-")) {
+      const invoiceId = orderId.slice(3);
+      const digisellerResult = await admin
+        .from("digiseller_usdt_payments")
+        .select("return_url")
+        .eq("invoice_id", invoiceId)
+        .eq("network", "FREEKASSA_FPS")
+        .maybeSingle();
+
+      if (digisellerResult.data?.return_url) {
+        return NextResponse.redirect(digisellerResult.data.return_url, 303);
+      }
+    }
+
+    const result = await admin
       .from("wallet_topup_requests")
       .select("id")
       .eq("id", orderId)
