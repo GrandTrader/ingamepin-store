@@ -63,6 +63,7 @@ type DigiSellerApiResult = {
   content?: unknown;
   product_id?: number;
   id?: number;
+  errors?: Array<{ message?: string; code?: string }> | null;
 };
 
 async function postDigiSeller(path: string, body: unknown): Promise<DigiSellerApiResult> {
@@ -74,9 +75,10 @@ async function postDigiSeller(path: string, body: unknown): Promise<DigiSellerAp
     cache: "no-store",
   });
   const result = await response.json().catch(() => null) as DigiSellerApiResult | null;
-  if (!response.ok) throw new Error(result?.retdesc || `DigiSeller request failed (${response.status}).`);
+  const details = result?.errors?.map((error) => error.message || error.code).filter(Boolean).join("; ");
+  if (!response.ok) throw new Error(details || result?.retdesc || `DigiSeller request failed (${response.status}).`);
   if (!result || (typeof result.retval === "number" && result.retval !== 0)) {
-    throw new Error(result?.retdesc || "DigiSeller rejected the request.");
+    throw new Error(details || result?.retdesc || "DigiSeller rejected the request.");
   }
   return result;
 }
@@ -89,7 +91,7 @@ function positiveId(value: unknown): number | null {
 export type DigiSellerCategory = {
   ownerId: number;
   categoryId: number;
-  attributes: Array<{ attribute_id: number; attribute_value_id: string }>;
+  attributes: Array<{ attribute_id: number; attribute_value_id: number }>;
 };
 
 export function parseDigiSellerCategoryUrl(rawUrl: string): DigiSellerCategory {
@@ -107,7 +109,7 @@ export function parseDigiSellerCategoryUrl(rawUrl: string): DigiSellerCategory {
       const attributeId = positiveId(item.attribute_id);
       const attributeValueId = positiveId(item.attribute_value_id);
       if (!attributeId || !attributeValueId) throw new Error();
-      return { attribute_id: attributeId, attribute_value_id: String(attributeValueId) };
+      return { attribute_id: attributeId, attribute_value_id: attributeValueId };
     });
   } catch { throw new Error("The DigiSeller category attributes are invalid."); }
   return { ownerId, categoryId, attributes };
@@ -123,17 +125,20 @@ export async function createDigiSellerFormProduct(input: {
   variants: Array<{ name: string; price: number }>;
 }) {
   const created = await postDigiSeller("/api/product/create/arbitrary", {
-    content_type: "Form",
+    content_type: "form",
     name: [{ locale: "en-US", value: input.name }, ...(input.nameRu ? [{ locale: "ru-RU", value: input.nameRu }] : [])],
     description: [{ locale: "en-US", value: input.description }, ...(input.descriptionRu ? [{ locale: "ru-RU", value: input.descriptionRu }] : [])],
     add_info: [{ locale: "en-US", value: "Delivery is completed automatically after payment." }],
-    price: { value: input.basePrice, currency: "USD" },
-    affiliate_program: false,
-    commission_partner: 0,
-    categories: [{ owner_id: input.category.ownerId, category_id: input.category.categoryId, attributes: input.category.attributes }],
-    enabled: false,
-    bonus: 0,
-    guarantee: 0,
+    price: { price: input.basePrice, currency: "USD" },
+    affiliate_program: 2,
+    comission_partner: 0,
+    categories: [{
+      owner: input.category.ownerId,
+      cataloguer_category_id: input.category.categoryId,
+      cataloguer_attributes: input.category.attributes,
+    }],
+    bonus: { enabled: false, percent: 0 },
+    guarantee: { enabled: false, value: 0 },
     address_required: false,
     pay_as_you_want: false,
   });
@@ -150,7 +155,7 @@ export async function createDigiSellerFormProduct(input: {
     encoding: "UTF8",
     options: true,
     answer: true,
-    allow_purchase_multiple_items: true,
+    allow_purchase_multiple_items: "true",
     url_for_quantity: supplierUrl,
   });
 
@@ -158,12 +163,14 @@ export async function createDigiSellerFormProduct(input: {
     product_id: productId,
     name: [{ locale: "en-US", value: "Denomination" }, { locale: "ru-RU", value: "Номинал" }],
     type: "radio",
+    order: 1,
     required: true,
     separate_content: false,
     modifier_visible: false,
     variants: input.variants.map((variant, index) => ({
       name: [{ locale: "en-US", value: variant.name }],
-      modifier: { type: "priceplus", rate: Math.max(0, Number((variant.price - input.basePrice).toFixed(2))) },
+      type: "priceplus",
+      rate: Math.max(0, Number((variant.price - input.basePrice).toFixed(2))),
       default: index === 0,
       order: index + 1,
     })),
