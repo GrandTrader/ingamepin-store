@@ -16,6 +16,7 @@ import {
 } from "@/lib/binance-pay";
 import { createUsdtInvoice, getUsdtInvoice } from "@/lib/usdt-gateway";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createFreeKassaCheckoutUrl } from "@/lib/freekassa";
 
 export const runtime = "nodejs";
 
@@ -67,7 +68,8 @@ type DigisellerPaymentKind =
   | "TRC20"
   | "BEP20"
   | "SOLANA"
-  | "BINANCE_PAY";
+  | "BINANCE_PAY"
+  | "FREEKASSA_FPS";
 
 function paymentKindForPaymentId(paymentId: string): DigisellerPaymentKind {
   const trc20Id = process.env.DIGISELLER_TRC20_PAYMENT_ID?.trim();
@@ -75,18 +77,24 @@ function paymentKindForPaymentId(paymentId: string): DigisellerPaymentKind {
   const solanaId = process.env.DIGISELLER_SOLANA_PAYMENT_ID?.trim();
   const binancePayId =
     process.env.DIGISELLER_BINANCE_PAY_PAYMENT_ID?.trim();
+  const freeKassaFpsId =
+    process.env.DIGISELLER_FREEKASSA_FPS_PAYMENT_ID?.trim();
 
   if (trc20Id && paymentId === trc20Id) return "TRC20";
   if (bep20Id && paymentId === bep20Id) return "BEP20";
   if (solanaId && paymentId === solanaId) return "SOLANA";
   if (binancePayId && paymentId === binancePayId) return "BINANCE_PAY";
+  if (freeKassaFpsId && paymentId === freeKassaFpsId) {
+    return "FREEKASSA_FPS";
+  }
 
   throw new Error(
     `Digiseller payment ID ${paymentId || "(empty)"} is not configured. ` +
       `Loaded IDs: TRC20=${trc20Id ? "yes" : "no"}, ` +
       `BEP20=${bep20Id ? "yes" : "no"}, ` +
       `SOLANA=${solanaId ? "yes" : "no"}, ` +
-      `BINANCE_PAY=${binancePayId ? "yes" : "no"}.`,
+      `BINANCE_PAY=${binancePayId ? "yes" : "no"}, ` +
+      `FREEKASSA_FPS=${freeKassaFpsId ? "yes" : "no"}.`,
   );
 }
 
@@ -154,6 +162,13 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentKind = paymentKindForPaymentId(paymentId);
+
+    if (paymentKind === "FREEKASSA_FPS" && currency !== "RUB") {
+      return NextResponse.json(
+        { error: "Faster Payments System accepts RUB only." },
+        { status: 400 },
+      );
+    }
     const admin = createAdminClient();
     const existingResult = await admin
       .from("digiseller_usdt_payments")
@@ -173,6 +188,44 @@ export async function POST(request: NextRequest) {
     }
 
     let publicToken = existingResult.data?.public_token ?? "";
+
+    if (paymentKind === "FREEKASSA_FPS") {
+      if (existingResult.data?.checkout_url) {
+        return NextResponse.redirect(existingResult.data.checkout_url, 303);
+      }
+
+      const gatewayOrderId = `DS-${invoiceId}`;
+      const checkoutUrl = createFreeKassaCheckoutUrl({
+        amount,
+        currency: "RUB",
+        orderId: gatewayOrderId,
+        email: String(form.get("email") ?? "").trim(),
+        language:
+          String(form.get("lang") ?? "").trim().toLowerCase() === "ru"
+            ? "ru"
+            : "en",
+      });
+      publicToken = randomBytes(32).toString("hex");
+
+      const insertResult = await admin.from("digiseller_usdt_payments").insert({
+        invoice_id: invoiceId,
+        gateway_invoice_id: gatewayOrderId,
+        public_token: publicToken,
+        amount,
+        currency,
+        gateway_amount: amount,
+        gateway_currency: "RUB",
+        exchange_rate: 1,
+        payment_method_id: paymentId,
+        network: paymentKind,
+        return_url: returnUrl || null,
+        checkout_url: checkoutUrl,
+        status: "wait",
+      });
+      if (insertResult.error) throw insertResult.error;
+
+      return NextResponse.redirect(checkoutUrl, 303);
+    }
 
     if (paymentKind === "BINANCE_PAY") {
       if (existingResult.data?.checkout_url) {

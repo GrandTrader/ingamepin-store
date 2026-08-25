@@ -5,6 +5,7 @@ import { verifyFreeKassaNotification } from "@/lib/freekassa";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
 import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyDigiseller } from "@/lib/digiseller-usdt";
 
 export const runtime = "nodejs";
 
@@ -111,6 +112,61 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+
+    if (orderId.startsWith("DS-")) {
+      const invoiceId = orderId.slice(3);
+      const digisellerResult = await admin
+        .from("digiseller_usdt_payments")
+        .select(
+          "invoice_id, amount, currency, status, gateway_invoice_id, gateway_amount, network, digiseller_notified_at",
+        )
+        .eq("invoice_id", invoiceId)
+        .eq("network", "FREEKASSA_FPS")
+        .maybeSingle();
+      const digisellerPayment = digisellerResult.data;
+
+      if (digisellerResult.error || !digisellerPayment) {
+        return plainText("DigiSeller payment was not found.", 404);
+      }
+      if (
+        digisellerPayment.gateway_invoice_id !== orderId ||
+        Math.abs(
+          Number(digisellerPayment.gateway_amount) - Number(amount),
+        ) > 0.005
+      ) {
+        return plainText("DigiSeller payment verification failed.", 400);
+      }
+      if (
+        digisellerPayment.status === "paid" &&
+        digisellerPayment.digiseller_notified_at
+      ) {
+        return plainText("YES");
+      }
+
+      await notifyDigiseller({
+        invoiceId: digisellerPayment.invoice_id,
+        amount: Number(digisellerPayment.amount).toFixed(2),
+        currency: digisellerPayment.currency,
+        status: "paid",
+      });
+
+      const updateResult = await admin
+        .from("digiseller_usdt_payments")
+        .update({
+          status: "paid",
+          transaction_hash: transactionId,
+          paid_at: new Date().toISOString(),
+          digiseller_notified_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("invoice_id", invoiceId);
+      if (updateResult.error) {
+        return plainText(updateResult.error.message, 400);
+      }
+
+      return plainText("YES");
+    }
+
     const paymentResult = await admin
       .from("payments")
       .select(
