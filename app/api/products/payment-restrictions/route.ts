@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const ALL_METHODS = ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA"] as const;
+const ALL_METHODS = ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA", "UPI"] as const;
 const ALL_NETWORKS = ["TRC20", "BEP20", "SOLANA"] as const;
 
 export async function POST(request: NextRequest) {
@@ -30,7 +30,19 @@ export async function POST(request: NextRequest) {
     }
 
     const products = result.data ?? [];
+    const settingsResult = await admin
+      .from("payment_gateway_settings")
+      .select("gateway_commissions")
+      .eq("id", true)
+      .maybeSingle();
+    const gatewaySettings = (settingsResult.data?.gateway_commissions ?? {}) as Record<
+      string,
+      { enabled?: boolean }
+    >;
     const allowedPaymentMethods = ALL_METHODS.filter((method) =>
+      (method === "UPI"
+        ? gatewaySettings[method]?.enabled === true
+        : gatewaySettings[method]?.enabled !== false) &&
       products.every((product) =>
         (product.allowed_payment_methods ?? ALL_METHODS).includes(method),
       ),

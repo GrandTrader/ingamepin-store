@@ -96,10 +96,30 @@ export async function POST(request: NextRequest) {
       usdt: "USDT_DIRECT",
       pally: "PALLY",
       freekassa: "FREEKASSA",
+      upi: "UPI",
     };
 
     if (!paymentMethodId[requestedPaymentMethod]) {
       return NextResponse.json({ error: "Payment method is invalid." }, { status: 400 });
+    }
+
+    if (requestedPaymentMethod === "upi") {
+      const gatewayResult = await createAdminClient()
+        .from("payment_gateway_settings")
+        .select("gateway_commissions")
+        .eq("id", true)
+        .maybeSingle();
+      const gatewaySettings = (gatewayResult.data?.gateway_commissions ?? {}) as Record<
+        string,
+        { enabled?: boolean }
+      >;
+
+      if (gatewayResult.error || gatewaySettings.UPI?.enabled !== true) {
+        return NextResponse.json(
+          { error: "Manual USDT BEP20 is currently unavailable." },
+          { status: 400 },
+        );
+      }
     }
 
     const sessionClient = await createClient();
@@ -214,7 +234,7 @@ export async function POST(request: NextRequest) {
       const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods").in("id", productIds) : { data: [] };
       const disallowedProduct = (productsResult.data ?? []).find(
         (product) =>
-          !((product.allowed_payment_methods ?? ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA"]) as string[])
+          !((product.allowed_payment_methods ?? ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA", "UPI"]) as string[])
             .includes(paymentMethodId[requestedPaymentMethod]),
       );
       if (disallowedProduct) {

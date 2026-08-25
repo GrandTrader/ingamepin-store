@@ -22,6 +22,7 @@ const paymentMethods = [
   ["USDT_DIRECT", "Direct USDT", "Allow direct USDT through enabled networks."],
   ["PALLY", "PayPalych", "Allow payment through PayPalych."],
   ["FREEKASSA", "FreeKassa", "Allow payment through FreeKassa."],
+  ["UPI", "Manual Crypto", "Allow manual USDT BEP20 verification."],
 ] as const;
 
 const usdtNetworks = [

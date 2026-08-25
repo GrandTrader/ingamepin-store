@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
 import { useStorePreferences } from "../../components/StorePreferences";
 
@@ -191,9 +191,10 @@ const PAYMENT_METHOD_IDS: Record<string, string> = {
   usdt: "USDT_DIRECT",
   pally: "PALLY",
   freekassa: "FREEKASSA",
+  upi: "UPI",
 };
 
-const PAYMENT_METHOD_ORDER = ["wallet", "binance", "usdt", "pally", "freekassa"];
+const PAYMENT_METHOD_ORDER = ["wallet", "binance", "usdt", "pally", "freekassa", "upi"];
 
 const initialForm: CheckoutForm = {
   email: "",
@@ -228,8 +229,6 @@ export default function CheckoutPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showBulkPaymentConfirmation, setShowBulkPaymentConfirmation] = useState(false);
-  const bulkPaymentConfirmed = useRef(false);
   const [wallet, setWallet] = useState<WalletDetails>({
     authenticated: false,
     balance: 0,
@@ -741,11 +740,6 @@ export default function CheckoutPage() {
     return;
   }
 
-  if (cartItems.some((item) => item.isBulkOrder) && !bulkPaymentConfirmed.current) {
-    setShowBulkPaymentConfirmation(true);
-    return;
-  }
-
   setIsSubmitting(true);
 
   try {
@@ -870,7 +864,13 @@ export default function CheckoutPage() {
       return;
     }
 
-    router.push(paymentMethod === "usdt" ? "/checkout/usdt" : "/checkout/payment");
+    router.push(
+      paymentMethod === "usdt"
+        ? "/checkout/usdt"
+        : paymentMethod === "upi"
+          ? "/checkout/manual-usdt"
+          : "/checkout/payment",
+    );
   } catch (error) {
     setMessage(
       error instanceof Error
@@ -1354,15 +1354,14 @@ export default function CheckoutPage() {
                 className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
                   paymentMethod === "upi"
                     ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20 hidden"
-                }`}
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } ${!paymentAllowed("upi") ? "hidden" : ""}`}
               >
                 <input
                   type="radio"
                   name="paymentMethod"
                   value="upi"
                   checked={paymentMethod === "upi"}
-                  disabled
                   onChange={(event) =>
                     setPaymentMethod(event.target.value)
                   }
@@ -1373,9 +1372,14 @@ export default function CheckoutPage() {
                   <span className="text-2xl">📱</span>
 
                   <div>
-                    <p className="font-bold">UPI</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold">Manual Crypto</p>
+                      <span className="rounded bg-emerald-500 px-2 py-0.5 text-[10px] font-black text-white">
+                        USDT BEP20
+                      </span>
+                    </div>
                     <p className="mt-1 text-xs text-slate-500">
-                      Pay using any UPI app
+                      Pay to our wallet and submit the transaction hash
                     </p>
                   </div>
                 </div>
@@ -1840,19 +1844,6 @@ export default function CheckoutPage() {
           </div>
         </aside>
       </form>
-      {showBulkPaymentConfirmation && (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-payment-confirmation-title">
-          <div className="w-full max-w-md rounded-2xl border border-amber-300/40 bg-slate-900 p-6 text-white shadow-2xl">
-            <h2 id="bulk-payment-confirmation-title" className="text-xl font-black text-amber-200">Digital delivery information</h2>
-            <p className="mt-3 text-sm font-bold text-slate-200">Digital Delivery Time: 1-15 Working Days</p>
-            <p className="mt-3 text-sm text-slate-400">Your cart contains a digital delivery product. Confirm before continuing to payment.</p>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setShowBulkPaymentConfirmation(false)} className="rounded-xl border border-white/15 px-4 py-3 font-black">Cancel</button>
-              <button type="button" onClick={() => { bulkPaymentConfirmed.current = true; setShowBulkPaymentConfirmation(false); (document.getElementById("checkout-form") as HTMLFormElement | null)?.requestSubmit(); }} className="rounded-xl bg-amber-300 px-4 py-3 font-black text-slate-950">Continue to payment</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

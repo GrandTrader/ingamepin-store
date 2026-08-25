@@ -73,10 +73,10 @@ const gateways: Array<{
   },
   {
     id: "UPI",
-    name: "UPI",
-    description: "Manual UPI payments",
-    icon: "U",
-    color: "bg-orange-100 text-orange-700",
+    name: "Manual Crypto",
+    description: "USDT BEP20 with manual TX ID verification",
+    icon: "T",
+    color: "bg-emerald-100 text-emerald-700",
     enabledByDefault: false,
   },
 ];

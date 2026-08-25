@@ -12,6 +12,7 @@ const PAYMENT_METHODS = [
   "USDT_DIRECT",
   "PALLY",
   "FREEKASSA",
+  "UPI",
 ] as const;
 const USDT_NETWORKS = ["TRC20", "BEP20", "SOLANA"] as const;
 
