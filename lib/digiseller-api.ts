@@ -163,14 +163,14 @@ export async function createDigiSellerFormProduct(input: {
 
   await postDigiSeller("/api/products/options", {
     product_id: productId,
-    name: [{ locale: "en-US", value: "Denomination" }, { locale: "ru-RU", value: "Номинал" }],
+    name: [{ locale: "ru-RU", value: "Номинал" }, { locale: "en-US", value: "Denomination" }],
     type: "radio",
     order: 1,
     required: true,
     separate_content: false,
     modifier_visible: false,
     variants: input.variants.map((variant, index) => ({
-      name: [{ locale: "en-US", value: variant.name }, { locale: "ru-RU", value: variant.name }],
+      name: [{ locale: "ru-RU", value: variant.name }, { locale: "en-US", value: variant.name }],
       type: "priceplus",
       rate: Math.max(0, Number((variant.price - input.basePrice).toFixed(2))),
       default: index === 0,
