@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
+import { useStorePreferences } from "../../components/StorePreferences";
 
 type CartItem = {
   id: string;
@@ -205,15 +206,6 @@ const initialForm: CheckoutForm = {
   orderNote: "",
 };
 
-function formatPrice(price: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(price);
-}
-
 function isPhysicalProduct(item: CartItem) {
   return (
     item.productType === "physical" ||
@@ -224,6 +216,7 @@ function isPhysicalProduct(item: CartItem) {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { formatPrice } = useStorePreferences();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [checkoutSource, setCheckoutSource] = useState<
     "buyNowItem" | "cart"
