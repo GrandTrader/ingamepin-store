@@ -39,7 +39,7 @@ function credentials() {
   return { sellerId, apiKey };
 }
 
-async function getDigiSellerToken() {
+export async function getDigiSellerToken() {
   const { sellerId, apiKey } = credentials();
   const timestamp = Math.floor(Date.now() / 1000);
   const sign = createHash("sha256").update(`${apiKey}${timestamp}`).digest("hex");
@@ -55,6 +55,38 @@ async function getDigiSellerToken() {
     throw new Error(result.retdesc || "DigiSeller did not return an access token.");
   }
   return { token: result.token, sellerId };
+}
+
+export type DigiSellerVariant = {
+  optionId: number;
+  variantId: number;
+  name: string;
+};
+
+export async function listDigiSellerVariants(productId: number): Promise<DigiSellerVariant[]> {
+  const { token } = await getDigiSellerToken();
+  const listResponse = await fetch(`https://api.digiseller.com/api/products/options/list/${productId}?token=${encodeURIComponent(token)}`, {
+    headers: { Accept: "application/json" }, cache: "no-store",
+  });
+  if (!listResponse.ok) throw new Error("Unable to load DigiSeller parameters.");
+  const list = await listResponse.json() as { retval?: number; retdesc?: string; content?: Array<{ id?: number }> };
+  if (list.retval !== 0) throw new Error(list.retdesc || "Unable to load DigiSeller parameters.");
+  const details = await Promise.all((list.content ?? []).map(async (option) => {
+    const optionId = Number(option.id);
+    const response = await fetch(`https://api.digiseller.com/api/products/options/${optionId}?token=${encodeURIComponent(token)}`, {
+      headers: { Accept: "application/json" }, cache: "no-store",
+    });
+    if (!response.ok) return [];
+    const result = await response.json() as { content?: { variants?: Array<{ variant_id?: number; name?: Array<{ locale?: string; value?: string }> }> } };
+    return (result.content?.variants ?? []).flatMap((variant) => {
+      const variantId = Number(variant.variant_id);
+      if (!Number.isSafeInteger(variantId) || variantId <= 0) return [];
+      const names = variant.name ?? [];
+      const name = names.find((item) => item.locale === "en-US")?.value || names[0]?.value || `Variant ${variantId}`;
+      return [{ optionId, variantId, name }];
+    });
+  }));
+  return details.flat();
 }
 
 export async function listDigiSellerProducts(): Promise<DigiSellerProduct[]> {
