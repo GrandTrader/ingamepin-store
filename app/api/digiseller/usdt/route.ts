@@ -16,13 +16,21 @@ import {
 } from "@/lib/binance-pay";
 import { createUsdtInvoice, getUsdtInvoice } from "@/lib/usdt-gateway";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createFreeKassaCheckoutUrl } from "@/lib/freekassa";
+import { createFreeKassaApiOrder } from "@/lib/freekassa";
 
 export const runtime = "nodejs";
 
 function money(value: string) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number.toFixed(2) : null;
+}
+
+function clientIp(request: NextRequest) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    ""
+  );
 }
 
 const DIGISELLER_RETURN_HOSTS = new Set([
@@ -195,16 +203,21 @@ export async function POST(request: NextRequest) {
       }
 
       const gatewayOrderId = `DS-${invoiceId}`;
-      const checkoutUrl = createFreeKassaCheckoutUrl({
+      const email = String(form.get("email") ?? "").trim();
+      const ip = clientIp(request);
+      if (!email || !ip) {
+        return NextResponse.json(
+          { error: "FreeKassa requires the customer email and IP address." },
+          { status: 400 },
+        );
+      }
+      const checkoutUrl = await createFreeKassaApiOrder({
         amount,
         currency: "RUB",
-        orderId: gatewayOrderId,
-        email: String(form.get("email") ?? "").trim(),
-        language:
-          String(form.get("lang") ?? "").trim().toLowerCase() === "ru"
-            ? "ru"
-            : "en",
-        paymentSystemId: 42,
+        paymentId: gatewayOrderId,
+        email,
+        ip,
+        paymentSystemId: 44,
       });
       publicToken = randomBytes(32).toString("hex");
 
