@@ -41,14 +41,19 @@ function credentials() {
 
 export async function getDigiSellerToken() {
   const { sellerId, apiKey } = credentials();
-  const timestamp = Math.floor(Date.now() / 1000);
-  const sign = createHash("sha256").update(`${apiKey}${timestamp}`).digest("hex");
-  const response = await fetch("https://api.digiseller.com/api/apilogin", {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ seller_id: sellerId, timestamp, sign }),
-    cache: "no-store",
-  });
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const sign = createHash("sha256").update(`${apiKey}${timestamp}`).digest("hex");
+    response = await fetch("https://api.digiseller.com/api/apilogin", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ seller_id: sellerId, timestamp, sign }),
+      cache: "no-store",
+    });
+    if (response.ok || response.status < 500) break;
+  }
+  if (!response) throw new Error("DigiSeller login failed.");
   if (!response.ok) throw new Error(`DigiSeller login failed (${response.status}).`);
   const result = (await response.json()) as DigiSellerLoginResponse;
   if (result.retval !== 0 || !result.token) {
@@ -80,8 +85,8 @@ function digiSellerErrorText(value: unknown): string {
   return "";
 }
 
-async function postDigiSeller(path: string, body: unknown): Promise<DigiSellerApiResult> {
-  const { token } = await getDigiSellerToken();
+async function postDigiSeller(path: string, body: unknown, accessToken?: string): Promise<DigiSellerApiResult> {
+  const token = accessToken || (await getDigiSellerToken()).token;
   const response = await fetch(`https://api.digiseller.com${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -138,6 +143,7 @@ export async function createDigiSellerFormProduct(input: {
   category: DigiSellerCategory;
   variants: Array<{ name: string; price: number }>;
 }) {
+  const { token } = await getDigiSellerToken();
   const created = await postDigiSeller("/api/product/create/arbitrary", {
     content_type: "form",
     name: [{ locale: "en-US", value: input.name }, ...(input.nameRu ? [{ locale: "ru-RU", value: input.nameRu }] : [])],
@@ -155,7 +161,7 @@ export async function createDigiSellerFormProduct(input: {
     guarantee: { enabled: false, value: 0 },
     address_required: false,
     pay_as_you_want: false,
-  });
+  }, token);
   const content = created.content as { product_id?: unknown; id?: unknown } | number | undefined;
   const productId = positiveId(created.product_id) || positiveId(created.id) || positiveId(content) ||
     (typeof content === "object" && content ? positiveId(content.product_id) || positiveId(content.id) : null);
@@ -176,7 +182,7 @@ export async function createDigiSellerFormProduct(input: {
       default: index === 0,
       order: index + 1,
     })),
-  });
+  }, token);
 
   const supplierUrl = "https://www.ingamepin.com/api/digiseller/supplier";
   await postDigiSeller("/api/product/content/update/form", {
@@ -188,8 +194,8 @@ export async function createDigiSellerFormProduct(input: {
     answer: true,
     allow_purchase_multiple_items: "true",
     url_for_quantity: supplierUrl,
-  });
-  return { productId, variants: await listDigiSellerVariants(productId) };
+  }, token);
+  return { productId, variants: await listDigiSellerVariants(productId, token) };
 }
 
 export type DigiSellerVariant = {
@@ -198,8 +204,8 @@ export type DigiSellerVariant = {
   name: string;
 };
 
-export async function listDigiSellerVariants(productId: number): Promise<DigiSellerVariant[]> {
-  const { token } = await getDigiSellerToken();
+export async function listDigiSellerVariants(productId: number, accessToken?: string): Promise<DigiSellerVariant[]> {
+  const token = accessToken || (await getDigiSellerToken()).token;
   const listResponse = await fetch(`https://api.digiseller.com/api/products/options/list/${productId}?token=${encodeURIComponent(token)}`, {
     headers: { Accept: "application/json" }, cache: "no-store",
   });
