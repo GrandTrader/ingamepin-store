@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { authorizeBulkApi, bulkApiNoStore } from "@/lib/bulk-api-auth";
-import { isManualUsdtNetwork } from "@/lib/manual-usdt";
+import { isManualUsdtNetwork, isValidManualPaymentReference } from "@/lib/manual-usdt";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -14,8 +14,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   const body = (await request.json().catch(() => ({}))) as { network?: unknown; transactionHash?: unknown };
   const network = String(body.network ?? "").trim().toUpperCase();
   const transactionHash = String(body.transactionHash ?? "").trim();
-  if (!isManualUsdtNetwork(network) || transactionHash.length < 40 || transactionHash.length > 120) {
-    return bulkApiNoStore({ error: "Select a valid network and transaction hash." }, { status: 400 });
+  if (!isManualUsdtNetwork(network) || !isValidManualPaymentReference(network, transactionHash)) {
+    return bulkApiNoStore({ error: "Select a valid payment option and transaction reference." }, { status: 400 });
   }
 
   const admin = createAdminClient();

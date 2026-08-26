@@ -46,12 +46,16 @@ export default function ManualUsdtPage() {
   }, []);
 
   useEffect(() => {
+    if ("qrImage" in selectedNetwork) {
+      setQrCode("");
+      return;
+    }
     void QRCode.toDataURL(selectedNetwork.address, {
       width: 320,
       margin: 1,
       errorCorrectionLevel: "M",
     }).then(setQrCode);
-  }, [selectedNetwork.address]);
+  }, [selectedNetwork]);
 
   async function copyAddress() {
     try {
@@ -118,7 +122,19 @@ export default function ManualUsdtPage() {
         </div>
 
         <div className="mt-4 grid items-start gap-4 sm:grid-cols-[320px_minmax(0,1fr)]">
-          {qrCode && (
+          {"qrImage" in selectedNetwork ? (
+            <div className="mx-auto h-[300px] w-[300px] overflow-hidden rounded-2xl bg-white">
+              {/* Preserve the exact Binance-generated QR from the supplied receive screen. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selectedNetwork.qrImage}
+                alt="Binance Pay receiving QR code"
+                width={608}
+                height={1320}
+                className="max-w-none -translate-x-[155px] -translate-y-[314px]"
+              />
+            </div>
+          ) : qrCode && (
             <div className="mx-auto w-fit rounded-2xl bg-white p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={qrCode} alt={`USDT ${selectedNetwork.label} wallet QR code`} width={300} height={300} />
@@ -139,7 +155,7 @@ export default function ManualUsdtPage() {
           </div>
 
         <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950 p-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{selectedNetwork.label} wallet address</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{selectedNetwork.id === "BINANCE_PAY" ? "Binance Pay UID" : `${selectedNetwork.label} wallet address`}</p>
           <p className="mt-1 break-all font-mono text-xs">{selectedNetwork.address}</p>
           <button
             type="button"
@@ -154,7 +170,9 @@ export default function ManualUsdtPage() {
         </div>
 
         <p className="mt-3 rounded-xl border border-amber-400 bg-amber-100 p-2.5 text-xs font-bold text-amber-950">
-          Only send USDT on {selectedNetwork.label}. Sending another token or network may permanently lose your funds.
+          {selectedNetwork.id === "BINANCE_PAY"
+            ? "Pay only through Binance Pay and confirm that UID 57618783 is shown before sending."
+            : `Only send USDT on ${selectedNetwork.label}. Sending another token or network may permanently lose your funds.`}
         </p>
           </div>
         </div>
@@ -167,14 +185,14 @@ export default function ManualUsdtPage() {
           </div>
         ) : (
           <form onSubmit={submitPayment} className="mt-4">
-            <label className="block text-sm font-bold" htmlFor="transactionHash">Transaction hash</label>
+            <label className="block text-sm font-bold" htmlFor="transactionHash">{network === "BINANCE_PAY" ? "Binance Pay order ID" : "Transaction hash"}</label>
             <input
               id="transactionHash"
               value={transactionHash}
               onChange={(event) => setTransactionHash(event.target.value.trim())}
-              placeholder="0x..."
+              placeholder={network === "BINANCE_PAY" ? "Enter Binance Pay order ID" : "0x..."}
               required
-              minLength={40}
+              minLength={network === "BINANCE_PAY" ? 6 : 40}
               maxLength={120}
               className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2.5 font-mono text-sm outline-none focus:border-cyan-400"
             />

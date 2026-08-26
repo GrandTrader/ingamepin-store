@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isManualUsdtNetwork } from "@/lib/manual-usdt";
+import { isManualUsdtNetwork, isValidManualPaymentReference } from "@/lib/manual-usdt";
 
 export const runtime = "nodejs";
 
@@ -25,9 +25,9 @@ export async function POST(request: NextRequest) {
     const transactionHash = String(body.transactionHash ?? "").trim();
     const network = String(body.network ?? "").trim().toUpperCase();
 
-    if (!orderId || accessToken.length < 40 || !isManualUsdtNetwork(network) || transactionHash.length < 40 || transactionHash.length > 120) {
+    if (!orderId || accessToken.length < 40 || !isManualUsdtNetwork(network) || !isValidManualPaymentReference(network, transactionHash)) {
       return NextResponse.json(
-        { error: "Select a network and enter a valid transaction hash." },
+        { error: "Select a payment option and enter a valid transaction reference." },
         { status: 400 },
       );
     }
