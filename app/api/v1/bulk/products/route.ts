@@ -6,8 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const unauthorized = authorizeBulkApi(request);
-  if (unauthorized) return unauthorized;
+  const auth = await authorizeBulkApi(request);
+  if (auth.error) return auth.error;
 
   const result = await createAdminClient()
     .from("products")

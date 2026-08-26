@@ -23,6 +23,7 @@ const links = [
   { label: "Customers", href: "/admin/customers", icon: "CU" },
   { label: "Reviews", href: "/admin/reviews", icon: "RV" },
   { label: "Live Chat", href: "/admin/live-chat", icon: "CH" },
+  { label: "Bulk API", href: "/admin/bulk-api", icon: "API" },
   { label: "Security", href: "/admin/security", icon: "SC" },
 ];
 
