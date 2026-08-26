@@ -101,7 +101,7 @@ export default function ManualUsdtPage() {
     <main className="min-h-screen bg-slate-950 px-4 py-5 text-white sm:py-7">
       <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-6">
         <div className="text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-300">Manual Crypto</p>
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">Manual Crypto</p>
           <h1 className="mt-1 text-2xl font-black">Crypto payment</h1>
           <p className="mt-1 text-sm text-slate-400">Send the full amount in USDT using one selected network.</p>
         </div>
@@ -139,7 +139,7 @@ export default function ManualUsdtPage() {
           </button>
         </div>
 
-        <p className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-2.5 text-xs text-amber-200">
+        <p className="mt-3 rounded-xl border border-amber-400 bg-amber-100 p-2.5 text-xs font-bold text-amber-950">
           Only send USDT on {selectedNetwork.label}. Sending another token or network may permanently lose your funds.
         </p>
           </div>
