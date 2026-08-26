@@ -525,6 +525,14 @@ html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-yellow
   -webkit-text-fill-color: #0f172a !important;
 }
 
+/* Product denomination cards use a light surface in light mode, so their
+   labels and prices must not inherit the white action-button foreground. */
+html[data-store-theme="light"] button.product-option-button,
+html[data-store-theme="light"] button.product-option-button * {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
 /* Out-of-stock denominations stay legible while remaining visibly disabled. */
 html[data-store-theme="light"] .product-option-unavailable {
   background-color: #eef2f7 !important;
