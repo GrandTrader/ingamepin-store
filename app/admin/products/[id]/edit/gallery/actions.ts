@@ -36,9 +36,21 @@ export async function saveProductGallery(productId: string, formData: FormData) 
 
   const result = await createAdminClient().from("products").update({ image_url: imageUrl || null, updated_at: new Date().toISOString() }).eq("id", productId);
   if (result.error) redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
+  let syncedCount = 0;
+  if (imageUrl) {
+    const mappings = await createAdminClient().from("product_options").select("digiseller_product_id").eq("product_id", productId).not("digiseller_product_id", "is", null);
+    if (mappings.error) redirect(`${path}?error=${encodeURIComponent(mappings.error.message)}`);
+    const productIds = [...new Set((mappings.data ?? []).map((row) => Number(row.digiseller_product_id)).filter((id) => Number.isSafeInteger(id) && id > 0))];
+    try {
+      for (const digisellerProductId of productIds) await uploadDigiSellerProductImage(digisellerProductId, imageUrl);
+      syncedCount = productIds.length;
+    } catch (error) {
+      redirect(`${path}?error=${encodeURIComponent(`Gallery saved, but DigiSeller sync failed: ${error instanceof Error ? error.message : "Upload failed"}`)}`);
+    }
+  }
   revalidatePath(path);
   revalidatePath("/");
-  redirect(`${path}?success=${encodeURIComponent("Product gallery saved.")}`);
+  redirect(`${path}?success=${encodeURIComponent(syncedCount ? "Product gallery saved and DigiSeller image synchronized." : "Product gallery saved.")}`);
 }
 
 export async function syncProductGalleryToDigiSeller(productId: string) {

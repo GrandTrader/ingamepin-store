@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { uploadDigiSellerProductImage } from "@/lib/digiseller-api";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,6 +28,49 @@ const allowedStatuses = [
 
 
 const allowedCustomerFieldTypes = ["TEXT", "EMAIL", "NUMBER", "TEXTAREA"] as const;
+
+export async function syncAllProductImagesToDigiSeller() {
+  const path = "/admin/products";
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/admin/login");
+  const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (!access.data) redirect("/admin/login?error=Access denied");
+
+  const admin = createAdminClient();
+  const [products, mappings] = await Promise.all([
+    admin.from("products").select("id, image_url").not("image_url", "is", null),
+    admin.from("product_options").select("product_id, digiseller_product_id").not("digiseller_product_id", "is", null),
+  ]);
+  if (products.error) redirect(`${path}?error=${encodeURIComponent(products.error.message)}`);
+  if (mappings.error) redirect(`${path}?error=${encodeURIComponent(mappings.error.message)}`);
+
+  const images = new Map((products.data ?? []).map((product) => [product.id, product.image_url]));
+  const targets = new Map<number, string>();
+  for (const mapping of mappings.data ?? []) {
+    const digisellerProductId = Number(mapping.digiseller_product_id);
+    const imageUrl = images.get(mapping.product_id);
+    if (Number.isSafeInteger(digisellerProductId) && digisellerProductId > 0 && imageUrl) {
+      targets.set(digisellerProductId, imageUrl);
+    }
+  }
+  if (!targets.size) redirect(`${path}?error=${encodeURIComponent("No connected DigiSeller products with images were found.")}`);
+
+  let synced = 0;
+  const failures: string[] = [];
+  for (const [digisellerProductId, imageUrl] of targets) {
+    try {
+      await uploadDigiSellerProductImage(digisellerProductId, imageUrl);
+      synced += 1;
+    } catch (error) {
+      failures.push(`${digisellerProductId}: ${error instanceof Error ? error.message : "Upload failed"}`);
+    }
+  }
+  if (failures.length) {
+    redirect(`${path}?error=${encodeURIComponent(`${synced} synced; ${failures.length} failed. ${failures.slice(0, 2).join(" | ")}`)}`);
+  }
+  redirect(`${path}?success=${encodeURIComponent(`${synced} DigiSeller product image${synced === 1 ? "" : "s"} synced.`)}`);
+}
 
 function readCustomerFields(formData: FormData) {
   const ids = formData.getAll("customer_field_id").map((value) => String(value).trim());

@@ -15,6 +15,7 @@ import {
   cloneProduct,
   createDraftProduct,
   deleteSelectedProducts,
+  syncAllProductImagesToDigiSeller,
   toggleProductSales,
 } from "./actions";
 
@@ -349,6 +350,11 @@ export default async function AdminProductsPage({
                 <Link href="/admin/products?status=INACTIVE" className="text-blue-600 hover:text-blue-800">
                   Suspended sales
                 </Link>
+                <form action={syncAllProductImagesToDigiSeller}>
+                  <button className="text-emerald-600 transition hover:text-emerald-800">
+                    Sync all to DigiSeller
+                  </button>
+                </form>
                 <span className="text-slate-400">
                   {filteredProducts.length} result{filteredProducts.length === 1 ? "" : "s"}
                 </span>
