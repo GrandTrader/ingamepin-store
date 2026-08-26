@@ -19,8 +19,8 @@ export default function AdminRefundCard({ orderId, item, deliveredQuantity, refu
       <input type="hidden" name="item_id" value={item.id} />
       <label className="text-xs font-bold text-slate-600">Quantity to refund<input name="quantity" type="number" min="1" max={available} defaultValue={available} required className="mt-1 w-full rounded-lg border border-orange-200 bg-white px-3 py-2" /></label>
       <label className="text-xs font-bold text-slate-600">Reason<input name="reason" minLength={3} maxLength={500} defaultValue="Product out of stock" required className="mt-1 w-full rounded-lg border border-orange-200 bg-white px-3 py-2" /></label>
-      <p className="rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs text-slate-600">The refund is credited immediately to the customer account using the order email.</p>
-      <button className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-black text-white hover:bg-orange-500">Refund directly to wallet</button>
+      <p className="rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs text-slate-600">Registered customers are credited immediately. Only unregistered customers receive a pending claim.</p>
+      <button className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-black text-white hover:bg-orange-500">Issue wallet refund</button>
     </form>}
   </article>;
 }

@@ -260,25 +260,26 @@ export async function approveWalletRefund(formData: FormData) {
 
   const admin = createAdminClient();
   const refund = await admin.from("order_item_refunds")
-    .select("amount, currency, customer_email, orders(order_number), order_items(product_name, option_name)")
+    .select("amount, currency, customer_email, status, orders(order_number), order_items(product_name, option_name)")
     .eq("id", result.data).single();
   if (refund.data) {
     const order = Array.isArray(refund.data.orders) ? refund.data.orders[0] : refund.data.orders;
     const item = Array.isArray(refund.data.order_items) ? refund.data.order_items[0] : refund.data.order_items;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ingamepin.com";
     try {
+      const credited = refund.data.status === "CREDITED";
       await sendEmail({
         to: refund.data.customer_email,
-        subject: `Wallet refund approved for ${order?.order_number ?? "your order"}`,
-        text: `A ${refund.data.currency} ${Number(refund.data.amount).toFixed(2)} refund for ${item?.option_name ?? item?.product_name ?? "your product"} was credited directly to your InGamePIN wallet. View your balance at ${siteUrl}/account/wallet`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#0f172a"><h1>Refund credited to your wallet</h1><p>A <strong>${refund.data.currency} ${Number(refund.data.amount).toFixed(2)}</strong> refund for ${item?.option_name ?? item?.product_name ?? "your product"} was credited directly to your InGamePIN wallet.</p><p>No claim is required.</p><a href="${siteUrl}/account/wallet">View wallet balance</a></div>`,
+        subject: credited ? `Wallet refund credited for ${order?.order_number ?? "your order"}` : `Wallet refund approved for ${order?.order_number ?? "your order"}`,
+        text: credited ? `A ${refund.data.currency} ${Number(refund.data.amount).toFixed(2)} refund for ${item?.option_name ?? item?.product_name ?? "your product"} was credited directly to your InGamePIN wallet. View your balance at ${siteUrl}/account/wallet` : `A ${refund.data.currency} ${Number(refund.data.amount).toFixed(2)} wallet refund was approved. Create an account using this email, then claim it at ${siteUrl}/account/wallet`,
+        html: credited ? `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#0f172a"><h1>Refund credited to your wallet</h1><p>A <strong>${refund.data.currency} ${Number(refund.data.amount).toFixed(2)}</strong> refund for ${item?.option_name ?? item?.product_name ?? "your product"} was credited directly to your InGamePIN wallet.</p><p>No claim is required.</p><a href="${siteUrl}/account/wallet">View wallet balance</a></div>` : `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#0f172a"><h1>Wallet refund approved</h1><p>A <strong>${refund.data.currency} ${Number(refund.data.amount).toFixed(2)}</strong> refund was approved.</p><p>Create an account using this same email, then claim the refund from your wallet page.</p><a href="${siteUrl}/account/wallet">Claim wallet refund</a></div>`,
       });
     } catch (error) { console.error("Refund approval email failed:", error); }
   }
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}/receipt`);
   revalidatePath("/account/wallet");
-  ordersRedirect("success", "Refund credited directly to the customer wallet.", orderId);
+  ordersRedirect("success", refund.data?.status === "CREDITED" ? "Refund credited directly to the customer wallet." : "Refund saved for the unregistered customer to claim.", orderId);
 }
 
 export async function sendManualOrderItem(formData: FormData) {
