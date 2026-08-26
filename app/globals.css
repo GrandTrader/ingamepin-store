@@ -452,6 +452,147 @@ html[data-store-theme="light"] .product-quantity-limit {
   color: #155e75 !important;
   -webkit-text-fill-color: #155e75 !important;
 }
+
+/* Storefront contrast layer.
+   The selected site theme always wins over the device color preference. */
+html[data-store-theme="light"] {
+  --surface-page: #f4f7fb;
+  --surface-card: #ffffff;
+  --surface-muted: #eef3f9;
+  --text-strong: #0f172a;
+  --text-body: #334155;
+  --text-muted: #5b6b82;
+  --control-border: #94a3b8;
+  --focus-ring: #0891b2;
+}
+
+html[data-store-theme="dark"] {
+  --surface-page: #08111f;
+  --surface-card: #111d30;
+  --surface-muted: #19283d;
+  --text-strong: #f8fafc;
+  --text-body: #dbe5f1;
+  --text-muted: #aebdd0;
+  --control-border: #526985;
+  --focus-ring: #22d3ee;
+}
+
+html[data-store-theme] :where(label, legend) {
+  color: var(--text-body);
+}
+
+html[data-store-theme] :where(input, select, textarea) {
+  min-height: 42px;
+  border-color: var(--control-border) !important;
+  box-shadow: none;
+}
+
+html[data-store-theme="light"] :where(input, select, textarea) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-store-theme] :where(input, textarea)::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1;
+}
+
+html[data-store-theme] :where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 2px;
+}
+
+html[data-store-theme] :where(button, [role="button"]):disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+/* Action buttons retain their intended foreground in the light theme. */
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-slate-950"],
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-slate-900"],
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-blue-"],
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-indigo-"],
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-emerald-"],
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-red-"] {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-cyan-"],
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-amber-"],
+html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-yellow-"] {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+/* Device-level dark variants must not override the selected light theme. */
+html[data-store-theme="light"] [class~="dark:text-white"],
+html[data-store-theme="light"] [class~="dark:text-slate-100"],
+html[data-store-theme="light"] [class~="dark:text-amber-50"],
+html[data-store-theme="light"] [class~="dark:text-amber-100"],
+html[data-store-theme="light"] [class~="dark:text-amber-300"] {
+  color: #172033 !important;
+  -webkit-text-fill-color: #172033 !important;
+}
+
+/* Colored status panels remain readable in the dark theme. */
+html[data-store-theme="dark"] :is([class~="bg-amber-50"], [class~="bg-amber-100"]) {
+  background-color: #3b2a06 !important;
+}
+
+html[data-store-theme="dark"] :is([class~="bg-red-50"], [class~="bg-red-100"]) {
+  background-color: #3f1017 !important;
+}
+
+html[data-store-theme="dark"] :is([class~="bg-emerald-50"], [class~="bg-emerald-100"]) {
+  background-color: #07372c !important;
+}
+
+html[data-store-theme="dark"] :is([class~="bg-blue-50"], [class~="bg-blue-100"], [class~="bg-cyan-50"], [class~="bg-cyan-100"]) {
+  background-color: #0b3044 !important;
+}
+
+html[data-store-theme="dark"] :is(
+  [class~="text-amber-950"], [class~="text-amber-900"], [class~="text-amber-800"],
+  [class~="text-red-950"], [class~="text-red-900"], [class~="text-red-800"],
+  [class~="text-emerald-950"], [class~="text-emerald-900"], [class~="text-emerald-800"],
+  [class~="text-blue-950"], [class~="text-blue-900"], [class~="text-blue-800"]
+) {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+}
+
+/* Critical USDT compliance warning uses a dedicated accessible palette. */
+.usdt-compliance-warning {
+  border-color: #d97706 !important;
+  background: #fff7d6 !important;
+  color: #3b2100 !important;
+  box-shadow: 0 12px 26px rgba(120, 53, 15, 0.18) !important;
+}
+
+.usdt-compliance-warning h2 {
+  color: #92400e !important;
+}
+
+.usdt-compliance-warning p {
+  color: #3b2100 !important;
+  -webkit-text-fill-color: #3b2100 !important;
+}
+
+html[data-store-theme="dark"] .usdt-compliance-warning {
+  border-color: #fbbf24 !important;
+  background: #352507 !important;
+  color: #fff7d6 !important;
+}
+
+html[data-store-theme="dark"] .usdt-compliance-warning h2 {
+  color: #fcd34d !important;
+}
+
+html[data-store-theme="dark"] .usdt-compliance-warning p {
+  color: #fff7d6 !important;
+  -webkit-text-fill-color: #fff7d6 !important;
+}
 @media (max-width: 639px) {
   .admin-responsive-shell main > header {
     align-items: stretch;
