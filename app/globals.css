@@ -534,9 +534,23 @@ html[data-store-theme="light"] .product-option-unavailable {
   opacity: 1 !important;
 }
 
+html[data-store-theme="light"] .product-option-unavailable *,
+html[data-store-theme="light"] button.product-option-unavailable * {
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+  opacity: 1 !important;
+}
+
 html[data-store-theme="dark"] .product-option-unavailable {
   background-color: #17243a !important;
   border-color: #526985 !important;
+  color: #dbe5f1 !important;
+  -webkit-text-fill-color: #dbe5f1 !important;
+  opacity: 1 !important;
+}
+
+html[data-store-theme="dark"] .product-option-unavailable *,
+html[data-store-theme="dark"] button.product-option-unavailable * {
   color: #dbe5f1 !important;
   -webkit-text-fill-color: #dbe5f1 !important;
   opacity: 1 !important;
