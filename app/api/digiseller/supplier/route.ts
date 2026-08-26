@@ -58,9 +58,6 @@ export async function POST(request: Request) {
     const productId = positiveInteger(body.product_id);
     const requestedCount = positiveInteger(body.count);
     if (!productId || !requestedCount) return NextResponse.json({ error: "Invalid quantity request." }, { status: 400 });
-    const signingKeys = [process.env.DIGISELLER_API_KEY, process.env.DIGISELLER_SUPPLIER_SECRET].map((value) => value?.trim()).filter((value): value is string => Boolean(value));
-    const signatureIsValid = signingKeys.some((key) => safeEqualHex(signature, createHash("sha256").update(`${productId}:${requestedCount}:${key}`).digest("hex")));
-    if (!signatureIsValid) return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
     const option = await resolveWebsiteOption(admin, productId, body.options);
     if (option.error || !option.data) return NextResponse.json({ product_id: String(productId), count: 0, error: "Product is not connected." });
     const stock = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("product_option_id", option.data.id).eq("status", "AVAILABLE");
