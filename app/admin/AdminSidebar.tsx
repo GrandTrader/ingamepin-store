@@ -15,7 +15,6 @@ const links = [
   { label: "Categories", href: "/admin/categories", icon: "CA" },
   { label: "Orders", href: "/admin/orders", icon: "OR" },
   { label: "Invoices", href: "/admin/invoices", icon: "IN" },
-  { label: "Payments", href: "/admin/payments", icon: "PY" },
   { label: "Payment Settings", href: "/admin/payment-settings", icon: "PS" },
   { label: "Homepage Slider", href: "/admin/homepage-slider", icon: "HS" },
   { label: "Wallet", href: "/admin/wallet", icon: "WA" },

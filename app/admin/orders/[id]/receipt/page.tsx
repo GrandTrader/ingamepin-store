@@ -15,6 +15,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
+import { approvePayment, rejectPayment } from "../../../payments/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -182,7 +183,7 @@ export default async function OrderReceipt({
       admin
         .from("payments")
         .select(
-          "id, method, status, amount, currency, transaction_id, gateway_order_id, gateway_payment_id, submitted_at, verified_at",
+          "id, method, status, amount, currency, transaction_id, gateway_order_id, gateway_payment_id, screenshot_url, submitted_at, verified_at",
         )
         .eq("order_id", id)
         .order("created_at", { ascending: false })
@@ -202,6 +203,14 @@ export default async function OrderReceipt({
 
   const order = orderResult.data;
   const payment = paymentResult.data;
+  let paymentProofUrl: string | null = null;
+
+  if (payment?.screenshot_url) {
+    const signedProof = await admin.storage
+      .from("payment-proofs")
+      .createSignedUrl(payment.screenshot_url, 300);
+    paymentProofUrl = signedProof.data?.signedUrl ?? null;
+  }
   const items = (itemsResult.data ?? []) as OrderItem[];
   const itemIds = items.map((item) => item.id);
   const deliveredCodes: DeliveredCode[] = [];
@@ -375,6 +384,68 @@ export default async function OrderReceipt({
               </div>
             </section>
           </div>
+
+          {order.status === "PAYMENT_REVIEW" && payment?.status === "SUBMITTED" && (
+            <section className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm sm:p-6">
+              <p className="text-xs font-black uppercase tracking-widest text-amber-700">
+                Payment review required
+              </p>
+              <h2 className="mt-2 text-xl font-black text-amber-950">
+                Verify or reject this payment
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-amber-800">
+                Confirm the transaction independently before approving the order.
+              </p>
+
+              {paymentProofUrl && (
+                <a
+                  href={paymentProofUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-5 block max-w-xl"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={paymentProofUrl}
+                    alt={`Payment proof for ${order.order_number}`}
+                    className="max-h-80 w-full rounded-xl border border-amber-200 bg-white object-contain"
+                  />
+                </a>
+              )}
+
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <form action={approvePayment}>
+                  <input type="hidden" name="order_id" value={order.id} />
+                  <input type="hidden" name="payment_id" value={payment.id} />
+                  <button
+                    type="submit"
+                    className="w-full rounded-xl bg-emerald-600 px-5 py-3 font-black text-white transition hover:bg-emerald-500"
+                  >
+                    Verify Payment
+                  </button>
+                </form>
+
+                <form action={rejectPayment} className="flex gap-3">
+                  <input type="hidden" name="order_id" value={order.id} />
+                  <input type="hidden" name="payment_id" value={payment.id} />
+                  <input
+                    name="reason"
+                    required
+                    minLength={3}
+                    maxLength={500}
+                    placeholder="Reason for rejection"
+                    className="min-w-0 flex-1 rounded-xl border border-red-200 bg-white px-4 py-3 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-xl border border-red-300 bg-white px-5 py-3 font-bold text-red-600 transition hover:bg-red-50"
+                  >
+                    Reject
+                  </button>
+                </form>
+              </div>
+            </section>
+          )}
 
           {payment?.status === "PENDING" && payment.gateway_order_id && (
             <section className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm sm:p-6">

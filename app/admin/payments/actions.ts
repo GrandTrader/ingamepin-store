@@ -11,10 +11,17 @@ import { createClient } from "@/lib/supabase/server";
 
 function paymentRedirect(
   kind: "error" | "success",
-  message: string
+  message: string,
+  orderId?: string,
 ): never {
+  const destination =
+    orderId &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId)
+      ? `/admin/orders/${encodeURIComponent(orderId)}/receipt`
+      : "/admin/payments";
+
   redirect(
-    `/admin/payments?${kind}=${encodeURIComponent(message)}`
+    `${destination}?${kind}=${encodeURIComponent(message)}`
   );
 }
 
@@ -140,12 +147,13 @@ async function sendPaymentNotification(
 export async function approvePayment(formData: FormData) {
   await requireAdministrator();
 
+  const orderId = String(formData.get("order_id") ?? "").trim();
   const paymentId = String(
     formData.get("payment_id") ?? ""
   ).trim();
 
   if (!paymentId) {
-    paymentRedirect("error", "Payment ID is missing.");
+    paymentRedirect("error", "Payment ID is missing.", orderId);
   }
 
   const admin = createAdminClient();
@@ -154,7 +162,7 @@ export async function approvePayment(formData: FormData) {
   });
 
   if (result.error) {
-    paymentRedirect("error", result.error.message);
+    paymentRedirect("error", result.error.message, orderId);
   }
 
   const paymentResult = await admin
@@ -167,6 +175,7 @@ export async function approvePayment(formData: FormData) {
     paymentRedirect(
       "error",
       paymentResult.error.message,
+      orderId,
     );
   }
 
@@ -180,6 +189,7 @@ export async function approvePayment(formData: FormData) {
       error instanceof Error
         ? error.message
         : "Unable to prepare the order for manual delivery.",
+      orderId,
     );
   }
 
@@ -191,13 +201,15 @@ export async function approvePayment(formData: FormData) {
   revalidatePath("/admin/gift-codes");
   paymentRedirect(
     "success",
-    "Payment verified. The order is ready for manual fulfillment."
+    "Payment verified. The order is ready for manual fulfillment.",
+    orderId,
   );
 }
 
 export async function rejectPayment(formData: FormData) {
   await requireAdministrator();
 
+  const orderId = String(formData.get("order_id") ?? "").trim();
   const paymentId = String(
     formData.get("payment_id") ?? ""
   ).trim();
@@ -206,13 +218,14 @@ export async function rejectPayment(formData: FormData) {
   ).trim();
 
   if (!paymentId) {
-    paymentRedirect("error", "Payment ID is missing.");
+    paymentRedirect("error", "Payment ID is missing.", orderId);
   }
 
   if (reason.length < 3 || reason.length > 500) {
     paymentRedirect(
       "error",
-      "Enter a rejection reason between 3 and 500 characters."
+      "Enter a rejection reason between 3 and 500 characters.",
+      orderId,
     );
   }
 
@@ -223,7 +236,7 @@ export async function rejectPayment(formData: FormData) {
   });
 
   if (result.error) {
-    paymentRedirect("error", result.error.message);
+    paymentRedirect("error", result.error.message, orderId);
   }
 
   await sendPaymentNotification(
@@ -234,5 +247,5 @@ export async function rejectPayment(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/admin/payments");
-  paymentRedirect("success", "Payment rejected.");
+  paymentRedirect("success", "Payment rejected.", orderId);
 }
