@@ -23,6 +23,7 @@ export default function ManualUsdtPage() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [network, setNetwork] = useState<ManualUsdtNetwork>("BEP20");
   const selectedNetwork = MANUAL_USDT_NETWORKS.find((item) => item.id === network) ?? MANUAL_USDT_NETWORKS[0];
 
@@ -51,6 +52,16 @@ export default function ManualUsdtPage() {
       errorCorrectionLevel: "M",
     }).then(setQrCode);
   }, [selectedNetwork.address]);
+
+  async function copyAddress() {
+    try {
+      await navigator.clipboard.writeText(selectedNetwork.address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setMessage("Unable to copy the address. Please copy it manually.");
+    }
+  }
 
   async function submitPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -117,7 +128,7 @@ export default function ManualUsdtPage() {
           <div>
             <div className="text-left">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Select a network</p>
-            <select value={network} onChange={(event) => { setNetwork(event.target.value as ManualUsdtNetwork); setTransactionHash(""); }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2.5 font-black">
+            <select value={network} onChange={(event) => { setNetwork(event.target.value as ManualUsdtNetwork); setTransactionHash(""); setCopied(false); }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2.5 font-black">
               {MANUAL_USDT_NETWORKS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
           </div>
@@ -132,11 +143,14 @@ export default function ManualUsdtPage() {
           <p className="mt-1 break-all font-mono text-xs">{selectedNetwork.address}</p>
           <button
             type="button"
-            onClick={() => void navigator.clipboard.writeText(selectedNetwork.address)}
-            className="mt-2 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-bold"
+            onClick={() => void copyAddress()}
+            className={`mt-2 rounded-lg px-3 py-2 text-xs font-black text-white shadow-sm transition ${copied ? "bg-emerald-600" : "bg-slate-800 hover:bg-slate-700"}`}
           >
-            Copy address
+            {copied ? "✓ Copied" : "Copy address"}
           </button>
+          <span aria-live="polite" className={`ml-3 text-xs font-black text-emerald-700 transition ${copied ? "opacity-100" : "opacity-0"}`}>
+            Address copied!
+          </span>
         </div>
 
         <p className="mt-3 rounded-xl border border-amber-400 bg-amber-100 p-2.5 text-xs font-bold text-amber-950">
