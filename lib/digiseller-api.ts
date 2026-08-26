@@ -198,6 +198,39 @@ export async function createDigiSellerFormProduct(input: {
   return { productId, variants: await listDigiSellerVariants(productId, token) };
 }
 
+export async function uploadDigiSellerProductImage(productId: number, imageUrl: string) {
+  const { token } = await getDigiSellerToken();
+  const source = await fetch(imageUrl, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
+  if (!source.ok) throw new Error(`Unable to download the website image (${source.status}).`);
+  const contentType = source.headers.get("content-type")?.split(";")[0]?.trim() || "";
+  if (!contentType.startsWith("image/")) throw new Error("The saved product URL does not return an image.");
+  const bytes = await source.arrayBuffer();
+  if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024) throw new Error("The product image must be between 1 byte and 10 MB.");
+  const extension = contentType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+  const form = new FormData();
+  form.append("file", new Blob([bytes], { type: contentType }), `product-${productId}.${extension}`);
+  const response = await fetch(`https://api.digiseller.com/api/product/preview/add/images/${productId}?token=${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { Accept: "application/json" },
+    body: form,
+    cache: "no-store",
+  });
+  const result = await response.json().catch(() => null) as DigiSellerApiResult | null;
+  const details = digiSellerErrorText(result?.errors) || digiSellerErrorText(result?.retdesc);
+  if (!response.ok || !result || result.retval !== 0) throw new Error(details || `DigiSeller image upload failed (${response.status}).`);
+  const content = (Array.isArray(result.content) ? result.content[0] : result.content) as { preview_id?: unknown } | null;
+  const previewId = positiveId(content?.preview_id);
+  if (!previewId) throw new Error("DigiSeller uploaded the image but did not return its gallery ID.");
+  const position = await fetch(`https://api.digiseller.com/api/product/preview/options/image/${previewId}?token=${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled: true, index: 0, delete: false }),
+    cache: "no-store",
+  });
+  if (!position.ok) throw new Error(`The image uploaded, but DigiSeller could not make it the primary image (${position.status}).`);
+  return previewId;
+}
+
 export type DigiSellerVariant = {
   optionId: number;
   variantId: number;
