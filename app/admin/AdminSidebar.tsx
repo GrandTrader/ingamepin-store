@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type AdminSidebarProps = {
   orderCount?: number;
@@ -33,6 +33,37 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [liveOrderCount, setLiveOrderCount] = useState(orderCount);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadOrderCount() {
+      if (document.visibilityState !== "visible") return;
+
+      try {
+        const response = await fetch("/api/admin/order-notifications", {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+
+        const result = (await response.json()) as { count?: number };
+        if (active && typeof result.count === "number") {
+          setLiveOrderCount(result.count);
+        }
+      } catch {
+        // Keep the last known count when the network is temporarily unavailable.
+      }
+    }
+
+    void loadOrderCount();
+    const timer = window.setInterval(() => void loadOrderCount(), 5000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   function isActive(href: string) {
     return href === "/admin"
@@ -89,9 +120,13 @@ export default function AdminSidebar({
                 {link.icon}
               </span>
               <span className="min-w-0 flex-1 truncate">{link.label}</span>
-              {link.label === "Orders" && orderCount > 0 && (
-                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
-                  {orderCount}
+              {link.label === "Orders" && liveOrderCount > 0 && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-black text-white shadow-sm"
+                  aria-label={`${liveOrderCount} orders need attention`}
+                >
+                  <span aria-hidden="true">●</span>
+                  {liveOrderCount}
                 </span>
               )}
               {link.label === "Wallet" && walletCount > 0 && (
