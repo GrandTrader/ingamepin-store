@@ -21,9 +21,9 @@ function safeEqualHex(received: string, expected: string) {
   return timingSafeEqual(Buffer.from(received.toLowerCase()), Buffer.from(expected));
 }
 
-function supplierSecret() {
-  const value = (process.env.DIGISELLER_SUPPLIER_SECRET || process.env.DIGISELLER_API_KEY)?.trim();
-  if (!value) throw new Error("DigiSeller supplier secret is not configured.");
+function requiredSecret(name: "DIGISELLER_API_KEY" | "DIGISELLER_SUPPLIER_SECRET") {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is not configured.`);
   return value;
 }
 
@@ -50,14 +50,13 @@ export async function POST(request: Request) {
   if (Object.keys(body).length === 0) return NextResponse.json({ id: "", inv: 0, goods: "", error: "" });
 
   const admin = createAdminClient();
-  const secret = supplierSecret();
   const signature = String(body.sign ?? "").trim();
 
   if (body.product_id !== undefined) {
     const productId = positiveInteger(body.product_id);
     const requestedCount = positiveInteger(body.count);
     if (!productId || !requestedCount) return NextResponse.json({ error: "Invalid quantity request." }, { status: 400 });
-    const expected = createHash("sha256").update(`${productId}:${requestedCount}:${secret}`).digest("hex");
+    const expected = createHash("sha256").update(`${productId}:${requestedCount}:${requiredSecret("DIGISELLER_API_KEY")}`).digest("hex");
     if (!safeEqualHex(signature, expected)) return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
 
     const option = await resolveWebsiteOption(admin, productId, body.options);
@@ -70,7 +69,7 @@ export async function POST(request: Request) {
   const productId = positiveInteger(body.id);
   const invoiceId = positiveInteger(body.inv);
   if (!productId || !invoiceId) return NextResponse.json({ error: "Invalid delivery request." }, { status: 400 });
-  const expected = createHash("md5").update(`${productId}:${invoiceId}:${secret}`).digest("hex");
+  const expected = createHash("md5").update(`${productId}:${invoiceId}:${requiredSecret("DIGISELLER_SUPPLIER_SECRET")}`).digest("hex");
   if (!safeEqualHex(signature, expected)) return NextResponse.json({ id: String(productId), inv: invoiceId, error: "Invalid signature." }, { status: 401 });
 
   const option = await resolveWebsiteOption(admin, productId, body.options);
