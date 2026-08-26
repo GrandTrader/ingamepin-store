@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import sharp from "sharp";
 
 type DigiSellerLoginResponse = {
   retval?: number;
@@ -206,9 +207,14 @@ export async function uploadDigiSellerProductImage(productId: number, imageUrl: 
   if (!contentType.startsWith("image/")) throw new Error("The saved product URL does not return an image.");
   const bytes = await source.arrayBuffer();
   if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024) throw new Error("The product image must be between 1 byte and 10 MB.");
-  const extension = contentType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+  const jpeg = await sharp(Buffer.from(bytes))
+    .rotate()
+    .flatten({ background: "#ffffff" })
+    .jpeg({ quality: 90, chromaSubsampling: "4:4:4" })
+    .toBuffer();
+  if (jpeg.byteLength > 10 * 1024 * 1024) throw new Error("The converted product image is larger than 10 MB.");
   const form = new FormData();
-  form.append("file", new Blob([bytes], { type: contentType }), `product-${productId}.${extension}`);
+  form.append("file", new Blob([jpeg], { type: "image/jpeg" }), `product-${productId}.jpg`);
   const response = await fetch(`https://api.digiseller.com/api/product/preview/add/images/${productId}?token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { Accept: "application/json" },
