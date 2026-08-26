@@ -525,6 +525,23 @@ html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-yellow
   -webkit-text-fill-color: #0f172a !important;
 }
 
+/* Out-of-stock denominations stay legible while remaining visibly disabled. */
+html[data-store-theme="light"] .product-option-unavailable {
+  background-color: #eef2f7 !important;
+  border-color: #94a3b8 !important;
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+  opacity: 1 !important;
+}
+
+html[data-store-theme="dark"] .product-option-unavailable {
+  background-color: #17243a !important;
+  border-color: #526985 !important;
+  color: #dbe5f1 !important;
+  -webkit-text-fill-color: #dbe5f1 !important;
+  opacity: 1 !important;
+}
+
 /* Device-level dark variants must not override the selected light theme. */
 html[data-store-theme="light"] [class~="dark:text-white"],
 html[data-store-theme="light"] [class~="dark:text-slate-100"],
