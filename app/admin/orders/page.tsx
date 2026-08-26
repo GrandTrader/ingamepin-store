@@ -3,6 +3,7 @@
 import Link from "next/link";
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
+import AdminOrdersAutoRefresh from "./AdminOrdersAutoRefresh";
 import AdminOrdersTableScroller from "./AdminOrdersTableScroller";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -215,6 +216,7 @@ export default async function AdminOrdersPage({
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
+      <AdminOrdersAutoRefresh />
       <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar
           orderCount={processingCount}
