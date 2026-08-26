@@ -42,6 +42,7 @@ type AdminOrdersPageProps = {
     success?: string;
     page?: string;
     q?: string;
+    status?: string;
   }>;
 };
 
@@ -95,6 +96,7 @@ export default async function AdminOrdersPage({
     success,
     page: requestedPage,
     q: requestedQuery,
+    status: requestedStatus,
   } = await searchParams;
 
   const supabase = await createClient();
@@ -161,13 +163,33 @@ export default async function AdminOrdersPage({
       .map((customer) => [customer.email!.trim().toLowerCase(), customer.id]),
   );
   const query = (requestedQuery ?? "").trim().toLowerCase();
+  const activeStatus = ["pending", "review", "processing", "completed"].includes(
+    requestedStatus ?? "",
+  )
+    ? requestedStatus!
+    : "all";
+  const statusMatches = (order: Order) => {
+    switch (activeStatus) {
+      case "pending":
+        return order.status === "PENDING_PAYMENT";
+      case "review":
+        return order.status === "PAYMENT_REVIEW";
+      case "processing":
+        return order.status === "PAID" || order.status === "PROCESSING";
+      case "completed":
+        return order.status === "DELIVERED";
+      default:
+        return true;
+    }
+  };
+  const statusFilteredOrders = orders.filter(statusMatches);
   const filteredOrders = query
-    ? orders.filter(
+    ? statusFilteredOrders.filter(
         (order) =>
           order.order_number.toLowerCase().includes(query) ||
           order.customer_email.toLowerCase().includes(query),
       )
-    : orders;
+    : statusFilteredOrders;
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / 10));
   const page = Math.min(Math.max(Number.parseInt(requestedPage ?? "1", 10) || 1, 1), totalPages);
   const visibleOrders = filteredOrders.slice((page - 1) * 10, page * 10);
@@ -175,6 +197,10 @@ export default async function AdminOrdersPage({
   const paymentReviewCount = orders.filter(
     (order) =>
       order.status === "PAYMENT_REVIEW",
+  ).length;
+
+  const pendingCount = orders.filter(
+    (order) => order.status === "PENDING_PAYMENT",
   ).length;
 
   const deliveredCount = orders.filter(
@@ -275,14 +301,52 @@ export default async function AdminOrdersPage({
 
           {!error && orders.length > 0 && (
             <section className="mt-8">
+              <nav className="mb-5 flex flex-wrap gap-2" aria-label="Order status filters">
+                {[
+                  { key: "all", label: "All orders", count: orders.length },
+                  { key: "pending", label: "Pending", count: pendingCount },
+                  { key: "review", label: "Payment review", count: paymentReviewCount },
+                  { key: "processing", label: "Processing", count: processingCount },
+                  { key: "completed", label: "Completed", count: deliveredCount },
+                ].map((tab) => {
+                  const params = new URLSearchParams();
+                  if (tab.key !== "all") params.set("status", tab.key);
+                  if (query) params.set("q", requestedQuery ?? "");
+                  const href = params.size ? `/admin/orders?${params.toString()}` : "/admin/orders";
+
+                  return (
+                    <Link
+                      key={tab.key}
+                      href={href}
+                      className={`rounded-xl border px-4 py-2.5 text-sm font-black transition ${
+                        activeStatus === tab.key
+                          ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
+                      }`}
+                    >
+                      {tab.label} <span className={activeStatus === tab.key ? "text-blue-100" : "text-slate-400"}>({tab.count})</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+
               <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <h2 className="text-xl font-black">All orders</h2>
+                  <h2 className="text-xl font-black">
+                    {activeStatus === "all"
+                      ? "All orders"
+                      : activeStatus === "review"
+                        ? "Payment review orders"
+                        : `${activeStatus.charAt(0).toUpperCase()}${activeStatus.slice(1)} orders`}
+                  </h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Newest orders appear first.
                   </p>
                 </div>
                 <form method="get" className="flex w-full max-w-xl gap-2">
+                  {activeStatus !== "all" && (
+                    <input type="hidden" name="status" value={activeStatus} />
+                  )}
                   <input
                     name="q"
                     defaultValue={requestedQuery ?? ""}
@@ -293,7 +357,7 @@ export default async function AdminOrdersPage({
                     Search
                   </button>
                   {query && (
-                    <Link href="/admin/orders" className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-600 hover:border-blue-300">
+                    <Link href={activeStatus === "all" ? "/admin/orders" : `/admin/orders?status=${activeStatus}`} className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-600 hover:border-blue-300">
                       Clear
                     </Link>
                   )}
@@ -475,7 +539,7 @@ export default async function AdminOrdersPage({
               {totalPages > 1 && (
                 <nav className="mt-5 flex flex-wrap justify-center gap-2" aria-label="Order pages">
                   {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                    <Link key={pageNumber} href={`/admin/orders?${new URLSearchParams({ page: String(pageNumber), ...(query ? { q: requestedQuery ?? "" } : {}) }).toString()}`} className={`rounded-lg border px-3 py-2 text-sm font-bold ${pageNumber === page ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}>{pageNumber}</Link>
+                    <Link key={pageNumber} href={`/admin/orders?${new URLSearchParams({ page: String(pageNumber), ...(query ? { q: requestedQuery ?? "" } : {}), ...(activeStatus !== "all" ? { status: activeStatus } : {}) }).toString()}`} className={`rounded-lg border px-3 py-2 text-sm font-bold ${pageNumber === page ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}>{pageNumber}</Link>
                   ))}
                 </nav>
               )}
