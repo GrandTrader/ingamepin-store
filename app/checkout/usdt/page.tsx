@@ -185,7 +185,7 @@ export default function DirectUsdtPaymentPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-12 text-white sm:py-20">
-      <div className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl sm:p-8">
+      <div className={`mx-auto rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl sm:p-6 ${invoice ? "max-w-3xl" : "max-w-xl"}`}>
         <div className="text-center">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-300">
             Direct wallet payment
@@ -244,52 +244,39 @@ export default function DirectUsdtPaymentPage() {
             )}
           </div>
         ) : (
-          <div className="mt-8 space-y-5">
-            <div className="flex items-center justify-between rounded-xl bg-slate-950 px-4 py-3">
-              <span className="text-sm text-slate-400">Network</span>
-              <span className="font-black text-cyan-300">
-                USDT – {invoice.network}
-              </span>
+          <div className="mt-5">
+            <div className="grid items-start gap-4 sm:grid-cols-[320px_minmax(0,1fr)]">
+              <UsdtQrCode address={invoice.address} network={invoice.network} />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl bg-slate-950 px-4 py-3">
+                  <span className="text-sm text-slate-400">Network</span>
+                  <span className="font-black text-cyan-300">USDT – {invoice.network}</span>
+                </div>
+
+                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-center">
+                  <p className="text-sm text-slate-400">Send exactly</p>
+                  <p className="mt-1 break-all text-3xl font-black text-cyan-300">{invoice.amount} USDT</p>
+                  <button type="button" onClick={() => void copyValue("amount", invoice.amount)} className="mt-2 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-black text-slate-950">
+                    {copied === "amount" ? "✓ Copied" : "Copy amount"}
+                  </button>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-950 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Receiving address</p>
+                  <p className="mt-2 break-all font-mono text-xs font-bold text-white">{invoice.address}</p>
+                  <button type="button" onClick={() => void copyValue("address", invoice.address)} className={`mt-3 rounded-lg px-3 py-2 text-xs font-black text-white transition ${copied === "address" ? "bg-emerald-600" : "bg-slate-800 hover:bg-slate-700"}`}>
+                    {copied === "address" ? "✓ Copied" : "Copy address"}
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-amber-400 bg-amber-100 p-3 text-xs font-bold text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+                  Send only USDT using {invoice.network}. The exact amount identifies your order. Sending another token, network, or amount can cause loss.
+                </div>
+              </div>
             </div>
 
-            <UsdtQrCode
-              address={invoice.address}
-              network={invoice.network}
-            />
-            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-5 text-center">
-              <p className="text-sm text-slate-400">Send exactly</p>
-              <p className="mt-2 break-all text-3xl font-black text-cyan-300">
-                {invoice.amount} USDT
-              </p>
-              <button
-                type="button"
-                onClick={() => void copyValue("amount", invoice.amount)}
-                className="mt-3 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-black text-slate-950"
-              >
-                {copied === "amount" ? "Copied" : "Copy amount"}
-              </button>
-            </div>
-
-            <div className="rounded-2xl bg-slate-950 p-5">
-              <p className="text-sm text-slate-400">Receiving address</p>
-              <p className="mt-3 break-all font-mono text-sm font-bold text-white">
-                {invoice.address}
-              </p>
-              <button
-                type="button"
-                onClick={() => void copyValue("address", invoice.address)}
-                className="mt-4 rounded-lg border border-white/15 px-4 py-2 text-sm font-black"
-              >
-                {copied === "address" ? "Copied" : "Copy address"}
-              </button>
-            </div>
-
-            <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
-              Send only USDT using {invoice.network}. The exact amount identifies
-              your order. Sending another token, network, or amount can cause loss.
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
+            <div className="mt-4 flex items-center justify-between text-sm">
               <span className="text-slate-400">Invoice expires in</span>
               <span className="font-mono text-lg font-black">
                 {formatTime(secondsRemaining)}
@@ -299,11 +286,11 @@ export default function DirectUsdtPaymentPage() {
             <button
               type="button"
               onClick={() => void checkPayment()}
-              className="w-full rounded-xl border border-white/15 bg-slate-950 px-5 py-3 font-black text-white transition hover:border-cyan-300 hover:text-cyan-300"
+              className="mt-3 w-full rounded-xl border border-white/15 bg-slate-950 px-5 py-3 font-black text-white transition hover:border-cyan-300 hover:text-cyan-300"
             >
               Check payment status
             </button>
-            <p className="text-center text-xs text-slate-500">
+            <p className="mt-2 text-center text-xs text-slate-500">
               Payment status is checked automatically every few seconds.
             </p>
           </div>
