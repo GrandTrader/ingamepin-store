@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
       if (gatewayResult.error || gatewaySettings.UPI?.enabled !== true) {
         return NextResponse.json(
-          { error: "Manual USDT BEP20 is currently unavailable." },
+          { error: "Manual USDT is currently unavailable." },
           { status: 400 },
         );
       }

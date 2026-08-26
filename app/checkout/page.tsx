@@ -1375,7 +1375,7 @@ export default function CheckoutPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-bold">Manual Crypto</p>
                       <span className="rounded bg-emerald-500 px-2 py-0.5 text-[10px] font-black text-white">
-                        USDT BEP20
+                        USDT · 7 networks
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">

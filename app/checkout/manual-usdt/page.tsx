@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import { FormEvent, useEffect, useState } from "react";
 
 import { useStorePreferences } from "@/components/StorePreferences";
-import { MANUAL_USDT_BEP20_WALLET } from "@/lib/manual-usdt";
+import { MANUAL_USDT_NETWORKS, type ManualUsdtNetwork } from "@/lib/manual-usdt";
 
 type PendingOrder = {
   id: string;
@@ -23,6 +23,8 @@ export default function ManualUsdtPage() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [network, setNetwork] = useState<ManualUsdtNetwork>("BEP20");
+  const selectedNetwork = MANUAL_USDT_NETWORKS.find((item) => item.id === network) ?? MANUAL_USDT_NETWORKS[0];
 
   useEffect(() => {
     try {
@@ -37,15 +39,18 @@ export default function ManualUsdtPage() {
         return;
       }
       setOrder(parsed);
-      void QRCode.toDataURL(MANUAL_USDT_BEP20_WALLET, {
-        width: 260,
-        margin: 1,
-        errorCorrectionLevel: "M",
-      }).then(setQrCode);
     } catch {
       setOrder(null);
     }
   }, []);
+
+  useEffect(() => {
+    void QRCode.toDataURL(selectedNetwork.address, {
+      width: 260,
+      margin: 1,
+      errorCorrectionLevel: "M",
+    }).then(setQrCode);
+  }, [selectedNetwork.address]);
 
   async function submitPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,6 +66,7 @@ export default function ManualUsdtPage() {
           orderId: order.databaseId,
           accessToken: order.accessToken,
           transactionHash,
+          network,
         }),
       });
       const result = (await response.json()) as { error?: string };
@@ -97,13 +103,12 @@ export default function ManualUsdtPage() {
         <div className="text-center">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-300">Manual Crypto</p>
           <h1 className="mt-3 text-3xl font-black">Crypto payment</h1>
-          <p className="mt-3 text-slate-400">Please send the full amount in USDT (BEP20) to the following address.</p>
+          <p className="mt-3 text-slate-400">Please send the full amount in USDT using one selected network.</p>
           <div className="mt-5 text-left">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Select a network</p>
-            <div className="mt-2 flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950 px-4 py-3 font-black">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-amber-400 text-slate-950">◆</span>
-              BEP20
-            </div>
+            <select value={network} onChange={(event) => { setNetwork(event.target.value as ManualUsdtNetwork); setTransactionHash(""); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 font-black">
+              {MANUAL_USDT_NETWORKS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+            </select>
           </div>
           <div className="mt-5 rounded-2xl bg-slate-950 p-4">
             <p className="text-sm text-slate-500">Amount to send</p>
@@ -115,16 +120,16 @@ export default function ManualUsdtPage() {
         {qrCode && (
           <div className="mx-auto mt-6 w-fit rounded-2xl bg-white p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrCode} alt="USDT BEP20 wallet QR code" width={260} height={260} />
+            <img src={qrCode} alt={`USDT ${selectedNetwork.label} wallet QR code`} width={260} height={260} />
           </div>
         )}
 
         <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">BEP20 wallet address</p>
-          <p className="mt-2 break-all font-mono text-sm">{MANUAL_USDT_BEP20_WALLET}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{selectedNetwork.label} wallet address</p>
+          <p className="mt-2 break-all font-mono text-sm">{selectedNetwork.address}</p>
           <button
             type="button"
-            onClick={() => void navigator.clipboard.writeText(MANUAL_USDT_BEP20_WALLET)}
+            onClick={() => void navigator.clipboard.writeText(selectedNetwork.address)}
             className="mt-3 rounded-lg border border-white/15 px-4 py-2 text-sm font-bold"
           >
             Copy address
@@ -132,7 +137,7 @@ export default function ManualUsdtPage() {
         </div>
 
         <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200">
-          Only send USDT on BEP20. Sending another token or network may permanently lose your funds.
+          Only send USDT on {selectedNetwork.label}. Sending another token or network may permanently lose your funds.
         </p>
 
         {submitted ? (
@@ -150,7 +155,8 @@ export default function ManualUsdtPage() {
               onChange={(event) => setTransactionHash(event.target.value.trim())}
               placeholder="0x..."
               required
-              pattern="0x[a-fA-F0-9]{64}"
+              minLength={40}
+              maxLength={120}
               className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 font-mono text-sm outline-none focus:border-cyan-400"
             />
             {message && <p className="mt-3 rounded-xl bg-red-400/10 p-3 text-sm text-red-200">{message}</p>}

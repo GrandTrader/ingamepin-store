@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isManualUsdtNetwork } from "@/lib/manual-usdt";
 
 export const runtime = "nodejs";
 
@@ -17,14 +18,16 @@ export async function POST(request: NextRequest) {
       orderId?: unknown;
       accessToken?: unknown;
       transactionHash?: unknown;
+      network?: unknown;
     };
     const orderId = String(body.orderId ?? "").trim();
     const accessToken = String(body.accessToken ?? "").trim();
     const transactionHash = String(body.transactionHash ?? "").trim();
+    const network = String(body.network ?? "").trim().toUpperCase();
 
-    if (!orderId || accessToken.length < 40 || !/^0x[a-fA-F0-9]{64}$/.test(transactionHash)) {
+    if (!orderId || accessToken.length < 40 || !isManualUsdtNetwork(network) || transactionHash.length < 40 || transactionHash.length > 120) {
       return NextResponse.json(
-        { error: "Enter a valid BEP20 transaction hash." },
+        { error: "Select a network and enter a valid transaction hash." },
         { status: 400 },
       );
     }
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
       p_order_id: order.id,
       p_order_number: order.order_number,
       p_customer_email: order.customer_email,
-      p_transaction_id: transactionHash,
+      p_transaction_id: `${network}:${transactionHash}`,
       p_screenshot_path: "",
     });
 

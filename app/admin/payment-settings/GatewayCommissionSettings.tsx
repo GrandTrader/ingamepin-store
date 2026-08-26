@@ -74,7 +74,7 @@ const gateways: Array<{
   {
     id: "UPI",
     name: "Manual Crypto",
-    description: "USDT BEP20 with manual TX ID verification",
+    description: "USDT on 7 networks with manual TX ID verification",
     icon: "T",
     color: "bg-emerald-100 text-emerald-700",
     enabledByDefault: false,
