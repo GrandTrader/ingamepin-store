@@ -642,10 +642,12 @@ export default function ProductPurchaseForm({
                   disabled={isUnavailable}
                   onClick={() => selectOption(option.id)}
                   className={`product-option-button min-w-0 rounded-xl border p-3 text-left transition sm:p-4 ${
-                    isSelected
+                    isUnavailable
+                      ? "product-option-unavailable"
+                      : isSelected
                       ? "border-cyan-400 bg-cyan-400 text-slate-950"
                       : "border-white/10 bg-slate-950 hover:border-cyan-400"
-                  } ${isUnavailable ? "product-option-unavailable" : ""} disabled:cursor-not-allowed`}
+                  } disabled:cursor-not-allowed`}
                 >
                   <span className="block break-words text-sm font-black sm:text-base">{option.optionName}</span>
                   {option.platform && (
