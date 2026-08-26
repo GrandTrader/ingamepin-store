@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { updateDigiSellerProductName } from "@/lib/digiseller-api";
 import { createClient } from "@/lib/supabase/server";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 
@@ -81,6 +82,25 @@ export async function updateProductGeneral(formData: FormData) {
     redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
   }
 
+  const mappings = await admin
+    .from("product_options")
+    .select("digiseller_product_id")
+    .eq("product_id", productId)
+    .not("digiseller_product_id", "is", null);
+  if (mappings.error) {
+    redirect(`${path}?error=${encodeURIComponent(`Product saved, but DigiSeller sync could not start: ${mappings.error.message}`)}`);
+  }
+  const digisellerProductIds = [...new Set((mappings.data ?? [])
+    .map((row) => Number(row.digiseller_product_id))
+    .filter((id) => Number.isSafeInteger(id) && id > 0))];
+  try {
+    for (const digisellerProductId of digisellerProductIds) {
+      await updateDigiSellerProductName(digisellerProductId, name, nameRu);
+    }
+  } catch (error) {
+    redirect(`${path}?error=${encodeURIComponent(`Product saved, but DigiSeller name sync failed: ${error instanceof Error ? error.message : "Update failed"}`)}`);
+  }
+
   if (useAsPopup) {
     if (!popupImageUrl) {
       redirect(`${path}?error=${encodeURIComponent("Add a popup image before enabling this product as the popup.")}`);
@@ -130,5 +150,5 @@ export async function updateProductGeneral(formData: FormData) {
   revalidatePath(path);
   revalidatePath("/");
   revalidatePath(`/product/${productId}`);
-  redirect(`${path}?success=${encodeURIComponent("General information saved.")}`);
+  redirect(`${path}?success=${encodeURIComponent(digisellerProductIds.length ? "General information saved and DigiSeller name synchronized." : "General information saved.")}`);
 }

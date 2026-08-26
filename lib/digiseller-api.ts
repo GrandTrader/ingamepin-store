@@ -199,6 +199,15 @@ export async function createDigiSellerFormProduct(input: {
   return { productId, variants: await listDigiSellerVariants(productId, token) };
 }
 
+export async function updateDigiSellerProductName(productId: number, name: string, nameRu?: string | null) {
+  await postDigiSeller(`/api/product/edit/base/${productId}`, {
+    name: [
+      { locale: "en-US", value: name },
+      { locale: "ru-RU", value: nameRu || name },
+    ],
+  });
+}
+
 export async function uploadDigiSellerProductImage(productId: number, imageUrl: string) {
   const { token } = await getDigiSellerToken();
   const source = await fetch(imageUrl, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
