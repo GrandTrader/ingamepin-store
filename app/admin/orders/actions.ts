@@ -270,15 +270,15 @@ export async function approveWalletRefund(formData: FormData) {
       await sendEmail({
         to: refund.data.customer_email,
         subject: `Wallet refund approved for ${order?.order_number ?? "your order"}`,
-        text: `A ${refund.data.currency} ${Number(refund.data.amount).toFixed(2)} wallet refund was approved for ${item?.option_name ?? item?.product_name ?? "your product"}. Create or sign in using this email and claim it at ${siteUrl}/account/wallet`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#0f172a"><h1>Wallet refund approved</h1><p>A <strong>${refund.data.currency} ${Number(refund.data.amount).toFixed(2)}</strong> refund was approved for ${item?.option_name ?? item?.product_name ?? "your product"}.</p><p>Create or sign in using this same email, verify it, and claim the refund from your wallet.</p><a href="${siteUrl}/account/wallet">Claim wallet refund</a></div>`,
+        text: `A ${refund.data.currency} ${Number(refund.data.amount).toFixed(2)} refund for ${item?.option_name ?? item?.product_name ?? "your product"} was credited directly to your InGamePIN wallet. View your balance at ${siteUrl}/account/wallet`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#0f172a"><h1>Refund credited to your wallet</h1><p>A <strong>${refund.data.currency} ${Number(refund.data.amount).toFixed(2)}</strong> refund for ${item?.option_name ?? item?.product_name ?? "your product"} was credited directly to your InGamePIN wallet.</p><p>No claim is required.</p><a href="${siteUrl}/account/wallet">View wallet balance</a></div>`,
       });
     } catch (error) { console.error("Refund approval email failed:", error); }
   }
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}/receipt`);
   revalidatePath("/account/wallet");
-  ordersRedirect("success", "Wallet refund approved. The customer can claim it using the payment email.", orderId);
+  ordersRedirect("success", "Refund credited directly to the customer wallet.", orderId);
 }
 
 export async function sendManualOrderItem(formData: FormData) {
