@@ -34,7 +34,7 @@ export default async function ProductGeneralPage({
     Date.now() - 24 * 60 * 60 * 1000,
   ).toISOString();
   const [result, categoriesResult, popupResult, viewsResult, paidProductSales] = await Promise.all([
-    supabase.from("products").select("id, category_id, name, name_ru, slug, description, description_ru, image_url, image_url_ru, region, sold_count, review_reward_enabled, review_reward_percent").eq("id", id).maybeSingle(),
+    supabase.from("products").select("id, category_id, name, name_ru, slug, description, description_ru, region, sold_count, review_reward_enabled, review_reward_percent").eq("id", id).maybeSingle(),
     supabase.from("categories").select("id, name").eq("is_active", true).order("sort_order"),
     admin.from("preorder_popup_settings").select("product_id, is_enabled, image_url").eq("id", true).maybeSingle(),
     admin
@@ -96,15 +96,6 @@ export default async function ProductGeneralPage({
                 <label className="md:col-span-2"><span className="text-sm font-bold">Product name (Russian)</span><input name="name_ru" defaultValue={product.name_ru ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
                 <label><span className="text-sm font-bold">Category</span><select name="category_id" defaultValue={product.category_id} required className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3">{(categoriesResult.data ?? []).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
                 <CountrySelect defaultValue={product.region} />
-                <ResponsiveImageField label="Product image" name="image_url" fileName="image_file" defaultValue={product.image_url} variant="product" />
-                <ResponsiveImageField
-                  label="Product image (Russian)"
-                  name="image_url_ru"
-                  fileName="image_file_ru"
-                  defaultValue={product.image_url_ru}
-                  variant="product"
-                  helpText="Shown when the customer selects Russian. If empty, the standard product image is used."
-                />
                 <label className="md:col-span-2"><span className="text-sm font-bold">Description</span><textarea name="description" rows={6} defaultValue={product.description ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
                 <label className="md:col-span-2"><span className="text-sm font-bold">Description (Russian)</span><textarea name="description_ru" rows={6} defaultValue={product.description_ru ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
               </div>

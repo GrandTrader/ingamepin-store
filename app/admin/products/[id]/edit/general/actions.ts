@@ -7,17 +7,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 
-function isValidWebUrl(value: string) {
-  if (!value) return true;
-
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
-  }
-}
-
 export async function updateProductGeneral(formData: FormData) {
   const productId = String(formData.get("id") ?? "").trim();
   const path = `/admin/products/${productId}/edit/general`;
@@ -40,8 +29,6 @@ export async function updateProductGeneral(formData: FormData) {
   const descriptionRu = String(formData.get("description_ru") ?? "").trim();
   const categoryId = String(formData.get("category_id") ?? "").trim();
   const region = String(formData.get("region") ?? "").trim();
-  let imageUrl = String(formData.get("image_url") ?? "").trim();
-  let imageUrlRu = String(formData.get("image_url_ru") ?? "").trim();
   let popupImageUrl = String(formData.get("popup_image_url") ?? "").trim();
   const useAsPopup = formData.get("use_as_popup") === "on";
   const wasPopupProduct = formData.get("was_popup_product") === "true";
@@ -50,10 +37,6 @@ export async function updateProductGeneral(formData: FormData) {
 
   if (!productId || name.length < 2 || !categoryId || !region) {
     redirect(`${path}?error=${encodeURIComponent("Product name, category and region are required.")}`);
-  }
-
-  if (!isValidWebUrl(imageUrl) || !isValidWebUrl(imageUrlRu)) {
-    redirect(`${path}?error=${encodeURIComponent("Enter valid HTTP or HTTPS product image URLs.")}`);
   }
 
   const categoryResult = await supabase.from("categories").select("category_type").eq("id", categoryId).eq("is_active", true).maybeSingle();
@@ -72,10 +55,6 @@ export async function updateProductGeneral(formData: FormData) {
   }
 
   try {
-    imageUrl = (await uploadStoreImage(formData.get("image_file"), "products")) ?? imageUrl;
-    imageUrlRu =
-      (await uploadStoreImage(formData.get("image_file_ru"), "products")) ??
-      imageUrlRu;
     popupImageUrl = (await uploadStoreImage(formData.get("popup_image_file"), "popups")) ?? popupImageUrl;
   } catch (error) {
     redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Unable to upload product image.")}`);
@@ -92,8 +71,6 @@ export async function updateProductGeneral(formData: FormData) {
       category_id: categoryId,
       product_type: categoryResult.data.category_type,
       region,
-      image_url: imageUrl || null,
-      image_url_ru: imageUrlRu || null,
       review_reward_enabled: reviewRewardEnabled,
       review_reward_percent: reviewRewardEnabled ? reviewRewardPercent : 0,
       updated_at: new Date().toISOString(),

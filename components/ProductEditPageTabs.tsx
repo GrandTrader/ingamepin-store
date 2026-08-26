@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const tabs = [
   ["general", "General"],
+  ["gallery", "Gallery"],
   ["delivery", "Delivery"],
   ["product-options", "Product options"],
   ["stock", "Stock"],
