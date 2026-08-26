@@ -84,6 +84,9 @@ function statusStyle(status: string) {
     case "REFUNDED":
       return "bg-red-100 text-red-700";
 
+    case "TRASHED":
+      return "bg-slate-800 text-white";
+
     default:
       return "bg-slate-100 text-slate-600";
   }
@@ -164,7 +167,7 @@ export default async function AdminOrdersPage({
       .map((customer) => [customer.email!.trim().toLowerCase(), customer.id]),
   );
   const query = (requestedQuery ?? "").trim().toLowerCase();
-  const activeStatus = ["pending", "review", "processing", "completed"].includes(
+  const activeStatus = ["pending", "review", "processing", "completed", "trash"].includes(
     requestedStatus ?? "",
   )
     ? requestedStatus!
@@ -179,8 +182,10 @@ export default async function AdminOrdersPage({
         return order.status === "PAID" || order.status === "PROCESSING";
       case "completed":
         return order.status === "DELIVERED";
+      case "trash":
+        return order.status === "TRASHED";
       default:
-        return true;
+        return order.status !== "TRASHED";
     }
   };
   const statusFilteredOrders = orders.filter(statusMatches);
@@ -203,6 +208,12 @@ export default async function AdminOrdersPage({
   const pendingCount = orders.filter(
     (order) => order.status === "PENDING_PAYMENT",
   ).length;
+
+  const trashedCount = orders.filter(
+    (order) => order.status === "TRASHED",
+  ).length;
+
+  const activeOrderCount = orders.length - trashedCount;
 
   const deliveredCount = orders.filter(
     (order) => order.status === "DELIVERED",
@@ -255,7 +266,7 @@ export default async function AdminOrdersPage({
               </p>
 
               <p className="mt-2 text-3xl font-black">
-                {orders.length}
+                {activeOrderCount}
               </p>
             </div>
 
@@ -307,11 +318,12 @@ export default async function AdminOrdersPage({
             <section className="mt-8">
               <nav className="mb-5 flex flex-wrap gap-2" aria-label="Order status filters">
                 {[
-                  { key: "all", label: "All orders", count: orders.length },
+                  { key: "all", label: "All orders", count: activeOrderCount },
                   { key: "pending", label: "Pending", count: pendingCount },
                   { key: "review", label: "Payment review", count: paymentReviewCount },
                   { key: "processing", label: "Processing", count: processingCount },
                   { key: "completed", label: "Completed", count: deliveredCount },
+                  { key: "trash", label: "Trash", count: trashedCount },
                 ].map((tab) => {
                   const params = new URLSearchParams();
                   if (tab.key !== "all") params.set("status", tab.key);
@@ -341,10 +353,14 @@ export default async function AdminOrdersPage({
                       ? "All orders"
                       : activeStatus === "review"
                         ? "Payment review orders"
+                        : activeStatus === "trash"
+                          ? "Trash"
                         : `${activeStatus.charAt(0).toUpperCase()}${activeStatus.slice(1)} orders`}
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Newest orders appear first.
+                    {activeStatus === "trash"
+                      ? "Orders in Trash are permanently deleted after 30 days."
+                      : "Newest orders appear first."}
                   </p>
                 </div>
                 <form method="get" className="flex w-full max-w-xl gap-2">
