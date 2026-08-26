@@ -32,7 +32,7 @@ export default function LiveSupportWidget() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   const loadChat = useCallback(async () => {
     try {
@@ -52,7 +52,9 @@ export default function LiveSupportWidget() {
   }, [open, loadChat]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [data.messages, open]);
 
   async function sendMessage(event: FormEvent) {
@@ -103,7 +105,7 @@ export default function LiveSupportWidget() {
             </button>
           </header>
 
-          <div className="flex-1 space-y-3 overflow-y-auto bg-slate-900 p-4">
+          <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto overscroll-contain bg-slate-900 p-4">
             {data.messages.length === 0 && (
               <div className="rounded-xl border border-slate-700 bg-slate-800 p-4 text-sm text-slate-300">
                 Hello! Tell us how we can help you.
@@ -136,7 +138,6 @@ export default function LiveSupportWidget() {
                 </div>
               </div>
             ))}
-            <div ref={endRef} />
           </div>
 
           <form onSubmit={sendMessage} className="space-y-2 border-t border-slate-700 bg-slate-950 p-3">
