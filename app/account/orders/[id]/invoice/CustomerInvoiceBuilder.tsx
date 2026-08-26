@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { formatPaymentMethod } from "@/lib/payment-method-label";
 
 type InvoiceItem = {
   id: string;
@@ -348,7 +349,7 @@ function CustomerInvoiceDocument({
               <p className="text-xs font-black uppercase tracking-widest text-slate-400">
                 Payment
               </p>
-              <p className="mt-2 font-black">{payment.method.replaceAll("_", " ")}</p>
+              <p className="mt-2 font-black">{formatPaymentMethod(payment.method)}</p>
               <p className="mt-1 text-sm font-semibold text-emerald-700">
                 {payment.status.replaceAll("_", " ")}
               </p>

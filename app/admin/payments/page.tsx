@@ -4,6 +4,7 @@ import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { formatPaymentMethod } from "@/lib/payment-method-label";
 import {
   approvePayment,
   rejectPayment,
@@ -267,7 +268,7 @@ export default async function PaymentsPage({
 
                         <Detail
                           label="Method"
-                          value={payment.method}
+                          value={formatPaymentMethod(payment.method)}
                         />
 
                         <Detail

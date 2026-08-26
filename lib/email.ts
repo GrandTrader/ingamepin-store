@@ -6,6 +6,7 @@ import {
   isUnlimitedStock,
 } from "@/lib/product-stock";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatPaymentMethod } from "@/lib/payment-method-label";
 
 type SendEmailInput = {
   to: string;
@@ -315,7 +316,7 @@ export async function sendOrderCreatedEmails({
       <div style="display:flex;justify-content:space-between;margin-top:22px;padding-top:18px;border-top:2px solid #0f172a;font-size:18px">
         <strong>Total</strong><strong>${escapeHtml(totalLabel)}</strong>
       </div>
-      <p style="margin-top:22px;color:#475569;line-height:1.7">Payment method: <strong>${escapeHtml(paymentMethod.replaceAll("_", " "))}</strong><br>Status: <strong>${escapeHtml(formatOrderStatus(status))}</strong></p>
+      <p style="margin-top:22px;color:#475569;line-height:1.7">Payment method: <strong>${escapeHtml(formatPaymentMethod(paymentMethod))}</strong><br>Status: <strong>${escapeHtml(formatOrderStatus(status))}</strong></p>
       <a href="${trackingUrl}" style="display:inline-block;margin-top:12px;background:#06b6d4;color:#082f49;text-decoration:none;padding:13px 20px;border-radius:10px;font-weight:800">View your order</a>
       <p style="margin-top:28px;color:#64748b;font-size:13px;line-height:1.6">Need help? Reply to this email or contact support@ingamepin.com.</p>
     </div>
@@ -327,7 +328,7 @@ export async function sendOrderCreatedEmails({
       <p><strong>Order:</strong> ${safeOrderNumber}</p>
       <p><strong>Email:</strong> ${escapeHtml(customerEmail)}</p>
       <p><strong>Total:</strong> ${escapeHtml(totalLabel)}</p>
-      <p><strong>Payment:</strong> ${escapeHtml(paymentMethod.replaceAll("_", " "))}</p>
+      <p><strong>Payment:</strong> ${escapeHtml(formatPaymentMethod(paymentMethod))}</p>
       <table style="width:100%;border-collapse:collapse"><tbody>${itemRows}</tbody></table>
       <a href="https://ingamepin.com/admin/orders" style="display:inline-block;margin-top:20px;background:#2563eb;color:white;text-decoration:none;padding:12px 18px;border-radius:9px;font-weight:700">Open admin orders</a>
     </div>

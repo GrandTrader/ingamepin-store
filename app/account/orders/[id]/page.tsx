@@ -6,6 +6,7 @@ import DeliveredCodesDownloadButton from "@/components/DeliveredCodesDownloadBut
 import VerifiedPurchaseReview from "@/components/VerifiedPurchaseReview";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllDeliveredCodes } from "@/lib/delivered-codes";
+import { formatPaymentMethod } from "@/lib/payment-method-label";
 import {
   customerStatusClass,
   formatCustomerDate,
@@ -148,7 +149,7 @@ export default async function CustomerOrderReceiptPage({
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="Order total" value={formatCustomerMoney(order.total, order.currency)} />
-        <SummaryCard label="Payment method" value={payment?.method?.replaceAll("_", " ") ?? "—"} />
+        <SummaryCard label="Payment method" value={formatPaymentMethod(payment?.method)} />
         <SummaryCard label="Payment status" value={payment?.status?.replaceAll("_", " ") ?? "PENDING"} />
         <SummaryCard
           label="Delivered"

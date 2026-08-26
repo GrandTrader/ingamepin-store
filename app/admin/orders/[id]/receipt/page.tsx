@@ -14,6 +14,7 @@ import {
 } from "../../actions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { formatPaymentMethod } from "@/lib/payment-method-label";
 
 export const dynamic = "force-dynamic";
 
@@ -333,7 +334,7 @@ export default async function OrderReceipt({
             <div className="rounded-2xl bg-slate-100 p-5">
               <p className="text-sm text-slate-500">Payment method</p>
               <p className="mt-2 font-black">
-                {payment?.method?.replaceAll("_", " ") ?? "—"}
+                {formatPaymentMethod(payment?.method)}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-100 p-5">

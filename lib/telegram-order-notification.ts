@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdminsByPush } from "@/lib/admin-push";
 import { notifySoldOutInstantOptions } from "@/lib/instant-stock-notification";
 import { isUnlimitedStock } from "@/lib/product-stock";
+import { formatPaymentMethod } from "@/lib/payment-method-label";
 
 type TelegramOrderItemRow = {
   product_id: string;
@@ -181,7 +182,7 @@ export async function notifyPaidOrderInTelegram(orderId: string) {
       `<b>Order:</b> ${escapeHtml(order.order_number)}`,
       `<b>Customer:</b> ${escapeHtml(order.customer_name || "Customer")}`,
       `<b>Email:</b> ${escapeHtml(order.customer_email)}`,
-      `<b>Payment:</b> ${escapeHtml(paymentResult.data?.method ?? "Unknown")}`,
+      `<b>Payment:</b> ${escapeHtml(formatPaymentMethod(paymentResult.data?.method ?? "Unknown"))}`,
       `<b>Total:</b> ${escapeHtml(formatMoney(order.total, order.currency))}`,
       `<b>Status:</b> ${escapeHtml(order.status)}`,
       "",
