@@ -58,6 +58,16 @@ export async function POST(request: Request) {
     const productId = positiveInteger(body.product_id);
     const requestedCount = positiveInteger(body.count);
     if (!productId || !requestedCount) return NextResponse.json({ error: "Invalid quantity request." }, { status: 400 });
+    const suppliedVariantIds = (body.options ?? []).map((option) => positiveInteger(option.user_data)).filter((value): value is number => value !== null);
+    if (suppliedVariantIds.length === 0) {
+      const mapped = await admin.from("product_options").select("id").eq("digiseller_product_id", productId).eq("is_active", true);
+      if (mapped.error || !mapped.data?.length) return NextResponse.json({ product_id: String(productId), count: 0, error: "Product is not connected." });
+      const counts = await Promise.all(mapped.data.map(async (option) => {
+        const stock = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("product_option_id", option.id).eq("status", "AVAILABLE");
+        return stock.error ? 0 : stock.count ?? 0;
+      }));
+      return NextResponse.json({ product_id: String(productId), count: Math.min(...counts), error: "" });
+    }
     const option = await resolveWebsiteOption(admin, productId, body.options);
     if (option.error || !option.data) return NextResponse.json({ product_id: String(productId), count: 0, error: "Product is not connected." });
     const stock = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("product_option_id", option.data.id).eq("status", "AVAILABLE");
