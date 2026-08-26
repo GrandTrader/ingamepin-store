@@ -16,6 +16,8 @@ type SupplierRequest = {
   options?: Array<{ id?: string | number; user_data?: string | number }>;
 };
 
+const emptyTestResponse = { id: "", inv: 0, goods: "", product_id: "", count: 0, error: "" };
+
 function safeEqualHex(received: string, expected: string) {
   if (!/^[a-f\d]+$/i.test(received) || received.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(received.toLowerCase()), Buffer.from(expected));
@@ -44,10 +46,10 @@ export async function POST(request: Request) {
   try {
     body = await request.json() as SupplierRequest;
   } catch {
-    return NextResponse.json({ id: "", inv: 0, goods: "", error: "" });
+    return NextResponse.json(emptyTestResponse);
   }
 
-  if (Object.keys(body).length === 0) return NextResponse.json({ id: "", inv: 0, goods: "", error: "" });
+  if (Object.keys(body).length === 0) return NextResponse.json(emptyTestResponse);
 
   const admin = createAdminClient();
   const signature = String(body.sign ?? "").trim();
@@ -87,5 +89,5 @@ export async function POST(request: Request) {
 }
 
 export function GET() {
-  return NextResponse.json({ id: "", inv: 0, goods: "", error: "" });
+  return NextResponse.json(emptyTestResponse);
 }
