@@ -78,8 +78,10 @@ export async function POST(request: Request) {
   const productId = positiveInteger(body.id);
   const invoiceId = positiveInteger(body.inv);
   if (!productId || !invoiceId) return NextResponse.json({ error: "Invalid delivery request." }, { status: 400 });
-  const expected = createHash("md5").update(`${productId}:${invoiceId}:${requiredSecret("DIGISELLER_SUPPLIER_SECRET")}`).digest("hex");
-  if (!safeEqualHex(signature, expected)) return NextResponse.json({ id: String(productId), inv: invoiceId, error: "Invalid signature." }, { status: 401 });
+  const deliverySigningKeys = [process.env.DIGISELLER_SUPPLIER_SECRET, process.env.DIGISELLER_API_KEY].map((value) => value?.trim()).filter((value): value is string => Boolean(value));
+  if (!deliverySigningKeys.length) requiredSecret("DIGISELLER_SUPPLIER_SECRET");
+  const signatureIsValid = deliverySigningKeys.some((key) => safeEqualHex(signature, createHash("md5").update(`${productId}:${invoiceId}:${key}`).digest("hex")));
+  if (!signatureIsValid) return NextResponse.json({ id: String(productId), inv: invoiceId, error: "Invalid signature." }, { status: 401 });
 
   const option = await resolveWebsiteOption(admin, productId, body.options);
   if (option.error || !option.data) return NextResponse.json({ id: String(productId), inv: invoiceId, error: "Product denomination is not connected." });
