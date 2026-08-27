@@ -508,19 +508,22 @@ html[data-store-theme] :where(button, [role="button"]):disabled {
 }
 
 /* Action buttons retain their intended foreground in the light theme. */
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-slate-950"],
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-slate-900"],
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-blue-"],
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-indigo-"],
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-emerald-"],
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-red-"] {
+html[data-store-theme="light"] :is(a, button, [role="button"]):is(
+  [class~="bg-slate-950"], [class~="bg-slate-900"], [class~="bg-slate-800"],
+  [class~="bg-blue-500"], [class~="bg-blue-600"], [class~="bg-blue-700"], [class~="bg-blue-800"], [class~="bg-blue-900"],
+  [class~="bg-indigo-500"], [class~="bg-indigo-600"], [class~="bg-indigo-700"], [class~="bg-indigo-800"], [class~="bg-indigo-900"],
+  [class~="bg-emerald-500"], [class~="bg-emerald-600"], [class~="bg-emerald-700"], [class~="bg-emerald-800"], [class~="bg-emerald-900"],
+  [class~="bg-red-500"], [class~="bg-red-600"], [class~="bg-red-700"], [class~="bg-red-800"], [class~="bg-red-900"]
+) {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
 
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-cyan-"],
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-amber-"],
-html[data-store-theme="light"] :is(a, button, [role="button"])[class*="bg-yellow-"] {
+html[data-store-theme="light"] :is(a, button, [role="button"]):is(
+  [class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-cyan-500"],
+  [class~="bg-amber-300"], [class~="bg-amber-400"], [class~="bg-amber-500"],
+  [class~="bg-yellow-300"], [class~="bg-yellow-400"], [class~="bg-yellow-500"]
+) {
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
 }
