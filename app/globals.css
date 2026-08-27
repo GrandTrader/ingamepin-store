@@ -519,6 +519,29 @@ html[data-store-theme="light"] :is(a, button, [role="button"]):is(
   -webkit-text-fill-color: #ffffff !important;
 }
 
+/* Verified purchase review action must remain legible in both themes. */
+.review-submit-button,
+html[data-store-theme="light"] button.review-submit-button {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.review-submit-button:not(:disabled):hover,
+html[data-store-theme="light"] button.review-submit-button:not(:disabled):hover {
+  background-color: #1d4ed8 !important;
+}
+
+.review-submit-button:disabled,
+html[data-store-theme="light"] button.review-submit-button:disabled {
+  background-color: #cbd5e1 !important;
+  border-color: #94a3b8 !important;
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+  opacity: 1 !important;
+}
+
 html[data-store-theme="light"] :is(a, button, [role="button"]):is(
   [class~="bg-cyan-300"], [class~="bg-cyan-400"], [class~="bg-cyan-500"],
   [class~="bg-amber-300"], [class~="bg-amber-400"], [class~="bg-amber-500"],

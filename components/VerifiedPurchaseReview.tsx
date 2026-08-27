@@ -57,7 +57,7 @@ export default function VerifiedPurchaseReview(props: Props) {
           </div>
           <textarea name="comment" maxLength={1000} rows={3} placeholder="Optional comment about your purchase" className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-cyan-500" />
           {message && <p className="mt-3 text-sm font-bold text-red-600">{message}</p>}
-          <button type="submit" disabled={!sentiment || loading} className="mt-4 rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{loading ? "Submitting..." : "Submit review"}</button>
+          <button type="submit" disabled={!sentiment || loading} className="review-submit-button mt-4 rounded-xl border px-5 py-3 font-black shadow-sm transition">{loading ? "Submitting..." : "Submit review"}</button>
         </form>
       )}
     </section>
