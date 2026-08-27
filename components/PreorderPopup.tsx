@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useStorePreferences } from "./StorePreferences";
 
@@ -86,6 +87,15 @@ export default function PreorderPopup({
     };
   }, [popup.launchDate]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
   function closePopup() {
     sessionStorage.setItem(
       "preorder-popup-closed",
@@ -98,7 +108,7 @@ export default function PreorderPopup({
     return null;
   }
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -192,7 +202,8 @@ export default function PreorderPopup({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
