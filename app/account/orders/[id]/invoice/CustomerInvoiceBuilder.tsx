@@ -318,8 +318,8 @@ function CustomerInvoiceDocument({
               <p className="mt-1 text-xs text-slate-600">
                 Issued {formatDate(order.paidAt || order.createdAt)}
               </p>
-              <span className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
-                PAID
+              <span className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                {payment.status.replaceAll("_", " ")}
               </span>
             </div>
           </div>

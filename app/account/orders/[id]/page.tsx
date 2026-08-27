@@ -144,13 +144,21 @@ export default async function CustomerOrderReceiptPage({
           </p>
         </div>
 
-        <span
-          className={`w-fit rounded-full px-3 py-1.5 text-xs font-black ${customerStatusClass(
-            order.status,
-          )}`}
-        >
-          {displayStatus(order.status)}
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            className={`w-fit rounded-full px-3 py-1.5 text-xs font-black ${customerStatusClass(
+              order.status,
+            )}`}
+          >
+            {displayStatus(order.status)}
+          </span>
+          <Link
+            href={`/account/orders/${order.id}/invoice`}
+            className="inline-flex rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
+          >
+            Generate Invoice
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

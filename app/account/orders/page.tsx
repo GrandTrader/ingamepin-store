@@ -90,12 +90,6 @@ export default async function CustomerOrdersPage({
               </thead>
               <tbody className="divide-y">
                 {orders.map((order) => {
-                  const canGenerateInvoice = [
-                    "PAID",
-                    "PROCESSING",
-                    "DELIVERED",
-                  ].includes(order.status);
-
                   return (
                     <tr key={order.id}>
                       <td className="px-5 py-5 font-bold">
@@ -133,18 +127,12 @@ export default async function CustomerOrdersPage({
                         {formatCustomerDate(order.created_at)}
                       </td>
                       <td className="px-5 py-5 text-right">
-                        {canGenerateInvoice ? (
-                          <Link
-                            href={`/account/orders/${order.id}/invoice`}
-                            className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"
-                          >
-                            Generate Invoice
-                          </Link>
-                        ) : (
-                          <span className="text-xs text-slate-400">
-                            Available after payment
-                          </span>
-                        )}
+                        <Link
+                          href={`/account/orders/${order.id}/invoice`}
+                          className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"
+                        >
+                          Generate Invoice
+                        </Link>
                       </td>
                     </tr>
                   );

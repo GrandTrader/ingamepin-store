@@ -86,13 +86,6 @@ export default async function CustomerInvoicePage({
   }
 
   const order = orderResult.data;
-  if (!["PAID", "PROCESSING", "DELIVERED"].includes(order.status)) {
-    redirect(
-      `/account/orders?error=${encodeURIComponent(
-        "An invoice becomes available after payment is verified.",
-      )}`,
-    );
-  }
 
   const displayName =
     String(user.user_metadata?.full_name ?? "").trim() ||
@@ -132,7 +125,7 @@ export default async function CustomerInvoicePage({
       }}
       payment={{
         method: payment?.method ?? "Recorded payment",
-        status: payment?.status ?? "VERIFIED",
+        status: payment?.status ?? "PENDING",
         transactionId:
           payment?.transaction_id || payment?.gateway_payment_id || "",
         verifiedAt: payment?.verified_at ?? order.paid_at,
