@@ -39,8 +39,13 @@ type Payment = {
 
 type BillingDetails = {
   fullName: string;
+  companyName: string;
   country: string;
-  address: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
   taxpayerId: string;
 };
 
@@ -95,8 +100,13 @@ export default function CustomerInvoiceBuilder({
   async function generateInvoice(formData: FormData) {
     const nextBilling = {
       fullName: String(formData.get("full_name") ?? "").trim(),
+      companyName: String(formData.get("company_name") ?? "").trim(),
       country: String(formData.get("country") ?? "").trim(),
-      address: String(formData.get("address") ?? "").trim(),
+      addressLine1: String(formData.get("address_line_1") ?? "").trim(),
+      addressLine2: String(formData.get("address_line_2") ?? "").trim(),
+      city: String(formData.get("city") ?? "").trim(),
+      state: String(formData.get("state") ?? "").trim(),
+      postalCode: String(formData.get("postal_code") ?? "").trim(),
       taxpayerId: String(formData.get("taxpayer_id") ?? "").trim(),
     };
     setBilling(nextBilling);
@@ -146,6 +156,16 @@ export default function CustomerInvoiceBuilder({
               </label>
 
               <label>
+                <span className="text-sm font-bold">Company name (optional)</span>
+                <input
+                  name="company_name"
+                  maxLength={150}
+                  defaultValue={defaultBilling.companyName}
+                  className={inputClass}
+                />
+              </label>
+
+              <label>
                 <span className="text-sm font-bold">Country</span>
                 <select name="country" required defaultValue={defaultBilling.country} className={inputClass}>
                   <option value="" disabled>
@@ -159,21 +179,40 @@ export default function CustomerInvoiceBuilder({
                 </select>
               </label>
 
-              <label className="sm:col-span-2">
-                <span className="text-sm font-bold">Complete billing address</span>
-                <textarea
-                  name="address"
+              <label>
+                <span className="text-sm font-bold">Address line 1</span>
+                <input
+                  name="address_line_1"
                   required
-                  minLength={10}
-                  maxLength={500}
-                  rows={4}
-                  placeholder="House/building, street, city, state, postal code"
-                  defaultValue={defaultBilling.address}
+                  minLength={3}
+                  maxLength={200}
+                  placeholder="House/building and street"
+                  defaultValue={defaultBilling.addressLine1}
                   className={inputClass}
                 />
               </label>
 
-              <label className="sm:col-span-2">
+              <label>
+                <span className="text-sm font-bold">Address line 2 (optional)</span>
+                <input name="address_line_2" maxLength={200} defaultValue={defaultBilling.addressLine2} className={inputClass} />
+              </label>
+
+              <label>
+                <span className="text-sm font-bold">City</span>
+                <input name="city" required maxLength={100} defaultValue={defaultBilling.city} className={inputClass} />
+              </label>
+
+              <label>
+                <span className="text-sm font-bold">State / Province</span>
+                <input name="state" required maxLength={100} defaultValue={defaultBilling.state} className={inputClass} />
+              </label>
+
+              <label>
+                <span className="text-sm font-bold">Postal / ZIP code</span>
+                <input name="postal_code" required maxLength={30} defaultValue={defaultBilling.postalCode} className={inputClass} />
+              </label>
+
+              <label>
                 <span className="text-sm font-bold">
                   Taxpayer Identification Number (optional)
                 </span>
@@ -346,6 +385,7 @@ function CustomerInvoiceDocument({
                 Billed to
               </p>
               <p className="mt-2 text-base font-black">{billing.fullName}</p>
+              {billing.companyName && <p className="mt-1 text-sm font-semibold text-slate-700">{billing.companyName}</p>}
               <p className="mt-1 text-sm text-slate-600">{order.customerEmail}</p>
               {billing.taxpayerId && (
                 <p className="mt-1 text-sm font-semibold text-slate-600">
@@ -353,9 +393,9 @@ function CustomerInvoiceDocument({
                 </p>
               )}
               <p className="mt-1 whitespace-pre-line text-sm leading-5 text-slate-600">
-                {billing.address}
-                {"\n"}
-                {billing.country}
+                {[billing.addressLine1, billing.addressLine2, `${billing.city}, ${billing.state} ${billing.postalCode}`.trim(), billing.country]
+                  .filter(Boolean)
+                  .join("\n")}
               </p>
             </div>
 

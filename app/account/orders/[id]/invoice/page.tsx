@@ -182,8 +182,13 @@ export default async function CustomerInvoicePage({
       defaultCustomerName={displayName}
       defaultBilling={{
         fullName: String(user.user_metadata?.billing_full_name ?? displayName),
+        companyName: String(user.user_metadata?.billing_company_name ?? ""),
         country: String(user.user_metadata?.billing_country ?? ""),
-        address: String(user.user_metadata?.billing_address ?? ""),
+        addressLine1: String(user.user_metadata?.billing_address_line_1 ?? user.user_metadata?.billing_address ?? ""),
+        addressLine2: String(user.user_metadata?.billing_address_line_2 ?? ""),
+        city: String(user.user_metadata?.billing_city ?? ""),
+        state: String(user.user_metadata?.billing_state ?? ""),
+        postalCode: String(user.user_metadata?.billing_postal_code ?? ""),
         taxpayerId: String(user.user_metadata?.billing_taxpayer_id ?? ""),
       }}
     />
