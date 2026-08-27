@@ -70,7 +70,7 @@ export default function CustomerDiscountManager({ customerId, products, discount
       <AuthSubmitButton
         label="Save customer discounts"
         pendingLabel="Saving customer discounts..."
-        className="mt-5 rounded-xl bg-slate-950 px-5 py-3 font-black text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-5 rounded-xl border border-blue-700 bg-blue-600 px-5 py-3 font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
       />
     </form>
   );
