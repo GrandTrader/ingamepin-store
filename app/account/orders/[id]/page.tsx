@@ -152,12 +152,14 @@ export default async function CustomerOrderReceiptPage({
           >
             {displayStatus(order.status)}
           </span>
-          <Link
-            href={`/account/orders/${order.id}/invoice`}
-            className="inline-flex rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
-          >
-            Invoice for Full Order
-          </Link>
+          {order.status === "DELIVERED" && remainingCodeCount === 0 && (
+            <Link
+              href={`/account/orders/${order.id}/invoice`}
+              className="inline-flex rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
+            >
+              Invoice for Full Order
+            </Link>
+          )}
         </div>
       </div>
 
@@ -181,7 +183,9 @@ export default async function CustomerOrderReceiptPage({
         <h2 className="text-xl font-black">Order items</h2>
 
         <div className="mt-4 divide-y divide-slate-200">
-          {items.map((item) => (
+          {items.map((item) => {
+            const itemDelivered = (codesByItem.get(item.id)?.length ?? 0) >= item.quantity;
+            return (
             <article
               key={item.id}
               className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
@@ -201,15 +205,18 @@ export default async function CustomerOrderReceiptPage({
                 <p className="font-black text-slate-900">
                   {formatCustomerMoney(item.total_price, order.currency)}
                 </p>
-                <Link
-                  href={`/account/orders/${order.id}/invoice?itemId=${encodeURIComponent(item.id)}`}
-                  className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"
-                >
-                  Invoice for This Product
-                </Link>
+                {itemDelivered && (
+                  <Link
+                    href={`/account/orders/${order.id}/invoice?itemId=${encodeURIComponent(item.id)}`}
+                    className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"
+                  >
+                    Invoice for This Product
+                  </Link>
+                )}
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       </section>
 

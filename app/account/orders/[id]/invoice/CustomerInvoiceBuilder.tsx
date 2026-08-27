@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
+import { saveCustomerInvoiceDetails } from "./actions";
 
 type InvoiceItem = {
   id: string;
@@ -48,6 +49,7 @@ type CustomerInvoiceBuilderProps = {
   payment: Payment;
   countryNames: string[];
   defaultCustomerName: string;
+  defaultBilling: BillingDetails;
 };
 
 const inputClass =
@@ -86,16 +88,19 @@ export default function CustomerInvoiceBuilder({
   payment,
   countryNames,
   defaultCustomerName,
+  defaultBilling,
 }: CustomerInvoiceBuilderProps) {
   const [billing, setBilling] = useState<BillingDetails | null>(null);
 
-  function generateInvoice(formData: FormData) {
-    setBilling({
+  async function generateInvoice(formData: FormData) {
+    const nextBilling = {
       fullName: String(formData.get("full_name") ?? "").trim(),
       country: String(formData.get("country") ?? "").trim(),
       address: String(formData.get("address") ?? "").trim(),
       taxpayerId: String(formData.get("taxpayer_id") ?? "").trim(),
-    });
+    };
+    setBilling(nextBilling);
+    await saveCustomerInvoiceDetails(nextBilling);
   }
 
   return (
@@ -135,14 +140,14 @@ export default function CustomerInvoiceBuilder({
                   required
                   minLength={2}
                   maxLength={150}
-                  defaultValue={defaultCustomerName}
+                  defaultValue={defaultBilling.fullName || defaultCustomerName}
                   className={inputClass}
                 />
               </label>
 
               <label>
                 <span className="text-sm font-bold">Country</span>
-                <select name="country" required defaultValue="" className={inputClass}>
+                <select name="country" required defaultValue={defaultBilling.country} className={inputClass}>
                   <option value="" disabled>
                     Select country
                   </option>
@@ -163,6 +168,7 @@ export default function CustomerInvoiceBuilder({
                   maxLength={500}
                   rows={4}
                   placeholder="House/building, street, city, state, postal code"
+                  defaultValue={defaultBilling.address}
                   className={inputClass}
                 />
               </label>
@@ -175,6 +181,7 @@ export default function CustomerInvoiceBuilder({
                   name="taxpayer_id"
                   maxLength={100}
                   placeholder="Tax ID / TIN"
+                  defaultValue={defaultBilling.taxpayerId}
                   className={inputClass}
                 />
               </label>

@@ -5,6 +5,7 @@ import englishCountries from "i18n-iso-countries/langs/en.json";
 import CustomerInvoiceBuilder from "./CustomerInvoiceBuilder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getAllDeliveredCodes } from "@/lib/delivered-codes";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,27 @@ export default async function CustomerInvoicePage({
     notFound();
   }
 
+  const deliveredCodes = await getAllDeliveredCodes(
+    allItems.map((item) => item.id),
+  );
+  const deliveredCountByItem = new Map<string, number>();
+  for (const code of deliveredCodes) {
+    if (!code.order_item_id) continue;
+    deliveredCountByItem.set(
+      code.order_item_id,
+      (deliveredCountByItem.get(code.order_item_id) ?? 0) + 1,
+    );
+  }
+  const itemIsDelivered = (item: OrderItem) =>
+    (deliveredCountByItem.get(item.id) ?? 0) >= item.quantity;
+
+  if (
+    (selectedItemIndex >= 0 && !itemIsDelivered(allItems[selectedItemIndex])) ||
+    (selectedItemIndex < 0 && !allItems.every(itemIsDelivered))
+  ) {
+    notFound();
+  }
+
   const invoiceItems = selectedItemIndex >= 0
     ? [allItems[selectedItemIndex]]
     : allItems;
@@ -158,6 +180,12 @@ export default async function CustomerInvoicePage({
       }}
       countryNames={countryNames}
       defaultCustomerName={displayName}
+      defaultBilling={{
+        fullName: String(user.user_metadata?.billing_full_name ?? displayName),
+        country: String(user.user_metadata?.billing_country ?? ""),
+        address: String(user.user_metadata?.billing_address ?? ""),
+        taxpayerId: String(user.user_metadata?.billing_taxpayer_id ?? ""),
+      }}
     />
   );
 }
