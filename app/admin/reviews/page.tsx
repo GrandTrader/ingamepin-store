@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -138,7 +139,7 @@ export default async function AdminReviewsPage({
                         )}
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
-                        Order {orderNumbers.get(review.order_id) ?? review.order_id} · {review.customer_email}
+                        Order <Link href={`/admin/orders/${review.order_id}/receipt`} className="font-bold text-cyan-600 underline underline-offset-2">{orderNumbers.get(review.order_id) ?? review.order_id}</Link> · {review.customer_email}
                       </p>
                       {review.comment ? (
                         <p className="mt-4 whitespace-pre-line text-sm leading-6 text-slate-700">

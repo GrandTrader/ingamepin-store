@@ -63,7 +63,7 @@ export default async function CustomerWalletPage({
       .order("created_at", { ascending: false })
       .limit(10),
     createAdminClient().from("order_item_refunds")
-      .select("id, quantity, amount, currency, status, reason, created_at, orders(order_number), order_items(product_name, option_name)")
+      .select("id, quantity, amount, currency, status, reason, created_at, orders(id, order_number), order_items(product_name, option_name)")
       .eq("customer_email", user.email!.toLowerCase())
       .order("created_at", { ascending: false }),
   ]);
@@ -141,7 +141,7 @@ export default async function CustomerWalletPage({
               const order = Array.isArray(refund.orders) ? refund.orders[0] : refund.orders;
               const item = Array.isArray(refund.order_items) ? refund.order_items[0] : refund.order_items;
               return <article key={refund.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 p-5 last:border-b-0">
-                <div><p className="font-black">{refund.currency} {Number(refund.amount).toFixed(2)} · {item?.option_name ?? item?.product_name ?? "Product refund"}</p><p className="mt-1 text-xs text-slate-500">Order {order?.order_number ?? ""} · Quantity {refund.quantity} · {formatDate(refund.created_at)}</p><p className="mt-2 text-sm text-slate-600">{refund.reason}</p></div>
+                <div><p className="font-black">{refund.currency} {Number(refund.amount).toFixed(2)} · {item?.option_name ?? item?.product_name ?? "Product refund"}</p><p className="mt-1 text-xs text-slate-500">Order {order ? <Link href={`/account/orders/${order.id}`} className="font-bold text-cyan-700 underline underline-offset-2">{order.order_number}</Link> : ""} · Quantity {refund.quantity} · {formatDate(refund.created_at)}</p><p className="mt-2 text-sm text-slate-600">{refund.reason}</p></div>
                 {refund.status === "PENDING_CLAIM" ? <form action={claimWalletRefund}><input type="hidden" name="refund_id" value={refund.id} /><button className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500">Claim to wallet</button></form> : <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{refund.status.replaceAll("_", " ")}</span>}
               </article>;
             })}
