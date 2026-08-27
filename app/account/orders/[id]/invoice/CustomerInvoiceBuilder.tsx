@@ -252,7 +252,7 @@ export default function CustomerInvoiceBuilder({
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="rounded-xl bg-slate-950 px-6 py-3 font-black text-white hover:bg-cyan-600"
+                className="rounded-xl border border-blue-700 bg-blue-600 px-6 py-3 font-black text-white shadow-sm transition hover:bg-blue-700"
               >
                 Print / Save PDF
               </button>
