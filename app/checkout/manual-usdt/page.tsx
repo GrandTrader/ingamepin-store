@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { useStorePreferences } from "@/components/StorePreferences";
 import { MANUAL_USDT_NETWORKS, type ManualUsdtNetwork } from "@/lib/manual-usdt";
+import { createClient } from "@/lib/supabase/client";
 
 type PendingOrder = {
   id: string;
@@ -25,6 +26,7 @@ export default function ManualUsdtPage() {
   const [submitted, setSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [network, setNetwork] = useState<ManualUsdtNetwork>("BEP20");
+  const [purchaseUrl, setPurchaseUrl] = useState("/checkout/success");
   const selectedNetwork = MANUAL_USDT_NETWORKS.find((item) => item.id === network) ?? MANUAL_USDT_NETWORKS[0];
 
   useEffect(() => {
@@ -44,6 +46,17 @@ export default function ManualUsdtPage() {
       setOrder(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (!order?.databaseId) return;
+    void createClient().auth.getUser().then(({ data }) => {
+      setPurchaseUrl(
+        data.user
+          ? `/account/orders/${encodeURIComponent(order.databaseId!)}`
+          : "/checkout/success",
+      );
+    });
+  }, [order]);
 
   useEffect(() => {
     if ("qrImage" in selectedNetwork) {
@@ -181,7 +194,7 @@ export default function ManualUsdtPage() {
           <div className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-5 text-center">
             <p className="font-black text-emerald-200">Payment submitted for verification.</p>
             <p className="mt-2 text-sm text-slate-300">Your order will be processed after an administrator confirms the transaction.</p>
-            <Link href="/purchases" className="mt-4 inline-flex rounded-xl bg-emerald-400 px-5 py-3 font-black text-slate-950">View purchases</Link>
+            <Link href={purchaseUrl} className="mt-4 inline-flex rounded-xl bg-emerald-400 px-5 py-3 font-black text-slate-950">View Purchase</Link>
           </div>
         ) : (
           <form onSubmit={submitPayment} className="mt-4">

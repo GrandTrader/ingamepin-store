@@ -10,6 +10,7 @@ import {
   getCustomerOrders,
 } from "@/lib/customer-account-data";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,15 @@ export default async function CustomerOrdersPage({
 
   const displayName = customerDisplayName(user);
   const orders = await getCustomerOrders(user.email);
+  const invoiceResult = orders.length > 0
+    ? await createAdminClient()
+        .from("saved_invoices")
+        .select("order_id")
+        .eq("source", "CUSTOMER_ORDER")
+        .is("order_item_id", null)
+        .in("order_id", orders.map((order) => order.id))
+    : { data: [] as { order_id: string | null }[] };
+  const invoicedOrderIds = new Set((invoiceResult.data ?? []).map((invoice) => invoice.order_id));
 
   if (orderId && orders.some((order) => order.id === orderId)) {
     redirect(`/account/orders/${encodeURIComponent(orderId)}`);
@@ -132,7 +142,7 @@ export default async function CustomerOrdersPage({
                             href={`/account/orders/${order.id}/invoice`}
                             className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"
                           >
-                            Full Order Invoice
+                            {invoicedOrderIds.has(order.id) ? "View Invoice" : "Generate Invoice"}
                           </Link>
                         ) : null}
                       </td>

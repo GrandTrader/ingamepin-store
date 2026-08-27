@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
-import { saveCustomerInvoiceDetails } from "./actions";
+import { saveCustomerInvoice } from "./actions";
 
 type InvoiceItem = {
   id: string;
@@ -17,6 +17,7 @@ type InvoiceItem = {
 
 type InvoiceOrder = {
   id: string;
+  orderItemId: string | null;
   orderNumber: string;
   invoiceNumber: string;
   customerEmail: string;
@@ -55,6 +56,7 @@ type CustomerInvoiceBuilderProps = {
   countryNames: string[];
   defaultCustomerName: string;
   defaultBilling: BillingDetails;
+  existingBilling?: BillingDetails | null;
 };
 
 const inputClass =
@@ -94,8 +96,10 @@ export default function CustomerInvoiceBuilder({
   countryNames,
   defaultCustomerName,
   defaultBilling,
+  existingBilling = null,
 }: CustomerInvoiceBuilderProps) {
-  const [billing, setBilling] = useState<BillingDetails | null>(null);
+  const [billing, setBilling] = useState<BillingDetails | null>(existingBilling);
+  const [error, setError] = useState("");
 
   async function generateInvoice(formData: FormData) {
     const nextBilling = {
@@ -109,8 +113,17 @@ export default function CustomerInvoiceBuilder({
       postalCode: String(formData.get("postal_code") ?? "").trim(),
       taxpayerId: String(formData.get("taxpayer_id") ?? "").trim(),
     };
+    setError("");
+    const result = await saveCustomerInvoice(
+      order.id,
+      order.orderItemId,
+      nextBilling,
+    );
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
     setBilling(nextBilling);
-    await saveCustomerInvoiceDetails(nextBilling);
   }
 
   return (
@@ -129,7 +142,7 @@ export default function CustomerInvoiceBuilder({
               Customer invoice
             </p>
             <h1 className="mt-2 text-3xl font-black">
-              {order.items.length === 1
+              {billing ? "View invoice" : order.items.length === 1
                 ? "Generate product invoice"
                 : "Generate full order invoice"}
             </h1>
@@ -138,7 +151,7 @@ export default function CustomerInvoiceBuilder({
             </p>
           </header>
 
-          <form
+          {!billing && <form
             action={generateInvoice}
             className="mt-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
           >
@@ -239,14 +252,15 @@ export default function CustomerInvoiceBuilder({
                 ? "Generate Product Invoice"
                 : "Generate Full Order Invoice"}
             </button>
-          </form>
+            {error && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
+          </form>}
 
           {billing && (
             <section className="mt-6 flex flex-col justify-between gap-4 rounded-2xl border border-cyan-200 bg-cyan-50 p-5 sm:flex-row sm:items-center">
               <div>
                 <h2 className="font-black text-cyan-950">Invoice ready</h2>
                 <p className="mt-1 text-sm text-cyan-700">
-                  Review the invoice below before saving it.
+                  This invoice is saved permanently and cannot be generated again.
                 </p>
               </div>
               <button

@@ -89,6 +89,9 @@ export default async function CustomerInvoicePage({
   }
 
   const order = orderResult.data;
+  if (order.status !== "DELIVERED") {
+    notFound();
+  }
   const allItems = (order.order_items ?? []) as OrderItem[];
   const selectedItemIndex = itemId
     ? allItems.findIndex((item) => item.id === itemId)
@@ -140,11 +143,37 @@ export default async function CustomerInvoicePage({
     countries.getNames("en", { select: "official" }),
   ).sort((first, second) => first.localeCompare(second, "en"));
   const payment = paymentResult.data;
+  let existingInvoiceQuery = admin
+    .from("saved_invoices")
+    .select("invoice_data")
+    .eq("source", "CUSTOMER_ORDER")
+    .eq("order_id", order.id);
+  existingInvoiceQuery = selectedItemIndex >= 0
+    ? existingInvoiceQuery.eq("order_item_id", allItems[selectedItemIndex].id)
+    : existingInvoiceQuery.is("order_item_id", null);
+  const existingInvoiceResult = await existingInvoiceQuery.maybeSingle();
+  const existingInvoiceData = existingInvoiceResult.data?.invoice_data as
+    | { billing?: Record<string, unknown> }
+    | undefined;
+  const existingBilling = existingInvoiceData?.billing
+    ? {
+        fullName: String(existingInvoiceData.billing.fullName ?? ""),
+        companyName: String(existingInvoiceData.billing.companyName ?? ""),
+        country: String(existingInvoiceData.billing.country ?? ""),
+        addressLine1: String(existingInvoiceData.billing.addressLine1 ?? ""),
+        addressLine2: String(existingInvoiceData.billing.addressLine2 ?? ""),
+        city: String(existingInvoiceData.billing.city ?? ""),
+        state: String(existingInvoiceData.billing.state ?? ""),
+        postalCode: String(existingInvoiceData.billing.postalCode ?? ""),
+        taxpayerId: String(existingInvoiceData.billing.taxpayerId ?? ""),
+      }
+    : null;
 
   return (
     <CustomerInvoiceBuilder
       order={{
         id: order.id,
+        orderItemId: selectedItemIndex >= 0 ? allItems[selectedItemIndex].id : null,
         orderNumber: order.order_number,
         invoiceNumber: selectedItemIndex >= 0
           ? `${order.order_number}-${String(selectedItemIndex + 1).padStart(2, "0")}`
@@ -180,6 +209,7 @@ export default async function CustomerInvoicePage({
       }}
       countryNames={countryNames}
       defaultCustomerName={displayName}
+      existingBilling={existingBilling}
       defaultBilling={{
         fullName: String(user.user_metadata?.billing_full_name ?? displayName),
         companyName: String(user.user_metadata?.billing_company_name ?? ""),

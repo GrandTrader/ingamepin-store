@@ -95,6 +95,12 @@ export default async function CustomerOrderReceiptPage({
   const payment = paymentResult.data;
   const itemIds = items.map((item) => item.id);
   const deliveredCodes = await getAllDeliveredCodes(itemIds);
+  const invoiceResult = await admin
+    .from("saved_invoices")
+    .select("order_item_id")
+    .eq("source", "CUSTOMER_ORDER")
+    .eq("order_id", order.id);
+  const invoicedItemIds = new Set((invoiceResult.data ?? []).map((invoice) => invoice.order_item_id));
 
   const codesByItem = new Map<string, string[]>();
   for (const deliveredCode of deliveredCodes as DeliveredCode[]) {
@@ -157,7 +163,7 @@ export default async function CustomerOrderReceiptPage({
               href={`/account/orders/${order.id}/invoice`}
               className="inline-flex rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
             >
-              Invoice for Full Order
+              {invoicedItemIds.has(null) ? "View Full Order Invoice" : "Invoice for Full Order"}
             </Link>
           )}
         </div>
@@ -210,7 +216,7 @@ export default async function CustomerOrderReceiptPage({
                     href={`/account/orders/${order.id}/invoice?itemId=${encodeURIComponent(item.id)}`}
                     className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"
                   >
-                    Invoice for This Product
+                    {invoicedItemIds.has(item.id) ? "View Product Invoice" : "Invoice for This Product"}
                   </Link>
                 )}
               </div>
