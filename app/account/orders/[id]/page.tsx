@@ -115,6 +115,12 @@ export default async function CustomerOrderReceiptPage({
       codes: codesByItem.get(item.id) ?? [],
     }))
     .filter((item) => item.codes.length > 0);
+  const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
+  const deliveredCodeCount = downloadableItems.reduce(
+    (sum, item) => sum + item.codes.length,
+    0,
+  );
+  const remainingCodeCount = Math.max(totalUnits - deliveredCodeCount, 0);
 
   return (
     <CustomerAccountShell displayName={displayName}>
@@ -155,6 +161,12 @@ export default async function CustomerOrderReceiptPage({
           label="Delivered"
           value={order.delivered_at ? formatCustomerDate(order.delivered_at) : "Not delivered yet"}
         />
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <SummaryCard label="Ordered units" value={String(totalUnits)} />
+        <SummaryCard label="Delivered codes" value={String(deliveredCodeCount)} />
+        <SummaryCard label="Remaining delivery" value={String(remainingCodeCount)} />
       </div>
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
