@@ -17,6 +17,7 @@ type InvoiceItem = {
 type InvoiceOrder = {
   id: string;
   orderNumber: string;
+  invoiceNumber: string;
   customerEmail: string;
   currency: string;
   subtotal: number;
@@ -314,7 +315,7 @@ function CustomerInvoiceDocument({
               <p className="text-xs font-black uppercase tracking-[0.25em] text-blue-600">
                 Tax invoice
               </p>
-              <p className="mt-2 text-lg font-black">AG-{order.orderNumber}</p>
+              <p className="mt-2 text-lg font-black">AG-{order.invoiceNumber}</p>
               <p className="mt-1 text-xs text-slate-600">
                 Issued {formatDate(order.paidAt || order.createdAt)}
               </p>

@@ -12,6 +12,7 @@ countries.registerLocale(englishCountries);
 
 type CustomerInvoicePageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ itemId?: string }>;
 };
 
 type OrderItem = {
@@ -27,8 +28,9 @@ type OrderItem = {
 
 export default async function CustomerInvoicePage({
   params,
+  searchParams,
 }: CustomerInvoicePageProps) {
-  const { id } = await params;
+  const [{ id }, { itemId }] = await Promise.all([params, searchParams]);
   const supabase = await createClient();
   const {
     data: { user },
@@ -86,6 +88,27 @@ export default async function CustomerInvoicePage({
   }
 
   const order = orderResult.data;
+  const allItems = (order.order_items ?? []) as OrderItem[];
+  const selectedItemIndex = itemId
+    ? allItems.findIndex((item) => item.id === itemId)
+    : -1;
+
+  if (itemId && selectedItemIndex < 0) {
+    notFound();
+  }
+
+  const invoiceItems = selectedItemIndex >= 0
+    ? [allItems[selectedItemIndex]]
+    : allItems;
+  const invoiceSubtotal = invoiceItems.reduce(
+    (sum, item) => sum + Number(item.total_price),
+    0,
+  );
+  const orderSubtotal = Number(order.subtotal);
+  const invoiceDiscount = selectedItemIndex >= 0 && orderSubtotal > 0
+    ? Number(order.discount) * (invoiceSubtotal / orderSubtotal)
+    : Number(order.discount);
+  const invoiceTotal = Math.max(invoiceSubtotal - invoiceDiscount, 0);
 
   const displayName =
     String(user.user_metadata?.full_name ?? "").trim() ||
@@ -101,15 +124,18 @@ export default async function CustomerInvoicePage({
       order={{
         id: order.id,
         orderNumber: order.order_number,
+        invoiceNumber: selectedItemIndex >= 0
+          ? `${order.order_number}-${String(selectedItemIndex + 1).padStart(2, "0")}`
+          : order.order_number,
         customerEmail: order.customer_email,
         currency: order.currency,
-        subtotal: Number(order.subtotal),
-        discount: Number(order.discount),
-        total: Number(order.total),
+        subtotal: invoiceSubtotal,
+        discount: invoiceDiscount,
+        total: invoiceTotal,
         status: order.status,
         createdAt: order.created_at,
         paidAt: order.paid_at,
-        items: (order.order_items ?? []).map((item: OrderItem) => ({
+        items: invoiceItems.map((item: OrderItem) => ({
           id: item.id,
           productName: item.product_name,
           optionName:

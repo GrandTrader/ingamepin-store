@@ -197,9 +197,17 @@ export default async function CustomerOrderReceiptPage({
                 <p className="mt-1 text-xs text-slate-400">Quantity: {item.quantity}</p>
               </div>
 
-              <p className="font-black text-slate-900">
-                {formatCustomerMoney(item.total_price, order.currency)}
-              </p>
+              <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                <p className="font-black text-slate-900">
+                  {formatCustomerMoney(item.total_price, order.currency)}
+                </p>
+                <Link
+                  href={`/account/orders/${order.id}/invoice?itemId=${encodeURIComponent(item.id)}`}
+                  className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"
+                >
+                  Invoice for this product
+                </Link>
+              </div>
             </article>
           ))}
         </div>
