@@ -113,7 +113,11 @@ export default function CustomerInvoiceBuilder({
             <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-600">
               Customer invoice
             </p>
-            <h1 className="mt-2 text-3xl font-black">Generate invoice</h1>
+            <h1 className="mt-2 text-3xl font-black">
+              {order.items.length === 1
+                ? "Generate product invoice"
+                : "Generate full order invoice"}
+            </h1>
             <p className="mt-2 text-sm text-slate-500">
               Enter your billing information for order {order.orderNumber}.
             </p>
@@ -185,7 +189,9 @@ export default function CustomerInvoiceBuilder({
               type="submit"
               className="mt-6 rounded-xl bg-cyan-500 px-6 py-3 font-black text-slate-950 transition hover:bg-cyan-400"
             >
-              Generate Invoice
+              {order.items.length === 1
+                ? "Generate Product Invoice"
+                : "Generate Full Order Invoice"}
             </button>
           </form>
 

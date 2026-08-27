@@ -156,7 +156,7 @@ export default async function CustomerOrderReceiptPage({
             href={`/account/orders/${order.id}/invoice`}
             className="inline-flex rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
           >
-            Generate Invoice
+            Invoice for Full Order
           </Link>
         </div>
       </div>
@@ -205,7 +205,7 @@ export default async function CustomerOrderReceiptPage({
                   href={`/account/orders/${order.id}/invoice?itemId=${encodeURIComponent(item.id)}`}
                   className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"
                 >
-                  Invoice for this product
+                  Invoice for This Product
                 </Link>
               </div>
             </article>
