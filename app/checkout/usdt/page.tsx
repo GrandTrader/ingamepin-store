@@ -265,7 +265,7 @@ export default function DirectUsdtPaymentPage() {
                 <div className="rounded-2xl border border-white/10 bg-slate-950 p-4">
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Receiving address</p>
                   <p className="mt-2 break-all font-mono text-xs font-bold text-white">{invoice.address}</p>
-                  <button type="button" onClick={() => void copyValue("address", invoice.address)} className={`mt-3 rounded-lg px-3 py-2 text-xs font-black text-white transition ${copied === "address" ? "bg-emerald-600" : "bg-slate-800 hover:bg-slate-700"}`}>
+                  <button type="button" onClick={() => void copyValue("address", invoice.address)} className={`mt-3 rounded-lg border px-3 py-2 text-xs font-black text-white shadow-sm transition ${copied === "address" ? "border-emerald-700 bg-emerald-600 hover:bg-emerald-700" : "border-blue-700 bg-blue-600 hover:bg-blue-700"}`}>
                     {copied === "address" ? "✓ Copied" : "Copy address"}
                   </button>
                 </div>
@@ -286,7 +286,7 @@ export default function DirectUsdtPaymentPage() {
             <button
               type="button"
               onClick={() => void checkPayment()}
-              className="mt-3 w-full rounded-xl border border-white/15 bg-slate-950 px-5 py-3 font-black text-white transition hover:border-cyan-300 hover:text-cyan-300"
+              className="mt-3 w-full rounded-xl border border-blue-700 bg-blue-600 px-5 py-3 font-black text-white shadow-sm transition hover:bg-blue-700"
             >
               Check payment status
             </button>
