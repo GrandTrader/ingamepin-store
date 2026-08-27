@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
 
     const reviewResult = await admin.rpc("submit_verified_order_review", {
       p_order_id: order.id,
-      p_customer_id: signedInOwner && user ? user.id : null,
+      p_customer_id:
+        signedInOwner && user && order.customer_id === user.id ? user.id : null,
       p_customer_email: ownerEmail,
       p_sentiment: sentiment,
       p_comment: comment || null,
