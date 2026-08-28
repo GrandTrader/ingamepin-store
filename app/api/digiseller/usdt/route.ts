@@ -503,6 +503,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (
+      payment.status === "paid" &&
+      canSendDigisellerPaidStatus(payment.created_at)
+    ) {
+      try {
+        await notifyDigiseller({
+          invoiceId: payment.invoice_id,
+          amount: Number(payment.amount).toFixed(2),
+          currency: payment.currency,
+          status: "paid",
+        });
+        if (!payment.digiseller_notified_at) {
+          await admin
+            .from("digiseller_usdt_payments")
+            .update({
+              digiseller_notified_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("invoice_id", payment.invoice_id)
+            .is("digiseller_notified_at", null);
+        }
+      } catch {
+        // Still return the signed local status. DigiSeller will poll again,
+        // while the next poll safely retries only this paid invoice.
+      }
+    }
+
     const responseValues = {
       invoice_id: invoiceId,
       amount: Number(payment.amount).toFixed(2),

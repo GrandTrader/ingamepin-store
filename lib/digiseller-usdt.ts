@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 type SignableValue = string | number;
 
@@ -40,12 +40,61 @@ export function verifyDigiseller(
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
+async function getDigisellerInvoiceState(invoiceId: string) {
+  const sellerId = Number(process.env.DIGISELLER_SELLER_ID?.trim());
+  const apiKey = process.env.DIGISELLER_API_KEY?.trim();
+  if (!Number.isSafeInteger(sellerId) || sellerId <= 0 || !apiKey) {
+    throw new Error("DigiSeller API credentials are not configured.");
+  }
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const sign = createHash("sha256")
+    .update(`${apiKey}${timestamp}`)
+    .digest("hex");
+  const loginResponse = await fetch("https://api.digiseller.com/api/apilogin", {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ seller_id: sellerId, timestamp, sign }),
+    cache: "no-store",
+  });
+  const login = (await loginResponse.json().catch(() => null)) as {
+    retval?: number;
+    token?: string;
+    retdesc?: string;
+  } | null;
+  if (!loginResponse.ok || login?.retval !== 0 || !login.token) {
+    throw new Error(login?.retdesc || "DigiSeller status login failed.");
+  }
+
+  const statusResponse = await fetch(
+    `https://api.digiseller.com/api/purchase/info/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(login.token)}`,
+    { headers: { Accept: "application/json" }, cache: "no-store" },
+  );
+  const status = (await statusResponse.json().catch(() => null)) as {
+    retval?: number;
+    retdesc?: string;
+    content?: { invoice_state?: number };
+  } | null;
+  if (!statusResponse.ok || status?.retval !== 0) {
+    throw new Error(status?.retdesc || "DigiSeller status check failed.");
+  }
+  return Number(status.content?.invoice_state ?? 0);
+}
+
+export async function isDigisellerPaid(invoiceId: string) {
+  return (await getDigisellerInvoiceState(invoiceId)) === 3;
+}
+
 export async function notifyDigiseller(input: {
   invoiceId: string;
   amount: string;
   currency: string;
   status: "paid" | "wait" | "canceled" | "refunded" | "error";
 }) {
+  if (input.status === "paid" && (await isDigisellerPaid(input.invoiceId))) {
+    return "already-paid";
+  }
+
   const signed = {
     invoice_id: input.invoiceId,
     amount: input.amount,
@@ -95,6 +144,19 @@ export async function notifyDigiseller(input: {
       }
       throw error;
     }
+  }
+
+  if (input.status === "paid") {
+    // DigiSeller's callback can return HTTP 200 before its invoice state is
+    // actually updated. Only let callers mark the notification as complete
+    // after the authoritative purchase API reports a successful payment.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (await isDigisellerPaid(input.invoiceId)) return normalizedResponse;
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+    throw new Error("DigiSeller has not confirmed the paid status yet.");
   }
 
   return normalizedResponse;
