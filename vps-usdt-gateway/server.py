@@ -43,12 +43,12 @@ BSC_RPC_URLS = tuple(
 SOLANA_RPC_URLS = (
     "https://api.mainnet-beta.solana.com",
 )
-INVOICE_TTL_SECONDS = 30 * 60
+INVOICE_TTL_SECONDS = 60 * 60
 MAX_CALLBACK_ATTEMPTS = 100
 POLL_SECONDS = 3
 BSC_CONFIRMATIONS = 5
 BSC_RESCAN_BLOCKS = 50
-PAYMENT_GRACE_SECONDS = 5 * 60
+PAYMENT_GRACE_SECONDS = 0
 
 
 def load_env(path: Path) -> None:
@@ -600,58 +600,53 @@ def poll_bsc() -> None:
     if start > safe_latest:
         return
 
-    processed_blocks = 0
-    while start <= safe_latest and processed_blocks < 100:
-        block = rpc_call("eth_getBlockByNumber", [hex(start), True])
-        paid_at = int(block["timestamp"], 16)
-        for transaction in block.get("transactions", []):
-            if str(transaction.get("to", "")).lower() != BSC_USDT_CONTRACT:
+    # Read the token's Transfer events instead of decoding only the top-level
+    # transaction call. Exchange withdrawals can be routed through batching or
+    # helper contracts even though the final, canonical USDT Transfer event is
+    # identical to a direct wallet transfer.
+    end = min(safe_latest, start + 99)
+    padded_recipient = "0x" + ("0" * 24) + BEP20_WALLET[2:]
+    events = rpc_call(
+        "eth_getLogs",
+        [
+            {
+                "address": BSC_USDT_CONTRACT,
+                "fromBlock": hex(start),
+                "toBlock": hex(end),
+                "topics": [TRANSFER_TOPIC, None, padded_recipient],
+            }
+        ],
+    )
+    block_times: dict[int, int] = {}
+    for event in events:
+        try:
+            topics = event.get("topics") or []
+            if len(topics) < 3:
+                continue
+            raw_value = int(str(event.get("data", "0x0")), 16)
+            if raw_value <= 0 or raw_value % (10**12):
                 continue
 
-            input_data = str(transaction.get("input", "")).lower()
-            if input_data.startswith("0xa9059cbb") and len(input_data) >= 138:
-                recipient = "0x" + input_data[34:74]
-                raw_value = int(input_data[74:138], 16)
-            elif input_data.startswith("0x23b872dd") and len(input_data) >= 202:
-                recipient = "0x" + input_data[98:138]
-                raw_value = int(input_data[138:202], 16)
-            else:
-                continue
+            block_number = int(str(event["blockNumber"]), 16)
+            if block_number not in block_times:
+                block = rpc_call("eth_getBlockByNumber", [hex(block_number), False])
+                block_times[block_number] = int(block["timestamp"], 16)
 
-            if recipient != BEP20_WALLET or raw_value % (10**12):
-                continue
-
-            tx_hash = str(transaction.get("hash", ""))
-            receipt = rpc_call("eth_getTransactionReceipt", [tx_hash])
-            if not receipt or receipt.get("status") != "0x1":
-                continue
-
-            padded_recipient = "0x" + ("0" * 24) + BEP20_WALLET[2:]
-            matching_log = next(
-                (
-                    event
-                    for event in receipt.get("logs", [])
-                    if str(event.get("address", "")).lower() == BSC_USDT_CONTRACT
-                    and len(event.get("topics") or []) >= 3
-                    and str(event["topics"][0]).lower() == TRANSFER_TOPIC
-                    and str(event["topics"][2]).lower() == padded_recipient
-                    and int(str(event.get("data", "0x0")), 16) == raw_value
-                ),
-                None,
-            )
-            if not matching_log:
-                continue
-
+            sender_topic = str(topics[1]).lower()
+            payer_address = "0x" + sender_topic[-40:]
             mark_paid(
                 "BEP20",
                 raw_value // (10**12),
-                tx_hash,
-                str(transaction.get("from", "")).lower(),
-                paid_at,
+                str(event.get("transactionHash", "")),
+                payer_address,
+                block_times[block_number],
             )
-        set_state("last_bsc_block", str(start))
-        processed_blocks += 1
-        start += 1
+        except (KeyError, TypeError, ValueError):
+            LOGGER.warning("Ignored malformed BSC USDT transfer event: %r", event)
+
+    # Advance only after the complete confirmed range was processed. If any RPC
+    # request fails, the monitor retries the same range on its next cycle.
+    set_state("last_bsc_block", str(end))
 
 
 def pending_invoice_exists(network: str) -> bool:
