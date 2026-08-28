@@ -1,7 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-import { notifyDigiseller } from "@/lib/digiseller-usdt";
+import {
+  canSendDigisellerPaidStatus,
+  notifyDigiseller,
+} from "@/lib/digiseller-usdt";
 import { getUsdtInvoice, type UsdtInvoice } from "@/lib/usdt-gateway";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     const paymentResult = await admin
       .from("digiseller_usdt_payments")
-      .select("invoice_id, amount, currency, status, network, digiseller_notified_at")
+      .select("invoice_id, amount, currency, status, network, digiseller_notified_at, created_at")
       .eq("gateway_invoice_id", body.invoiceId)
       .maybeSingle();
     if (paymentResult.error || !paymentResult.data) {
@@ -96,7 +99,10 @@ export async function POST(request: NextRequest) {
 
     }
 
-    if (!payment.digiseller_notified_at) {
+    if (
+      !payment.digiseller_notified_at &&
+      canSendDigisellerPaidStatus(payment.created_at)
+    ) {
       await notifyDigiseller({
         invoiceId: payment.invoice_id,
         amount: Number(payment.amount).toFixed(2),

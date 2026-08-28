@@ -1,5 +1,6 @@
 ﻿import { notifyDigiseller } from "@/lib/digiseller-usdt";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { canSendDigisellerPaidStatus } from "@/lib/digiseller-usdt";
 
 export async function completeDigisellerBinancePayment(
   prepayId: string,
@@ -9,7 +10,7 @@ export async function completeDigisellerBinancePayment(
   const result = await admin
     .from("digiseller_usdt_payments")
     .select(
-      "invoice_id, amount, currency, status, network, digiseller_notified_at",
+      "invoice_id, amount, currency, status, network, digiseller_notified_at, created_at",
     )
     .eq("gateway_invoice_id", prepayId)
     .eq("network", "BINANCE_PAY")
@@ -33,7 +34,10 @@ export async function completeDigisellerBinancePayment(
     if (updateResult.error) throw updateResult.error;
   }
 
-  if (!payment.digiseller_notified_at) {
+  if (
+    !payment.digiseller_notified_at &&
+    canSendDigisellerPaidStatus(payment.created_at)
+  ) {
     await notifyDigiseller({
       invoiceId: payment.invoice_id,
       amount: Number(payment.amount).toFixed(2),

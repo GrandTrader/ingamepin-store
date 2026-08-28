@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  canSendDigisellerPaidStatus,
   notifyDigiseller,
   signDigiseller,
   verifyDigiseller,
@@ -110,7 +111,8 @@ export async function POST(request: NextRequest) {
   try {
     const form = new URLSearchParams(await request.text());
     const invoiceId = String(form.get("invoice_id") ?? "").trim();
-    const amount = money(String(form.get("amount") ?? ""));
+    const rawAmount = String(form.get("amount") ?? "").trim();
+    const amount = money(rawAmount);
     const currency = String(form.get("currency") ?? "").trim().toUpperCase();
     const paymentId = String(form.get("payment_id") ?? "").trim();
     const returnUrl = normalizeReturnUrl(String(form.get("return_url") ?? "").trim());
@@ -139,7 +141,7 @@ export async function POST(request: NextRequest) {
       !verifyDigiseller(
         {
           invoice_id: invoiceId,
-          amount,
+          amount: rawAmount,
           currency,
           payment_id: paymentId,
         },
@@ -363,9 +365,9 @@ export async function GET(request: NextRequest) {
   try {
     const invoiceId = request.nextUrl.searchParams.get("invoice_id")?.trim() ?? "";
     const sellerId = request.nextUrl.searchParams.get("seller_id")?.trim() ?? "";
-    const requestedAmount = money(
-      request.nextUrl.searchParams.get("amount") ?? "",
-    );
+    const rawRequestedAmount =
+      request.nextUrl.searchParams.get("amount")?.trim() ?? "";
+    const requestedAmount = money(rawRequestedAmount);
     const requestedCurrency =
       request.nextUrl.searchParams.get("currency")?.trim().toUpperCase() ?? "";
     const signature = request.nextUrl.searchParams.get("signature")?.trim() ?? "";
@@ -382,7 +384,7 @@ export async function GET(request: NextRequest) {
         !verifyDigiseller(
           {
             invoice_id: invoiceId,
-            amount: requestedAmount,
+            amount: rawRequestedAmount,
             currency: requestedCurrency,
             seller_id: sellerId,
           },
@@ -413,7 +415,7 @@ export async function GET(request: NextRequest) {
     const result = await admin
       .from("digiseller_usdt_payments")
       .select(
-        "invoice_id, gateway_invoice_id, public_token, amount, currency, status, return_url, network, digiseller_notified_at",
+        "invoice_id, gateway_invoice_id, public_token, amount, currency, status, return_url, network, digiseller_notified_at, created_at",
       )
       .eq("invoice_id", invoiceId)
       .maybeSingle();
@@ -437,7 +439,11 @@ export async function GET(request: NextRequest) {
       // Reconcile paid invoices during browser polling as a fallback for a
       // delayed gateway webhook. Digiseller can then release the order as
       // soon as the gateway reports the payment as paid.
-      if (invoice.status === "PAID" && !payment.digiseller_notified_at) {
+      if (
+        invoice.status === "PAID" &&
+        !payment.digiseller_notified_at &&
+        canSendDigisellerPaidStatus(payment.created_at)
+      ) {
         await notifyDigiseller({
           invoiceId: payment.invoice_id,
           amount: Number(payment.amount).toFixed(2),
@@ -484,7 +490,7 @@ export async function GET(request: NextRequest) {
       !verifyDigiseller(
         {
           invoice_id: invoiceId,
-          amount: requestedAmount,
+          amount: rawRequestedAmount,
           currency: requestedCurrency,
           seller_id: sellerId,
         },
@@ -501,7 +507,11 @@ export async function GET(request: NextRequest) {
       invoice_id: invoiceId,
       amount: Number(payment.amount).toFixed(2),
       currency: payment.currency,
-      status: payment.status,
+      status:
+        payment.status === "paid" &&
+        !canSendDigisellerPaidStatus(payment.created_at)
+          ? "wait"
+          : payment.status,
     };
     return NextResponse.json({
       ...responseValues,

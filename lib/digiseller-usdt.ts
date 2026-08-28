@@ -2,6 +2,20 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 type SignableValue = string | number;
 
+// Orders created before the signature-format fix were already resolved
+// manually. Never reactivate them through a delayed callback or status retry.
+const DIGISELLER_SAFE_STATUS_CUTOFF = Date.parse(
+  "2026-08-28T03:43:35.759Z",
+);
+
+export function canSendDigisellerPaidStatus(createdAt: string) {
+  const createdTime = Date.parse(createdAt);
+  return (
+    Number.isFinite(createdTime) &&
+    createdTime >= DIGISELLER_SAFE_STATUS_CUTOFF
+  );
+}
+
 function secretKey() {
   const value = process.env.DIGISELLER_PAYMENT_SECRET_KEY?.trim();
   if (!value) throw new Error("Digiseller payment secret key is missing.");

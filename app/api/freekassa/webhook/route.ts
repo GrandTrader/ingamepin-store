@@ -5,7 +5,10 @@ import { verifyFreeKassaNotification } from "@/lib/freekassa";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
 import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notifyDigiseller } from "@/lib/digiseller-usdt";
+import {
+  canSendDigisellerPaidStatus,
+  notifyDigiseller,
+} from "@/lib/digiseller-usdt";
 
 export const runtime = "nodejs";
 
@@ -118,7 +121,7 @@ export async function POST(request: NextRequest) {
       const digisellerResult = await admin
         .from("digiseller_usdt_payments")
         .select(
-          "invoice_id, amount, currency, status, gateway_invoice_id, gateway_amount, network, digiseller_notified_at",
+          "invoice_id, amount, currency, status, gateway_invoice_id, gateway_amount, network, digiseller_notified_at, created_at",
         )
         .eq("invoice_id", invoiceId)
         .eq("network", "FREEKASSA_FPS")
@@ -143,12 +146,17 @@ export async function POST(request: NextRequest) {
         return plainText("YES");
       }
 
-      await notifyDigiseller({
-        invoiceId: digisellerPayment.invoice_id,
-        amount: Number(digisellerPayment.amount).toFixed(2),
-        currency: digisellerPayment.currency,
-        status: "paid",
-      });
+      const canNotify = canSendDigisellerPaidStatus(
+        digisellerPayment.created_at,
+      );
+      if (canNotify) {
+        await notifyDigiseller({
+          invoiceId: digisellerPayment.invoice_id,
+          amount: Number(digisellerPayment.amount).toFixed(2),
+          currency: digisellerPayment.currency,
+          status: "paid",
+        });
+      }
 
       const updateResult = await admin
         .from("digiseller_usdt_payments")
@@ -156,7 +164,9 @@ export async function POST(request: NextRequest) {
           status: "paid",
           transaction_hash: transactionId,
           paid_at: new Date().toISOString(),
-          digiseller_notified_at: new Date().toISOString(),
+          ...(canNotify
+            ? { digiseller_notified_at: new Date().toISOString() }
+            : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("invoice_id", invoiceId);
