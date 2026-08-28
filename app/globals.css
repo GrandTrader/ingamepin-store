@@ -453,6 +453,32 @@ html[data-store-theme="light"] .product-quantity-limit {
   -webkit-text-fill-color: #155e75 !important;
 }
 
+html[data-store-theme="light"] .product-quantity-stepper {
+  border-color: #94a3b8 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  opacity: 1 !important;
+}
+
+html[data-store-theme="light"] .product-quantity-stepper:disabled {
+  border-color: #cbd5e1 !important;
+  background-color: #eef2f7 !important;
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569 !important;
+}
+
+html[data-store-theme="dark"] .product-quantity-stepper {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+html[data-store-theme="dark"] .product-quantity-stepper:disabled {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
 /* Storefront contrast layer.
    The selected site theme always wins over the device color preference. */
 html[data-store-theme="light"] {

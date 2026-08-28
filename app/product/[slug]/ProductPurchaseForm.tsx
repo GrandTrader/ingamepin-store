@@ -791,13 +791,14 @@ export default function ProductPurchaseForm({
         <div className="mt-3 flex items-center gap-3">
           <button
             type="button"
+            aria-label="Decrease quantity"
             onClick={() =>
               setQuantity((current) =>
                 Math.max(minimumQuantity, current - 1),
               )
             }
             disabled={quantity <= minimumQuantity}
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl disabled:opacity-40"
+            className="product-quantity-stepper flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl font-black disabled:cursor-not-allowed"
           >
             -
           </button>
@@ -827,6 +828,7 @@ export default function ProductPurchaseForm({
           />
           <button
             type="button"
+            aria-label="Increase quantity"
             onClick={() =>
               setQuantity((current) =>
                 product.isBulkOrder
@@ -838,7 +840,7 @@ export default function ProductPurchaseForm({
               !product.isBulkOrder &&
               (maximumQuantity < 1 || quantity >= maximumQuantity)
             }
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl disabled:opacity-40"
+            className="product-quantity-stepper flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl font-black disabled:cursor-not-allowed"
           >
             +
           </button>
