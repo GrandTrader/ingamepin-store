@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { unstable_cache } from "next/cache";
 
 type OrderItemSaleRow = {
   product_id: string;
@@ -21,7 +22,7 @@ function getOrderStatus(order: OrderItemSaleRow["orders"]) {
   return order?.status;
 }
 
-export async function getPaidProductSales() {
+const getCachedPaidProductSales = unstable_cache(async () => {
   const admin = createAdminClient();
   const sales = new Map<string, number>();
   const pageSize = 1000;
@@ -72,5 +73,12 @@ export async function getPaidProductSales() {
     from += pageSize;
   }
 
-  return sales;
+  return Array.from(sales.entries());
+}, ["paid-product-sales-v1"], {
+  revalidate: 30,
+  tags: ["paid-product-sales"],
+});
+
+export async function getPaidProductSales() {
+  return new Map(await getCachedPaidProductSales());
 }

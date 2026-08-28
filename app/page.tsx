@@ -8,9 +8,9 @@ import PreorderPopup, {
 } from "@/components/PreorderPopup";
 import PopularProductsRow from "@/components/PopularProductsRow";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
+import { getHomepageData } from "@/lib/homepage-data";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
-import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -166,135 +166,17 @@ function getAvailableStock(
 }
 
 export default async function Home() {
-  const supabase = await createClient();
-
-  const [
-    categoryResult,
-    productResult,
-    preorderPopupResult,
-    sliderSettingsResult,
-    slidesResult,
-  ] = await Promise.all([
-    supabase
-      .from("categories")
-      .select(
-        `
-          id,
-          public_id,
-          name,
-          short_name,
-          slug,
-          description,
-          image_url,
-          icon
-        `,
-      )
-      .eq("is_active", true)
-      .order("sort_order", {
-        ascending: true,
-      }),
-
-    supabase
-      .from("products")
-      .select(
-        `
-          id,
-          public_id,
-          name,
-          name_ru,
-          slug,
-          image_url,
-          image_url_ru,
-          price,
-          badge,
-          badge_ru,
-          region,
-          stock_quantity,
-          rating,
-          sold_count,
-          product_type,
-          is_featured,
-          is_bulk_order,
-          delivery_type,
-          product_options (
-            stock_quantity,
-            is_active,
-            is_in_stock
-          ),
-          categories (
-            short_name,
-            slug,
-            public_id
-          )
-        `,
-      )
-      .eq("status", "ACTIVE")
-      .eq("is_preorder_only", false)
-      .order("sort_order", {
-        ascending: true,
-      }),
-
-    supabase
-      .from("preorder_popup_settings")
-      .select(
-        "is_enabled, product_id, game_title, image_url, launch_date, preorder_price, sold_count, bonus_text, button_text",
-      )
-      .eq("id", true)
-      .eq("is_enabled", true)
-      .maybeSingle(),
-
-    supabase
-      .from("homepage_slider_settings")
-      .select("is_enabled, autoplay_ms")
-      .eq("id", true)
-      .maybeSingle(),
-
-    supabase
-      .from("homepage_slides")
-      .select("id, eyebrow, title, description, desktop_image_url, mobile_image_url, button_text, button_url, starts_at, ends_at")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true }),
-  ]);
-
-  if (categoryResult.error) {
-    throw new Error(
-      `Unable to load categories: ${categoryResult.error.message}`,
-    );
-  }
-
-  if (productResult.error) {
-    throw new Error(
-      `Unable to load products: ${productResult.error.message}`,
-    );
-  }
-
-  if (preorderPopupResult.error) {
-    throw new Error(
-      `Unable to load preorder popup: ${preorderPopupResult.error.message}`,
-    );
-  }
-
-  if (sliderSettingsResult.error || slidesResult.error) {
-    throw new Error(
-      `Unable to load homepage slider: ${
-        sliderSettingsResult.error?.message ?? slidesResult.error?.message
-      }`,
-    );
-  }
-
-  const categories =
-    (categoryResult.data ??
-      []) as CategoryRow[];
-
-  const productRows =
-    (productResult.data ??
-      []) as ProductRow[];
-
-  const [customerDiscounts, paidProductSales] = await Promise.all([
+  const [homepageData, customerDiscounts, paidProductSales] = await Promise.all([
+    getHomepageData(),
     getSignedInCustomerDiscounts(),
     getPaidProductSales(),
   ]);
+
+  const categories =
+    homepageData.categories as CategoryRow[];
+
+  const productRows =
+    homepageData.products as ProductRow[];
 
   const products: StoreProduct[] =
     productRows
@@ -330,12 +212,12 @@ export default async function Home() {
       }));
 
   const popupRow =
-    preorderPopupResult.data as PreorderPopupRow | null;
+    homepageData.preorderPopup as PreorderPopupRow | null;
   const popupStoreProduct = popupRow?.product_id
     ? productRows.find((product) => product.id === popupRow.product_id) ?? null
     : null;
   const now = Date.now();
-  const heroSlides: HeroSlide[] = (slidesResult.data ?? [])
+  const heroSlides: HeroSlide[] = homepageData.slides
     .filter((slide) => {
       const starts = slide.starts_at ? new Date(slide.starts_at).getTime() : null;
       const ends = slide.ends_at ? new Date(slide.ends_at).getTime() : null;
@@ -398,10 +280,10 @@ export default async function Home() {
         <PreorderPopup popup={preorderPopup} />
       )}
 
-      {sliderSettingsResult.data?.is_enabled && heroSlides.length > 0 && (
+      {homepageData.sliderSettings?.is_enabled && heroSlides.length > 0 && (
         <HeroSlider
           slides={heroSlides}
-          autoplayMs={sliderSettingsResult.data.autoplay_ms}
+          autoplayMs={homepageData.sliderSettings.autoplay_ms}
         />
       )}
 
