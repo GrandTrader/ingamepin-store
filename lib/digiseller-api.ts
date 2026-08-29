@@ -94,7 +94,11 @@ export async function listDigiSellerReviews(
     ));
   }
 
-  const reviews = Array.isArray(result.reviews) ? result.reviews : [];
+  const reviews = Array.isArray(result.review)
+    ? result.review
+    : Array.isArray(result.reviews)
+      ? result.reviews
+      : [];
   return {
     totalPages: Math.max(0, Number(result.totalPages || 0)),
     totalItems: Math.max(0, Number(result.totalItems || 0)),
@@ -109,7 +113,7 @@ export async function listDigiSellerReviews(
         invoiceId: Number.isSafeInteger(invoiceId) && invoiceId > 0 ? invoiceId : null,
         ownerId: Number.isSafeInteger(ownerId) && ownerId > 0 ? ownerId : null,
         type: String(review.type || ""),
-        good: Number(review.good || 0),
+        good: Number(review.good ?? (review.type === "good" ? 1 : 0)),
         name: String(review.name || ""),
         date: String(review.date || ""),
         info: String(review.info || ""),
