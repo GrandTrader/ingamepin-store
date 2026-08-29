@@ -76,10 +76,22 @@ export async function listDigiSellerReviews(
   url.searchParams.set("rows", String(rows));
   url.searchParams.set("lang", "en-US");
 
-  const response = await fetch(url, { cache: "no-store" });
-  const result = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  const response = await fetch(url, {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  const responseText = await response.text();
+  let result: Record<string, unknown> | null = null;
+  try {
+    result = JSON.parse(responseText) as Record<string, unknown>;
+  } catch {
+    // DigiSeller otherwise defaults to an XML response for this endpoint.
+  }
   if (!response.ok || !result || Number(result.retval ?? 0) !== 0) {
-    throw new Error(String(result?.retdesc || `DigiSeller reviews request failed (${response.status}).`));
+    throw new Error(String(
+      result?.retdesc
+      || `DigiSeller reviews request failed (${response.status}): ${responseText.slice(0, 160)}`,
+    ));
   }
 
   const reviews = Array.isArray(result.reviews) ? result.reviews : [];
