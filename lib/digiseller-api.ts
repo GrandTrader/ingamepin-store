@@ -40,6 +40,73 @@ function credentials() {
   return { sellerId, apiKey };
 }
 
+export function getDigiSellerSellerId() {
+  return credentials().sellerId;
+}
+
+export type DigiSellerReview = {
+  id: number;
+  invoiceId: number | null;
+  ownerId: number | null;
+  type: string;
+  good: number;
+  name: string;
+  date: string;
+  info: string;
+  comment: string;
+};
+
+export type DigiSellerReviewsPage = {
+  totalPages: number;
+  totalItems: number;
+  reviews: DigiSellerReview[];
+};
+
+export async function listDigiSellerReviews(
+  productId: number,
+  page = 1,
+  rows = 100,
+): Promise<DigiSellerReviewsPage> {
+  const sellerId = getDigiSellerSellerId();
+  const url = new URL("https://api.digiseller.com/api/reviews");
+  url.searchParams.set("seller_id", String(sellerId));
+  url.searchParams.set("product_id", String(productId));
+  url.searchParams.set("type", "all");
+  url.searchParams.set("page", String(page));
+  url.searchParams.set("rows", String(rows));
+  url.searchParams.set("lang", "en-US");
+
+  const response = await fetch(url, { cache: "no-store" });
+  const result = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!response.ok || !result || Number(result.retval ?? 0) !== 0) {
+    throw new Error(String(result?.retdesc || `DigiSeller reviews request failed (${response.status}).`));
+  }
+
+  const reviews = Array.isArray(result.reviews) ? result.reviews : [];
+  return {
+    totalPages: Math.max(0, Number(result.totalPages || 0)),
+    totalItems: Math.max(0, Number(result.totalItems || 0)),
+    reviews: reviews.flatMap((value) => {
+      const review = value as Record<string, unknown>;
+      const id = Number(review.id);
+      if (!Number.isSafeInteger(id) || id <= 0) return [];
+      const invoiceId = Number(review.invoice_id);
+      const ownerId = Number(review.owner_id);
+      return [{
+        id,
+        invoiceId: Number.isSafeInteger(invoiceId) && invoiceId > 0 ? invoiceId : null,
+        ownerId: Number.isSafeInteger(ownerId) && ownerId > 0 ? ownerId : null,
+        type: String(review.type || ""),
+        good: Number(review.good || 0),
+        name: String(review.name || ""),
+        date: String(review.date || ""),
+        info: String(review.info || ""),
+        comment: String(review.comment || ""),
+      }];
+    }),
+  };
+}
+
 export async function getDigiSellerToken() {
   const { sellerId, apiKey } = credentials();
   let response: Response | null = null;

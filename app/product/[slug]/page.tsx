@@ -272,12 +272,40 @@ export async function renderProductPage({
       comment: review.comment ? String(review.comment) : null,
       customerLabel,
       createdAt: String(review.created_at),
+      source: "WEBSITE" as const,
     };
   });
-  const positiveReviewCount = productReviews.filter(
+
+  const digiSellerReviewResult = await admin
+    .from("digiseller_reviews")
+    .select("id, sentiment, comment, reviewed_at")
+    .eq("product_id", product.id)
+    .eq("is_visible", true)
+    .order("reviewed_at", { ascending: false })
+    .limit(100);
+
+  if (digiSellerReviewResult.error) {
+    throw new Error(
+      `Unable to load DigiSeller reviews: ${digiSellerReviewResult.error.message}`,
+    );
+  }
+
+  const digiSellerReviews = (digiSellerReviewResult.data ?? []).map((review) => ({
+    id: `digiseller-${String(review.id)}`,
+    sentiment: review.sentiment as "POSITIVE" | "NEGATIVE",
+    comment: review.comment ? String(review.comment) : null,
+    customerLabel: "DigiSeller customer",
+    createdAt: String(review.reviewed_at),
+    source: "DIGISELLER" as const,
+  }));
+
+  const allProductReviews = [...productReviews, ...digiSellerReviews]
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    .slice(0, 100);
+  const positiveReviewCount = allProductReviews.filter(
     (review) => review.sentiment === "POSITIVE",
   ).length;
-  const negativeReviewCount = productReviews.length - positiveReviewCount;
+  const negativeReviewCount = allProductReviews.length - positiveReviewCount;
 
   if (!canonicalRequest) {
     const canonicalUrl = getProductUrl({
@@ -504,7 +532,7 @@ export async function renderProductPage({
                 }
                 descriptionRu={product.description_ru}
                 deliveryInstructions={product.delivery_instructions}
-                reviews={productReviews}
+                reviews={allProductReviews}
                 positiveCount={positiveReviewCount}
                 negativeCount={negativeReviewCount}
               />

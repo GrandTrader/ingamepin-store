@@ -10,6 +10,7 @@ type ProductReview = {
   comment: string | null;
   customerLabel: string;
   createdAt: string;
+  source?: "WEBSITE" | "DIGISELLER";
 };
 
 export default function ProductDetailsTabs({
@@ -139,7 +140,9 @@ export default function ProductDetailsTabs({
                             : "✕ Negative"}
                         </span>
                         <span className="text-xs font-bold text-cyan-300">
-                          Verified purchase
+                          {review.source === "DIGISELLER"
+                            ? "Verified DigiSeller purchase"
+                            : "Verified purchase"}
                         </span>
                       </div>
                       <time className="text-xs text-slate-500">
