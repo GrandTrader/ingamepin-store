@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { UNLIMITED_STOCK_QUANTITY } from "@/lib/product-stock";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 
 const allowedProductTypes = [
@@ -932,6 +933,8 @@ export async function createProduct(
       badge_ru: badgeRu || null,
       currency,
       price,
+      minimum_quantity: 1,
+      maximum_quantity: UNLIMITED_STOCK_QUANTITY,
       stock_quantity:
         stockQuantity,
       status,
