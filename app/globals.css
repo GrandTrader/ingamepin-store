@@ -606,6 +606,25 @@ html[data-store-theme="dark"] button.product-quantity-stepper:disabled .product-
   stroke: #94a3b8 !important;
 }
 
+/* Product-card actions use calmer warm tones in dark mode to reduce glare. */
+html[data-store-theme="dark"] .product-card-delivery-badge {
+  border-color: #856a35 !important;
+  background-color: #5f4b25 !important;
+  color: #f3e5bd !important;
+  -webkit-text-fill-color: #f3e5bd !important;
+  box-shadow: none !important;
+}
+
+html[data-store-theme="dark"] .product-card-buy-button:not(.cursor-not-allowed) {
+  background-color: #9a541c !important;
+  color: #fff1df !important;
+  -webkit-text-fill-color: #fff1df !important;
+}
+
+html[data-store-theme="dark"] .group:hover .product-card-buy-button:not(.cursor-not-allowed) {
+  background-color: #804515 !important;
+}
+
 /* Product denomination cards use a light surface in light mode, so their
    labels and prices must not inherit the white action-button foreground. */
 html[data-store-theme="light"] button.product-option-button,

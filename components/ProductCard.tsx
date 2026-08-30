@@ -108,7 +108,7 @@ export default function ProductCard({ product }: Props) {
 
         <div className="flex min-h-10 items-center bg-slate-50 px-2 py-1.5">
           <span
-            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-black uppercase shadow-sm ${
+            className={`product-card-delivery-badge inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-black uppercase shadow-sm ${
               product.isInstantDelivery && !product.isBulkOrder
                 ? "border-emerald-300 bg-emerald-400 text-slate-950"
                 : "border-amber-300 bg-amber-300 text-slate-950"
@@ -165,7 +165,7 @@ export default function ProductCard({ product }: Props) {
             </span>
 
             <span
-              className={`shrink-0 rounded-md px-2 py-1.5 text-[9px] font-bold transition sm:text-[10px] ${
+              className={`product-card-buy-button shrink-0 rounded-md px-2 py-1.5 text-[9px] font-bold transition sm:text-[10px] ${
                 isOutOfStock
                   ? "cursor-not-allowed bg-slate-700 text-slate-400"
                   : "bg-[#ff9418] text-white group-hover:bg-[#e67f00]"
