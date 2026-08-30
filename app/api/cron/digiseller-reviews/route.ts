@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { syncDigiSellerReviews } from "@/lib/digiseller-review-sync";
+import { syncDigiSellerStatistics } from "@/lib/digiseller-stat-sync";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
   try {
-    return NextResponse.json({ ok: true, ...(await syncDigiSellerReviews()) });
+    return NextResponse.json({ ok: true, ...(await syncDigiSellerStatistics()) });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "DigiSeller review sync failed." },
+      { error: error instanceof Error ? error.message : "DigiSeller statistics sync failed." },
       { status: 500 },
     );
   }
