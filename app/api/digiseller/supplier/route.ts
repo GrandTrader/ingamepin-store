@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
+import { getDigiSellerPurchaseSelection } from "@/lib/digiseller-api";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ type SupplierRequest = {
   sign?: string;
   product_id?: string | number;
   count?: string | number;
-  options?: Array<{ id?: string | number; user_data?: string | number }>;
+  options?: Array<{ id?: string | number; user_data?: string | number; user_data_id?: string | number }>;
 };
 
 const emptyTestResponse = { id: "", inv: 0, goods: "", product_id: "", count: 0, error: "" };
@@ -46,7 +47,9 @@ function positiveInteger(value: unknown) {
 
 async function resolveWebsiteOption(admin: ReturnType<typeof createAdminClient>, productId: number, options: SupplierRequest["options"]) {
   const selections = options ?? [];
-  const variantIds = selections.map((option) => positiveInteger(option.user_data)).filter((value): value is number => value !== null);
+  const variantIds = selections
+    .map((option) => positiveInteger(option.user_data_id) ?? positiveInteger(option.user_data))
+    .filter((value): value is number => value !== null);
   const query = admin.from("product_options").select("id").eq("digiseller_product_id", productId).eq("is_active", true);
   if (variantIds.length === 0) return query.is("digiseller_variant_id", null).maybeSingle();
 
@@ -113,8 +116,21 @@ export async function POST(request: Request) {
   const signatureIsValid = deliverySigningKeys.some((key) => safeEqualHex(signature, createHash("md5").update(`${productId}:${invoiceId}:${key}`).digest("hex")));
   if (!signatureIsValid) return json({ id: String(productId), inv: invoiceId, goods: "", error: "Invalid signature." });
 
-  const option = await resolveWebsiteOption(admin, productId, body.options);
-  if (option.error || !option.data) return json({ id: String(productId), inv: invoiceId, error: "Product denomination is not connected." });
+  let deliveryOptions = body.options ?? [];
+  if (deliveryOptions.length === 0) {
+    try {
+      const purchase = await getDigiSellerPurchaseSelection(invoiceId);
+      if (purchase.productId !== productId || purchase.invoiceState !== 3) {
+        return json({ id: String(productId), inv: invoiceId });
+      }
+      deliveryOptions = purchase.options;
+    } catch {
+      return json({ id: String(productId), inv: invoiceId });
+    }
+  }
+
+  const option = await resolveWebsiteOption(admin, productId, deliveryOptions);
+  if (option.error || !option.data) return json({ id: String(productId), inv: invoiceId });
 
   const delivery = await admin.rpc("fulfill_digiseller_order", {
     p_invoice_id: invoiceId,

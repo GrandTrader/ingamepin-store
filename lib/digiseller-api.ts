@@ -6,8 +6,13 @@ import sharp from "sharp";
 type DigiSellerLoginResponse = {
   retval?: number;
   retdesc?: string | null;
+  desc?: string | null;
+  endesc?: string | null;
   token?: string;
+  valid_thru?: string;
 };
+
+let cachedDigiSellerToken: { token: string; sellerId: number; validUntil: number } | null = null;
 
 export type DigiSellerProduct = {
   id: number;
@@ -133,25 +138,65 @@ export async function listDigiSellerReviews(
 
 export async function getDigiSellerToken() {
   const { sellerId, apiKey } = credentials();
-  let response: Response | null = null;
+  if (cachedDigiSellerToken && cachedDigiSellerToken.validUntil > Date.now() + 30_000) {
+    return { token: cachedDigiSellerToken.token, sellerId };
+  }
+
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const timestamp = Math.floor(Date.now() / 1000);
     const sign = createHash("sha256").update(`${apiKey}${timestamp}`).digest("hex");
-    response = await fetch("https://api.digiseller.com/api/apilogin", {
+    const response = await fetch("https://api.digiseller.com/api/apilogin", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({ seller_id: sellerId, timestamp, sign }),
       cache: "no-store",
     });
-    if (response.ok || response.status < 500) break;
+    if (!response.ok) {
+      if (attempt < 2 && response.status >= 500) continue;
+      throw new Error(`DigiSeller login failed (${response.status}).`);
+    }
+    const result = (await response.json()) as DigiSellerLoginResponse;
+    if (result.retval === 0 && result.token) {
+      const reportedExpiry = Date.parse(result.valid_thru ?? "");
+      cachedDigiSellerToken = {
+        token: result.token,
+        sellerId,
+        validUntil: Number.isFinite(reportedExpiry) ? reportedExpiry : Date.now() + 90 * 60 * 1000,
+      };
+      return { token: result.token, sellerId };
+    }
+    if (result.retval === -4 && attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      continue;
+    }
+    throw new Error(result.endesc || result.desc || result.retdesc || "DigiSeller did not return an access token.");
   }
-  if (!response) throw new Error("DigiSeller login failed.");
-  if (!response.ok) throw new Error(`DigiSeller login failed (${response.status}).`);
-  const result = (await response.json()) as DigiSellerLoginResponse;
-  if (result.retval !== 0 || !result.token) {
-    throw new Error(result.retdesc || "DigiSeller did not return an access token.");
+  throw new Error("DigiSeller login failed.");
+}
+
+export async function getDigiSellerPurchaseSelection(invoiceId: number) {
+  const { token } = await getDigiSellerToken();
+  const response = await fetch(
+    `https://api.digiseller.com/api/purchase/info/${invoiceId}?token=${encodeURIComponent(token)}`,
+    { headers: { Accept: "application/json" }, cache: "no-store" },
+  );
+  const result = await response.json().catch(() => null) as {
+    retval?: number;
+    retdesc?: string;
+    content?: {
+      item_id?: number;
+      invoice_state?: number;
+      options?: Array<{ id?: number; user_data?: string | number; user_data_id?: number }>;
+    };
+  } | null;
+  if (!response.ok || result?.retval !== 0 || !result.content) {
+    throw new Error(result?.retdesc || "Unable to read DigiSeller purchase options.");
   }
-  return { token: result.token, sellerId };
+  return {
+    productId: Number(result.content.item_id),
+    invoiceState: Number(result.content.invoice_state),
+    options: result.content.options ?? [],
+  };
 }
 
 type DigiSellerApiResult = {
