@@ -590,6 +590,22 @@ html[data-store-theme="light"] button.product-quantity-stepper:disabled {
   opacity: 1 !important;
 }
 
+html[data-store-theme="light"] button.product-quantity-stepper .product-quantity-icon path {
+  stroke: #0f172a !important;
+}
+
+html[data-store-theme="light"] button.product-quantity-stepper:disabled .product-quantity-icon path {
+  stroke: #334155 !important;
+}
+
+html[data-store-theme="dark"] button.product-quantity-stepper .product-quantity-icon path {
+  stroke: #ffffff !important;
+}
+
+html[data-store-theme="dark"] button.product-quantity-stepper:disabled .product-quantity-icon path {
+  stroke: #94a3b8 !important;
+}
+
 /* Product denomination cards use a light surface in light mode, so their
    labels and prices must not inherit the white action-button foreground. */
 html[data-store-theme="light"] button.product-option-button,

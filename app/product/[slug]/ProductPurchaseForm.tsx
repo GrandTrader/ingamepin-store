@@ -800,7 +800,9 @@ export default function ProductPurchaseForm({
             disabled={quantity <= minimumQuantity}
             className="product-quantity-stepper flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl font-black disabled:cursor-not-allowed"
           >
-            -
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="product-quantity-icon h-5 w-5" fill="none">
+              <path d="M5 12h14" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </button>
           <input
             type="number"
@@ -842,7 +844,9 @@ export default function ProductPurchaseForm({
             }
             className="product-quantity-stepper flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl font-black disabled:cursor-not-allowed"
           >
-            +
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="product-quantity-icon h-5 w-5" fill="none">
+              <path d="M12 5v14M5 12h14" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </button>
         </div>
         <p className="product-quantity-limit mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">
