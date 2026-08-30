@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStorePreferences } from "@/components/StorePreferences";
 import LocalizedProductText from "@/components/LocalizedProductText";
+import { UNLIMITED_STOCK_QUANTITY } from "@/lib/product-stock";
 
 type ProductOption = {
   id: string;
@@ -219,9 +220,14 @@ export default function ProductPurchaseForm({
     1,
     selectedFixedOption?.maximumQuantity ?? product.maximumQuantity,
   );
+  const hasUnlimitedQuantity =
+    product.isBulkOrder ||
+    (!requiresSingleQuantity &&
+      selectedFixedOption?.maximumQuantity === null &&
+      product.maximumQuantity >= UNLIMITED_STOCK_QUANTITY);
   const maximumQuantity = requiresSingleQuantity
     ? 1
-    : product.isBulkOrder
+    : hasUnlimitedQuantity
       ? Number.MAX_SAFE_INTEGER
       : Math.min(
           configuredMaximumQuantity,
@@ -376,7 +382,7 @@ export default function ProductPurchaseForm({
     if (
       !Number.isSafeInteger(quantity) ||
       quantity < minimumQuantity ||
-      (!product.isBulkOrder && quantity > maximumQuantity)
+      (!hasUnlimitedQuantity && quantity > maximumQuantity)
     ) {
       return showError(`Allowed quantity for ${localizedProductName}: ${minimumQuantity}-${maximumQuantity}.`);
     }
@@ -455,7 +461,7 @@ export default function ProductPurchaseForm({
       totalPrice: separateUnit ? selectedUnitPrice : totalPrice,
       quantity: separateUnit ? 1 : quantity,
       minQuantity: separateUnit ? 1 : minimumQuantity,
-      maxQuantity: separateUnit ? 1 : product.isBulkOrder ? undefined : maximumQuantity,
+      maxQuantity: separateUnit ? 1 : hasUnlimitedQuantity ? undefined : maximumQuantity,
       isBulkOrder: Boolean(product.isBulkOrder),
       productType: product.productType,
       deliveryType:
@@ -806,7 +812,7 @@ export default function ProductPurchaseForm({
             type="number"
             inputMode="numeric"
             min={minimumQuantity}
-            max={product.isBulkOrder ? undefined : maximumQuantity}
+            max={hasUnlimitedQuantity ? undefined : maximumQuantity}
             step={1}
             value={quantity}
             onFocus={(event) => event.currentTarget.select()}
@@ -831,13 +837,13 @@ export default function ProductPurchaseForm({
             aria-label="Increase quantity"
             onClick={() =>
               setQuantity((current) =>
-                product.isBulkOrder
+                hasUnlimitedQuantity
                   ? current + 1
                   : Math.min(maximumQuantity, current + 1),
               )
             }
             disabled={
-              !product.isBulkOrder &&
+              !hasUnlimitedQuantity &&
               (maximumQuantity < 1 || quantity >= maximumQuantity)
             }
             className="product-quantity-stepper flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl font-black disabled:cursor-not-allowed"
@@ -848,7 +854,7 @@ export default function ProductPurchaseForm({
           </button>
         </div>
         <p className="product-quantity-limit mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">
-          {product.isBulkOrder
+          {hasUnlimitedQuantity
             ? language === "ru"
               ? "Без ограничения количества"
               : "No quantity limit for this digital product"
