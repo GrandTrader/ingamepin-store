@@ -17,6 +17,7 @@ type SupplierRequest = {
 };
 
 const emptyTestResponse = { id: "", inv: 0, goods: "", product_id: "", count: 0, error: "" };
+const deliveryTestResponse = { id: "", inv: 0, goods: "Supplier endpoint test successful", error: "" };
 
 function safeEqualHex(received: string, expected: string) {
   if (!/^[a-f\d]+$/i.test(received) || received.length !== expected.length) return false;
@@ -46,10 +47,10 @@ export async function POST(request: Request) {
   try {
     body = await request.json() as SupplierRequest;
   } catch {
-    return NextResponse.json(emptyTestResponse);
+    return NextResponse.json(deliveryTestResponse);
   }
 
-  if (Object.keys(body).length === 0) return NextResponse.json(emptyTestResponse);
+  if (Object.keys(body).length === 0) return NextResponse.json(deliveryTestResponse);
 
   const admin = createAdminClient();
   const signature = String(body.sign ?? "").trim();
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
 
   const productId = positiveInteger(body.id);
   const invoiceId = positiveInteger(body.inv);
-  if (!productId || !invoiceId) return NextResponse.json(emptyTestResponse);
+  if (!productId || !invoiceId) return NextResponse.json(deliveryTestResponse);
   const deliverySigningKeys = [process.env.DIGISELLER_SUPPLIER_SECRET, process.env.DIGISELLER_API_KEY].map((value) => value?.trim()).filter((value): value is string => Boolean(value));
   if (!deliverySigningKeys.length) requiredSecret("DIGISELLER_SUPPLIER_SECRET");
   const signatureIsValid = deliverySigningKeys.some((key) => safeEqualHex(signature, createHash("md5").update(`${productId}:${invoiceId}:${key}`).digest("hex")));
