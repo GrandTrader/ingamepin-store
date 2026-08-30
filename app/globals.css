@@ -577,6 +577,19 @@ html[data-store-theme="light"] :is(a, button, [role="button"]):is(
   -webkit-text-fill-color: #0f172a !important;
 }
 
+/* Quantity symbols sit on a white surface in light mode. Keep both the
+   enabled and disabled symbols visible after the global action-button rules. */
+html[data-store-theme="light"] button.product-quantity-stepper {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+html[data-store-theme="light"] button.product-quantity-stepper:disabled {
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+  opacity: 1 !important;
+}
+
 /* Product denomination cards use a light surface in light mode, so their
    labels and prices must not inherit the white action-button foreground. */
 html[data-store-theme="light"] button.product-option-button,
