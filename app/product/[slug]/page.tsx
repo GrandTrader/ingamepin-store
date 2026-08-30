@@ -66,6 +66,7 @@ type ProductRow = {
   minimum_quantity: number;
   maximum_quantity: number;
   stock_quantity: number;
+  sold_count: number;
   affiliate_enabled: boolean;
   affiliate_commission_percent: number | string;
   categories: CategoryRelation;
@@ -157,6 +158,7 @@ export async function renderProductPage({
         minimum_quantity,
         maximum_quantity,
         stock_quantity,
+        sold_count,
         affiliate_enabled,
         affiliate_commission_percent,
         categories (
@@ -329,7 +331,7 @@ export async function renderProductPage({
     throw new Error(`Unable to load product sales: ${salesResult.error.message}`);
   }
 
-  const soldCount = (salesResult.data ?? []).reduce(
+  const soldCount = Number(product.sold_count ?? 0) + (salesResult.data ?? []).reduce(
     (total, item) => total + Number(item.quantity || 0),
     0,
   );
