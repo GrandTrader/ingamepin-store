@@ -82,7 +82,6 @@ export default function CategoryProductForm({
         : 0
       : selectedOption?.sellingPrice ?? 0;
 
-  const maximumQuantity = 10;
 
   const totalPrice = unitPrice * quantity;
 
@@ -127,9 +126,7 @@ export default function CategoryProductForm({
   }
 
   function increaseQuantity() {
-    setQuantity((current) =>
-      current < maximumQuantity ? current + 1 : current
-    );
+    setQuantity((current) => current + 1);
 
     setMessage("");
   }
@@ -177,13 +174,6 @@ export default function CategoryProductForm({
 
     if (quantity < 1) {
       showError("Quantity must be at least 1.");
-      return false;
-    }
-
-    if (quantity > maximumQuantity) {
-      showError(
-        `Maximum allowed quantity is ${maximumQuantity}.`
-      );
       return false;
     }
 
@@ -431,7 +421,7 @@ export default function CategoryProductForm({
           </p>
 
           <p className="text-xs font-medium text-slate-400">
-            Maximum 10 products per order
+            No quantity limit
           </p>
         </div>
 
@@ -454,8 +444,7 @@ export default function CategoryProductForm({
             type="button"
             onClick={increaseQuantity}
             disabled={
-              selectedAmount <= 0 ||
-              quantity >= maximumQuantity
+              selectedAmount <= 0
             }
             aria-label="Increase quantity"
             className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-slate-800 text-xl font-bold text-white transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"

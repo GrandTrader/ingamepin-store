@@ -128,7 +128,7 @@ function normalizeCartItem(
     minQuantity: item.minQuantity ?? 1,
     maxQuantity: Boolean(item.isBulkOrder)
       ? undefined
-      : item.maxQuantity ?? 10,
+      : item.maxQuantity,
     isBulkOrder: Boolean(item.isBulkOrder),
     productType: item.productType || "digital",
     deliveryType: item.deliveryType || "digital",
@@ -183,6 +183,13 @@ type PaymentRestrictions = {
   allowedPaymentMethods: string[];
   allowedUsdtNetworks: string[];
   loading: boolean;
+};
+
+type QuantityLimit = {
+  productId: string;
+  productOptionId: string | null;
+  minimumQuantity: number;
+  maximumQuantity: number | null;
 };
 
 const PAYMENT_METHOD_IDS: Record<string, string> = {
@@ -247,6 +254,17 @@ export default function CheckoutPage() {
     allowedUsdtNetworks: [],
     loading: true,
   });
+
+  const quantityLookupKey = useMemo(
+    () =>
+      JSON.stringify(
+        cartItems.map((item) => ({
+          productId: item.productId,
+          productOptionId: item.productOptionId,
+        })),
+      ),
+    [cartItems],
+  );
 
   useEffect(() => {
     try {
@@ -341,6 +359,62 @@ export default function CheckoutPage() {
       setIsLoaded(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isLoaded || cartItems.length === 0) return;
+
+    const lookupItems = JSON.parse(quantityLookupKey) as Array<{
+      productId?: string;
+      productOptionId?: string;
+    }>;
+    if (lookupItems.some((item) => !item.productId)) return;
+
+    const controller = new AbortController();
+    async function refreshQuantityLimits() {
+      try {
+        const response = await fetch("/api/products/quantity-limits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: lookupItems }),
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const result = (await response.json()) as {
+          limits?: QuantityLimit[];
+          error?: string;
+        };
+        if (!response.ok || !result.limits) {
+          throw new Error(result.error ?? "Unable to load quantity settings.");
+        }
+
+        const limits = new Map(
+          result.limits.map((limit) => [
+            `${limit.productId}:${limit.productOptionId ?? ""}`,
+            limit,
+          ]),
+        );
+        setCartItems((currentItems) =>
+          currentItems.map((item) => {
+            const limit = limits.get(`${item.productId}:${item.productOptionId ?? ""}`);
+            if (!limit) return item;
+            const maximum = limit.maximumQuantity ?? Number.MAX_SAFE_INTEGER;
+            return {
+              ...item,
+              minQuantity: limit.minimumQuantity,
+              maxQuantity: limit.maximumQuantity ?? undefined,
+              quantity: Math.min(maximum, Math.max(limit.minimumQuantity, item.quantity)),
+            };
+          }),
+        );
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setMessage(error instanceof Error ? error.message : "Unable to load quantity settings.");
+      }
+    }
+
+    void refreshQuantityLimits();
+    return () => controller.abort();
+  }, [cartItems.length, isLoaded, quantityLookupKey]);
 
   useEffect(() => {
     if (!isLoaded || cartItems.length === 0) return;
@@ -567,9 +641,9 @@ export default function CheckoutPage() {
         }
 
         const minimum = item.minQuantity ?? 1;
-        const maximum = item.isBulkOrder
+        const maximum = item.isBulkOrder || item.maxQuantity === undefined
           ? Number.MAX_SAFE_INTEGER
-          : item.maxQuantity ?? 10;
+          : item.maxQuantity;
         const productName = item.name || item.title || "this product";
 
         if (!item.isBulkOrder && requestedQuantity > maximum) {
@@ -1646,9 +1720,9 @@ export default function CheckoutPage() {
                             inputMode="numeric"
                             min={item.minQuantity ?? 1}
                             max={
-                              item.isBulkOrder
+                              item.isBulkOrder || item.maxQuantity === undefined
                                 ? undefined
-                                : item.maxQuantity ?? 10
+                                : item.maxQuantity
                             }
                             step={1}
                             value={item.quantity || 1}
@@ -1673,8 +1747,9 @@ export default function CheckoutPage() {
                             }
                             disabled={
                               !item.isBulkOrder &&
+                              item.maxQuantity !== undefined &&
                               Number(item.quantity || 1) >=
-                                (item.maxQuantity ?? 10)
+                                item.maxQuantity
                             }
                             aria-label={`Increase quantity of ${
                               item.name || item.title || "product"
@@ -1686,9 +1761,9 @@ export default function CheckoutPage() {
                         </div>
 
                         <p className="mt-1.5 text-[10px] text-slate-600">
-                          {item.isBulkOrder
+                          {item.isBulkOrder || item.maxQuantity === undefined
                             ? "No quantity limit"
-                            : `Limit: ${item.minQuantity ?? 1}–${item.maxQuantity ?? 10}`}
+                            : `Limit: ${item.minQuantity ?? 1}–${item.maxQuantity}`}
                         </p>
                       </div>
 

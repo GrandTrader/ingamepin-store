@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 type CartItem = {
   cartId: string;
   productId?: string;
+  productOptionId?: string;
   categorySlug: string;
   productName: string;
   amount: number;
@@ -20,7 +21,12 @@ type CartItem = {
   isBulkOrder?: boolean;
 };
 
-const MAXIMUM_QUANTITY = 10;
+type QuantityLimit = {
+  productId: string;
+  productOptionId: string | null;
+  minimumQuantity: number;
+  maximumQuantity: number | null;
+};
 
 export default function CartPage() {
   const router = useRouter();
@@ -28,6 +34,17 @@ export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [customerDiscounts, setCustomerDiscounts] = useState<Record<string, number>>({});
+
+  const quantityLookupKey = useMemo(
+    () =>
+      JSON.stringify(
+        cartItems.map((item) => ({
+          productId: item.productId,
+          productOptionId: item.productOptionId,
+        })),
+      ),
+    [cartItems],
+  );
 
   function loadCart() {
     try {
@@ -56,6 +73,60 @@ export default function CartPage() {
   useEffect(() => {
     loadCart();
   }, []);
+
+  useEffect(() => {
+    if (!isLoaded || cartItems.length === 0) return;
+
+    const lookupItems = JSON.parse(quantityLookupKey) as Array<{
+      productId?: string;
+      productOptionId?: string;
+    }>;
+    if (lookupItems.some((item) => !item.productId)) return;
+
+    const controller = new AbortController();
+    async function refreshQuantityLimits() {
+      try {
+        const response = await fetch("/api/products/quantity-limits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: lookupItems }),
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const result = (await response.json()) as { limits?: QuantityLimit[] };
+        if (!response.ok || !result.limits) return;
+
+        const limits = new Map(
+          result.limits.map((limit) => [
+            `${limit.productId}:${limit.productOptionId ?? ""}`,
+            limit,
+          ]),
+        );
+        setCartItems((currentItems) =>
+          currentItems.map((item) => {
+            const limit = limits.get(`${item.productId}:${item.productOptionId ?? ""}`);
+            if (!limit) return item;
+            const maximum = limit.maximumQuantity ?? Number.MAX_SAFE_INTEGER;
+            const quantity = Math.min(maximum, Math.max(limit.minimumQuantity, item.quantity));
+            return {
+              ...item,
+              minQuantity: limit.minimumQuantity,
+              maxQuantity: limit.maximumQuantity ?? undefined,
+              quantity,
+              totalPrice: item.unitPrice * quantity,
+            };
+          }),
+        );
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          // Server-side order validation remains authoritative if this refresh fails.
+        }
+      }
+    }
+
+    void refreshQuantityLimits();
+    return () => controller.abort();
+  }, [cartItems.length, isLoaded, quantityLookupKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,9 +161,9 @@ export default function CartPage() {
       }
 
       const minimum = item.minQuantity ?? 1;
-      const maximum = item.isBulkOrder
+      const maximum = item.isBulkOrder || item.maxQuantity === undefined
         ? Number.MAX_SAFE_INTEGER
-        : item.maxQuantity ?? MAXIMUM_QUANTITY;
+        : item.maxQuantity;
       const newQuantity = Math.min(
         maximum,
         Math.max(minimum, requestedQuantity),
@@ -310,9 +381,9 @@ export default function CartPage() {
                               inputMode="numeric"
                               min={item.minQuantity ?? 1}
                               max={
-                                item.isBulkOrder
+                                item.isBulkOrder || item.maxQuantity === undefined
                                   ? undefined
-                                  : item.maxQuantity ?? MAXIMUM_QUANTITY
+                                  : item.maxQuantity
                               }
                               step={1}
                               value={item.quantity}
@@ -337,8 +408,9 @@ export default function CartPage() {
                               }
                               disabled={
                                 !item.isBulkOrder &&
+                                item.maxQuantity !== undefined &&
                                 item.quantity >=
-                                  (item.maxQuantity ?? MAXIMUM_QUANTITY)
+                                  item.maxQuantity
                               }
                               aria-label="Increase quantity"
                               className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-slate-950 text-xl font-bold transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
@@ -348,9 +420,9 @@ export default function CartPage() {
                           </div>
 
                           <p className="mt-2 text-xs text-slate-500">
-                            {item.isBulkOrder
+                            {item.isBulkOrder || item.maxQuantity === undefined
                               ? "No quantity limit"
-                              : `Allowed: ${item.minQuantity ?? 1}–${item.maxQuantity ?? MAXIMUM_QUANTITY}`}
+                              : `Allowed: ${item.minQuantity ?? 1}–${item.maxQuantity}`}
                           </p>
                         </div>
 
