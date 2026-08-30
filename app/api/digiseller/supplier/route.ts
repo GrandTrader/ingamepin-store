@@ -99,5 +99,5 @@ export async function POST(request: Request) {
 }
 
 export function GET() {
-  return NextResponse.json(emptyTestResponse);
+  return NextResponse.json(deliveryTestResponse);
 }
