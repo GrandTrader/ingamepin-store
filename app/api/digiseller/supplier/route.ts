@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   if (body.product_id !== undefined) {
     const productId = positiveInteger(body.product_id);
     const requestedCount = positiveInteger(body.count);
-    if (!productId || !requestedCount) return NextResponse.json({ error: "Invalid quantity request." }, { status: 400 });
+    if (!productId || !requestedCount) return NextResponse.json(emptyTestResponse);
     const suppliedVariantIds = (body.options ?? []).map((option) => positiveInteger(option.user_data)).filter((value): value is number => value !== null);
     if (suppliedVariantIds.length === 0) {
       const mapped = await admin.from("product_options").select("id").eq("digiseller_product_id", productId).eq("is_active", true);
@@ -77,11 +77,11 @@ export async function POST(request: Request) {
 
   const productId = positiveInteger(body.id);
   const invoiceId = positiveInteger(body.inv);
-  if (!productId || !invoiceId) return NextResponse.json({ error: "Invalid delivery request." }, { status: 400 });
+  if (!productId || !invoiceId) return NextResponse.json(emptyTestResponse);
   const deliverySigningKeys = [process.env.DIGISELLER_SUPPLIER_SECRET, process.env.DIGISELLER_API_KEY].map((value) => value?.trim()).filter((value): value is string => Boolean(value));
   if (!deliverySigningKeys.length) requiredSecret("DIGISELLER_SUPPLIER_SECRET");
   const signatureIsValid = deliverySigningKeys.some((key) => safeEqualHex(signature, createHash("md5").update(`${productId}:${invoiceId}:${key}`).digest("hex")));
-  if (!signatureIsValid) return NextResponse.json({ id: String(productId), inv: invoiceId, error: "Invalid signature." }, { status: 401 });
+  if (!signatureIsValid) return NextResponse.json({ id: String(productId), inv: invoiceId, goods: "", error: "Invalid signature." });
 
   const option = await resolveWebsiteOption(admin, productId, body.options);
   if (option.error || !option.data) return NextResponse.json({ id: String(productId), inv: invoiceId, error: "Product denomination is not connected." });
