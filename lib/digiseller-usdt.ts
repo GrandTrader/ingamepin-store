@@ -2,6 +2,8 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 type SignableValue = string | number;
 
+let cachedDigisellerToken: { value: string; validUntil: number } | null = null;
+
 // Orders created before the signature-format fix were already resolved
 // manually. Never reactivate them through a delayed callback or status retry.
 const DIGISELLER_SAFE_STATUS_CUTOFF = Date.parse(
@@ -40,34 +42,69 @@ export function verifyDigiseller(
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
-async function getDigisellerInvoiceState(invoiceId: string) {
+async function getDigisellerToken() {
   const sellerId = Number(process.env.DIGISELLER_SELLER_ID?.trim());
   const apiKey = process.env.DIGISELLER_API_KEY?.trim();
   if (!Number.isSafeInteger(sellerId) || sellerId <= 0 || !apiKey) {
     throw new Error("DigiSeller API credentials are not configured.");
   }
 
-  const timestamp = Math.floor(Date.now() / 1000);
-  const sign = createHash("sha256")
-    .update(`${apiKey}${timestamp}`)
-    .digest("hex");
-  const loginResponse = await fetch("https://api.digiseller.com/api/apilogin", {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ seller_id: sellerId, timestamp, sign }),
-    cache: "no-store",
-  });
-  const login = (await loginResponse.json().catch(() => null)) as {
-    retval?: number;
-    token?: string;
-    retdesc?: string;
-  } | null;
-  if (!loginResponse.ok || login?.retval !== 0 || !login.token) {
-    throw new Error(login?.retdesc || "DigiSeller status login failed.");
+  if (
+    cachedDigisellerToken &&
+    cachedDigisellerToken.validUntil > Date.now() + 30_000
+  ) {
+    return cachedDigisellerToken.value;
   }
 
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const sign = createHash("sha256")
+      .update(`${apiKey}${timestamp}`)
+      .digest("hex");
+    const loginResponse = await fetch("https://api.digiseller.com/api/apilogin", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ seller_id: sellerId, timestamp, sign }),
+      cache: "no-store",
+    });
+    const login = (await loginResponse.json().catch(() => null)) as {
+      retval?: number;
+      token?: string;
+      desc?: string;
+      endesc?: string;
+      retdesc?: string;
+      valid_thru?: string;
+    } | null;
+    if (loginResponse.ok && login?.retval === 0 && login.token) {
+      const reportedExpiry = Date.parse(login.valid_thru ?? "");
+      cachedDigisellerToken = {
+        value: login.token,
+        validUntil: Number.isFinite(reportedExpiry)
+          ? reportedExpiry
+          : Date.now() + 90 * 60 * 1000,
+      };
+      return login.token;
+    }
+    if (login?.retval === -4 && attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+      continue;
+    }
+    throw new Error(
+      login?.endesc ||
+        login?.desc ||
+        login?.retdesc ||
+        "DigiSeller status login failed.",
+    );
+  }
+
+  throw new Error("DigiSeller status login failed.");
+}
+
+async function getDigisellerInvoiceState(invoiceId: string) {
+  const token = await getDigisellerToken();
+
   const statusResponse = await fetch(
-    `https://api.digiseller.com/api/purchase/info/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(login.token)}`,
+    `https://api.digiseller.com/api/purchase/info/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(token)}`,
     { headers: { Accept: "application/json" }, cache: "no-store" },
   );
   const status = (await statusResponse.json().catch(() => null)) as {
