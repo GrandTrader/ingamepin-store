@@ -213,9 +213,7 @@ export default function ProductPurchaseForm({
         : 0
       : applyAffiliateMarkup(selectedFixedOption?.sellingPrice ?? 0);
 
-  const requiresSingleQuantity =
-    valueMode === "CUSTOM" ||
-    (isGamingTopup && fulfillmentMode === "PLAYER_ID_TOPUP");
+  const requiresSingleQuantity = valueMode === "CUSTOM";
 
   const configuredMaximumQuantity = Math.max(
     1,
