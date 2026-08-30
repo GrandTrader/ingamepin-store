@@ -45,10 +45,30 @@ function positiveInteger(value: unknown) {
 }
 
 async function resolveWebsiteOption(admin: ReturnType<typeof createAdminClient>, productId: number, options: SupplierRequest["options"]) {
-  const variantIds = (options ?? []).map((option) => positiveInteger(option.user_data)).filter((value): value is number => value !== null);
-  let query = admin.from("product_options").select("id").eq("digiseller_product_id", productId).eq("is_active", true);
-  query = variantIds.length > 0 ? query.in("digiseller_variant_id", variantIds) : query.is("digiseller_variant_id", null);
-  return query.maybeSingle();
+  const selections = options ?? [];
+  const variantIds = selections.map((option) => positiveInteger(option.user_data)).filter((value): value is number => value !== null);
+  const query = admin.from("product_options").select("id").eq("digiseller_product_id", productId).eq("is_active", true);
+  if (variantIds.length === 0) return query.is("digiseller_variant_id", null).maybeSingle();
+
+  const variantMatch = await query.in("digiseller_variant_id", variantIds).maybeSingle();
+  if (variantMatch.error || variantMatch.data) return variantMatch;
+
+  const denominations = selections
+    .map((option) => Number(option.user_data))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  let denominationQuery = admin
+    .from("product_options")
+    .select("id")
+    .eq("digiseller_product_id", productId)
+    .eq("is_active", true)
+    .in("denomination", denominations);
+  const optionIds = selections
+    .map((option) => positiveInteger(option.id))
+    .filter((value): value is number => value !== null);
+  if (optionIds.length > 0) {
+    denominationQuery = denominationQuery.in("digiseller_option_id", optionIds);
+  }
+  return denominationQuery.maybeSingle();
 }
 
 export async function POST(request: Request) {
