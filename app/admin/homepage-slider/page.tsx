@@ -103,6 +103,7 @@ export default async function HomepageSliderPage({
 
               return {
                 id: product.id,
+                public_id: product.public_id,
                 name: product.name,
                 slug: product.slug,
                 is_preorder_only: product.is_preorder_only,

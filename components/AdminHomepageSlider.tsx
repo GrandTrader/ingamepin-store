@@ -11,6 +11,7 @@ import ResponsiveImageField from "@/components/ResponsiveImageField";
 
 export type SliderProduct = {
   id: string;
+  public_id?: number | string;
   name: string;
   slug: string;
   href: string;
@@ -73,6 +74,11 @@ export default function AdminHomepageSlider({
   function slideLabel(slide: AdminSlide) {
     const product = products.find((item) => item.id === slide.product_id);
     return product?.name ?? "Custom slide";
+  }
+
+  function slideProductId(slide: AdminSlide) {
+    const product = products.find((item) => item.id === slide.product_id);
+    return product ? product.public_id ?? product.id : null;
   }
 
   return (
@@ -154,6 +160,11 @@ export default function AdminHomepageSlider({
                     <span className="block truncate font-black">
                       {slideLabel(slide)}
                     </span>
+                    {slideProductId(slide) && (
+                      <span className="mt-1 block text-xs font-bold text-slate-500">
+                        Product ID: {slideProductId(slide)}
+                      </span>
+                    )}
                     <span
                       className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
                         slide.is_active
@@ -229,7 +240,7 @@ export default function AdminHomepageSlider({
           <form action={saveSlide} className="mt-5 grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="id" value={draft.id} />
 
-            <Field label="Existing product" wide>
+            <Field label="Existing product ID" wide>
               <select
                 name="product_id"
                 value={draft.product_id ?? ""}
@@ -239,12 +250,13 @@ export default function AdminHomepageSlider({
                 <option value="">No product - use a custom link</option>
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
-                    {product.name}
+                    ID {product.public_id ?? product.id} — {product.name}
                   </option>
                 ))}
               </select>
               <small className="mt-1 block text-slate-500">
-                Selecting a product makes Buy Now open its product page.
+                Select the existing product ID. Buy Now will automatically open
+                that product page.
               </small>
             </Field>
 
