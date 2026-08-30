@@ -196,7 +196,7 @@ export default async function Home() {
       region: product.region,
       stock: getAvailableStock(product),
       rating: Number(product.rating),
-      sold: paidProductSales.get(product.id) ?? 0,
+      sold: Number(product.sold_count ?? 0) + (paidProductSales.get(product.id) ?? 0),
       category: getProductCategory(
         product.categories,
       ),

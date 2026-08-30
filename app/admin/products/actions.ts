@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadDigiSellerProductImage } from "@/lib/digiseller-api";
+import { syncDigiSellerStatistics } from "@/lib/digiseller-stat-sync";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +26,26 @@ const allowedStatuses = [
   "INACTIVE",
   "DRAFT",
 ] as const;
+
+export async function syncAllDigiSellerStatistics() {
+  const path = "/admin/products";
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/admin/login");
+  const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (!access.data) redirect("/admin/login?error=Access denied");
+
+  let result: Awaited<ReturnType<typeof syncDigiSellerStatistics>>;
+  try {
+    result = await syncDigiSellerStatistics();
+    revalidatePath("/");
+    revalidatePath("/products");
+    revalidatePath("/admin/products");
+  } catch (error) {
+    redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "DigiSeller statistics sync failed.")}`);
+  }
+  redirect(`${path}?success=${encodeURIComponent(`DigiSeller statistics synced: ${result.productsUpdated} website products, ${result.connectedDigiSellerProducts} DigiSeller products, ${result.reviews} review records, ${result.positiveReviews} positive reviews, ${result.negativeReviews} negative reviews and ${result.totalReturns} returns.`)}`);
+}
 
 
 const allowedCustomerFieldTypes = ["TEXT", "EMAIL", "NUMBER", "TEXTAREA"] as const;

@@ -269,7 +269,7 @@ export default async function ProductsPage({
         region: product.region,
         stock: getAvailableStock(product),
         rating: Number(product.rating),
-        sold: paidProductSales.get(product.id) ?? 0,
+        sold: Number(product.sold_count ?? 0) + (paidProductSales.get(product.id) ?? 0),
         category: getCategory(product),
         discountPercent: customerDiscounts.get(product.id) ?? 0,
         isBulkOrder: product.is_bulk_order,

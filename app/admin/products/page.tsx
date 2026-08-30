@@ -16,6 +16,7 @@ import {
   createDraftProduct,
   deleteSelectedProducts,
   syncAllProductImagesToDigiSeller,
+  syncAllDigiSellerStatistics,
   toggleProductSales,
 } from "./actions";
 
@@ -353,6 +354,11 @@ export default async function AdminProductsPage({
                 <form action={syncAllProductImagesToDigiSeller}>
                   <button className="text-emerald-600 transition hover:text-emerald-800">
                     Sync all to DigiSeller
+                  </button>
+                </form>
+                <form action={syncAllDigiSellerStatistics}>
+                  <button className="text-violet-600 transition hover:text-violet-800">
+                    Sync DigiSeller statistics
                   </button>
                 </form>
                 <span className="text-slate-400">

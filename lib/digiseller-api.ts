@@ -16,6 +16,10 @@ export type DigiSellerProduct = {
   currency: string;
   stock: number;
   visible: boolean;
+  soldCount: number;
+  returnCount: number;
+  positiveReviewCount: number;
+  negativeReviewCount: number;
 };
 
 type DigiSellerProductsResponse = {
@@ -28,6 +32,10 @@ type DigiSellerProductsResponse = {
     currency?: string;
     num_in_stock?: number;
     visible?: number;
+    cnt_sell?: number;
+    cnt_return?: number;
+    cnt_goodresponses?: number;
+    cnt_badresponses?: number;
   }>;
 };
 
@@ -392,6 +400,10 @@ export async function listDigiSellerProducts(): Promise<DigiSellerProduct[]> {
       currency: String(row.currency ?? "USD"),
       stock: Number(row.num_in_stock ?? 0),
       visible: Number(row.visible ?? 0) === 1,
+      soldCount: Math.max(0, Number(row.cnt_sell ?? 0)),
+      returnCount: Math.max(0, Number(row.cnt_return ?? 0)),
+      positiveReviewCount: Math.max(0, Number(row.cnt_goodresponses ?? 0)),
+      negativeReviewCount: Math.max(0, Number(row.cnt_badresponses ?? 0)),
     }];
   });
 }
