@@ -482,7 +482,7 @@ export default async function AdminProductsPage({
                         <td className="px-3 py-2.5">
                           <Link
                             href={`/admin/products/${product.id}/edit/general`}
-                            className="font-bold text-blue-600 underline-offset-2 hover:underline"
+                            className="admin-product-name-link font-bold text-blue-600 underline-offset-2 hover:underline"
                           >
                             {product.name}
                           </Link>
@@ -504,7 +504,7 @@ export default async function AdminProductsPage({
                           )}
                         </td>
 
-                        <td className="px-3 py-2.5 text-center font-bold text-blue-600">
+                        <td className="admin-product-sold-count px-3 py-2.5 text-center font-bold text-blue-600">
                           {getTotalSold(product).toLocaleString("en-IN")}
                         </td>
 
@@ -515,7 +515,7 @@ export default async function AdminProductsPage({
                         <td className="px-3 py-2.5 text-center">
                           <Link
                             href={`/admin/products/${product.id}/edit/stock`}
-                            className={`font-black underline-offset-2 hover:underline ${availableStock !== "Unlimited" && availableStock <= 5 ? "text-red-600" : "text-blue-600"}`}
+                            className={`font-black underline-offset-2 hover:underline ${availableStock !== "Unlimited" && availableStock <= 5 ? "admin-product-stock-low text-red-600" : "admin-product-stock-link text-blue-600"}`}
                           >
                             {getAvailableLabel(product)}
                           </Link>

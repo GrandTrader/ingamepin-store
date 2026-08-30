@@ -625,6 +625,20 @@ html[data-store-theme="dark"] .group:hover .product-card-buy-button:not(.cursor-
   background-color: #804515 !important;
 }
 
+/* Admin inventory links and metrics use a softer steel blue in dark mode. */
+html[data-store-theme="dark"] .admin-product-name-link,
+html[data-store-theme="dark"] .admin-product-sold-count,
+html[data-store-theme="dark"] .admin-product-stock-link {
+  color: #8eafd0 !important;
+  -webkit-text-fill-color: #8eafd0 !important;
+}
+
+html[data-store-theme="dark"] .admin-product-name-link:hover,
+html[data-store-theme="dark"] .admin-product-stock-link:hover {
+  color: #b2cae1 !important;
+  -webkit-text-fill-color: #b2cae1 !important;
+}
+
 /* Product denomination cards use a light surface in light mode, so their
    labels and prices must not inherit the white action-button foreground. */
 html[data-store-theme="light"] button.product-option-button,
