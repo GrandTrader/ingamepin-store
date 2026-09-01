@@ -37,6 +37,13 @@ type HeaderCategory = {
   sales: number;
 };
 
+const announcementItems = [
+  { icon: "⚡", translationKey: "announcementInstantDelivery" },
+  { icon: "◆", translationKey: "announcementBulkSavings" },
+  { icon: "◆", translationKey: "announcementSecurePayments" },
+  { icon: "◆", translationKey: "announcementGlobalProducts" },
+] as const;
+
 export default function Header() {
   const pathname = usePathname();
   const hideProductSearch = [
@@ -508,6 +515,23 @@ export default function Header() {
             ))}
           </div>
         </nav>
+
+        {!hideProductSearch && (
+          <aside aria-label="Store announcements" className="announcement-ticker">
+            <div className="announcement-ticker-track">
+              {[0, 1].map((copy) => (
+                <div key={copy} className="announcement-ticker-group" aria-hidden={copy === 1}>
+                  {announcementItems.map((item) => (
+                    <span key={`${copy}-${item.translationKey}`} className="announcement-ticker-item">
+                      <span aria-hidden="true" className="announcement-ticker-icon">{item.icon}</span>
+                      {t(item.translationKey)}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </aside>
+        )}
 
         {!hideProductSearch &&
           !pathname.startsWith("/digiseller/usdt/") &&
