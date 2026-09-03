@@ -199,9 +199,10 @@ const PAYMENT_METHOD_IDS: Record<string, string> = {
   pally: "PALLY",
   freekassa: "FREEKASSA",
   upi: "UPI",
+  manual_upi: "UPI",
 };
 
-const PAYMENT_METHOD_ORDER = ["wallet", "binance", "usdt", "pally", "freekassa", "upi"];
+const PAYMENT_METHOD_ORDER = ["wallet", "manual_upi", "binance", "usdt", "pally", "freekassa", "upi"];
 
 const initialForm: CheckoutForm = {
   email: "",
@@ -941,6 +942,8 @@ export default function CheckoutPage() {
     router.push(
       paymentMethod === "usdt"
         ? "/checkout/usdt"
+        : paymentMethod === "manual_upi"
+          ? "/checkout/manual-usdt"
         : paymentMethod === "upi"
           ? "/checkout/manual-usdt"
           : "/checkout/payment",
@@ -1420,6 +1423,30 @@ export default function CheckoutPage() {
                         ? formatPrice(wallet.balance)
                         : "—"}
                     </p>
+                  </div>
+                </div>
+              </label>
+
+              <label
+                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                  paymentMethod === "manual_upi"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } ${!paymentAllowed("manual_upi") ? "hidden" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="manual_upi"
+                  checked={paymentMethod === "manual_upi"}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                  className="sr-only"
+                />
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-lg font-black text-white">₹</span>
+                  <div>
+                    <p className="font-bold">Manual UPI</p>
+                    <p className="mt-1 text-xs text-slate-500">Scan IOB QR and submit the 12-digit UPI reference</p>
                   </div>
                 </div>
               </label>

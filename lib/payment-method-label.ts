@@ -1,5 +1,5 @@
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  UPI: "Manual Crypto",
+  UPI: "Manual payment",
   USDT_DIRECT: "Direct USDT",
   BINANCE_PAY: "Binance Pay",
   FREEKASSA: "FreeKassa",

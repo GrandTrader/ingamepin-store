@@ -23,6 +23,7 @@ export function paymentMethodToGatewayId(
     case "wallet":
       return "WALLET";
     case "upi":
+    case "manual_upi":
       return "UPI";
     case "binance":
     case "binance_pay":

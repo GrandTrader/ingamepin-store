@@ -97,13 +97,14 @@ export async function POST(request: NextRequest) {
       pally: "PALLY",
       freekassa: "FREEKASSA",
       upi: "UPI",
+      manual_upi: "UPI",
     };
 
     if (!paymentMethodId[requestedPaymentMethod]) {
       return NextResponse.json({ error: "Payment method is invalid." }, { status: 400 });
     }
 
-    if (requestedPaymentMethod === "upi") {
+    if (["upi", "manual_upi"].includes(requestedPaymentMethod)) {
       const gatewayResult = await createAdminClient()
         .from("payment_gateway_settings")
         .select("gateway_commissions")
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
 
       if (gatewayResult.error || gatewaySettings.UPI?.enabled !== true) {
         return NextResponse.json(
-          { error: "Manual USDT is currently unavailable." },
+          { error: requestedPaymentMethod === "manual_upi" ? "Manual UPI is currently unavailable." : "Manual USDT is currently unavailable." },
           { status: 400 },
         );
       }
@@ -284,7 +285,7 @@ export async function POST(request: NextRequest) {
       p_customer_phone: "",
       p_payment_method: isWalletPayment
         ? "wallet"
-        : requestedPaymentMethod,
+        : requestedPaymentMethod === "manual_upi" ? "upi" : requestedPaymentMethod,
       p_items: body.items,
       p_customer_note: String(customer.orderNote ?? "") || null,
     });

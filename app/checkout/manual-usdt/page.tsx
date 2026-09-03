@@ -25,9 +25,13 @@ export default function ManualUsdtPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [network, setNetwork] = useState<ManualUsdtNetwork>("BEP20");
+  const [network, setNetwork] = useState<ManualUsdtNetwork>("IOB_UPI");
   const [purchaseUrl, setPurchaseUrl] = useState("/checkout/success");
   const selectedNetwork = MANUAL_USDT_NETWORKS.find((item) => item.id === network) ?? MANUAL_USDT_NETWORKS[0];
+  const isManualUpi = order?.paymentMethod?.toLowerCase() === "manual_upi";
+  const availableMethods = MANUAL_USDT_NETWORKS.filter((item) =>
+    isManualUpi ? item.id === "IOB_UPI" : item.id !== "IOB_UPI",
+  );
 
   useEffect(() => {
     try {
@@ -36,12 +40,13 @@ export default function ManualUsdtPage() {
       if (
         !parsed?.databaseId ||
         !parsed.accessToken ||
-        parsed.paymentMethod?.toLowerCase() !== "upi"
+        !["upi", "manual_upi"].includes(parsed.paymentMethod?.toLowerCase() ?? "")
       ) {
         setOrder(null);
         return;
       }
       setOrder(parsed);
+      setNetwork(parsed.paymentMethod?.toLowerCase() === "manual_upi" ? "IOB_UPI" : "BEP20");
     } catch {
       setOrder(null);
     }
@@ -129,22 +134,21 @@ export default function ManualUsdtPage() {
     <main className="min-h-screen bg-slate-950 px-4 py-5 text-white sm:py-7">
       <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-6">
         <div className="text-center">
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">Manual Crypto</p>
-          <h1 className="mt-1 text-2xl font-black">Crypto payment</h1>
-          <p className="mt-1 text-sm text-slate-400">Send the full amount in USDT using one selected network.</p>
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">{isManualUpi ? "Manual UPI" : "Manual Crypto"}</p>
+          <h1 className="mt-1 text-2xl font-black">{isManualUpi ? "Pay using UPI" : "Crypto payment"}</h1>
+          <p className="mt-1 text-sm text-slate-400">{isManualUpi ? "Scan the IOB QR and pay the exact amount." : "Send the full amount in USDT using one selected network."}</p>
         </div>
 
         <div className="mt-4 grid items-start gap-4 sm:grid-cols-[320px_minmax(0,1fr)]">
           {"qrImage" in selectedNetwork ? (
             <div className="mx-auto h-[300px] w-[300px] overflow-hidden rounded-2xl bg-white">
-              {/* Preserve the exact Binance-generated QR from the supplied receive screen. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={selectedNetwork.qrImage}
-                alt="Binance Pay receiving QR code"
-                width={608}
-                height={1320}
-                className="max-w-none -translate-x-[155px] -translate-y-[314px]"
+                alt={`${selectedNetwork.label} payment QR code`}
+                width={selectedNetwork.id === "IOB_UPI" ? 300 : 608}
+                height={selectedNetwork.id === "IOB_UPI" ? 300 : 1320}
+                className={selectedNetwork.id === "IOB_UPI" ? "h-full w-full object-contain p-3" : "max-w-none -translate-x-[155px] -translate-y-[314px]"}
               />
             </div>
           ) : qrCode && (
@@ -157,33 +161,35 @@ export default function ManualUsdtPage() {
           <div>
             <div className="text-left">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Select a network</p>
-            <select value={network} onChange={(event) => { setNetwork(event.target.value as ManualUsdtNetwork); setTransactionHash(""); setCopied(false); }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2.5 font-black">
-              {MANUAL_USDT_NETWORKS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+            <select disabled={isManualUpi} value={network} onChange={(event) => { setNetwork(event.target.value as ManualUsdtNetwork); setTransactionHash(""); setCopied(false); }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2.5 font-black disabled:opacity-100">
+              {availableMethods.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
           </div>
           <div className="mt-3 rounded-2xl bg-slate-950 p-3 text-center">
             <p className="text-sm text-slate-500">Amount to send</p>
-            <p className="text-3xl font-black text-cyan-400">{order.totalAmount.toFixed(2)} <span className="text-lg text-slate-300">USDT</span></p>
+            <p className="text-3xl font-black text-cyan-400">{network === "IOB_UPI" ? formatPrice(order.totalAmount) : `${order.totalAmount.toFixed(2)} USDT`}</p>
             <p className="text-xs text-slate-500">Order total: {formatPrice(order.totalAmount)}</p>
           </div>
 
         <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950 p-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{selectedNetwork.id === "BINANCE_PAY" ? "Binance Pay UID" : `${selectedNetwork.label} wallet address`}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{selectedNetwork.id === "IOB_UPI" ? "Payment method" : selectedNetwork.id === "BINANCE_PAY" ? "Binance Pay UID" : `${selectedNetwork.label} wallet address`}</p>
           <p className="mt-1 break-all font-mono text-xs">{selectedNetwork.address}</p>
-          <button
+          {network !== "IOB_UPI" && <button
             type="button"
             onClick={() => void copyAddress()}
             className={`mt-2 rounded-lg px-3 py-2 text-xs font-black text-white shadow-sm transition ${copied ? "bg-emerald-600" : "bg-slate-800 hover:bg-slate-700"}`}
           >
             {copied ? "✓ Copied" : "Copy address"}
-          </button>
+          </button>}
           <span aria-live="polite" className={`ml-3 text-xs font-black text-emerald-700 transition ${copied ? "opacity-100" : "opacity-0"}`}>
             Address copied!
           </span>
         </div>
 
         <p className="mt-3 rounded-xl border border-amber-400 bg-amber-100 p-2.5 text-xs font-bold text-amber-950">
-          {selectedNetwork.id === "BINANCE_PAY"
+          {selectedNetwork.id === "IOB_UPI"
+            ? "Scan the QR using any UPI app. Confirm the merchant name and exact amount before paying. Your order is processed only after manual verification."
+            : selectedNetwork.id === "BINANCE_PAY"
             ? "Pay only through Binance Pay and confirm that UID 57618783 is shown before sending."
             : `Only send USDT on ${selectedNetwork.label}. Sending another token or network may permanently lose your funds.`}
         </p>
@@ -198,14 +204,14 @@ export default function ManualUsdtPage() {
           </div>
         ) : (
           <form onSubmit={submitPayment} className="mt-4">
-            <label className="block text-sm font-bold" htmlFor="transactionHash">{network === "BINANCE_PAY" ? "Binance Pay order ID" : "Transaction hash"}</label>
+            <label className="block text-sm font-bold" htmlFor="transactionHash">{network === "IOB_UPI" ? "12-digit UPI transaction reference (UTR)" : network === "BINANCE_PAY" ? "Binance Pay order ID" : "Transaction hash"}</label>
             <input
               id="transactionHash"
               value={transactionHash}
               onChange={(event) => setTransactionHash(event.target.value.trim())}
-              placeholder={network === "BINANCE_PAY" ? "Enter Binance Pay order ID" : "0x..."}
+              placeholder={network === "IOB_UPI" ? "Enter 12-digit UPI reference" : network === "BINANCE_PAY" ? "Enter Binance Pay order ID" : "0x..."}
               required
-              minLength={network === "BINANCE_PAY" ? 6 : 40}
+              minLength={network === "IOB_UPI" ? 12 : network === "BINANCE_PAY" ? 6 : 40}
               maxLength={120}
               className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2.5 font-mono text-sm outline-none focus:border-cyan-400"
             />
