@@ -27,6 +27,7 @@ export type AdminCustomer = {
   walletBalance: number;
   walletCurrency: string;
   orderCount: number;
+  isReseller: boolean;
   totalSpent: number;
   registeredAt: string;
   lastSignInAt: string | null;
@@ -103,6 +104,9 @@ export default function CustomersPanel({
           customer.name,
           customer.email,
           customer.phone,
+          customer.isReseller
+            ? "Reseller"
+            : "",
         ].some((value) =>
           value.toLowerCase().includes(query),
         );
@@ -144,6 +148,7 @@ export default function CustomersPanel({
       "Email",
       "Phone",
       "Status",
+      "Tag",
       "Wallet balance",
       "Orders",
       "Total spent",
@@ -159,6 +164,9 @@ export default function CustomersPanel({
       customer.verified
         ? "Verified"
         : "Unverified",
+      customer.isReseller
+        ? "Reseller"
+        : "",
       customer.walletBalance,
       customer.orderCount,
       customer.totalSpent,
@@ -313,6 +321,9 @@ export default function CustomersPanel({
                     <p className="font-bold text-slate-900">
                       {customer.name}
                     </p>
+                    {customer.isReseller && (
+                      <ResellerBadge />
+                    )}
                     <p className="mt-1 text-xs text-slate-500">
                       {customer.email}
                     </p>
@@ -387,6 +398,11 @@ export default function CustomersPanel({
               <p className="mt-1 text-slate-500">
                 {selectedCustomer.email}
               </p>
+              {selectedCustomer.isReseller && (
+                <div className="mt-2">
+                  <ResellerBadge />
+                </div>
+              )}
             </div>
             <button
               type="button"
@@ -600,6 +616,14 @@ function VerificationBadge({
       {verified
         ? "Verified"
         : "Unverified"}
+    </span>
+  );
+}
+
+function ResellerBadge() {
+  return (
+    <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-700">
+      Reseller
     </span>
   );
 }

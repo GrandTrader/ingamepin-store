@@ -20,6 +20,11 @@ type OrderRow = {
   customer_email: string;
   total: number | string;
   status: string;
+  order_items: Array<{
+    products:
+      | { is_bulk_order: boolean }
+      | Array<{ is_bulk_order: boolean }>;
+  }>;
 };
 
 type DiscountRow = {
@@ -78,7 +83,7 @@ async function loadAllOrders() {
     const result = await admin
       .from("orders")
       .select(
-        "customer_email, total, status",
+        "customer_email, total, status, order_items(products(is_bulk_order))",
       )
       .range(
         from,
@@ -236,6 +241,7 @@ export default async function CustomersPage({
     {
       count: number;
       totalSpent: number;
+      isReseller: boolean;
     }
   >();
 
@@ -247,8 +253,20 @@ export default async function CustomersPage({
       ordersByEmail.get(email) ?? {
         count: 0,
         totalSpent: 0,
+        isReseller: false,
       };
     summary.count += 1;
+    summary.isReseller ||= order.order_items.some(
+      (item) => {
+        const products = item.products;
+
+        return Array.isArray(products)
+          ? products.some(
+              (product) => product.is_bulk_order,
+            )
+          : products.is_bulk_order;
+      },
+    );
 
     if (
       order.status === "PAID" ||
@@ -312,6 +330,8 @@ export default async function CustomersPage({
             wallet?.currency ?? "USD",
           orderCount:
             orderSummary?.count ?? 0,
+          isReseller:
+            orderSummary?.isReseller ?? false,
           totalSpent:
             orderSummary?.totalSpent ??
             0,
