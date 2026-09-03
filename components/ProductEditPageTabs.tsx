@@ -5,6 +5,7 @@ const tabs = [
   ["gallery", "Gallery"],
   ["delivery", "Delivery"],
   ["product-options", "Product options"],
+  ["discounted-customers", "Discounted customers"],
   ["stock", "Stock"],
   ["customer-information", "Customer information"],
   ["sold-products", "Sold products"],
