@@ -11,14 +11,18 @@ function sentiment(review: DigiSellerReview): "POSITIVE" | "NEGATIVE" {
 }
 
 function reviewedAt(value: string) {
+  const dayFirst = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (dayFirst) {
+    return new Date(Date.UTC(
+      Number(dayFirst[3]), Number(dayFirst[2]) - 1, Number(dayFirst[1]),
+      Number(dayFirst[4] || 0), Number(dayFirst[5] || 0), Number(dayFirst[6] || 0),
+    )).toISOString();
+  }
+
   const direct = new Date(value);
-  if (!Number.isNaN(direct.getTime())) return direct.toISOString();
-  const match = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-  if (!match) return new Date().toISOString();
-  return new Date(Date.UTC(
-    Number(match[3]), Number(match[2]) - 1, Number(match[1]),
-    Number(match[4] || 0), Number(match[5] || 0), Number(match[6] || 0),
-  )).toISOString();
+  return Number.isNaN(direct.getTime())
+    ? new Date().toISOString()
+    : direct.toISOString();
 }
 
 export async function syncDigiSellerReviews() {
