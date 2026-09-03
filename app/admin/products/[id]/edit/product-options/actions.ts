@@ -11,6 +11,8 @@ type SubmittedOption = { id: string; name: string; denomination: number; currenc
 export async function saveProductOptions(formData: FormData) {
   const productId = String(formData.get("id") ?? "").trim();
   const path = `/admin/products/${productId}/edit/product-options`;
+  const preserveDiscountedPrices = formData.get("preserve_discounted_prices") === "true";
+  const requestedPriceChangePercent = Number(formData.get("price_reduction_percent") ?? 0);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
@@ -28,8 +30,66 @@ export async function saveProductOptions(formData: FormData) {
   if (!product.data) redirect(`${path}?error=${encodeURIComponent("Product not found.")}`);
 
   const submittedIds = options.map((option) => option.id).filter(Boolean);
-  const existingResult = await admin.from("product_options").select("id").eq("product_id", productId).eq("is_custom_value", false);
+  const existingResult = await admin.from("product_options").select("id, selling_price, is_active").eq("product_id", productId).eq("is_custom_value", false);
   if (existingResult.error) redirect(`${path}?error=${encodeURIComponent(existingResult.error.message)}`);
+
+  let adjustedDiscounts: Array<{ id: string; discountPercent: number | null }> = [];
+
+  if (preserveDiscountedPrices) {
+    const currentOptions = (existingResult.data ?? []).filter((option) => option.is_active);
+    const currentIds = new Set(currentOptions.map((option) => option.id));
+
+    if (
+      options.some((option) => !option.id || !currentIds.has(option.id)) ||
+      currentOptions.some((option) => !submittedIds.includes(option.id))
+    ) {
+      redirect(`${path}?error=${encodeURIComponent("Price protection cannot add or remove options. Save structural changes separately first.")}`);
+    }
+
+    const newPriceById = new Map(options.map((option) => [option.id, option.sellingPrice]));
+    const hasRequestedPriceChange = Number.isFinite(requestedPriceChangePercent) && Math.abs(requestedPriceChangePercent) > 0 && Math.abs(requestedPriceChangePercent) < 100;
+    const requestedRatio = hasRequestedPriceChange ? 1 - requestedPriceChangePercent / 100 : null;
+    const ratios = currentOptions.map((option) => {
+      const oldPrice = Number(option.selling_price);
+      const newPrice = Number(newPriceById.get(option.id));
+
+      if (oldPrice <= 0 || newPrice <= 0 || (requestedRatio === null && newPrice > oldPrice)) {
+        redirect(`${path}?error=${encodeURIComponent("Price protection requires positive prices and a proportional change.")}`);
+      }
+      if (requestedRatio !== null && newPrice !== Math.round(oldPrice * requestedRatio * 100) / 100) {
+        redirect(`${path}?error=${encodeURIComponent("An option price changed after applying the percentage. Apply the percentage again before saving.")}`);
+      }
+
+      return newPrice / oldPrice;
+    });
+    const reductionRatio = requestedRatio ?? ratios[0] ?? 1;
+
+    if (requestedRatio === null && ratios.some((ratio) => Math.abs(ratio - reductionRatio) > 0.0001)) {
+      redirect(`${path}?error=${encodeURIComponent("Reduce every option by the same percentage when price protection is enabled.")}`);
+    }
+
+    const discountsResult = await admin
+      .from("customer_product_discounts")
+      .select("id, discount_percent")
+      .eq("product_id", productId)
+      .eq("is_active", true);
+    if (discountsResult.error) redirect(`${path}?error=${encodeURIComponent(discountsResult.error.message)}`);
+
+    adjustedDiscounts = (discountsResult.data ?? []).map((discount) => {
+      const currentDiscount = Number(discount.discount_percent);
+      const nextDiscount = 100 - (100 - currentDiscount) / reductionRatio;
+
+      if (nextDiscount < -0.005) {
+        redirect(`${path}?error=${encodeURIComponent("The new regular price is below at least one customer's current price. Use a smaller reduction.")}`);
+      }
+
+      return {
+        id: discount.id,
+        discountPercent: nextDiscount <= 0.005 ? null : Math.round(nextDiscount * 100) / 100,
+      };
+    });
+  }
+
   const removedIds = (existingResult.data ?? []).map((option) => option.id).filter((id) => !submittedIds.includes(id));
   if (removedIds.length > 0) {
     const deactivateResult = await admin.from("product_options").update({ is_active: false }).in("id", removedIds).eq("product_id", productId);
@@ -43,6 +103,17 @@ export async function saveProductOptions(formData: FormData) {
       : await admin.from("product_options").insert({ ...values, product_id: productId, stock_quantity: isUnlimitedStock(product.data.stock_quantity) ? UNLIMITED_STOCK_QUANTITY : 0 });
     if (result.error) redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
   }
+
+  for (const discount of adjustedDiscounts) {
+    const result = discount.discountPercent === null
+      ? await admin.from("customer_product_discounts").update({ is_active: false, updated_at: new Date().toISOString() }).eq("id", discount.id)
+      : await admin.from("customer_product_discounts").update({ discount_percent: discount.discountPercent, updated_at: new Date().toISOString() }).eq("id", discount.id);
+    if (result.error) redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
+  }
+
   revalidatePath(path); revalidatePath(`/admin/products/${productId}/edit/stock`); revalidatePath("/");
-  redirect(`${path}?success=${encodeURIComponent("Product options saved.")}`);
+  const successMessage = preserveDiscountedPrices
+    ? `Product options saved. ${adjustedDiscounts.length} customer discounts adjusted.`
+    : "Product options saved.";
+  redirect(`${path}?success=${encodeURIComponent(successMessage)}`);
 }

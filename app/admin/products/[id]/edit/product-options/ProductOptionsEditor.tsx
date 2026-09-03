@@ -9,12 +9,41 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
   const [options, setOptions] = useState(initialOptions);
   const [selected, setSelected] = useState(0);
   const [dragging, setDragging] = useState<number | null>(null);
+  const [reductionPercent, setReductionPercent] = useState("");
+  const [appliedReductionPercent, setAppliedReductionPercent] = useState("");
+  const [priceChangeDirection, setPriceChangeDirection] = useState<"decrease" | "increase">("decrease");
   const [importCurrency, setImportCurrency] = useState("TRY");
   const [importMessage, setImportMessage] = useState("");
   function update(index: number, values: Partial<Option>) { setOptions((current) => current.map((option, itemIndex) => itemIndex === index ? { ...option, ...values } : option)); }
   function add() { setOptions((current) => [...current, { id: "", name: "", denomination: 1, currency: "INR", sellingPrice: 0, isActive: true, isInStock: true }]); setSelected(options.length); }
   function remove(index: number) { if (options.length > 1) { setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index)); setSelected(0); } }
   function drop(targetIndex: number) { if (dragging === null || dragging === targetIndex) return; setOptions((current) => { const next = [...current]; const [moved] = next.splice(dragging, 1); next.splice(targetIndex, 0, moved); return next; }); setSelected(targetIndex); setDragging(null); }
+  function applyPriceReduction() {
+    const percent = Number(reductionPercent);
+    if (!Number.isFinite(percent) || percent <= 0 || percent >= 100) {
+      setImportMessage("Enter a reduction percentage greater than 0 and less than 100.");
+      return;
+    }
+
+    const originalPriceById = new Map(initialOptions.map((option) => [option.id, option.sellingPrice]));
+    const multiplier = priceChangeDirection === "increase" ? 1 + percent / 100 : 1 - percent / 100;
+    setOptions((current) => current.map((option) => ({
+      ...option,
+      sellingPrice: Math.round(Number(originalPriceById.get(option.id) ?? option.sellingPrice) * multiplier * 100) / 100,
+    })));
+    setAppliedReductionPercent(String(priceChangeDirection === "increase" ? -percent : percent));
+    setImportMessage(`${percent}% ${priceChangeDirection} applied to all option prices. Review them, enable price protection below, then save.`);
+  }
+  function restoreOriginalPrices() {
+    const originalPriceById = new Map(initialOptions.map((option) => [option.id, option.sellingPrice]));
+    setOptions((current) => current.map((option) => ({
+      ...option,
+      sellingPrice: Number(originalPriceById.get(option.id) ?? option.sellingPrice),
+    })));
+    setReductionPercent("");
+    setAppliedReductionPercent("");
+    setImportMessage("Original prices restored. Click Save Product Options only if you want to keep them.");
+  }
   async function importCsv(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -53,11 +82,27 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
     }
   }
 
-  return <><input type="hidden" name="options" value={JSON.stringify(options)} />
+  return <><input type="hidden" name="options" value={JSON.stringify(options)} /><input type="hidden" name="price_reduction_percent" value={appliedReductionPercent} />
     <div className="grid gap-5 xl:grid-cols-[180px_minmax(0,1fr)_250px]">
       <aside className="rounded-xl border border-slate-200 bg-slate-50 p-2"><p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">Options</p><div className="grid gap-1">{options.map((option, index) => <button key={option.id || `new-${index}`} type="button" onClick={() => setSelected(index)} className={`rounded-lg px-3 py-3 text-left text-sm font-bold ${selected === index ? "bg-blue-600 text-white" : "bg-white text-slate-700"}`}>{option.name || `New option ${index + 1}`}</button>)}</div><button type="button" onClick={add} className="mt-3 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 font-bold text-blue-600">+ Add option</button></aside>
 
       <section className="min-w-0"><div className="mb-5"><h2 className="text-xl font-black">Denomination options</h2><p className="mt-1 text-sm text-slate-500">Edit the customer-visible options and selling prices.</p></div>
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="font-black text-slate-900">Change the whole product price</p>
+          <p className="mt-1 text-sm text-slate-600">Increase or decrease every option price by one percentage.</p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="text-sm font-bold text-slate-700">Change type<select value={priceChangeDirection} onChange={(event) => setPriceChangeDirection(event.target.value as "decrease" | "increase")} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2.5"><option value="decrease">Decrease</option><option value="increase">Increase</option></select></label>
+            <label className="text-sm font-bold text-slate-700">
+              Percentage
+              <span className="mt-1 flex items-center rounded-lg border border-slate-300 bg-white">
+                <input type="number" min="0.01" max="99.99" step="0.01" value={reductionPercent} onChange={(event) => setReductionPercent(event.target.value)} placeholder="10" className="w-28 rounded-lg px-3 py-2 outline-none" />
+                <span className="pr-3 text-slate-500">%</span>
+              </span>
+            </label>
+            <button type="button" onClick={applyPriceReduction} className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-black text-slate-950 hover:bg-amber-400">Apply to all prices</button>
+            <button type="button" onClick={restoreOriginalPrices} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-50">Restore original prices</button>
+          </div>
+        </div>
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
           <p className="font-black text-slate-900">Import denomination CSV</p>
           <p className="mt-1 text-sm text-slate-600">Upload a file with <strong>name,denomination,price</strong> columns. Name is optional and price must be in USD. Importing replaces the current option list.</p>

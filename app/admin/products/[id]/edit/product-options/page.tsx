@@ -84,6 +84,20 @@ export default async function ProductOptionsPage({
                 }))}
               />
             </section>
+            <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <input
+                type="checkbox"
+                name="preserve_discounted_prices"
+                value="true"
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                <span className="block font-black text-slate-900">Keep discounted customer prices unchanged</span>
+                <span className="mt-1 block text-sm text-slate-600">
+                  Use this when reducing every option by the same percentage. Existing customer discounts will be lowered automatically.
+                </span>
+              </span>
+            </label>
             <div className="flex justify-end">
               <button className="rounded-xl bg-slate-900 px-7 py-3 font-black text-white">Save Product Options</button>
             </div>
