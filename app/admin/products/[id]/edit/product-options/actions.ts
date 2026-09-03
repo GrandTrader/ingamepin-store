@@ -79,10 +79,6 @@ export async function saveProductOptions(formData: FormData) {
       const currentDiscount = Number(discount.discount_percent);
       const nextDiscount = 100 - (100 - currentDiscount) / reductionRatio;
 
-      if (nextDiscount < -0.005) {
-        redirect(`${path}?error=${encodeURIComponent("The new regular price is below at least one customer's current price. Use a smaller reduction.")}`);
-      }
-
       return {
         id: discount.id,
         discountPercent: nextDiscount <= 0.005 ? null : Math.round(nextDiscount * 100) / 100,

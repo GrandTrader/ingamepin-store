@@ -92,9 +92,9 @@ export default async function ProductOptionsPage({
                 className="mt-1 h-4 w-4"
               />
               <span>
-                <span className="block font-black text-slate-900">Keep discounted customer prices unchanged</span>
+                <span className="block font-black text-slate-900">Keep discounted customer prices where possible</span>
                 <span className="mt-1 block text-sm text-slate-600">
-                  Use this when reducing every option by the same percentage. Existing customer discounts will be lowered automatically.
+                  Existing discounts are adjusted automatically. If the new public price is lower, that customer&apos;s discount becomes 0%.
                 </span>
               </span>
             </label>
