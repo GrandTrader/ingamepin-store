@@ -14,6 +14,7 @@ const links = [
   { label: "Products", href: "/admin/products", icon: "PR" },
   { label: "Categories", href: "/admin/categories", icon: "CA" },
   { label: "Orders", href: "/admin/orders", icon: "OR" },
+  { label: "Sales Report", href: "/admin/sales-report", icon: "SR" },
   { label: "Invoices", href: "/admin/invoices", icon: "IN" },
   { label: "Payment Settings", href: "/admin/payment-settings", icon: "PS" },
   { label: "Homepage Slider", href: "/admin/homepage-slider", icon: "HS" },
