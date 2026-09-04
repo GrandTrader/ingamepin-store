@@ -220,19 +220,15 @@ export default async function AdminOrdersPage({
   ).length;
 
   const processingCount = orders.filter(
-    (order) =>
-      order.status === "PROCESSING" ||
-      order.status === "PAID",
+    (order) => order.status === "PROCESSING",
   ).length;
-
-  const attentionCount = pendingCount + paymentReviewCount + processingCount;
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <AdminOrdersAutoRefresh />
       <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar
-          orderCount={attentionCount}
+          orderCount={processingCount}
         />
 
         <main className="min-w-0 flex-1 p-5 sm:p-8">

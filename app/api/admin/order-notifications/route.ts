@@ -28,7 +28,7 @@ export async function GET() {
   const { count, error } = await createAdminClient()
     .from("orders")
     .select("id", { count: "exact", head: true })
-    .in("status", ["PENDING_PAYMENT", "PAYMENT_REVIEW", "PAID", "PROCESSING"]);
+    .eq("status", "PROCESSING");
 
   if (error) {
     return NextResponse.json(

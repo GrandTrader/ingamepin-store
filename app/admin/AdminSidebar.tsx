@@ -124,7 +124,7 @@ export default function AdminSidebar({
               {link.label === "Orders" && liveOrderCount > 0 && (
                 <span
                   className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-black text-white shadow-sm"
-                  aria-label={`${liveOrderCount} orders need attention`}
+                  aria-label={`${liveOrderCount} processing orders`}
                 >
                   <span aria-hidden="true">●</span>
                   {liveOrderCount}
