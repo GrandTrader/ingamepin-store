@@ -339,12 +339,12 @@ export default function Header() {
             onClick={closeMenu}
             className="flex shrink-0 items-center gap-2 sm:gap-3"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400 text-base font-black text-slate-950 sm:h-11 sm:w-11 sm:text-xl">
+            <div className="header-brand-icon flex h-9 w-9 items-center justify-center rounded-xl text-base font-black sm:h-11 sm:w-11 sm:text-xl">
               iP
             </div>
 
             <div className="max-[359px]:hidden">
-              <p className="text-lg font-black leading-none sm:text-xl">
+              <p className="header-brand-wordmark text-lg font-black leading-none sm:text-xl">
                 iNgame<span className="text-cyan-400">PIN</span>
               </p>
 
@@ -459,7 +459,7 @@ export default function Header() {
               }
               aria-label={isAuthenticated ? t("myAccount") : t("login")}
               title={isAuthenticated ? t("myAccount") : t("login")}
-              className="hidden h-11 w-11 items-center justify-center rounded-xl bg-cyan-400 text-slate-950 transition hover:bg-cyan-300 xl:flex"
+              className="header-account-action hidden h-11 w-11 items-center justify-center rounded-xl transition xl:flex"
             >
               <svg
                 aria-hidden="true"

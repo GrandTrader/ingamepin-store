@@ -153,7 +153,7 @@ export default function TrackOrderPage() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-950 px-5 py-12 text-white">
+    <main className="track-order-page min-h-screen bg-slate-950 px-5 py-12 text-white">
       <div className="mx-auto max-w-4xl">
         <div className="mb-7">
           <Link
@@ -223,7 +223,7 @@ export default function TrackOrderPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="rounded-xl bg-cyan-400 px-6 py-3 font-black text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
+              className="track-order-primary-action rounded-xl px-6 py-3 font-black transition disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
             >
               {isLoading
                 ? "Checking order..."
@@ -246,7 +246,7 @@ export default function TrackOrderPage() {
                   Order number
                 </p>
 
-                <h2 className="mt-1 text-2xl font-black text-cyan-300">
+                <h2 className="track-order-accent-text mt-1 text-2xl font-black">
                   {order.orderNumber}
                 </h2>
               </div>
@@ -254,11 +254,11 @@ export default function TrackOrderPage() {
               <span
                 className={`w-fit rounded-full px-4 py-2 text-xs font-black ${
                   delivered
-                    ? "bg-emerald-400/10 text-emerald-300"
+                    ? "track-order-status-success"
                     : order.status ===
                         "CANCELLED"
-                      ? "bg-red-400/10 text-red-300"
-                      : "bg-amber-400/10 text-amber-300"
+                      ? "track-order-status-danger"
+                      : "track-order-status-warning"
                 }`}
               >
                 {order.status === "DELIVERED"
@@ -300,7 +300,7 @@ export default function TrackOrderPage() {
             {items.length > 0 && (
               <div className="mt-7 space-y-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <h3 className="text-xl font-black text-emerald-300">
+                  <h3 className="track-order-success-heading text-xl font-black">
                     Denomination delivery status
                   </h3>
 
@@ -327,7 +327,7 @@ export default function TrackOrderPage() {
                       {item.productName}
                     </h4>
 
-                    <p className="mt-1 text-sm text-cyan-300">
+                    <p className="track-order-accent-text mt-1 text-sm font-bold">
                       Denomination / option: {item.denomination ?? item.optionName ?? item.platform ?? "Standard"}
                     </p>
                       </div>
@@ -340,7 +340,7 @@ export default function TrackOrderPage() {
                             variant="primary"
                           />
                         )}
-                        <span className={`rounded-full px-3 py-1 text-xs font-black ${itemCompleted ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ${itemCompleted ? "track-order-status-success" : "track-order-status-warning"}`}>
                           {itemCompleted ? "COMPLETED" : "PROCESSING"}
                         </span>
                       </div>
@@ -348,13 +348,13 @@ export default function TrackOrderPage() {
 
                     <div className="mt-3 flex flex-wrap gap-2">
                       {item.platform && (
-                        <span className="rounded-full bg-violet-400/10 px-3 py-1 text-xs font-bold text-violet-300">
+                        <span className="track-order-platform-tag rounded-full px-3 py-1 text-xs font-bold">
                           Platform: {item.platform}
                         </span>
                       )}
 
                       {item.region && (
-                        <span className="rounded-full bg-blue-400/10 px-3 py-1 text-xs font-bold text-blue-300">
+                        <span className="track-order-region-tag rounded-full px-3 py-1 text-xs font-bold">
                           Region: {item.region}
                         </span>
                       )}
@@ -373,9 +373,9 @@ export default function TrackOrderPage() {
                       {item.codes.map((code) => (
                         <div
                           key={code}
-                          className="flex flex-col gap-3 rounded-xl border border-white/10 p-3 sm:flex-row sm:items-center sm:justify-between"
+                          className="track-order-code-row flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
                         >
-                          <code className="break-all font-bold text-cyan-300">
+                          <code className="track-order-code break-all font-black">
                             {code}
                           </code>
 
@@ -384,7 +384,7 @@ export default function TrackOrderPage() {
                             onClick={() =>
                               void copyCode(code)
                             }
-                            className="rounded-lg border border-cyan-400/30 px-4 py-2 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+                            className="track-order-copy-action rounded-lg border px-4 py-2 text-xs font-black transition"
                           >
                             {copiedCode === code
                               ? "Copied"

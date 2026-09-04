@@ -340,6 +340,129 @@ html[data-store-theme="light"] .theme-mode-switch {
   color: #334155 !important;
 }
 
+/* High-contrast storefront actions and order-status colors. */
+.header-brand-icon,
+.header-account-action {
+  background-color: #22d3ee !important;
+  color: #082f49 !important;
+}
+
+.header-account-action:hover {
+  background-color: #67e8f9 !important;
+}
+
+.header-brand-wordmark {
+  color: #f8fafc !important;
+}
+
+.track-order-primary-action {
+  border: 1px solid #0e7490 !important;
+  background-color: #0e7490 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(8, 47, 73, 0.2);
+}
+
+.track-order-primary-action:hover {
+  border-color: #155e75 !important;
+  background-color: #155e75 !important;
+}
+
+.track-order-accent-text {
+  color: #67e8f9 !important;
+}
+
+.track-order-success-heading {
+  color: #6ee7b7 !important;
+}
+
+.track-order-status-success {
+  background-color: #065f46 !important;
+  color: #ecfdf5 !important;
+}
+
+.track-order-status-warning {
+  background-color: #92400e !important;
+  color: #fffbeb !important;
+}
+
+.track-order-status-danger {
+  background-color: #991b1b !important;
+  color: #fef2f2 !important;
+}
+
+.track-order-platform-tag {
+  background-color: #5b21b6 !important;
+  color: #f5f3ff !important;
+}
+
+.track-order-region-tag {
+  background-color: #1d4ed8 !important;
+  color: #eff6ff !important;
+}
+
+html[data-store-theme="light"] .header-brand-wordmark {
+  color: #0f172a !important;
+}
+
+html[data-store-theme="light"] .track-order-accent-text {
+  color: #0e7490 !important;
+}
+
+html[data-store-theme="light"] .track-order-success-heading {
+  color: #047857 !important;
+}
+
+html[data-store-theme="light"] .track-order-status-success {
+  background-color: #047857 !important;
+}
+
+html[data-store-theme="light"] .track-order-status-warning {
+  background-color: #b45309 !important;
+}
+
+html[data-store-theme="light"] .track-order-status-danger {
+  background-color: #b91c1c !important;
+}
+
+.track-order-code-row {
+  border-color: #334155 !important;
+  background-color: #0d192b !important;
+}
+
+.track-order-code {
+  color: #67e8f9 !important;
+}
+
+.track-order-copy-action {
+  border-color: #22d3ee !important;
+  background-color: #164e63 !important;
+  color: #ecfeff !important;
+}
+
+.track-order-copy-action:hover {
+  background-color: #155e75 !important;
+}
+
+html[data-store-theme="light"] .track-order-code-row {
+  border-color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+}
+
+html[data-store-theme="light"] .track-order-code {
+  color: #155e75 !important;
+}
+
+html[data-store-theme="light"] .track-order-copy-action {
+  border-color: #0369a1 !important;
+  background-color: #0369a1 !important;
+  color: #ffffff !important;
+}
+
+html[data-store-theme="light"] .track-order-copy-action:hover {
+  border-color: #075985 !important;
+  background-color: #075985 !important;
+}
+
 html[data-store-theme="light"] input,
 html[data-store-theme="light"] select,
 html[data-store-theme="light"] textarea {

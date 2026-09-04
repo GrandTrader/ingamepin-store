@@ -135,7 +135,7 @@ export default function DeliveredCodesDownloadButton({
       onClick={downloadCodes}
       className={
         variant === "primary"
-          ? "rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-300"
+          ? "track-order-primary-action rounded-xl px-4 py-2.5 text-sm font-black transition"
           : "rounded-xl border border-cyan-500/30 bg-cyan-50 px-4 py-2.5 text-sm font-bold text-cyan-700 transition hover:border-cyan-500 hover:bg-cyan-100"
       }
     >
