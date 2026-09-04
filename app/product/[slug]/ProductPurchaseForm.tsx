@@ -235,11 +235,10 @@ export default function ProductPurchaseForm({
         );
   const minimumQuantity = requiresSingleQuantity
     ? 1
-    : product.isBulkOrder
-      ? 1
     : Math.max(
         1,
-        selectedFixedOption?.minimumQuantity ?? product.minimumQuantity,
+        product.minimumQuantity,
+        selectedFixedOption?.minimumQuantity ?? 1,
       );
 
   const totalPrice = selectedUnitPrice * quantity;
@@ -384,7 +383,11 @@ export default function ProductPurchaseForm({
       quantity < minimumQuantity ||
       (!hasUnlimitedQuantity && quantity > maximumQuantity)
     ) {
-      return showError(`Allowed quantity for ${localizedProductName}: ${minimumQuantity}-${maximumQuantity}.`);
+      return showError(
+        hasUnlimitedQuantity
+          ? `Minimum order quantity for ${localizedProductName} is ${minimumQuantity}.`
+          : `Allowed quantity for ${localizedProductName}: ${minimumQuantity}-${maximumQuantity}.`,
+      );
     }
 
     for (let unitIndex = 0; unitIndex < quantity; unitIndex += 1) {
@@ -820,12 +823,9 @@ export default function ProductPurchaseForm({
               const requestedQuantity = event.currentTarget.valueAsNumber;
               if (!Number.isSafeInteger(requestedQuantity)) return;
               setQuantity(
-                product.isBulkOrder
-                  ? Math.max(1, requestedQuantity)
-                  : Math.min(
-                      maximumQuantity,
-                      Math.max(minimumQuantity, requestedQuantity),
-                    ),
+                hasUnlimitedQuantity
+                  ? Math.max(minimumQuantity, requestedQuantity)
+                  : Math.min(maximumQuantity, Math.max(minimumQuantity, requestedQuantity)),
               );
               clearMessage();
             }}
@@ -856,8 +856,8 @@ export default function ProductPurchaseForm({
         <p className="product-quantity-limit mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100">
           {hasUnlimitedQuantity
             ? language === "ru"
-              ? "Без ограничения количества"
-              : "No quantity limit for this digital product"
+              ? `Минимальное количество заказа: ${minimumQuantity}`
+              : `Minimum order quantity: ${minimumQuantity}`
             : language === "ru"
               ? `Допустимое количество: ${minimumQuantity}–${maximumQuantity}`
               : `Allowed quantity: ${minimumQuantity}-${maximumQuantity}`}

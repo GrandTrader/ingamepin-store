@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
         throw new Error("A product denomination is invalid.");
       }
 
-      const minimumQuantity = Number(option?.minimum_quantity ?? product.minimum_quantity ?? 1);
+      const minimumQuantity = Math.max(
+        Number(product.minimum_quantity ?? 1),
+        Number(option?.minimum_quantity ?? 1),
+      );
       const storedMaximum = Number(option?.maximum_quantity ?? product.maximum_quantity);
       const maximumQuantity =
         product.is_bulk_order ||

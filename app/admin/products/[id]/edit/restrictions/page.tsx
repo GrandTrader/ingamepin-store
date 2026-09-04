@@ -89,6 +89,23 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
             <input type="hidden" name="id" value={id} />
 
             <section>
+              <h2 className="text-xl font-black">Minimum order quantity</h2>
+              <p className="mt-1 text-sm text-slate-500">The customer must buy at least this quantity of this product. This minimum applies to every denomination.</p>
+              <label className="mt-5 block max-w-sm font-bold">
+                Minimum quantity
+                <input
+                  name="minimum_quantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  defaultValue={product.minimum_quantity ?? 1}
+                  required
+                  className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"
+                />
+              </label>
+            </section>
+
+            <section className="mt-7 border-t border-slate-200 pt-6">
               <h2 className="text-xl font-black">Accepted payment methods</h2>
               <p className="mt-1 text-sm text-slate-500">Only selected methods will be available when this product is in the cart.</p>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

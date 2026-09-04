@@ -252,14 +252,17 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "The selected product option is out of stock." }, { status: 409 });
         }
         const quantity = Number(item.quantity ?? 1);
-        const minimum = Number(option?.minimum_quantity ?? product?.minimum_quantity ?? 1);
+        const minimum = Math.max(
+          Number(product?.minimum_quantity ?? 1),
+          Number(option?.minimum_quantity ?? 1),
+        );
         const maximum = Number(option?.maximum_quantity ?? product?.maximum_quantity ?? 10);
         if (
           product &&
           (!Number.isSafeInteger(quantity) ||
             quantity < 1 ||
-            (!product.is_bulk_order &&
-              (quantity < minimum || quantity > maximum)))
+            quantity < minimum ||
+            (!product.is_bulk_order && quantity > maximum))
         ) {
           return NextResponse.json({ error: `Allowed quantity for ${product.name}: ${minimum}-${maximum}.`, minimumQuantity: minimum, maximumQuantity: maximum }, { status: 400 });
         }

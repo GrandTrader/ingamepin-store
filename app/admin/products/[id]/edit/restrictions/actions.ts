@@ -72,6 +72,11 @@ export async function saveProductRestriction(formData: FormData) {
   const path = `/admin/products/${id}/edit/restrictions`;
   await requireAdministrator();
 
+  const minimumQuantity = Number(formData.get("minimum_quantity"));
+  if (!Number.isSafeInteger(minimumQuantity) || minimumQuantity < 1) {
+    redirect(`${path}?error=${encodeURIComponent("Enter a valid minimum order quantity")}`);
+  }
+
   const allowedPaymentMethods = PAYMENT_METHODS.filter(
     (method) => formData.get(`payment_method_${method}`) === "on",
   );
@@ -95,6 +100,7 @@ export async function saveProductRestriction(formData: FormData) {
   const productResult = await admin
     .from("products")
     .update({
+      minimum_quantity: minimumQuantity,
       allowed_payment_methods: allowedPaymentMethods,
       allowed_usdt_networks: allowedPaymentMethods.includes("USDT_DIRECT")
         ? allowedUsdtNetworks
