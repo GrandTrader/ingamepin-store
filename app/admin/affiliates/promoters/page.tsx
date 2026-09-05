@@ -71,7 +71,7 @@ export default async function AffiliatePromotersPage({
               <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
                 Affiliate program
               </p>
-              <h1 className="mt-2 text-3xl font-black">Promoters</h1>
+              <h1 className="mt-2 text-3xl font-black">Affiliate Applications</h1>
               <p className="mt-2 text-sm text-slate-500">
                 Approve promoter accounts and apply an optional custom commission.
               </p>

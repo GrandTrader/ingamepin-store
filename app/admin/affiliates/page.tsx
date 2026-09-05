@@ -95,7 +95,7 @@ export default async function AffiliateSettingsPage({
                 href="/admin/affiliates/promoters"
                 className="rounded-xl bg-slate-900 px-5 py-3 text-center text-sm font-black text-white transition hover:bg-blue-700"
               >
-                Manage Promoters
+                Affiliate Applications
               </Link>
             </div>
           </div>
