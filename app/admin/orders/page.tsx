@@ -35,6 +35,7 @@ type OrderItem = {
   player_id: string | null;
   customer_information: Array<{ fieldId: string; label: string; value: string }>;
   quantity: number;
+  affiliate_commission_percent: number | string;
 };
 
 type AdminOrdersPageProps = {
@@ -148,7 +149,8 @@ export default async function AdminOrdersPage({
           fulfillment_mode,
           player_id,
           customer_information,
-          quantity
+          quantity,
+          affiliate_commission_percent
         )
       `,
     )
@@ -459,12 +461,19 @@ export default async function AdminOrdersPage({
                               {order.order_items.map(
                                 (item) => (
                                   <div key={item.id}>
-                                    <p className="font-bold">
-                                      {item.product_name}
-                                      {item.quantity > 1
-                                        ? ` × ${item.quantity}`
-                                        : ""}
-                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="font-bold">
+                                        {item.product_name}
+                                        {item.quantity > 1
+                                          ? ` × ${item.quantity}`
+                                          : ""}
+                                      </p>
+                                      {Number(item.affiliate_commission_percent ?? 0) > 0 && (
+                                        <span className="inline-flex rounded-full bg-fuchsia-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-fuchsia-700">
+                                          Affiliate sale · {Number(item.affiliate_commission_percent)}%
+                                        </span>
+                                      )}
+                                    </div>
 
                                     <p className="mt-1 text-sm text-slate-500">
                                       {item.option_name ||

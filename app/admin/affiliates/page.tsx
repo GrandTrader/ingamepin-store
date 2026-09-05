@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
-import { saveAffiliateSettings } from "./actions";
+import { saveAffiliateProductSettings, saveAffiliateSettings } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,14 @@ type AffiliateSettings = {
   holding_days: number;
   payout_networks: string[];
   cookie_days: number;
+};
+
+type AffiliateProduct = {
+  id: string;
+  name: string;
+  status: string;
+  affiliate_enabled: boolean;
+  affiliate_commission_percent: number | string;
 };
 
 const payoutNetworks = [
@@ -43,18 +51,25 @@ export default async function AffiliateSettingsPage({
 
   if (!access.data) redirect("/admin/login?error=Access denied");
 
-  const settingsResult = await createAdminClient()
-    .from("affiliate_settings")
-    .select(
-      "program_enabled, minimum_payout, holding_days, payout_networks, cookie_days",
-    )
-    .eq("id", 1)
-    .maybeSingle();
+  const admin = createAdminClient();
+  const [settingsResult, productsResult] = await Promise.all([
+    admin.from("affiliate_settings")
+      .select("program_enabled, minimum_payout, holding_days, payout_networks, cookie_days")
+      .eq("id", 1)
+      .maybeSingle(),
+    admin.from("products")
+      .select("id, name, status, affiliate_enabled, affiliate_commission_percent")
+      .order("name", { ascending: true }),
+  ]);
 
   if (settingsResult.error) {
     throw new Error(
       `Unable to load affiliate settings: ${settingsResult.error.message}`,
     );
+  }
+
+  if (productsResult.error) {
+    throw new Error(`Unable to load affiliate products: ${productsResult.error.message}`);
   }
 
   const settings = (settingsResult.data ?? {
@@ -64,6 +79,7 @@ export default async function AffiliateSettingsPage({
     payout_networks: ["TRC20", "BEP20", "SOLANA"],
     cookie_days: 30,
   }) as AffiliateSettings;
+  const products = (productsResult.data ?? []) as AffiliateProduct[];
 
   const enabledNetworks = new Set(settings.payout_networks ?? []);
 
@@ -238,6 +254,70 @@ export default async function AffiliateSettingsPage({
               Save affiliate settings
             </button>
           </form>
+
+          <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+              <div>
+                <h2 className="text-2xl font-black">Affiliate Products</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Enable products for affiliate promotion and set the maximum commission affiliates may add.
+                </p>
+              </div>
+              <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+                {products.length} products
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {products.map((product) => (
+                <form
+                  key={product.id}
+                  action={saveAffiliateProductSettings}
+                  className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(220px,1fr)_auto_180px_auto] md:items-center"
+                >
+                  <input type="hidden" name="product_id" value={product.id} />
+                  <div className="min-w-0">
+                    <p className="truncate font-black">{product.name}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-500">Status: {product.status}</p>
+                  </div>
+
+                  <label className="flex items-center gap-3 font-bold">
+                    <input
+                      name="affiliate_enabled"
+                      type="checkbox"
+                      defaultChecked={product.affiliate_enabled}
+                      className="h-5 w-5 accent-blue-600"
+                    />
+                    Enabled
+                  </label>
+
+                  <label className="grid gap-1 text-xs font-bold text-slate-600">
+                    Maximum commission
+                    <span className="flex overflow-hidden rounded-lg border border-slate-300 bg-white">
+                      <input
+                        name="affiliate_commission_percent"
+                        type="number"
+                        min="0"
+                        max="25"
+                        step="0.01"
+                        required
+                        defaultValue={Number(product.affiliate_commission_percent ?? 0)}
+                        className="min-w-0 flex-1 px-3 py-2 text-sm outline-none"
+                      />
+                      <span className="border-l border-slate-200 px-3 py-2 text-sm">%</span>
+                    </span>
+                  </label>
+
+                  <button className="admin-save-action rounded-lg px-4 py-2.5 text-sm font-black transition">
+                    Save
+                  </button>
+                </form>
+              ))}
+              {products.length === 0 && (
+                <p className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">No products found.</p>
+              )}
+            </div>
+          </section>
         </main>
       </div>
     </div>

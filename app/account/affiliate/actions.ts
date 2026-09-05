@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { notifyAdminsByPush } from "@/lib/admin-push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -61,6 +62,20 @@ export async function submitAffiliateApplication(formData: FormData) {
 
   if (result.error) {
     affiliateRedirect("error", result.error.message);
+  }
+
+  try {
+    await notifyAdminsByPush(`affiliate-application:${user.id}`, {
+      title: "New affiliate application",
+      body: `${fullName} submitted an affiliate application.`,
+      url: "/admin/affiliates/promoters",
+      tag: `affiliate-application-${user.id}`,
+    });
+  } catch (notificationError) {
+    console.error(
+      "Affiliate application push notification failed:",
+      notificationError,
+    );
   }
 
   revalidatePath("/account/affiliate");

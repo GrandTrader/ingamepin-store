@@ -79,3 +79,48 @@ export async function saveAffiliateSettings(formData: FormData) {
   revalidatePath("/admin/affiliates");
   affiliateRedirect("success", "Affiliate settings saved successfully.");
 }
+
+export async function saveAffiliateProductSettings(formData: FormData) {
+  await requireAdministrator();
+
+  const productId = String(formData.get("product_id") ?? "").trim();
+  const affiliateEnabled = formData.get("affiliate_enabled") === "on";
+  const commissionPercent = Number(formData.get("affiliate_commission_percent"));
+
+  if (!productId) {
+    affiliateRedirect("error", "Product information is invalid.");
+  }
+
+  if (!Number.isFinite(commissionPercent) || commissionPercent < 0 || commissionPercent > 25) {
+    affiliateRedirect("error", "Product commission must be between 0% and 25%.");
+  }
+
+  if (affiliateEnabled && commissionPercent <= 0) {
+    affiliateRedirect("error", "Set a commission above 0% before enabling the product.");
+  }
+
+  const result = await createAdminClient()
+    .from("products")
+    .update({
+      affiliate_enabled: affiliateEnabled,
+      affiliate_commission_percent: Math.round(commissionPercent * 100) / 100,
+      affiliate_updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productId)
+    .select("name")
+    .maybeSingle();
+
+  if (result.error) {
+    affiliateRedirect("error", result.error.message);
+  }
+
+  if (!result.data) {
+    affiliateRedirect("error", "Product was not found.");
+  }
+
+  revalidatePath("/admin/affiliates");
+  revalidatePath("/account/affiliate");
+  revalidatePath("/");
+  affiliateRedirect("success", `Affiliate settings saved for ${result.data.name}.`);
+}

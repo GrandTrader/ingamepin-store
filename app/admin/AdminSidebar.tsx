@@ -36,6 +36,7 @@ export default function AdminSidebar({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [liveOrderCount, setLiveOrderCount] = useState(orderCount);
+  const [pendingAffiliateCount, setPendingAffiliateCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -49,9 +50,18 @@ export default function AdminSidebar({
         });
         if (!response.ok) return;
 
-        const result = (await response.json()) as { count?: number };
+        const result = (await response.json()) as {
+          count?: number;
+          affiliateApplicationCount?: number;
+        };
         if (active && typeof result.count === "number") {
           setLiveOrderCount(result.count);
+        }
+        if (
+          active &&
+          typeof result.affiliateApplicationCount === "number"
+        ) {
+          setPendingAffiliateCount(result.affiliateApplicationCount);
         }
       } catch {
         // Keep the last known count when the network is temporarily unavailable.
@@ -129,6 +139,15 @@ export default function AdminSidebar({
                 >
                   <span aria-hidden="true">●</span>
                   {liveOrderCount}
+                </span>
+              )}
+              {link.label === "Affiliate Applications" && pendingAffiliateCount > 0 && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-black text-white shadow-sm"
+                  aria-label={`${pendingAffiliateCount} pending affiliate applications`}
+                >
+                  <span aria-hidden="true">●</span>
+                  {pendingAffiliateCount}
                 </span>
               )}
               {link.label === "Wallet" && walletCount > 0 && (

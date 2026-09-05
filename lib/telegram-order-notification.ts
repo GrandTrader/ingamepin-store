@@ -45,13 +45,31 @@ export async function notifyPaidOrderInTelegram(orderId: string) {
   await notifySoldOutInstantOptions(orderId);
 
   const pushAdmin = createAdminClient();
-  const pushOrder = await pushAdmin.from("orders").select("order_number, customer_name, total, currency").eq("id", orderId).maybeSingle();
+  const pushOrder = await pushAdmin
+    .from("orders")
+    .select("order_number, customer_name, total, currency, affiliate_id, order_items(product_name, affiliate_commission_percent)")
+    .eq("id", orderId).maybeSingle();
   if (pushOrder.data) {
     await notifyAdminsByPush(`paid-order:${orderId}`, {
       title: "New paid order",
       body: `${pushOrder.data.order_number} · ${pushOrder.data.customer_name || "Customer"} · ${formatMoney(pushOrder.data.total, pushOrder.data.currency)}`,
       url: `/admin/orders?order=${encodeURIComponent(orderId)}#order-${encodeURIComponent(orderId)}`,
       tag: `order-${orderId}`,
+    });
+  }
+  if (pushOrder.data?.affiliate_id) {
+    const affiliateProducts = (pushOrder.data.order_items ?? [])
+      .filter((item) => Number(item.affiliate_commission_percent ?? 0) > 0)
+      .map((item) => item.product_name);
+    const productLabel = affiliateProducts.length
+      ? Array.from(new Set(affiliateProducts)).join(", ")
+      : "An affiliate product";
+
+    await notifyAdminsByPush(`affiliate-sale:${orderId}`, {
+      title: "New affiliate sale",
+      body: `${pushOrder.data.order_number} · ${productLabel}`,
+      url: `/admin/orders?order=${encodeURIComponent(orderId)}#order-${encodeURIComponent(orderId)}`,
+      tag: `affiliate-sale-${orderId}`,
     });
   }
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();

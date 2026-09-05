@@ -25,20 +25,30 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const { count, error } = await createAdminClient()
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "PROCESSING");
+  const admin = createAdminClient();
+  const [ordersResult, affiliateApplicationsResult] = await Promise.all([
+    admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "PROCESSING"),
+    admin
+      .from("affiliate_accounts")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "PENDING"),
+  ]);
 
-  if (error) {
+  if (ordersResult.error || affiliateApplicationsResult.error) {
     return NextResponse.json(
-      { error: "Unable to load order notifications." },
+      { error: "Unable to load admin notifications." },
       { status: 500 },
     );
   }
 
   return NextResponse.json(
-    { count: count ?? 0 },
+    {
+      count: ordersResult.count ?? 0,
+      affiliateApplicationCount: affiliateApplicationsResult.count ?? 0,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
