@@ -39,7 +39,7 @@ export async function submitPartnerApplication(formData: FormData) {
   const typeLabel = partnerType === "PAYMENT_PROVIDER" ? "Payment Provider" : "Gaming Distributor";
   try {
     await sendEmail({
-      to: "support@ingamepin.com",
+      to: "amang@ingamepin.com",
       replyTo: email,
       subject: `Partnership application: ${typeLabel} — ${company}`,
       text: `Partnership type: ${typeLabel}\nCompany: ${company}\nContact: ${contactName}\nEmail: ${email}\nWebsite: ${website || "Not provided"}\nCountry: ${country}\nMonthly volume: ${monthlyVolume || "Not provided"}\n\nProposal:\n${proposal}`,
