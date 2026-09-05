@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
 
 type SendEmailInput = {
+  from?: string;
   to: string;
   subject: string;
   html: string;
@@ -100,6 +101,7 @@ function createTransporter() {
 }
 
 export async function sendEmail({
+  from,
   to,
   subject,
   html,
@@ -115,12 +117,23 @@ export async function sendEmail({
   const transporter = createTransporter();
 
   return transporter.sendMail({
-    from: getRequiredEnvironmentVariable("SMTP_FROM"),
+    from: from?.trim() || getRequiredEnvironmentVariable("SMTP_FROM"),
     to: recipient,
     replyTo,
     subject,
     html,
     text,
+  });
+}
+
+const ORDER_EMAIL_FROM = "InGamePin <noreply@ingamepin.com>";
+const SUPPORT_EMAIL = "support@ingamepin.com";
+
+function sendOrderEmail(input: Omit<SendEmailInput, "from" | "replyTo">) {
+  return sendEmail({
+    ...input,
+    from: ORDER_EMAIL_FROM,
+    replyTo: SUPPORT_EMAIL,
   });
 }
 
@@ -335,13 +348,13 @@ export async function sendOrderCreatedEmails({
   `;
 
   return Promise.allSettled([
-    sendEmail({
+    sendOrderEmail({
       to: customerEmail,
       subject: `InGamePin order received — ${orderNumber}`,
       html: customerHtml,
       text: `Your InGamePin order ${orderNumber} has been created. Total: ${totalLabel}. Track it at ${trackingUrl}`,
     }),
-    sendEmail({
+    sendOrderEmail({
       to: "support@ingamepin.com",
       subject: `New order ${orderNumber} — ${totalLabel}`,
       html: adminHtml,
@@ -450,13 +463,13 @@ export async function sendOrderStatusEmails({
   `;
 
   return Promise.allSettled([
-    sendEmail({
+    sendOrderEmail({
       to: customerEmail,
       subject: `${eventContent.customerTitle} - ${orderNumber}`,
       html: customerHtml,
       text: `${eventContent.customerTitle}. Order ${orderNumber}. Status: ${orderStatus}. Track it at ${trackingUrl}`,
     }),
-    sendEmail({
+    sendOrderEmail({
       to: "support@ingamepin.com",
       subject: `${eventContent.adminTitle} - ${orderNumber}`,
       html: adminHtml,
@@ -506,13 +519,13 @@ export async function sendWalletDebitEmails({
   `;
 
   return Promise.allSettled([
-    sendEmail({
+    sendOrderEmail({
       to: customerEmail,
       subject: `InGamePin wallet payment successful - ${orderNumber}`,
       html: customerHtml,
       text: `Wallet payment successful for order ${orderNumber}. Amount deducted: ${amountLabel}. Remaining balance: ${balanceLabel}.`,
     }),
-    sendEmail({
+    sendOrderEmail({
       to: "support@ingamepin.com",
       subject: `Wallet payment received - ${orderNumber}`,
       html: adminHtml,
