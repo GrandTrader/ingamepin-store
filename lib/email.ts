@@ -126,13 +126,11 @@ export async function sendEmail({
   });
 }
 
-const ORDER_EMAIL_FROM = "InGamePin <noreply@ingamepin.com>";
 const SUPPORT_EMAIL = "support@ingamepin.com";
 
 function sendOrderEmail(input: Omit<SendEmailInput, "from" | "replyTo">) {
   return sendEmail({
     ...input,
-    from: ORDER_EMAIL_FROM,
     replyTo: SUPPORT_EMAIL,
   });
 }
