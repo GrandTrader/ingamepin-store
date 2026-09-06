@@ -7,6 +7,7 @@ import {
   sendWalletDebitEmails,
 } from "@/lib/email";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
+import { isUnlimitedStock } from "@/lib/product-stock";
 import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import {
   calculateGatewayCommission,
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
     const submittedItems = body.items as Array<{ productOptionId?: string; quantity?: number; customValue?: number }>;
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
     if (optionIds.length) {
-      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
+      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price, stock_quantity, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
       const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
       const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods").in("id", productIds) : { data: [] };
       const disallowedProduct = (productsResult.data ?? []).find(
@@ -265,6 +266,21 @@ export async function POST(request: NextRequest) {
             (!product.is_bulk_order && quantity > maximum))
         ) {
           return NextResponse.json({ error: `Allowed quantity for ${product.name}: ${minimum}-${maximum}.`, minimumQuantity: minimum, maximumQuantity: maximum }, { status: 400 });
+        }
+        const availableQuantity = Number(option.stock_quantity ?? 0);
+        if (
+          !isUnlimitedStock(availableQuantity) &&
+          quantity > availableQuantity
+        ) {
+          return NextResponse.json(
+            {
+              error: `Only ${availableQuantity} code${availableQuantity === 1 ? " is" : "s are"} available for this option. Reduce the quantity to continue.`,
+              productOptionId: option.id,
+              requestedQuantity: quantity,
+              availableQuantity,
+            },
+            { status: 409 },
+          );
         }
       }
       const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("product_id, weekly_limit, limit_currency, identity_mode, reset_mode, notification_message").in("product_id", productIds).eq("is_enabled", true) : { data: [] };
