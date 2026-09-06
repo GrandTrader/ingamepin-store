@@ -10,6 +10,8 @@ import { formatPaymentMethod } from "@/lib/payment-method-label";
 
 type SendEmailInput = {
   from?: string;
+  smtpUser?: string;
+  smtpPassword?: string;
   to: string;
   subject: string;
   html: string;
@@ -80,7 +82,10 @@ function getRequiredEnvironmentVariable(name: string) {
   return value;
 }
 
-function createTransporter() {
+function createTransporter(
+  user = getRequiredEnvironmentVariable("SMTP_USER"),
+  pass = getRequiredEnvironmentVariable("SMTP_PASSWORD"),
+) {
   const port = Number(
     getRequiredEnvironmentVariable("SMTP_PORT"),
   );
@@ -94,14 +99,16 @@ function createTransporter() {
     port,
     secure: port === 465,
     auth: {
-      user: getRequiredEnvironmentVariable("SMTP_USER"),
-      pass: getRequiredEnvironmentVariable("SMTP_PASSWORD"),
+      user,
+      pass,
     },
   });
 }
 
 export async function sendEmail({
   from,
+  smtpUser,
+  smtpPassword,
   to,
   subject,
   html,
@@ -114,7 +121,7 @@ export async function sendEmail({
     throw new Error("The recipient email address is invalid.");
   }
 
-  const transporter = createTransporter();
+  const transporter = createTransporter(smtpUser, smtpPassword);
 
   return transporter.sendMail({
     from: from?.trim() || getRequiredEnvironmentVariable("SMTP_FROM"),
@@ -128,9 +135,19 @@ export async function sendEmail({
 
 const SUPPORT_EMAIL = "support@ingamepin.com";
 
-function sendOrderEmail(input: Omit<SendEmailInput, "from" | "replyTo">) {
+function sendOrderEmail(
+  input: Omit<
+    SendEmailInput,
+    "from" | "replyTo" | "smtpUser" | "smtpPassword"
+  >,
+) {
+  const smtpUser = getRequiredEnvironmentVariable("ORDER_SMTP_USER");
+
   return sendEmail({
     ...input,
+    from: `InGamePin <${smtpUser}>`,
+    smtpUser,
+    smtpPassword: getRequiredEnvironmentVariable("ORDER_SMTP_PASSWORD"),
     replyTo: SUPPORT_EMAIL,
   });
 }
