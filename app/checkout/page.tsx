@@ -225,7 +225,7 @@ function isPhysicalProduct(item: CartItem) {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { formatPrice } = useStorePreferences();
+  const { currency, formatPrice } = useStorePreferences();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [checkoutSource, setCheckoutSource] = useState<
     "buyNowItem" | "cart"
@@ -451,8 +451,18 @@ export default function CheckoutPage() {
         };
         setPaymentRestrictions(next);
         setPaymentMethod((current) => {
-          if (next.allowedPaymentMethods.includes(PAYMENT_METHOD_IDS[current])) return current;
-          return PAYMENT_METHOD_ORDER.find((method) =>
+          const preferredOrder = currency === "INR"
+            ? ["manual_upi", ...PAYMENT_METHOD_ORDER.filter(
+                (method) => method !== "manual_upi",
+              )]
+            : PAYMENT_METHOD_ORDER;
+
+          if (
+            currency !== "INR" &&
+            next.allowedPaymentMethods.includes(PAYMENT_METHOD_IDS[current])
+          ) return current;
+
+          return preferredOrder.find((method) =>
             next.allowedPaymentMethods.includes(PAYMENT_METHOD_IDS[method]),
           ) ?? "";
         });
@@ -465,7 +475,7 @@ export default function CheckoutPage() {
 
     void loadPaymentRestrictions();
     return () => controller.abort();
-  }, [cartItems, isLoaded]);
+  }, [cartItems, currency, isLoaded]);
 
   function paymentAllowed(method: string) {
     return paymentRestrictions.allowedPaymentMethods.includes(PAYMENT_METHOD_IDS[method]);
@@ -1428,6 +1438,7 @@ export default function CheckoutPage() {
               </label>
 
               <label
+                style={{ order: currency === "INR" ? -1 : undefined }}
                 className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
                   paymentMethod === "manual_upi"
                     ? "border-cyan-400 bg-cyan-400/5"
