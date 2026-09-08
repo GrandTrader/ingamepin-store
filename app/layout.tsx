@@ -1,5 +1,5 @@
 ﻿import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Inter, Roboto_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -11,6 +11,7 @@ import YandexMetrica from "../components/YandexMetrica";
 import RussianWebsiteTranslator from "../components/RussianWebsiteTranslator";
 import { StorePreferencesProvider } from "../components/StorePreferences";
 import GoogleAdsTag from "../components/GoogleAdsTag";
+import SeasonalFall from "../components/SeasonalFall";
 
 import "./globals.css";
 
@@ -58,6 +59,9 @@ export default function RootLayout({
       >
         <StorePreferencesProvider>
           <RussianWebsiteTranslator />
+          <Suspense fallback={null}>
+            <SeasonalFall />
+          </Suspense>
           <Header />
 
           <main className="flex flex-1 flex-col">

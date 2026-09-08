@@ -994,3 +994,78 @@ html[data-store-theme="dark"] .usdt-compliance-warning p {
     overflow-wrap: anywhere;
   }
 }
+
+/* Lightweight seasonal leaves for customer-facing pages. */
+.seasonal-fall {
+  position: fixed;
+  z-index: 45;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.seasonal-fall-leaf {
+  --leaf-left: 5%;
+  --leaf-drift: 70px;
+  --leaf-duration: 14s;
+  --leaf-delay: -2s;
+  position: absolute;
+  top: -12vh;
+  left: var(--leaf-left);
+  display: block;
+  opacity: 0;
+  font-size: clamp(0.9rem, 1.5vw, 1.35rem);
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(92, 46, 12, 0.18));
+  animation: seasonal-leaf-fall var(--leaf-duration) linear var(--leaf-delay) infinite;
+  will-change: transform, opacity;
+}
+
+.seasonal-fall-leaf:nth-child(1) { --leaf-left: 3%; --leaf-drift: 58px; --leaf-duration: 15s; --leaf-delay: -8s; }
+.seasonal-fall-leaf:nth-child(2) { --leaf-left: 12%; --leaf-drift: -72px; --leaf-duration: 18s; --leaf-delay: -3s; }
+.seasonal-fall-leaf:nth-child(3) { --leaf-left: 21%; --leaf-drift: 90px; --leaf-duration: 17s; --leaf-delay: -13s; }
+.seasonal-fall-leaf:nth-child(4) { --leaf-left: 31%; --leaf-drift: -54px; --leaf-duration: 14s; --leaf-delay: -5s; }
+.seasonal-fall-leaf:nth-child(5) { --leaf-left: 40%; --leaf-drift: 76px; --leaf-duration: 19s; --leaf-delay: -11s; }
+.seasonal-fall-leaf:nth-child(6) { --leaf-left: 49%; --leaf-drift: -86px; --leaf-duration: 16s; --leaf-delay: -1s; }
+.seasonal-fall-leaf:nth-child(7) { --leaf-left: 58%; --leaf-drift: 62px; --leaf-duration: 20s; --leaf-delay: -15s; }
+.seasonal-fall-leaf:nth-child(8) { --leaf-left: 67%; --leaf-drift: -68px; --leaf-duration: 15s; --leaf-delay: -6s; }
+.seasonal-fall-leaf:nth-child(9) { --leaf-left: 75%; --leaf-drift: 84px; --leaf-duration: 18s; --leaf-delay: -10s; }
+.seasonal-fall-leaf:nth-child(10) { --leaf-left: 83%; --leaf-drift: -74px; --leaf-duration: 16s; --leaf-delay: -4s; }
+.seasonal-fall-leaf:nth-child(11) { --leaf-left: 91%; --leaf-drift: 52px; --leaf-duration: 19s; --leaf-delay: -14s; }
+.seasonal-fall-leaf:nth-child(12) { --leaf-left: 97%; --leaf-drift: -82px; --leaf-duration: 17s; --leaf-delay: -7s; }
+
+@keyframes seasonal-leaf-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+  }
+
+  10% {
+    opacity: 0.72;
+  }
+
+  48% {
+    transform: translate3d(var(--leaf-drift), 52vh, 0) rotate(190deg);
+  }
+
+  88% {
+    opacity: 0.62;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 116vh, 0) rotate(420deg);
+  }
+}
+
+@media (max-width: 639px) {
+  .seasonal-fall-leaf:nth-child(2n) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seasonal-fall {
+    display: none;
+  }
+}
