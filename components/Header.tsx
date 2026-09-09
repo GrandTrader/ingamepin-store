@@ -491,7 +491,7 @@ export default function Header() {
               }
               aria-expanded={isMenuOpen}
               aria-controls="mobile-navigation"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl transition hover:border-cyan-400 sm:h-11 sm:w-11 xl:hidden"
+              className="mobile-menu-toggle flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-xl text-white transition hover:border-cyan-400 xl:hidden"
             >
               <span aria-hidden="true">
                 {isMenuOpen ? "\u2715" : "\u2630"}
@@ -571,7 +571,7 @@ export default function Header() {
                 }}
                 autoComplete="off"
                 placeholder={t("searchPlaceholder")}
-                className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 sm:px-4 sm:py-3"
+                className="min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2.5 text-base text-white outline-none placeholder:text-slate-500 sm:px-4 sm:py-3 sm:text-sm"
               />
 
               <button

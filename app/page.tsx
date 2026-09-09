@@ -351,14 +351,14 @@ export default async function Home() {
         </section>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-white/10 bg-slate-900/95 px-2 py-2 backdrop-blur sm:hidden">
+      <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-white/10 bg-slate-900/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
         <MobileNavLink href="/" icon="⌂" label="Home" />
-        <MobileNavLink href="/#all-products" icon="▦" label="Products" />
-        <MobileNavLink href="/#all-products" icon="⌕" label="Search" />
+        <MobileNavLink href="/products" icon="▦" label="Products" />
+        <MobileNavLink href="/cart" icon="🛒" label="Cart" />
         <MobileNavLink href="/track-order" icon="◎" label="Track" />
       </nav>
 
-      <div className="h-16 sm:hidden" />
+      <div className="h-[calc(4rem+env(safe-area-inset-bottom))] sm:hidden" />
     </div>
   );
 }
@@ -389,7 +389,7 @@ function MobileNavLink({
   return (
     <Link
       href={href}
-      className="flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-bold text-slate-400 transition hover:bg-white/5 hover:text-cyan-300"
+      className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg py-1 text-xs font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-400"
     >
       <span className="text-xl leading-none">{icon}</span>
       {label}

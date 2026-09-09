@@ -127,16 +127,16 @@ export default function ProductCard({ product }: Props) {
           </span>
         </div>
 
-        <div className="px-1 pb-2 pt-2">
+        <div className="px-3 pb-3 pt-2 sm:px-1 sm:pb-2">
           <p className="truncate text-[9px] font-bold uppercase tracking-wider text-[#f28b0c] sm:text-[10px]">
             {product.category}
           </p>
 
-          <h3 className="mt-1 line-clamp-2 min-h-9 text-xs font-bold leading-4 text-[#354052] sm:text-[13px]">
+          <h3 className="mt-1 line-clamp-3 min-h-[3.75rem] text-sm font-bold leading-5 text-[#354052] sm:line-clamp-2 sm:min-h-9 sm:text-[13px] sm:leading-4">
             {localizedName}
           </h3>
 
-          <div className="mt-1.5 flex justify-between gap-1 text-[9px] text-slate-500 sm:text-[10px]">
+          <div className="mt-1.5 flex flex-wrap justify-between gap-1 text-[11px] text-slate-500 sm:text-[10px]">
             <span>
               <span aria-hidden="true">{"\u2B50"}</span>{" "}
               {product.rating}
@@ -145,7 +145,7 @@ export default function ProductCard({ product }: Props) {
             <span>{product.sold} {t("sold")}</span>
           </div>
 
-          <div className="mt-2 flex items-center justify-between gap-1.5">
+          <div className="mt-3 flex flex-col items-stretch justify-between gap-2 sm:mt-2 sm:flex-row sm:items-center sm:gap-1.5">
             <span className="min-w-0">
               {discountPercent > 0 && (
                 <span className="block text-[10px] font-bold text-emerald-300 sm:text-xs">
@@ -153,7 +153,7 @@ export default function ProductCard({ product }: Props) {
                 </span>
               )}
               <span className="flex flex-wrap items-baseline gap-1.5">
-                <span className="truncate text-sm font-black text-[#172033] sm:text-base">
+                <span className="break-words text-lg font-black text-[#172033] sm:truncate sm:text-base">
                   {formatPrice(customerPrice)}
                 </span>
                 {discountPercent > 0 && (
@@ -165,7 +165,7 @@ export default function ProductCard({ product }: Props) {
             </span>
 
             <span
-              className={`product-card-buy-button shrink-0 rounded-md px-2 py-1.5 text-[9px] font-bold transition sm:text-[10px] ${
+              className={`product-card-buy-button flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg px-3 py-2 text-sm font-bold transition sm:min-h-0 sm:w-auto sm:rounded-md sm:px-2 sm:py-1.5 sm:text-[10px] ${
                 isOutOfStock
                   ? "cursor-not-allowed bg-slate-700 text-slate-400"
                   : "bg-[#ff9418] text-white group-hover:bg-[#e67f00]"

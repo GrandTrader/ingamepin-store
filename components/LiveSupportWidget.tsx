@@ -50,7 +50,7 @@ export default function LiveSupportWidget() {
   if (pathname.startsWith("/admin")) return null;
 
   return (
-    <div ref={widgetRef} className="fixed bottom-4 right-4 z-[80] sm:bottom-6 sm:right-6">
+    <div ref={widgetRef} className={`fixed right-4 z-[80] sm:bottom-6 sm:right-6 ${pathname === "/" ? "bottom-[calc(5rem+env(safe-area-inset-bottom))]" : "bottom-[calc(1rem+env(safe-area-inset-bottom))]"}`}>
       {open && (
         <section className="mb-3 w-[calc(100vw-32px)] max-w-xs overflow-hidden rounded-2xl border border-cyan-400/30 bg-slate-950 shadow-2xl shadow-black/40">
           <header className="flex items-center justify-between bg-cyan-400 px-4 py-3 text-slate-950">
