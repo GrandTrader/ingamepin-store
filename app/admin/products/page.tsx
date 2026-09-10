@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CodeSearch from "./CodeSearch";
 import { redirect } from "next/navigation";
 
 import { getProductUrl } from "@/lib/product-url";
@@ -337,6 +338,7 @@ export default async function AdminProductsPage({
         <AdminSidebar />
 
         <main className="min-w-0 flex-1 p-4 sm:p-6">
+          <CodeSearch />
           <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-bold">
