@@ -176,6 +176,7 @@ export default function ProductPurchaseForm({
   const [customValue, setCustomValue] = useState("");
   const [playerId, setPlayerId] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [quantityDraft, setQuantityDraft] = useState<string | null>(null);
   const [customerValues, setCustomerValues] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] =
@@ -817,9 +818,11 @@ export default function ProductPurchaseForm({
             min={minimumQuantity}
             max={hasUnlimitedQuantity ? undefined : maximumQuantity}
             step={1}
-            value={quantity}
+            value={quantityDraft ?? quantity}
             onFocus={(event) => event.currentTarget.select()}
+            onBlur={() => setQuantityDraft(null)}
             onChange={(event) => {
+              setQuantityDraft(event.currentTarget.value);
               const requestedQuantity = event.currentTarget.valueAsNumber;
               if (!Number.isSafeInteger(requestedQuantity)) return;
               setQuantity(
