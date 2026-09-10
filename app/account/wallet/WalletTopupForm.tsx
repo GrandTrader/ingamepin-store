@@ -101,7 +101,7 @@ export default function WalletTopupForm({
         <span className="flex items-center justify-between gap-3">
           <span>Top-up amount (USD)</span>
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
-            Minimum amount: $10
+            Range: $10–$50,000
           </span>
         </span>
         <input
@@ -109,7 +109,7 @@ export default function WalletTopupForm({
           onChange={(event) => setAmount(event.target.value)}
           type="number"
           min="10"
-          max="10000"
+          max="50000"
           step="0.01"
           className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-lg font-black outline-none focus:border-cyan-500"
         />
@@ -192,6 +192,12 @@ export default function WalletTopupForm({
         </div>
       </div>
 
+      {amount !== "" && (!Number.isFinite(amountNumber) || amountNumber < 10 || amountNumber > 50000) && (
+        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+          Enter an amount between USD 10 and USD 50,000.
+        </p>
+      )}
+
       {message && (
         <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
           {message}
@@ -205,7 +211,7 @@ export default function WalletTopupForm({
           isSubmitting ||
           !Number.isFinite(amountNumber) ||
           amountNumber < 10 ||
-          amountNumber > 10000
+          amountNumber > 50000
         }
         className="w-full rounded-xl bg-cyan-400 px-5 py-4 font-black text-slate-950 transition hover:bg-cyan-300 disabled:opacity-50"
       >
@@ -213,7 +219,7 @@ export default function WalletTopupForm({
       </button>
 
       <p className="text-center text-xs text-slate-500">
-        Minimum wallet top-up: $10. New configured gateway adapters appear
+        Wallet top-up range: $10–$50,000 per transaction. New configured gateway adapters appear
         here automatically.
       </p>
     </div>

@@ -12,8 +12,8 @@ function walletRedirect(kind: "error" | "success", message: string): never {
 export async function startBinanceWalletTopup(formData: FormData) {
   const amount = Number(formData.get("amount"));
 
-  if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
-    walletRedirect("error", "Enter an amount between USD 1 and USD 10,000.");
+  if (!Number.isFinite(amount) || amount < 1 || amount > 50000) {
+    walletRedirect("error", "Enter an amount between USD 1 and USD 50,000.");
   }
 
   const supabase = await createClient();

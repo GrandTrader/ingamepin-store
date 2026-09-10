@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
     if (
       !Number.isFinite(amount) ||
       amount < 10 ||
-      amount > 10000 ||
+      amount > 50000 ||
       !isWalletGatewayId(gateway)
     ) {
       return NextResponse.json(
-        { error: "Enter an amount between USD 10 and USD 10,000." },
+        { error: "Enter an amount between USD 10 and USD 50,000." },
         { status: 400 },
       );
     }
