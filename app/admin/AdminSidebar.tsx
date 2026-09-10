@@ -12,6 +12,7 @@ type AdminSidebarProps = {
 const links = [
   { label: "Overview", href: "/admin", icon: "OV" },
   { label: "Products", href: "/admin/products", icon: "PR" },
+  { label: "Sellers", href: "/admin/sellers", icon: "SE" },
   { label: "Categories", href: "/admin/categories", icon: "CA" },
   { label: "Orders", href: "/admin/orders", icon: "OR" },
   { label: "Sales Report", href: "/admin/sales-report", icon: "SR" },

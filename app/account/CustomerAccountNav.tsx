@@ -12,6 +12,7 @@ const links = [
   { label: "Notifications", href: "/account/notifications" },
   { label: "Security", href: "/account/security" },
   { label: "Profile", href: "/account/profile" },
+  { label: "Seller application", href: "/seller" },
 ];
 
 export default function CustomerAccountNav() {
