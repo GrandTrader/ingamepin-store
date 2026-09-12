@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { submitPartnerApplication } from "./actions";
+import PartnerApplicationForm from "./PartnerApplicationForm";
 
 export const metadata: Metadata = {
   title: "Work With Us | InGamePin Partnerships",
@@ -30,9 +30,9 @@ export default async function WorkWithUsPage({ searchParams }: { searchParams: P
           </article>
           <article className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm sm:p-9">
             <div className="grid h-14 w-14 place-items-center rounded-2xl bg-violet-100 text-3xl">🎮</div>
-            <h2 className="mt-6 text-2xl font-black">Become a gaming distributor</h2>
-            <p className="mt-3 leading-7 text-slate-600">We welcome publishers, authorized distributors and wholesalers offering gift cards, game keys, subscriptions, wallet recharges and gaming top-ups.</p>
-            <ul className="mt-5 grid gap-2 text-sm font-bold text-slate-700"><li>✓ Genuine regional and global inventory</li><li>✓ Bulk, API or automated fulfilment</li><li>✓ Competitive wholesale pricing</li></ul>
+            <h2 className="mt-6 text-2xl font-black">Supply gaming products to iNgamePIN</h2>
+            <p className="mt-3 leading-7 text-slate-600">iNgamePIN is seeking authorized gaming distributors, publishers and wholesale suppliers worldwide. We want to purchase gift cards, game keys, subscriptions, wallet credits and gaming top-ups in bulk for resale through our website, and build reliable, long-term supply partnerships.</p>
+            <ul className="mt-5 grid gap-2 text-sm font-bold text-slate-700"><li>✓ Authorized supply with clear regional resale rights</li><li>✓ Reliable stock through bulk orders or API delivery</li><li>✓ Wholesale pricing, minimum orders and payment terms</li></ul>
           </article>
         </div>
 
@@ -47,19 +47,7 @@ export default async function WorkWithUsPage({ searchParams }: { searchParams: P
           <p className="mt-3 text-slate-300">Business proposals only. Our team will reply to suitable applications by email.</p>
           {params.success && <p className="mt-5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 font-bold text-emerald-200">Thank you. Your partnership proposal has been sent.</p>}
           {params.error && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-400/10 p-4 font-bold text-red-200">{params.error}</p>}
-          <form action={submitPartnerApplication} className="mt-7 grid gap-5 sm:grid-cols-2">
-            <input name="company_site" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
-            <label className="font-bold">Partnership type<select name="partner_type" required className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3"><option value="">Select an option</option><option value="PAYMENT_PROVIDER">Payment provider</option><option value="GAMING_DISTRIBUTOR">Gaming distributor</option></select></label>
-            <label className="font-bold">Company name<input name="company" required minLength={2} maxLength={120} className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3" /></label>
-            <label className="font-bold">Contact person<input name="contact_name" required minLength={2} maxLength={100} className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3" /></label>
-            <label className="font-bold">Business email<input name="email" type="email" required maxLength={160} className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3" /></label>
-            <label className="font-bold">Company website<input name="website" type="url" placeholder="https://" maxLength={250} className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3" /></label>
-            <label className="font-bold">Country / region<input name="country" required minLength={2} maxLength={100} className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3" /></label>
-            <label className="font-bold sm:col-span-2">Estimated monthly volume <span className="font-normal text-slate-400">(optional)</span><input name="monthly_volume" maxLength={100} placeholder="Transactions, orders or inventory value" className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3" /></label>
-            <label className="font-bold sm:col-span-2">Proposal<textarea name="proposal" required minLength={20} maxLength={3000} rows={6} placeholder="Describe your services, markets, products, integration options and commercial proposal." className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3" /></label>
-            <label className="flex items-start gap-3 text-sm text-slate-300 sm:col-span-2"><input type="checkbox" required className="mt-1 h-4 w-4 accent-cyan-400" />I am authorized to contact InGamePin for this company and agree that the submitted information may be used to review this proposal.</label>
-            <button className="rounded-xl bg-cyan-400 px-7 py-3.5 font-black text-slate-950 hover:bg-cyan-300 sm:col-span-2">Send partnership proposal</button>
-          </form>
+          <PartnerApplicationForm />
         </section>
       </section>
     </main>
