@@ -112,7 +112,7 @@ export default function Footer() {
           <MobileFooterSection title={t("customerHelp")}>
             <Link href="/track-order">{t("trackYourOrder")}</Link>
             <Link href="/support">{t("contactSupport")}</Link>
-            <Link href="/work-with-us">Work With Us</Link>
+            <Link href="/work-with-us">Partnership With US</Link>
             <Link href="/cart">{t("shoppingCart")}</Link>
           </MobileFooterSection>
 
@@ -225,7 +225,7 @@ export default function Footer() {
             </Link>
 
             <Link href="/work-with-us" className="transition hover:text-cyan-400">
-              Work With Us
+              Partnership With US
             </Link>
 
             <Link
