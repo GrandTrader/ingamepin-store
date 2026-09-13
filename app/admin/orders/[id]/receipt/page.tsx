@@ -503,22 +503,34 @@ export default async function OrderReceipt({
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-lg font-black">Purchased products</h2>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500">
+            <div className="mt-3">
+              <table className="block w-full text-left text-sm md:table">
+                <thead className="hidden bg-slate-50 text-xs text-slate-500 md:table-header-group">
                   <tr>
-                    <th className="px-4 py-3">Product</th>
-                    <th className="px-4 py-3">Denomination / option</th>
-                    <th className="px-4 py-3">Quantity</th>
-                    <th className="px-4 py-3">Unit price</th>
-                    <th className="px-4 py-3 text-right">Total</th>
+                    <th className="px-2 py-2">Product</th>
+                    <th className="px-2 py-2">Denomination / option</th>
+                    <th className="px-2 py-2">Quantity</th>
+                    <th className="px-2 py-2">Delivery status</th>
+                    <th className="px-2 py-2">Unit price</th>
+                    <th className="px-2 py-2 text-right">Total</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-200">
-                      <td className="px-4 py-4 align-top">
-                        <p className="font-bold">{item.product_name}</p>
+                <tbody className="block space-y-2 md:table-row-group md:space-y-0">
+                  {items.map((item) => {
+                    const deliveredCount = codesByItem.get(item.id)?.length ?? 0;
+                    const refundedCount = refundedQuantityFor(item.id);
+                    const completed = item.quantity > 0 && (
+                      deliveredCount >= item.quantity ||
+                      (item.fulfillment_mode === "PLAYER_ID_TOPUP" && order.status === "DELIVERED")
+                    );
+                    const resolvedWithRefund = refundedCount > 0 && deliveredCount + refundedCount >= item.quantity;
+                    const deliveryLabel = completed ? "Completed"
+                      : resolvedWithRefund ? (deliveredCount > 0 ? "Delivered / refunded" : "Refunded")
+                      : deliveredCount > 0 ? "Partially delivered" : "Pending";
+                    return (
+                    <tr key={item.id} className={`grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-slate-200 p-3 md:table-row md:rounded-none md:border-x-0 md:border-b-0 md:p-0 ${completed ? "bg-emerald-50" : ""}`}>
+                      <td className="col-span-2 block min-w-0 break-words md:table-cell md:w-[36%] md:px-2 md:py-2.5 md:align-top">
+                        <p className="font-bold leading-snug">{item.product_name}</p>
                         {item.platform && (
                           <p className="mt-1 text-xs text-slate-500">
                             Platform: {item.platform}
@@ -529,31 +541,47 @@ export default async function OrderReceipt({
                           fields={item.customer_information ?? []}
                         />
                       </td>
-                      <td className="px-4 py-4 align-top">
+                      <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top">
+                        <span className="mb-0.5 block text-xs text-slate-500 md:hidden">Denomination / option</span>
                         {item.option_name ??
                           (item.denomination
                             ? String(item.denomination)
                             : "Standard option")}
                       </td>
-                      <td className="px-4 py-4 align-top">{item.quantity}</td>
-                      <td className="px-4 py-4 align-top">
+                      <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top"><span className="mb-0.5 block text-xs text-slate-500 md:hidden">Quantity</span>{item.quantity}</td>
+                      <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top">
+                        <span className="mb-0.5 block text-xs text-slate-500 md:hidden">Delivery status</span>
+                        <span className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${completed ? "bg-emerald-100 text-emerald-700" : resolvedWithRefund ? "bg-slate-100 text-slate-600" : "bg-amber-100 text-amber-800"}`}>
+                          {deliveryLabel}
+                        </span>
+                        {item.fulfillment_mode !== "PLAYER_ID_TOPUP" && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {deliveredCount} / {item.quantity} delivered
+                            {refundedCount > 0 && ` · ${refundedCount} refunded / refund pending`}
+                          </p>
+                        )}
+                      </td>
+                      <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top">
+                        <span className="mb-0.5 block text-xs text-slate-500 md:hidden">Unit price</span>
                         {formatMoney(item.unit_price, order.currency)}
                       </td>
-                      <td className="px-4 py-4 text-right align-top font-bold">
+                      <td className="col-span-2 block min-w-0 border-t border-slate-200 pt-2 text-right font-bold md:table-cell md:border-0 md:px-2 md:py-2.5 md:align-top">
+                        <span className="float-left text-xs font-normal text-slate-500 md:hidden">Total</span>
                         {formatMoney(item.total_price, order.currency)}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
-            <div className="ml-auto mt-6 w-full max-w-sm rounded-xl bg-slate-50 p-4">
-              <div className="flex justify-between gap-5 py-2 text-sm">
+            <div className="ml-auto mt-3 w-full max-w-sm rounded-xl bg-slate-50 p-3">
+              <div className="flex justify-between gap-3 py-1 text-sm">
                 <span className="text-slate-500">Subtotal</span>
                 <strong>{formatMoney(order.subtotal, order.currency)}</strong>
               </div>
-              <div className="flex justify-between gap-5 py-2 text-sm">
+              <div className="flex justify-between gap-3 py-1 text-sm">
                 <span className="text-slate-500">Discount</span>
                 <strong>{formatMoney(order.discount, order.currency)}</strong>
               </div>

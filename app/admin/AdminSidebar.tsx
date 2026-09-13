@@ -30,6 +30,73 @@ const links = [
   { label: "Security", href: "/admin/security", icon: "SC" },
 ];
 
+
+const menuGroups = [
+  {
+    "label": "Catalog",
+    "icon": "PR",
+    "paths": [
+      "/admin/products",
+      "/admin/categories"
+    ]
+  },
+  {
+    "label": "Orders & sales",
+    "icon": "OR",
+    "paths": [
+      "/admin/orders",
+      "/admin/sales-report",
+      "/admin/invoices"
+    ]
+  },
+  {
+    "label": "Sellers",
+    "icon": "SE",
+    "paths": [
+      "/admin/sellers",
+
+
+    ]
+  },
+  {
+    "label": "Customers & support",
+    "icon": "CU",
+    "paths": [
+      "/admin/customers",
+
+
+      "/admin/live-chat",
+      "/admin/reviews"
+    ]
+  },
+  {
+    "label": "Payments & wallet",
+    "icon": "WA",
+    "paths": [
+      "/admin/payment-settings",
+      "/admin/wallet"
+    ]
+  },
+  {
+    "label": "Marketing",
+    "icon": "MK",
+    "paths": [
+      "/admin/homepage-slider",
+      "/admin/customer-discounts",
+      "/admin/affiliates",
+      "/admin/affiliates/promoters"
+    ]
+  },
+  {
+    "label": "Settings & API",
+    "icon": "SC",
+    "paths": [
+      "/admin/bulk-api",
+      "/admin/security"
+    ]
+  }
+];
+
 export default function AdminSidebar({
   orderCount = 0,
   walletCount = 0,
@@ -81,44 +148,20 @@ export default function AdminSidebar({
   function isActive(href: string) {
     return href === "/admin"
       ? pathname === "/admin"
-      : pathname.startsWith(href);
+      : (pathname === href || pathname.startsWith(href + "/")) &&
+        !links.some((link) => link.href !== href && link.href.startsWith(href + "/") &&
+          (pathname === link.href || pathname.startsWith(link.href + "/")));
   }
 
-  return (
-    <aside className="shrink-0 border-b border-slate-200 bg-slate-50 lg:min-h-screen lg:w-60 lg:border-b-0 lg:border-r">
-      <div className="flex items-center justify-between gap-3 px-4 py-4 lg:px-5 lg:py-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500 font-black text-white">
-            IP
-          </div>
-          <div>
-            <p className="font-black text-slate-900">InGamePin</p>
-            <p className="text-xs text-slate-500">Admin</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setMobileOpen((value) => !value)}
-          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 lg:hidden"
-          aria-expanded={mobileOpen}
-        >
-          {mobileOpen ? "Close" : "Menu"}
-        </button>
-      </div>
-
-      <nav
-        className={`gap-2 px-3 pb-4 ${
-          mobileOpen ? "grid" : "hidden"
-        } lg:grid`}
-      >
-        {links.map((link) => {
+  function renderLink(link: (typeof links)[number]) {
           const active = isActive(link.href);
           return (
             <Link
               key={link.href}
               href={link.href}
+              aria-current={active ? "page" : undefined}
               onClick={() => setMobileOpen(false)}
-              className={`flex min-w-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
+              className={`flex min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
                 active
                   ? "bg-blue-100 text-blue-700"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -157,6 +200,61 @@ export default function AdminSidebar({
                 </span>
               )}
             </Link>
+          );
+  }
+
+  return (
+    <aside className="shrink-0 border-b border-slate-200 bg-slate-50 lg:min-h-screen lg:w-60 lg:border-b-0 lg:border-r">
+      <div className="flex items-center justify-between gap-3 px-4 py-4 lg:px-5 lg:py-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500 font-black text-white">
+            IP
+          </div>
+          <div>
+            <p className="font-black text-slate-900">InGamePin</p>
+            <p className="text-xs text-slate-500">Admin</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileOpen((value) => !value)}
+          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 lg:hidden"
+          aria-expanded={mobileOpen}
+        >
+          {mobileOpen ? "Close" : "Menu"}
+        </button>
+      </div>
+
+      <nav
+        aria-label="Admin navigation"
+        className={`gap-2 px-3 pb-4 ${
+          mobileOpen ? "grid" : "hidden"
+        } lg:grid`}
+      >
+        {renderLink(links[0])}
+        {menuGroups.map((group) => {
+          const children = links.filter((link) => group.paths.includes(link.href));
+          const active = children.some((link) => isActive(link.href));
+          const pending = children.reduce((total, link) => total + (
+            link.href === "/admin/orders" ? liveOrderCount :
+            link.href === "/admin/affiliates/promoters" ? pendingAffiliateCount :
+            link.href === "/admin/wallet" ? walletCount : 0
+          ), 0);
+          return (
+            <details key={group.label + pathname} open={active} className="group rounded-xl">
+              <summary className={
+                "flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-blue-500 [&::-webkit-details-marker]:hidden " +
+                (active ? "bg-blue-100 text-blue-700" : "text-slate-700 hover:bg-slate-100")
+              }>
+                <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-[10px] font-black">{group.icon}</span>
+                <span className="min-w-0 flex-1">{group.label}</span>
+                {pending > 0 && <span aria-label={pending + " pending items"} className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-black text-white">{pending}</span>}
+                <span aria-hidden="true" className="transition-transform group-open:rotate-90">›</span>
+              </summary>
+              <div className="ml-5 mt-1 space-y-0.5 border-l border-slate-200 pl-2">
+                {children.map(renderLink)}
+              </div>
+            </details>
           );
         })}
       </nav>
