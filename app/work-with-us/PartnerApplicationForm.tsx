@@ -2,7 +2,7 @@
 import {useState} from "react";
 import {submitPartnerApplication} from "./actions";
 import {supplierFields} from "@/lib/supplier-application";
-export default function PartnerApplicationForm(){const [partnerType,setPartnerType]=useState("");return (
+export default function PartnerApplicationForm({initialType = ""}:{initialType?: "" | "PAYMENT_PROVIDER"}){const [partnerType,setPartnerType]=useState<string>(initialType);return (
           <form action={submitPartnerApplication} className="mt-7 grid gap-5 sm:grid-cols-2">
             <input name="company_site" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
             <label className="font-bold">Partnership type<select name="partner_type" value={partnerType} onChange={event => setPartnerType(event.target.value)} required className="mt-2 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3"><option value="">Select an option</option><option value="PAYMENT_PROVIDER">Payment provider</option><option value="GAMING_DISTRIBUTOR">Gaming distributor / product supplier</option></select></label>

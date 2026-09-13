@@ -22,6 +22,7 @@ const getCachedHomepageData = unstable_cache(
         .select(`
           id,
           public_id,
+          created_at,
           name,
           name_ru,
           slug,
@@ -82,7 +83,7 @@ const getCachedHomepageData = unstable_cache(
       slides: slidesResult.data ?? [],
     };
   },
-  ["homepage-store-data-v1"],
+  ["homepage-store-data-v2"],
   { revalidate: 30, tags: ["homepage-store-data"] },
 );
 

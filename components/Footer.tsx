@@ -113,6 +113,7 @@ export default function Footer() {
             <Link href="/track-order">{t("trackYourOrder")}</Link>
             <Link href="/support">{t("contactSupport")}</Link>
             <Link href="/work-with-us">Partnership With US</Link>
+            <Link href="/work-with-us?type=PAYMENT_PROVIDER#partner-application">Be a Payment Gateway Provider</Link>
             <Link href="/cart">{t("shoppingCart")}</Link>
           </MobileFooterSection>
 
@@ -227,6 +228,7 @@ export default function Footer() {
             <Link href="/work-with-us" className="transition hover:text-cyan-400">
               Partnership With US
             </Link>
+            <Link href="/work-with-us?type=PAYMENT_PROVIDER#partner-application" className="transition hover:text-cyan-400">Be a Payment Gateway Provider</Link>
 
             <Link
               href="/cart"

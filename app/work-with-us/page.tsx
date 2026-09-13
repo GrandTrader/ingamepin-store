@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Partner with InGamePin as a global payment provider or gaming product distributor.",
 };
 
-export default async function WorkWithUsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
+export default async function WorkWithUsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string; type?: string }> }) {
   const params = await searchParams;
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
@@ -47,7 +47,7 @@ export default async function WorkWithUsPage({ searchParams }: { searchParams: P
           <p className="mt-3 text-slate-300">Business proposals only. Our team will reply to suitable applications by email.</p>
           {params.success && <p className="mt-5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 font-bold text-emerald-200">Thank you. Your partnership proposal has been sent.</p>}
           {params.error && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-400/10 p-4 font-bold text-red-200">{params.error}</p>}
-          <PartnerApplicationForm />
+          <PartnerApplicationForm key={params.type === "PAYMENT_PROVIDER" ? "payment" : "default"} initialType={params.type === "PAYMENT_PROVIDER" ? "PAYMENT_PROVIDER" : ""} />
         </section>
       </section>
     </main>

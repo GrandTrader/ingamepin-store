@@ -33,6 +33,7 @@ type ProductType =
   | "DIGITAL_PRODUCT";
 
 type ProductRow = {
+  created_at: string;
   id: string;
   public_id: number | string;
   name: string;
@@ -261,6 +262,12 @@ export default async function Home() {
         }
       : null;
 
+  const productById = new Map(products.map(product => [product.id, product]));
+  const newlyAddedProducts = [...productRows]
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || a.id.localeCompare(b.id))
+    .slice(0, 24)
+    .map(product => productById.get(product.id)!);
+
   const rankedProducts = [...products]
     .sort((first, second) => second.sold - first.sold);
   const purchasedProducts = rankedProducts.filter(
@@ -302,6 +309,22 @@ export default async function Home() {
               ))}
             </PopularProductsRow>
           ) : <EmptySection message="No active products are currently available." />}
+        </section>
+
+        <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-extrabold sm:text-2xl">Newly Added Products</h2>
+            <Link href="/products" className="rounded-lg bg-[#f4f5f7] px-4 py-2 text-xs font-bold hover:bg-[#ff9418] hover:text-white">All</Link>
+          </div>
+          {newlyAddedProducts.length > 0 ? (
+            <PopularProductsRow variant="new">
+              {newlyAddedProducts.map(product => (
+                <div key={product.id} className="w-[165px] shrink-0 snap-start sm:w-[185px] lg:w-[195px]">
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </PopularProductsRow>
+          ) : <EmptySection message="New products will appear here when available." />}
         </section>
 
         <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
