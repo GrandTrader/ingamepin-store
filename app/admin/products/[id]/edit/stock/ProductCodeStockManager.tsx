@@ -1,4 +1,5 @@
 "use client";
+import styles from "./ProductCodeStockManager.module.css";
 import { useEffect, useMemo, useState } from "react";
 import { addCodesForOption, changeCodeStatusForOption, deleteProductCode } from "../ProductCodeInventoryActions";
 import { deleteAllUnsoldCodes, setProductStockMode } from "./actions";
@@ -67,7 +68,7 @@ export default function ProductCodeStockManager({ productId, isUnlimited, option
         <p className="mt-2 text-sm leading-6 text-emerald-800">All active denominations are available without voucher inventory. Orders must be delivered manually from the order receipt page.</p>
       </div>
     ) : <div className="grid min-h-[520px] gap-5 lg:grid-cols-[230px_1fr]">
-    <aside className="rounded-xl border border-slate-200 bg-slate-50 p-2"><p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">Denominations</p><div className="grid gap-1">{options.map((option) => <button key={option.id} type="button" onClick={() => { setSelectedId(option.id); setPage(1); setNewCodes(""); setIsPreviewing(false); setShowUploadedContent(false); }} className={`flex items-center justify-between rounded-lg px-3 py-3 text-left text-sm font-bold ${selectedId === option.id ? "bg-blue-600 text-white" : "bg-white text-slate-700"}`}><span>{option.name}</span><span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">{option.availableCount}</span></button>)}</div></aside>
+    <aside className="rounded-xl border border-slate-200 bg-slate-50 p-2"><p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">Denominations</p><div className="grid gap-1">{options.map((option) => <button key={option.id} type="button" onClick={() => { setSelectedId(option.id); setPage(1); setNewCodes(""); setIsPreviewing(false); setShowUploadedContent(false); }} aria-pressed={selectedId === option.id} data-empty={option.availableCount === 0} className={`${styles.denomination} flex items-center justify-between gap-2 rounded-lg px-3 py-3 text-left text-sm font-bold`}><span>{option.name}</span><span className={`${styles.count} shrink-0 rounded-full px-2 py-0.5 text-xs`} aria-label={option.availableCount === 0 ? "Out of stock" : `${option.availableCount} available codes`}>{option.availableCount === 0 ? "0 · Out of stock" : option.availableCount}</span></button>)}</div></aside>
     <section>{selected ? <><div><h2 className="text-xl font-black">{selected.name}</h2><p className="mt-1 text-sm text-slate-500">{selected.availableCount} available voucher codes</p></div>
       <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
         <h3 className="font-black text-amber-950">Available-code backup and restore</h3>
