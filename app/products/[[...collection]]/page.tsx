@@ -34,6 +34,7 @@ type ProductRow = {
   sold_count: number;
   is_bulk_order: boolean;
   delivery_type: string;
+  product_type: string;
   categories:
     | {
         name: string;
@@ -59,6 +60,10 @@ type ProductRow = {
 };
 
 const collections = {
+  "gaming-top-ups": { title: "Gaming Top-Ups", description: "Browse gaming top-ups." },
+  "gift-cards": { title: "Gift Cards", description: "Browse digital gift cards." },
+  subscriptions: { title: "Subscriptions", description: "Browse gaming and digital subscriptions." },
+  "game-keys": { title: "Game Keys", description: "Browse digital game keys." },
   all: {
     title: "All Products",
     description:
@@ -146,6 +151,9 @@ function matchesCollection(
     return true;
   }
 
+  const productTypes = { "gaming-top-ups": "GAME_TOPUP", "gift-cards": "GIFT_CARD", subscriptions: "SUBSCRIPTION", "game-keys": "GAME_KEY" };
+  if (collection in productTypes) return product.product_type === productTypes[collection as keyof typeof productTypes];
+
   if (collection === "bulk") {
     return product.is_bulk_order;
   }
@@ -223,6 +231,7 @@ export default async function ProductsPage({
         sold_count,
         is_bulk_order,
         delivery_type,
+        product_type,
         categories (
           name,
           short_name,
@@ -261,7 +270,7 @@ export default async function ProductsPage({
         nameRu: product.name_ru,
         slug: product.slug,
         href: getStoreProductUrl(product),
-        image: product.image_url ?? "",
+      image: product.image_url ?? "",
         imageRu: product.image_url_ru,
         price: Number(product.price),
         badge: product.badge ?? "Digital Delivery",

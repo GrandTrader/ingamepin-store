@@ -483,14 +483,14 @@ export async function renderProductPage({
               </div>
 
               {product.delivery_type === "MANUAL" && !product.is_bulk_order && (
-                <div className="mt-5 rounded-2xl border border-cyan-300 bg-cyan-50 p-4 sm:mt-7 sm:p-5">
-                  <div className="flex items-start gap-3">
-                    <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cyan-400 font-black text-slate-950">◆</span>
+                <div className="mt-3 rounded-xl border border-cyan-300 bg-cyan-50 px-3 py-2 sm:mt-4 sm:py-3">
+                  <div className="flex items-start gap-2">
+                    <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-cyan-400 font-black text-slate-950">◆</span>
                     <span>
-                      <span className="block text-sm font-black text-cyan-950 sm:text-base">
+                      <span className="block text-xs font-bold text-cyan-950 sm:text-sm">
                         <LocalizedProductText english="Digital delivery information" russian="Информация о цифровой доставке" />
                       </span>
-                      <span className="mt-1 block whitespace-pre-line text-sm font-medium leading-6 text-slate-800">
+                      <span className="mt-0.5 block whitespace-pre-line text-xs font-normal leading-4 sm:text-sm sm:leading-5 text-slate-800">
                         {product.delivery_instructions || (
                           <LocalizedProductText
                             english="Digital delivery is completed by the admin after successful payment confirmation."
@@ -504,22 +504,22 @@ export async function renderProductPage({
               )}
 
               {product.is_bulk_order && (
-                  <div className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 sm:mt-7 sm:p-5">
-                    <div className="flex items-start gap-3">
+                  <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 sm:mt-4 sm:py-3">
+                    <div className="flex items-start gap-2">
                       <span
                         aria-hidden="true"
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-300 font-black text-slate-950"
+                        className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-amber-300 font-black text-slate-950"
                       >
                         ◆
                       </span>
                       <span>
-                        <span className="block text-sm font-black text-amber-950 sm:text-base">
+                        <span className="block text-xs font-bold text-amber-950 sm:text-sm">
                           <LocalizedProductText
                             english="Digital delivery information"
                             russian="Информация о цифровой доставке"
                           />
                         </span>
-                        <span className="mt-1 block whitespace-pre-line text-sm font-medium leading-6 text-slate-800">
+                        <span className="mt-0.5 block whitespace-pre-line text-xs font-normal leading-4 sm:text-sm sm:leading-5 text-slate-800">
                           {product.bulk_delivery_instructions || "Digital Delivery Time: 1-15 Working Days"}
                         </span>
                       </span>

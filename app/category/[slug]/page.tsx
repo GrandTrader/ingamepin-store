@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -86,6 +87,7 @@ export default async function CategoryPage({
   params,
 }: CategoryPageProps) {
   const { slug } = await params;
+  if (["gaming-top-ups", "gift-cards", "subscriptions", "game-keys"].includes(slug)) redirect(`/products/${slug}`);
   const supabase = await createClient();
   const categoryResult = await supabase
     .from("categories")

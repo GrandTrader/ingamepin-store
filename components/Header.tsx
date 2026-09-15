@@ -306,7 +306,7 @@ export default function Header() {
   }
 
   return (
-    <>
+    <div className={pathname === "/" ? "hidden sm:contents" : "contents"}>
       {/* Top information bar */}
       <div className="border-b border-white/10 bg-slate-950 text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-center px-3 py-1.5 text-center text-[10px] text-slate-300 sm:justify-between sm:px-5 sm:py-2 sm:text-xs">
@@ -728,7 +728,7 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/category/gaming-top-ups"
+                href="/products/gaming-top-ups"
                 onClick={closeMenu}
                 className="flex items-center justify-between rounded-xl px-4 py-3 font-bold text-slate-200 transition hover:bg-white/5 hover:text-cyan-400"
               >
@@ -740,7 +740,7 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/category/gift-cards"
+                href="/products/gift-cards"
                 onClick={closeMenu}
                 className="flex items-center justify-between rounded-xl px-4 py-3 font-bold text-slate-200 transition hover:bg-white/5 hover:text-cyan-400"
               >
@@ -752,7 +752,7 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/category/subscriptions"
+                href="/products/subscriptions"
                 onClick={closeMenu}
                 className="flex items-center justify-between rounded-xl px-4 py-3 font-bold text-slate-200 transition hover:bg-white/5 hover:text-cyan-400"
               >
@@ -764,7 +764,7 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/category/game-keys"
+                href="/products/game-keys"
                 onClick={closeMenu}
                 className="flex items-center justify-between rounded-xl px-4 py-3 font-bold text-slate-200 transition hover:bg-white/5 hover:text-cyan-400"
               >
@@ -844,6 +844,6 @@ export default function Header() {
           </nav>
         )}
       </header>
-    </>
+    </div>
   );
 }

@@ -6,13 +6,11 @@ import { usePathname } from "next/navigation";
 const links = [
   { label: "Overview", href: "/account/dashboard" },
   { label: "My Orders", href: "/account/orders" },
-  { label: "My Codes", href: "/account/codes" },
   { label: "Wallet", href: "/account/wallet" },
   { label: "Affiliate", href: "/account/affiliate" },
   { label: "Notifications", href: "/account/notifications" },
   { label: "Security", href: "/account/security" },
   { label: "Profile", href: "/account/profile" },
-  { label: "Seller application", href: "/seller" },
 ];
 
 export default function CustomerAccountNav() {

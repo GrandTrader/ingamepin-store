@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
+import styles from "./ProductPurchaseForm.module.css";
 import { useRouter } from "next/navigation";
 import { useStorePreferences } from "@/components/StorePreferences";
 import LocalizedProductText from "@/components/LocalizedProductText";
@@ -634,9 +635,9 @@ export default function ProductPurchaseForm({
         )}
 
       {valueMode === "FIXED" && (
-        <section className="mt-5 sm:mt-7">
-          <h2 className="text-base font-black sm:text-lg">{t("selectProductOption")}</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
+        <section className="mt-3 sm:mt-5">
+          <h2 className="text-sm font-bold sm:text-base">{t("selectProductOption")}</h2>
+          <div className="mt-2 grid grid-cols-2 gap-1.5 sm:gap-2">
             {fixedOptions.map((option) => {
               const isSelected = selectedOptionId === option.id;
               const isUnavailable =
@@ -648,8 +649,9 @@ export default function ProductPurchaseForm({
                   key={option.id}
                   type="button"
                   disabled={isUnavailable}
+                  aria-pressed={isSelected}
                   onClick={() => selectOption(option.id)}
-                  className={`product-option-button min-w-0 rounded-xl border p-3 text-left transition sm:p-4 ${
+                  className={`product-option-button min-w-0 min-h-11 rounded-lg border px-2.5 py-2 text-left transition sm:px-3 sm:py-2.5 ${
                     isUnavailable
                       ? "product-option-unavailable"
                       : isSelected
@@ -657,15 +659,15 @@ export default function ProductPurchaseForm({
                       : "border-white/10 bg-slate-950 hover:border-cyan-400"
                   } disabled:cursor-not-allowed`}
                 >
-                  <span className="block break-words text-sm font-black sm:text-base">{option.optionName}</span>
+                  <span className="block break-words text-xs leading-4 font-bold sm:text-sm">{option.optionName}</span>
                   {option.platform && (
-                    <span className="mt-1 inline-flex rounded-full bg-white/10 px-2 py-1 text-xs font-bold">
+                    <span className="mt-1 inline-flex rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold">
                       {option.platform}
                     </span>
                   )}
-                  <span className="mt-1 block text-sm">
+                  <span className="mt-0.5 block text-xs leading-4">
                     {product.customerDiscountPercent > 0 ? (
-                      <><span className="font-black">{formatPrice(applyAffiliateMarkup(option.sellingPrice) * (1 - product.customerDiscountPercent / 100))}</span>{" "}<span className="text-xs line-through opacity-60">{formatPrice(applyAffiliateMarkup(option.sellingPrice))}</span></>
+                      <><span className="font-black">{formatPrice(applyAffiliateMarkup(option.sellingPrice) * (1 - product.customerDiscountPercent / 100))}</span>{" "}<span className="text-[10px] line-through opacity-60">{formatPrice(applyAffiliateMarkup(option.sellingPrice))}</span></>
                     ) : formatPrice(applyAffiliateMarkup(option.sellingPrice))}
                   </span>
                   {(isUnavailable ||
@@ -673,7 +675,7 @@ export default function ProductPurchaseForm({
                       !product.isUnlimitedStock &&
                       option.stockQuantity > 0 &&
                       option.stockQuantity < 5)) && (
-                    <span className={`mt-1 block text-xs font-bold ${
+                    <span className={`mt-0.5 block text-[10px] font-bold ${
                       isUnavailable ? "opacity-70" : "text-amber-400"
                     }`}>
                       {isUnavailable
@@ -867,8 +869,8 @@ export default function ProductPurchaseForm({
         </p>
       </section>
 
-      <section className="mt-5 rounded-2xl border border-white/10 bg-slate-950 p-4 sm:mt-7 sm:p-5">
-        <div className="flex justify-between gap-4 text-sm text-slate-400">
+      <section className="mt-3 rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 sm:mt-4 sm:p-3">
+        <div className="flex justify-between gap-3 text-xs text-slate-400">
           <span>{t("selectedOption")}</span>
           <span className="text-right font-bold text-white">
             {valueMode === "CUSTOM"
@@ -884,7 +886,7 @@ export default function ProductPurchaseForm({
         </div>
 
         {isGamingTopup && (
-          <div className="mt-3 flex justify-between gap-4 text-sm text-slate-400">
+          <div className="mt-2 flex justify-between gap-3 text-xs text-slate-400">
             <span>{t("deliveryMethod")}</span>
             <span className="text-right font-bold text-white">
               {fulfillmentMode === "PLAYER_ID_TOPUP"
@@ -894,14 +896,14 @@ export default function ProductPurchaseForm({
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+        <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2">
           <span className="font-bold">{t("total")}</span>
-          <span className="text-2xl font-black text-cyan-400">
+          <span className="text-xl font-black text-cyan-400">
             {formatPrice(customerTotal)}
           </span>
         </div>
         {customerDiscountAmount > 0 && (
-          <div className="mt-2 flex justify-between text-xs text-emerald-300">
+          <div className={styles.discount}>
             <span>{t("yourDiscountShort")}</span><span>-{formatPrice(customerDiscountAmount)}</span>
           </div>
         )}
@@ -910,31 +912,14 @@ export default function ProductPurchaseForm({
       {affiliateMaximumCommissionPercent > 0 && (
         <Link
           href={`/affiliate-program?product=${encodeURIComponent(product.slug)}`}
-          className="product-affiliate-banner mt-5 flex items-center justify-between gap-4 rounded-2xl border border-amber-300/40 bg-gradient-to-r from-amber-300/15 to-cyan-400/10 p-4 transition hover:border-amber-200 hover:bg-amber-300/20 sm:mt-6 sm:p-5"
+          className="product-affiliate-banner mt-3 flex min-h-11 items-center justify-between gap-2 rounded-lg border border-amber-300/40 bg-gradient-to-r from-amber-300/15 to-cyan-400/10 px-3 py-2 transition hover:border-amber-200"
         >
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-300 text-xl text-slate-950">
-            ◈
+          <span aria-hidden="true" className="product-affiliate-arrow shrink-0 text-amber-200">◈</span>
+          <span className="product-affiliate-title min-w-0 flex-1 whitespace-nowrap text-xs font-bold text-white">
+            {language === "ru" ? "Заработайте до" : "Earn up to"}{" "}{formatPrice(affiliateMaximumEarning)}
+            <span className="product-affiliate-label ml-2 text-[10px] font-medium text-amber-200">{language === "ru" ? "Партнёрам" : "Affiliate"}</span>
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="product-affiliate-label block text-xs font-bold uppercase tracking-widest text-amber-200">
-              {language === "ru"
-                ? "Партнёрская возможность"
-                : "Affiliate opportunity"}
-            </span>
-            <span className="product-affiliate-title mt-1 block font-black text-white">
-              {language === "ru" ? "Заработайте до" : "Earn up to"}{" "}
-              {formatPrice(affiliateMaximumEarning)}{" "}
-              {language === "ru" ? "на этом товаре!" : "on this product!"}
-            </span>
-            <span className="product-affiliate-copy mt-1 block text-xs text-slate-400">
-              {language === "ru"
-                ? "Присоединяйтесь к программе и делитесь своей уникальной ссылкой."
-                : "Join the program and share your unique product link."}
-            </span>
-          </span>
-          <span aria-hidden="true" className="product-affiliate-arrow text-2xl text-amber-200">
-            →
-          </span>
+          <span aria-hidden="true" className="product-affiliate-arrow shrink-0 text-amber-200">→</span>
         </Link>
       )}
 

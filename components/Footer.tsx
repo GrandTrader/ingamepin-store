@@ -42,7 +42,7 @@ export default function Footer() {
 
   if (pathname === "/checkout" || pathname.startsWith("/checkout/")) {
     return (
-      <footer className="mt-auto border-t border-white/10 bg-slate-950 text-white">
+      <footer className={`${pathname === "/" ? "hidden sm:block" : ""} mt-auto border-t border-white/10 bg-slate-950 text-white`}>
         <div className="border-b border-white/10">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-4 py-5 sm:px-5 md:flex-row">
             <div className="text-center md:text-left">
@@ -74,7 +74,7 @@ export default function Footer() {
   }
 
   return (
-    <footer className="mt-auto border-t border-white/10 bg-slate-950 text-white">
+    <footer className={`${pathname === "/" ? "hidden sm:block" : ""} mt-auto border-t border-white/10 bg-slate-950 text-white`}>
       <div className="mx-auto max-w-7xl px-3 pt-5 sm:px-5 sm:pt-8">
         <PaymentMethodsBanner variant="footer" />
       </div>

@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import Header from "../components/Header";
+import MobileBottomNav from "../components/MobileBottomNav";
 import Footer from "../components/Footer";
 import LiveSupportWidget from "../components/LiveSupportWidget";
 import YandexMetrica from "../components/YandexMetrica";
@@ -69,6 +70,7 @@ export default function RootLayout({
           </main>
 
           <Footer />
+          <Suspense fallback={null}><MobileBottomNav /></Suspense>
           <LiveSupportWidget />
         </StorePreferencesProvider>
 

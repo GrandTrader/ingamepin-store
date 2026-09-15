@@ -96,12 +96,12 @@ export default function WalletTopupForm({
   }
 
   return (
-    <div className="mt-7 space-y-6">
+    <div className="mt-4 space-y-3">
       <label className="block text-sm font-bold text-slate-700">
         <span className="flex items-center justify-between gap-3">
           <span>Top-up amount (USD)</span>
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
-            Range: $10–$50,000
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
+            $10–$50,000
           </span>
         </span>
         <input
@@ -111,52 +111,33 @@ export default function WalletTopupForm({
           min="10"
           max="50000"
           step="0.01"
-          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-lg font-black outline-none focus:border-cyan-500"
+          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base font-black outline-none focus:border-cyan-500"
         />
       </label>
 
       <div>
-        <p className="text-sm font-bold text-slate-700">Payment method</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {gateways.map((item) => {
-            const selected = gateway === item.id;
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setGateway(item.id)}
-                className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
-                  selected
-                    ? "border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100"
-                    : "border-slate-200 bg-white hover:border-cyan-300"
-                }`}
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 font-black text-cyan-300">
-                  {item.icon}
-                </span>
-                <span>
-                  <span className="block font-black">{item.name}</span>
-                  <span className="mt-1 block text-xs text-slate-500">
-                    {item.description}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <label htmlFor="wallet-gateway" className="block text-sm font-bold text-slate-700">Payment method</label>
+        <select id="wallet-gateway" value={gateway} onChange={event => setGateway(event.target.value as WalletGatewayId)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
+          {gateways.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+        <details className="mt-1 text-xs text-slate-500">
+          <summary aria-label="Payment method information" className="w-fit cursor-pointer py-1 font-semibold">ⓘ Payment information</summary>
+          <p className="mt-1">{gateways.find(item => item.id === gateway)?.description}</p>
+          <p className="mt-1">Your USD wallet is credited after verified payment. Fees are shown below.</p>
+        </details>
       </div>
 
       {gateway === "USDT_DIRECT" && (
         <div>
           <p className="text-sm font-bold text-slate-700">USDT network</p>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-2 grid grid-cols-3 gap-2">
             {(["TRC20", "BEP20", "SOLANA"] as const).map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setNetwork(item)}
-                className={`rounded-xl border px-4 py-3 font-black ${
+                aria-pressed={network === item}
+                className={`rounded-lg border px-2 py-2.5 text-xs font-bold ${
                   network === item
                     ? "border-cyan-500 bg-cyan-50 text-cyan-800"
                     : "border-slate-200 bg-white text-slate-600"
@@ -169,24 +150,24 @@ export default function WalletTopupForm({
         </div>
       )}
 
-      <div className="rounded-2xl bg-slate-950 p-5 text-white">
-        <div className="flex justify-between gap-4 text-sm">
+      <div className="rounded-lg bg-slate-950 p-3 text-white">
+        <div className="flex justify-between gap-3 text-xs">
           <span className="text-slate-400">Add amount</span>
           <strong>${amountNumber.toFixed(2)}</strong>
         </div>
-        <div className="mt-3 flex justify-between gap-4 border-t border-white/10 pt-3 text-sm">
+        <div className="mt-2 flex justify-between gap-3 border-t border-white/10 pt-2 text-xs text-sm">
           <span className="text-slate-400">Payment gateway fee</span>
           <strong>${paymentFee.toFixed(2)}</strong>
         </div>
-        <div className="mt-3 flex justify-between gap-4 border-t border-white/10 pt-3">
+        <div className="mt-2 flex justify-between gap-3 border-t border-white/10 pt-2 text-xs">
           <span className="text-slate-400">Amount to pay</span>
-          <strong className="text-xl text-amber-300">
+          <strong className="text-base text-amber-300">
             ${(paymentTotal || amountNumber).toFixed(2)}
           </strong>
         </div>
-        <div className="mt-3 flex justify-between gap-4 border-t border-white/10 pt-3">
+        <div className="mt-2 flex justify-between gap-3 border-t border-white/10 pt-2 text-xs">
           <span className="text-slate-400">New balance</span>
-          <strong className="text-xl text-cyan-300">
+          <strong className="text-base text-cyan-300">
             ${(currentBalance + amountNumber).toFixed(2)}
           </strong>
         </div>
@@ -213,15 +194,12 @@ export default function WalletTopupForm({
           amountNumber < 10 ||
           amountNumber > 50000
         }
-        className="w-full rounded-xl bg-cyan-400 px-5 py-4 font-black text-slate-950 transition hover:bg-cyan-300 disabled:opacity-50"
+        className="w-full rounded-xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-50"
       >
         {isSubmitting ? "Opening payment gateway..." : "Continue to payment"}
       </button>
 
-      <p className="text-center text-xs text-slate-500">
-        Wallet top-up range: $10–$50,000 per transaction. New configured gateway adapters appear
-        here automatically.
-      </p>
+
     </div>
   );
 }

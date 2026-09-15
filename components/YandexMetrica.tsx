@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 const YANDEX_METRICA_TAG_ID = 111062806;
 
 const yandexMetricaCode = `
@@ -29,8 +31,9 @@ const yandexMetricaCode = `
 export default function YandexMetrica() {
   return (
     <>
-      <script
+      <Script
         id="yandex-metrica"
+        strategy="afterInteractive"
         type="text/javascript"
         dangerouslySetInnerHTML={{ __html: yandexMetricaCode }}
       />

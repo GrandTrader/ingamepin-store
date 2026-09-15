@@ -18,7 +18,7 @@ export default function SeasonalFall() {
   }
 
   return (
-    <div className="seasonal-fall" aria-hidden="true">
+    <div className={`seasonal-fall ${pathname === "/" ? "max-sm:hidden" : ""}`} aria-hidden="true">
       {leaves.map((leaf, index) => (
         <span className="seasonal-fall-leaf" key={leaf + "-" + index}>
           {leaf}

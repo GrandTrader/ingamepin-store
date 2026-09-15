@@ -1,0 +1,61 @@
+@media (max-width: 639px) {
+  .dashboard > div > aside { padding: 10px 12px; }
+  .dashboard aside nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); overflow:visible; gap:4px; margin-top:4px; }
+  .dashboard aside nav a { padding:10px 3px; font-size:10px; text-align:center; white-space:normal; overflow-wrap:anywhere; }
+  .dashboard > div > div { padding:16px 12px; }
+  .dashboard h1 { font-size:22px; margin-top:4px; overflow-wrap:anywhere; }
+  .dashboard h2 { font-size:19px; }
+  .dashboard section { margin-top:24px; }
+  .dashboard section:first-of-type { margin-top:0; }
+  .dashboard :global(#overview) > div:first-child > div:first-child > p:last-child { font-size:12px; margin-top:4px; }
+  .dashboard :global(#overview) > div:first-child > div:last-child { gap:6px; }
+  .dashboard :global(#overview) > div:first-child > div:last-child a,
+  .dashboard :global(#overview) > div:first-child > div:last-child button { font-size:12px; padding:10px 12px; min-height:40px; }
+  .summary { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:16px; }
+  .summary > * { padding:12px; border-radius:12px; min-width:0; }
+  .summary > a { grid-column:1 / -1; }
+  .summary > * > p:first-child { font-size:12px; }
+  .summary > * > p:nth-child(2) { font-size:22px; margin-top:4px; }
+  .summary > div > p:last-child { display:none; }
+  .orders { overflow:visible; }
+  .orders table,.orders tbody { display:block; width:100%; min-width:0; }
+  .orders thead { display:none; }
+  .orders tr { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:5px; padding:9px 10px; }
+  .orders td { display:block; padding:0; min-width:0; font-size:12px; overflow-wrap:anywhere; }
+  .orders td:first-child { grid-column:1; grid-row:1; font-size:11px; }
+  .orders td:nth-child(2) { grid-column:1 / -1; grid-row:2; line-height:1.3; }
+  .orders td:nth-child(2) p + p { margin-top:3px; }
+  .orders td:nth-child(3) { grid-column:2; grid-row:3; text-align:right; font-size:14px; }
+  .orders td:nth-child(4) { grid-column:2; grid-row:1; text-align:right; }
+  .orders td:nth-child(4) span { display:inline-block; font-size:9px; padding:3px 7px; }
+  .orders td:nth-child(5) { grid-column:1; grid-row:3; align-self:center; font-size:10px; }
+  .dashboard :global(#notifications) article { padding:12px; }
+  .dashboard :global(#profile) { padding:14px; }
+}
+@media (min-width:640px) { .orders { overflow-x:auto; } }
+
+.pagination { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid #e2e8f0; padding:12px; }
+.pagination p { font-size:12px; }
+.pagination nav,.pagination nav > span { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
+.pagination a { display:grid; place-items:center; min-width:36px; min-height:40px; padding:6px; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; font-weight:700; }
+.pagination a[aria-current="page"] { background:#12335a; color:white; border-color:#12335a; }
+.pagination a:focus-visible { outline:2px solid #0891b2; outline-offset:2px; }
+.ellipsis { padding:0 2px; }
+
+/* Extend the existing order link over its row, keeping native link behavior. */
+.orders tbody tr { position:relative; cursor:pointer; }
+.orders td:first-child a::after { content:""; position:absolute; inset:0; z-index:1; }
+.orders tbody tr:hover { background:rgba(6,182,212,.05); }
+.orders tbody tr:focus-within { outline:2px solid #0891b2; outline-offset:-2px; }
+@media (min-width:640px) {
+  .orders tbody td { padding:12px 16px; }
+  .orders thead th { padding:12px 16px; }
+}
+
+.orderTabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; padding:4px; margin-top:14px; border-radius:12px; background:#e9edf6; }
+.orderTabs a { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px; min-height:44px; padding:6px 3px; border-radius:9px; font-size:12px; font-weight:700; color:#243657; }
+.orderTabs a span { font-size:10px; font-weight:500; }
+.orderTabs a[aria-current="page"] { background:#142d56; color:white; }
+.orderTabs a:focus-visible { outline:2px solid #0891b2; outline-offset:2px; }
+@media(max-width:639px) { .orderTabs a { font-size:10px; } }
+

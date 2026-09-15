@@ -1,5 +1,6 @@
 "use client";
 
+import { translateCustomerText } from "./customer-ui-translations";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
@@ -1274,7 +1275,7 @@ function translateValue(value: string, language: StoreLanguage) {
       : language === "ru"
         ? russianPatterns
         : [];
-  let translated = textMap[normalized];
+  let translated = translateCustomerText(normalized, language) ?? textMap[normalized];
   if (!translated) {
     for (const [pattern, formatter] of patterns) {
       const match = normalized.match(pattern);

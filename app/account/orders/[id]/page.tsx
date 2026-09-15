@@ -1,4 +1,6 @@
 import Link from "next/link";
+import styles from "./Receipt.module.css";
+import CopyCodeButton from "./CopyCodeButton";
 import { notFound } from "next/navigation";
 
 import CustomerAccountShell from "../../CustomerAccountShell";
@@ -131,26 +133,26 @@ export default async function CustomerOrderReceiptPage({
   return (
     <CustomerAccountShell displayName={displayName}>
       <Link
-        href="/account/orders"
+        href="/account/dashboard?view=orders#orders"
         className="text-sm font-bold text-cyan-700 hover:text-cyan-600"
       >
         ← Back to My Orders
       </Link>
 
-      <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+      <div className="mt-3 flex flex-col justify-between gap-2 sm:mt-5 sm:gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-600">
             Order receipt
           </p>
-          <h1 className="mt-2 break-all text-2xl font-black sm:text-3xl">
+          <h1 className="mt-1 break-all text-lg font-bold sm:mt-2 sm:text-3xl sm:font-black">
             {order.order_number}
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-1 text-xs text-slate-500 sm:mt-2 sm:text-sm">
             Ordered {formatCustomerDate(order.created_at)}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span
             className={`w-fit rounded-full px-3 py-1.5 text-xs font-black ${customerStatusClass(
               order.status,
@@ -169,36 +171,34 @@ export default async function CustomerOrderReceiptPage({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Order total" value={formatCustomerMoney(order.total, order.currency)} />
-        <SummaryCard label="Payment method" value={formatPaymentMethod(payment?.method)} />
-        <SummaryCard label="Payment status" value={payment?.status?.replaceAll("_", " ") ?? "PENDING"} />
-        <SummaryCard
-          label="Delivered"
-          value={order.delivered_at ? formatCustomerDate(order.delivered_at) : "Not delivered yet"}
-        />
+      <div className={styles.orderSummary}>
+        <dl className={styles.summaryLines}>
+          <SummaryCard label="Order total" value={formatCustomerMoney(order.total, order.currency)} />
+          <SummaryCard label="Payment method" value={formatPaymentMethod(payment?.method)} />
+          <SummaryCard label="Payment status" value={payment?.status?.replaceAll("_", " ") ?? "PENDING"} />
+          <SummaryCard label="Delivered" value={order.delivered_at ? formatCustomerDate(order.delivered_at) : "Not delivered yet"} />
+        </dl>
+        <dl className={styles.summaryCounts}>
+          <SummaryCard label="Ordered units" value={String(totalUnits)} />
+          <SummaryCard label="Delivered codes" value={String(deliveredCodeCount)} />
+          <SummaryCard label="Remaining delivery" value={String(remainingCodeCount)} />
+        </dl>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <SummaryCard label="Ordered units" value={String(totalUnits)} />
-        <SummaryCard label="Delivered codes" value={String(deliveredCodeCount)} />
-        <SummaryCard label="Remaining delivery" value={String(remainingCodeCount)} />
-      </div>
+      <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-6 sm:rounded-2xl sm:p-6">
+        <h2 className="text-base font-bold sm:text-xl sm:font-black">Order items</h2>
 
-      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="text-xl font-black">Order items</h2>
-
-        <div className="mt-4 divide-y divide-slate-200">
+        <div className="mt-2 sm:mt-4 divide-y divide-slate-200">
           {items.map((item) => {
             const itemDelivered = (codesByItem.get(item.id)?.length ?? 0) >= item.quantity;
             return (
             <article
               key={item.id}
-              className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+              className="grid gap-2 py-2.5 sm:gap-3 sm:py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div className="min-w-0">
-                <h3 className="font-black text-slate-900">{item.product_name}</h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <h3 className="text-sm font-bold text-slate-900 sm:text-base sm:font-black">{item.product_name}</h3>
+                <p className="mt-1 text-xs text-slate-500 sm:text-sm">
                   {[item.option_name, item.platform].filter(Boolean).join(" · ") ||
                     (item.denomination !== null
                       ? `Denomination: ${item.denomination}`
@@ -207,8 +207,8 @@ export default async function CustomerOrderReceiptPage({
                 <p className="mt-1 text-xs text-slate-400">Quantity: {item.quantity}</p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-                <p className="font-black text-slate-900">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">
+                <p className="text-sm font-bold text-slate-900 sm:text-base sm:font-black">
                   {formatCustomerMoney(item.total_price, order.currency)}
                 </p>
                 {itemDelivered && (
@@ -226,15 +226,17 @@ export default async function CustomerOrderReceiptPage({
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-6 sm:rounded-2xl sm:p-6">
+        <div className="flex flex-col justify-between gap-2 sm:gap-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-xl font-black">Delivered content</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="text-base font-bold sm:text-xl sm:font-black">Delivered content</h2>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
               Codes appear here only after the order has been delivered.
             </p>
           </div>
 
+          <div className="flex flex-wrap items-start gap-2">
+          {downloadableItems.length > 0 && <CopyCodeButton code={downloadableItems.flatMap(item => item.codes).join("\n")} label="Copy all codes" ariaLabel="Copy all delivered codes" />}
           <DeliveredCodesDownloadButton
             orderNumber={order.order_number}
             items={downloadableItems}
@@ -242,6 +244,7 @@ export default async function CustomerOrderReceiptPage({
             variant="primary"
             includeItemDetails
           />
+          </div>
         </div>
 
         {downloadableItems.length === 0 ? (
@@ -249,18 +252,19 @@ export default async function CustomerOrderReceiptPage({
             No delivered digital codes are available yet.
           </div>
         ) : (
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="mt-3 grid gap-2 sm:mt-5 sm:gap-4 lg:grid-cols-2">
             {downloadableItems.map((item, itemIndex) => (
               <article
                 key={`${item.productName}-${itemIndex}`}
-                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:rounded-xl sm:p-4"
               >
-                <h3 className="font-black">{item.productName}</h3>
+                <h3 className="text-sm font-bold sm:text-base sm:font-black">{item.productName}</h3>
                 <p className="mt-1 text-xs font-bold uppercase tracking-wide text-cyan-700">
                   Denomination / option: {item.denomination ?? item.optionName ?? item.platform ?? "Standard"}
                 </p>
 
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap items-start gap-2">
+                  <CopyCodeButton code={item.codes.join("\n")} label="Copy codes" ariaLabel={`Copy codes for ${item.productName}, ${item.denomination ?? item.optionName ?? "standard option"}`} />
                   <DeliveredCodesDownloadButton
                     orderNumber={order.order_number}
                     items={[item]}
@@ -277,9 +281,10 @@ export default async function CustomerOrderReceiptPage({
                     {item.codes.map((code, codeIndex) => (
                       <div
                         key={`${code}-${codeIndex}`}
-                        className="break-all rounded-lg bg-slate-950 p-3 font-mono text-sm font-bold text-cyan-300"
+                        className={styles.deliveredCode}
                       >
-                        {code}
+                        <span data-no-auto-translate className={styles.codeText}>{code}</span>
+                        <CopyCodeButton code={code} />
                       </div>
                     ))}
                   </div>
@@ -294,19 +299,19 @@ export default async function CustomerOrderReceiptPage({
         <VerifiedPurchaseReview orderId={order.id} />
       )}
 
-      <section className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-xl font-black">Customer details</h2>
-          <dl className="mt-4 grid gap-3 text-sm">
+      <section className="mt-3 grid gap-3 sm:mt-6 sm:gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-6">
+          <h2 className="text-base font-bold sm:text-xl sm:font-black">Customer details</h2>
+          <dl className="mt-2 grid gap-2 text-xs sm:mt-4 sm:gap-3 sm:text-sm">
             <ReceiptDetail label="Name" value={order.customer_name} />
             <ReceiptDetail label="Email" value={order.customer_email} />
             <ReceiptDetail label="Phone" value={order.customer_phone || "—"} />
           </dl>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-xl font-black">Payment details</h2>
-          <dl className="mt-4 grid gap-3 text-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-6">
+          <h2 className="text-base font-bold sm:text-xl sm:font-black">Payment details</h2>
+          <dl className="mt-2 grid gap-2 text-xs sm:mt-4 sm:gap-3 sm:text-sm">
             <ReceiptDetail label="Subtotal" value={formatCustomerMoney(order.subtotal, order.currency)} />
             <ReceiptDetail label="Discount" value={formatCustomerMoney(order.discount, order.currency)} />
             <ReceiptDetail label="Transaction ID" value={payment?.transaction_id || "—"} />
@@ -318,17 +323,12 @@ export default async function CustomerOrderReceiptPage({
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-bold text-slate-500">{label}</p>
-      <p className="mt-2 break-words font-black text-slate-900">{value}</p>
-    </div>
-  );
+  return <div><dt>{label}</dt><dd>{value}</dd></div>;
 }
 
 function ReceiptDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid min-w-0 gap-1 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[120px_minmax(0,1fr)]">
+    <div className="grid min-w-0 grid-cols-[90px_minmax(0,1fr)] gap-2 border-b border-slate-100 pb-2 sm:pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[120px_minmax(0,1fr)]">
       <dt className="text-slate-500">{label}</dt>
       <dd className="break-all font-bold text-slate-900">{value}</dd>
     </div>

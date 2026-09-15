@@ -52,7 +52,9 @@ function getTimeLeft(
 
 export default function PreorderPopup({
   popup,
+  desktopOnly = false,
 }: {
+  desktopOnly?: boolean;
   popup: PreorderPopupData;
 }) {
   const { language } = useStorePreferences();
@@ -68,13 +70,12 @@ export default function PreorderPopup({
     );
 
   useEffect(() => {
-    if (
-      sessionStorage.getItem(
-        "preorder-popup-closed",
-      ) !== "true"
-    ) {
-      setIsOpen(true);
-    }
+    const viewport = window.matchMedia("(min-width: 640px)");
+    const syncVisibility = () => setIsOpen(
+      (!desktopOnly || viewport.matches) && sessionStorage.getItem("preorder-popup-closed") !== "true",
+    );
+    syncVisibility();
+    viewport.addEventListener("change", syncVisibility);
 
     const timer = popup.launchDate
       ? window.setInterval(() => {
@@ -83,9 +84,10 @@ export default function PreorderPopup({
       : null;
 
     return () => {
+      viewport.removeEventListener("change", syncVisibility);
       if (timer !== null) window.clearInterval(timer);
     };
-  }, [popup.launchDate]);
+  }, [popup.launchDate, desktopOnly]);
 
   useEffect(() => {
     if (!isOpen) return;

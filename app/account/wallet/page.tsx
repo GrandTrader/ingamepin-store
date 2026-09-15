@@ -10,7 +10,7 @@ import { claimWalletRefund } from "./actions";
 
 export const dynamic = "force-dynamic";
 type WalletPageProps = {
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; page?: string }>;
 };
 
 function formatMoney(value: number | string) {
@@ -30,7 +30,10 @@ function formatDate(value: string) {
 export default async function CustomerWalletPage({
   searchParams,
 }: WalletPageProps) {
-  const { error, success } = await searchParams;
+  const { error, success, page } = await searchParams;
+  const parsedPage = typeof page === "string" && /^\d+$/.test(page) ? Number(page) : 1;
+  const currentPage = Number.isSafeInteger(parsedPage) && parsedPage > 0 && parsedPage < 1000000 ? parsedPage : 1;
+  const pageSize = 5;
   const supabase = await createClient();
   const {
     data: { user },
@@ -50,10 +53,12 @@ export default async function CustomerWalletPage({
       .from("wallet_transactions")
       .select(
         "id, transaction_type, amount, balance_after, description, created_at",
+        { count: "exact" },
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(25),
+      .order("id", { ascending: false })
+      .range((currentPage - 1) * pageSize, currentPage * pageSize - 1),
     supabase
       .from("wallet_topup_requests")
       .select(
@@ -70,14 +75,18 @@ export default async function CustomerWalletPage({
 
   const wallet = walletResult.data ?? { balance: 0, currency: "USD" };
   const transactions = transactionResult.data ?? [];
+  const transactionCount = transactionResult.count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(transactionCount / pageSize));
+  if (!transactionResult.error && currentPage > pageCount) redirect(`/account/wallet?page=${pageCount}#transactions`);
+  const pages = [...new Set([1, currentPage - 1, currentPage, currentPage + 1, pageCount])].filter(value => value >= 1 && value <= pageCount).sort((a, b) => a - b);
   const requests = requestResult.data ?? [];
   const refunds = refundResult.data ?? [];
   const gateways = getWalletPaymentGateways();
   const walletEnabled = user.app_metadata?.wallet_disabled !== true;
 
   return (
-    <main className="bg-slate-100 px-4 py-10 text-slate-950">
-      <div className="mx-auto max-w-6xl">
+    <main className="bg-slate-100 px-3 py-4 sm:px-4 sm:py-6 text-slate-950">
+      <div className="mx-auto max-w-2xl">
         <Link
           href="/account/dashboard"
           className="text-sm font-bold text-cyan-700"
@@ -85,37 +94,21 @@ export default async function CustomerWalletPage({
           ← Return to dashboard
         </Link>
 
-        <div className="mt-5 grid overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[0.8fr_1.2fr]">
-          <section className="bg-cyan-50 p-7 sm:p-9">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700">
-              InGamePin Wallet
-            </p>
-            <p className="mt-7 text-sm text-slate-500">Available balance</p>
-            <p className="mt-2 text-4xl font-black text-cyan-700">
-              {formatMoney(wallet.balance)}
-            </p>
-            <div className="mt-8 rounded-2xl bg-white p-5">
-              <h2 className="font-black">USD wallet</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Add money through any available payment gateway. Your balance
-                is credited automatically after verified payment.
-              </p>
-            </div>
+        <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <section className="flex items-center justify-between gap-3 border-b border-slate-200 bg-cyan-50 px-4 py-3">
+            <p className="text-xs font-semibold text-slate-600">Wallet balance</p>
+            <p className="text-2xl font-bold text-cyan-700">{formatMoney(wallet.balance)}</p>
           </section>
-
-          <section className="p-7 sm:p-9">
-            <h1 className="text-3xl font-black">Add money</h1>
-            <p className="mt-2 text-slate-500">
-              Choose an amount and pay using any available gateway.
-            </p>
+          <section className="p-4">
+            <h1 className="text-xl font-bold">Add money</h1>
 
             {error && (
-              <p className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+              <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">
                 {error}
               </p>
             )}
             {success && (
-              <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+              <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-700">
                 {success}
               </p>
             )}
@@ -133,31 +126,31 @@ export default async function CustomerWalletPage({
           </section>
         </div>
 
-        <section className="mt-8">
-          <h2 className="text-2xl font-black">Approved refunds</h2>
+        <details className="mt-3 rounded-xl border border-slate-200 bg-white p-3" open={refunds.some(refund => refund.status === "PENDING_CLAIM")}>
+          <summary className="cursor-pointer text-sm font-bold">Approved refunds</summary>
           <p className="mt-1 text-sm text-slate-500">Refunds approved for your verified account email.</p>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {refunds.length === 0 ? <p className="p-6 text-slate-500">No wallet refunds available.</p> : refunds.map((refund) => {
+          <div className="mt-2 overflow-hidden">
+            {refunds.length === 0 ? <p className="p-2 text-xs text-slate-500">No wallet refunds available.</p> : refunds.map((refund) => {
               const order = Array.isArray(refund.orders) ? refund.orders[0] : refund.orders;
               const item = Array.isArray(refund.order_items) ? refund.order_items[0] : refund.order_items;
-              return <article key={refund.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 p-5 last:border-b-0">
+              return <article key={refund.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-3 last:border-b-0">
                 <div><p className="font-black">{refund.currency} {Number(refund.amount).toFixed(2)} · {item?.option_name ?? item?.product_name ?? "Product refund"}</p><p className="mt-1 text-xs text-slate-500">Order {order ? <Link href={`/account/orders/${order.id}`} className="font-bold text-cyan-700 underline underline-offset-2">{order.order_number}</Link> : ""} · Quantity {refund.quantity} · {formatDate(refund.created_at)}</p><p className="mt-2 text-sm text-slate-600">{refund.reason}</p></div>
                 {refund.status === "PENDING_CLAIM" ? <form action={claimWalletRefund}><input type="hidden" name="refund_id" value={refund.id} /><button className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500">Claim to wallet</button></form> : <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{refund.status.replaceAll("_", " ")}</span>}
               </article>;
             })}
           </div>
-        </section>
+        </details>
 
-        <section className="mt-8">
-          <h2 className="text-2xl font-black">Top-up requests</h2>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <details className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-bold">Top-up requests</summary>
+          <div className="mt-2 overflow-hidden">
             {requests.length === 0 ? (
-              <p className="p-6 text-slate-500">No wallet top-up requests yet.</p>
+              <p className="p-2 text-xs text-slate-500">No wallet top-up requests yet.</p>
             ) : (
               requests.map((request) => (
                 <article
                   key={request.id}
-                  className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 p-5 last:border-b-0"
+                  className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-3 last:border-b-0"
                 >
                   <div>
                     <p className="font-black">{formatMoney(request.amount)}</p>
@@ -184,18 +177,18 @@ export default async function CustomerWalletPage({
               ))
             )}
           </div>
-        </section>
+        </details>
 
-        <section className="mt-8">
-          <h2 className="text-2xl font-black">Wallet transactions</h2>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <details id="transactions" open={page !== undefined} className="mt-3 scroll-mt-40 rounded-xl border border-slate-200 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-bold">Wallet transactions</summary>
+          <div className="mt-2 overflow-hidden">
             {transactions.length === 0 ? (
-              <p className="p-6 text-slate-500">No wallet transactions yet.</p>
+              <p className="p-2 text-xs text-slate-500">No wallet transactions yet.</p>
             ) : (
               transactions.map((transaction) => (
                 <article
                   key={transaction.id}
-                  className="grid grid-cols-[1fr_auto] gap-4 border-b border-slate-200 p-5 last:border-b-0"
+                  className="grid grid-cols-[1fr_auto] gap-2 border-b border-slate-200 p-3 last:border-b-0"
                 >
                   <div>
                     <p className="font-black">{transaction.description}</p>
@@ -218,7 +211,18 @@ export default async function CustomerWalletPage({
               ))
             )}
           </div>
-        </section>
+          {transactionCount > 0 && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-2">
+            <p className="text-xs text-slate-500">{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, transactionCount)} of {transactionCount}</p>
+            <nav aria-label="Transaction pages" className="flex flex-wrap items-center gap-1">
+              {currentPage > 1 && <Link className="grid min-h-10 min-w-8 place-items-center rounded-lg border border-slate-200 text-xs" href={`?page=${currentPage - 1}#transactions`} aria-label="Previous transaction page">‹</Link>}
+              {pages.map((value, index) => <span key={value} className="flex items-center gap-1">
+                {index > 0 && value - pages[index - 1] > 1 && <span>…</span>}
+                <Link href={`?page=${value}#transactions`} aria-label={`Transaction page ${value}`} aria-current={value === currentPage ? "page" : undefined} className={`grid min-h-10 min-w-8 place-items-center rounded-lg border text-xs font-bold ${value === currentPage ? "border-cyan-500 bg-cyan-50 text-cyan-800" : "border-slate-200"}`}>{value}</Link>
+              </span>)}
+              {currentPage < pageCount && <Link className="grid min-h-10 min-w-8 place-items-center rounded-lg border border-slate-200 text-xs" href={`?page=${currentPage + 1}#transactions`} aria-label="Next transaction page">›</Link>}
+            </nav>
+          </div>}
+        </details>
       </div>
     </main>
   );

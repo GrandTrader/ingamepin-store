@@ -1,4 +1,5 @@
 import Link from "next/link";
+import MobileStorefront from "@/components/MobileStorefront";
 
 import HeroSlider, { type HeroSlide } from "@/components/HeroSlider";
 import ProductCard from "@/components/ProductCard";
@@ -282,9 +283,11 @@ export default async function Home() {
   ].slice(0, 24);
 
   return (
-    <div className="market-home min-h-screen bg-[#f3f4f6] text-[#172033]">
+    <>
+    <MobileStorefront products={products} popularIds={popularProducts.map(p => p.id)} newestIds={newlyAddedProducts.map(p => p.id)} categories={categories} />
+    <div className="hidden sm:block market-home min-h-screen bg-[#f3f4f6] text-[#172033]">
       {preorderPopup && (
-        <PreorderPopup popup={preorderPopup} />
+        <PreorderPopup popup={preorderPopup} desktopOnly />
       )}
 
       {homepageData.sliderSettings?.is_enabled && heroSlides.length > 0 && (
@@ -374,15 +377,8 @@ export default async function Home() {
         </section>
       </div>
 
-      <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-white/10 bg-slate-900/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
-        <MobileNavLink href="/" icon="⌂" label="Home" />
-        <MobileNavLink href="/products" icon="▦" label="Products" />
-        <MobileNavLink href="/cart" icon="🛒" label="Cart" />
-        <MobileNavLink href="/track-order" icon="◎" label="Track" />
-      </nav>
-
-      <div className="h-[calc(4rem+env(safe-area-inset-bottom))] sm:hidden" />
     </div>
+    </>
   );
 }
 
@@ -396,26 +392,5 @@ function EmptySection({
     <p className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-400">
       {message}
     </p>
-  );
-}
-
-
-function MobileNavLink({
-  href,
-  icon,
-  label,
-}: {
-  href: string;
-  icon: string;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg py-1 text-xs font-bold text-slate-300 transition hover:bg-white/5 hover:text-cyan-300 focus-visible:outline-2 focus-visible:outline-cyan-400"
-    >
-      <span className="text-xl leading-none">{icon}</span>
-      {label}
-    </Link>
   );
 }
