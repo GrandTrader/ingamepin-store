@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { readWalletTopupResponse } from "@/lib/wallet-topup-response";
 
 import type {
   WalletGateway,
@@ -60,21 +61,14 @@ export default function WalletTopupForm({
     try {
       const response = await fetch("/api/wallet/topup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           amount: amountNumber,
           gateway,
           network: gateway === "USDT_DIRECT" ? network : undefined,
         }),
       });
-      const result = (await response.json()) as {
-        checkoutUrl?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !result.checkoutUrl) {
-        throw new Error(result.error ?? "Unable to start wallet top-up.");
-      }
+      const result = await readWalletTopupResponse(response);
 
       window.location.href = result.checkoutUrl;
     } catch (error) {

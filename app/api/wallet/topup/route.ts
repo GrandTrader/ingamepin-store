@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 
 import {
   BinanceCreateOrderResult,
@@ -225,13 +225,14 @@ export async function POST(request: NextRequest) {
       throw new Error("Unable to save the wallet payment session.");
     }
 
-    await notifyAdminsOfWalletTopup({
+    const notification = {
       requestId,
       customerEmail: user.email,
       creditAmount: Number(amount.toFixed(2)),
       paymentTotal: paymentAmount,
       gateway,
-    });
+    };
+    after(() => notifyAdminsOfWalletTopup(notification));
 
     return NextResponse.json({
       checkoutUrl,

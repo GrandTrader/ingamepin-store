@@ -40,6 +40,7 @@ async function gatewayRequest(path: string, init?: RequestInit) {
       ...init?.headers,
     },
     cache: "no-store",
+    signal: init?.signal ?? AbortSignal.timeout(15000),
   });
   const result = (await response.json().catch(() => null)) as
     | (Partial<UsdtInvoice> & { error?: string })
@@ -49,6 +50,9 @@ async function gatewayRequest(path: string, init?: RequestInit) {
     throw new Error(result?.error ?? "USDT gateway request failed.");
   }
 
+  if (!result || typeof result.invoiceId !== "string" || !result.invoiceId || typeof result.address !== "string" || !result.address || typeof result.amount !== "string") {
+    throw new Error("The USDT gateway returned an invalid payment response. Please try again later.");
+  }
   return result as UsdtInvoice;
 }
 
