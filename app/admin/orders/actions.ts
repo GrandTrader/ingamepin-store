@@ -156,10 +156,11 @@ export async function verifyOrderPaymentManually(formData: FormData) {
 
 async function finalizeOrderWhenAllCodesSent(orderId: string) {
   const admin = createAdminClient();
-  const items = await admin.from("order_items").select("id, quantity, fulfillment_mode").eq("order_id", orderId);
+  const items = await admin.from("order_items").select("id, quantity, fulfillment_mode, service_delivered_at").eq("order_id", orderId);
   if (items.error) return { completed: false, error: items.error.message };
   if (!(items.data ?? []).length) return { completed: false, error: null };
   for (const item of items.data ?? []) {
+    if (item.service_delivered_at) continue;
     if (item.fulfillment_mode === "PLAYER_ID_TOPUP") return { completed: false, error: null };
     const count = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("order_item_id", item.id).eq("status", "SOLD");
     if (count.error) return { completed: false, error: count.error.message };
@@ -381,10 +382,11 @@ export async function completeManualOrderItem(formData: FormData) {
   if (itemRefunds.error) ordersRedirect("error", itemRefunds.error.message, orderId);
   const itemRefundedQuantity = (itemRefunds.data ?? []).reduce((sum, row) => sum + row.quantity, 0);
   if ((sent.count ?? 0) + itemRefundedQuantity !== itemResult.data.quantity) ordersRedirect("error", "Delivered and refunded quantities must exactly match the ordered quantity.", orderId);
-  const items = await admin.from("order_items").select("id, quantity, fulfillment_mode").eq("order_id", orderId);
+  const items = await admin.from("order_items").select("id, quantity, fulfillment_mode, service_delivered_at").eq("order_id", orderId);
   if (items.error) ordersRedirect("error", items.error.message, orderId);
   let allComplete = (items.data ?? []).length > 0;
   for (const item of items.data ?? []) {
+    if (item.service_delivered_at) continue;
     if (item.fulfillment_mode === "PLAYER_ID_TOPUP") { allComplete = false; continue; }
     const count = await admin.from("gift_card_codes").select("id", { count: "exact", head: true }).eq("order_item_id", item.id).eq("status", "SOLD");
     if (count.error) ordersRedirect("error", count.error.message, orderId);
@@ -449,22 +451,36 @@ export async function completeManualOrder(
 
   const serviceItemId = String(formData.get("service_item_id") ?? "").trim();
   if (serviceItemId) {
-    if ((itemResult.data ?? []).length !== 1) {
-      ordersRedirect("error", "Complete the other order items before using UID/account delivery.", orderId);
+    const completion = await admin.rpc("complete_manual_service_item", {
+      p_order_id: orderId,
+      p_item_id: serviceItemId,
+      p_admin_user_id: administrator.id,
+    });
+    if (completion.error) ordersRedirect("error", completion.error.message, orderId);
+    if (completion.data?.orderStatus === "DELIVERED" && !completion.data?.alreadyCompleted) {
+      const orderResult = await admin.from("orders")
+        .select("order_number, customer_name, customer_email, total, currency, status")
+        .eq("id", orderId).single();
+      if (orderResult.data) {
+        const order = orderResult.data;
+        try {
+          await sendOrderStatusEmails({
+            orderId, event: "ORDER_DELIVERED", orderNumber: order.order_number,
+            customerName: order.customer_name ?? "Customer", customerEmail: order.customer_email,
+            total: Number(order.total), currency: order.currency, orderStatus: order.status,
+          });
+        } catch (error) {
+          console.error("Service delivery notification failed:", error);
+        }
+      }
     }
-    const serviceItem = (itemResult.data ?? []).find((item) => item.id === serviceItemId);
-    if (!serviceItem) {
-      ordersRedirect("error", "The UID/account delivery item is invalid.", orderId);
-    }
-    const serviceModeUpdate = await admin
-      .from("order_items")
-      .update({ fulfillment_mode: "PLAYER_ID_TOPUP" })
-      .eq("id", serviceItemId)
-      .eq("order_id", orderId);
-    if (serviceModeUpdate.error) {
-      ordersRedirect("error", serviceModeUpdate.error.message, orderId);
-    }
-    serviceItem.fulfillment_mode = "PLAYER_ID_TOPUP";
+    revalidatePath("/admin/orders");
+    revalidatePath(`/admin/orders/${orderId}/receipt`);
+    revalidatePath("/account/dashboard");
+    revalidatePath(`/account/orders/${orderId}`);
+    ordersRedirect("success", completion.data?.orderStatus === "DELIVERED"
+      ? "All items completed. Order delivered."
+      : "This denomination is completed. Other items remain pending.", orderId);
   }
 
   const deliveries = (

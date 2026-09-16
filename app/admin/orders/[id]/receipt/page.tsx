@@ -39,6 +39,7 @@ type OrderItem = {
   denomination: number | null;
   platform: string | null;
   fulfillment_mode: string | null;
+  service_delivered_at: string | null;
   player_id: string | null;
   customer_information: Array<{
     fieldId: string;
@@ -167,6 +168,7 @@ export default async function OrderReceipt({
             denomination,
             platform,
             fulfillment_mode,
+            service_delivered_at,
             player_id,
             customer_information,
             quantity,
@@ -275,16 +277,16 @@ export default async function OrderReceipt({
     (item) => getDeliveryType(item.products) === "MANUAL",
   );
   const manualCodeItems = manualItems.filter(
-    (item) => item.fulfillment_mode !== "PLAYER_ID_TOPUP",
+    (item) => item.fulfillment_mode !== "PLAYER_ID_TOPUP" || Boolean(item.service_delivered_at),
   );
   const playerTopupItems = manualItems.filter(
-    (item) => item.fulfillment_mode === "PLAYER_ID_TOPUP",
+    (item) => item.fulfillment_mode === "PLAYER_ID_TOPUP" && !item.service_delivered_at,
   );
   const allManualCodesSent =
     manualCodeItems.length > 0 &&
     manualCodeItems.every(
       (item) =>
-        (codesByItem.get(item.id)?.length ?? 0) + refundedQuantityFor(item.id) === item.quantity,
+        Boolean(item.service_delivered_at) || (codesByItem.get(item.id)?.length ?? 0) + refundedQuantityFor(item.id) === item.quantity,
     );
   const canDeliver =
     order.status === "PAID" || order.status === "PROCESSING";
@@ -517,7 +519,7 @@ export default async function OrderReceipt({
                 </thead>
                 <tbody className="block space-y-2 md:table-row-group md:space-y-0">
                   {items.map((item) => {
-                    const deliveredCount = codesByItem.get(item.id)?.length ?? 0;
+                    const deliveredCount = item.service_delivered_at ? item.quantity : codesByItem.get(item.id)?.length ?? 0;
                     const refundedCount = refundedQuantityFor(item.id);
                     const completed = item.quantity > 0 && (
                       deliveredCount >= item.quantity ||
@@ -680,6 +682,13 @@ export default async function OrderReceipt({
                   const itemCompleted =
                     deliveredCodes.length + refundedQuantity >= item.quantity;
 
+                  if (item.service_delivered_at) {
+                    return <article key={item.id} className="rounded-xl border border-emerald-200 bg-white p-4">
+                      <p className="font-black">{item.product_name} / {item.option_name ?? item.denomination}</p>
+                      <p className="mt-2 font-bold text-emerald-700">Completed - UID / account delivery</p>
+                      <p className="mt-1 text-xs text-slate-500">{formatDate(item.service_delivered_at)}</p>
+                    </article>;
+                  }
                   if (itemCompleted) {
                     return (
                       <CompletedManualDeliveryCard
@@ -738,7 +747,7 @@ export default async function OrderReceipt({
               </div>
 
               {canDeliver && <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                {manualCodeItems.map((item) => <AdminRefundCard key={`refund-${item.id}`} orderId={order.id} item={item} deliveredQuantity={codesByItem.get(item.id)?.length ?? 0} refunds={refundsByItem.get(item.id) ?? []} />)}
+                {manualCodeItems.filter((item) => !item.service_delivered_at).map((item) => <AdminRefundCard key={`refund-${item.id}`} orderId={order.id} item={item} deliveredQuantity={codesByItem.get(item.id)?.length ?? 0} refunds={refundsByItem.get(item.id) ?? []} />)}
               </div>}
 
               {canDeliver && allManualCodesSent && playerTopupItems.length === 0 && (
