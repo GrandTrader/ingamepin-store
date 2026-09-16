@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Fragment, Suspense, useEffect, useState } from "react";
 
 type AdminSidebarProps = {
   orderCount?: number;
   walletCount?: number;
 };
+
+const orderStatuses = [
+  { key: "pending", label: "Pending" },
+  { key: "review", label: "Payment review" },
+  { key: "processing", label: "Processing" },
+  { key: "completed", label: "Completed" },
+  { key: "trash", label: "Trash" },
+] as const;
+type OrderStatusCounts = Record<(typeof orderStatuses)[number]["key"], number>;
 
 const links = [
   { label: "Overview", href: "/admin", icon: "OV" },
@@ -97,13 +106,20 @@ const menuGroups = [
   }
 ];
 
-export default function AdminSidebar({
+export default function AdminSidebar(props: AdminSidebarProps) {
+  return <Suspense><AdminSidebarContent {...props} /></Suspense>;
+}
+
+function AdminSidebarContent({
   orderCount = 0,
   walletCount = 0,
 }: AdminSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const selectedStatus = searchParams.get("status");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [liveOrderCount, setLiveOrderCount] = useState(orderCount);
+  const [orderStatusCounts, setOrderStatusCounts] = useState<OrderStatusCounts | null>(null);
   const [pendingAffiliateCount, setPendingAffiliateCount] = useState(0);
 
   useEffect(() => {
@@ -120,8 +136,10 @@ export default function AdminSidebar({
 
         const result = (await response.json()) as {
           count?: number;
+          orderStatusCounts?: OrderStatusCounts;
           affiliateApplicationCount?: number;
         };
+        if (active && result.orderStatusCounts) setOrderStatusCounts(result.orderStatusCounts);
         if (active && typeof result.count === "number") {
           setLiveOrderCount(result.count);
         }
@@ -154,7 +172,7 @@ export default function AdminSidebar({
   }
 
   function renderLink(link: (typeof links)[number]) {
-          const active = isActive(link.href);
+          const active = isActive(link.href) && !(link.href === "/admin/orders" && pathname === "/admin/orders" && orderStatuses.some((status) => status.key === selectedStatus));
           return (
             <Link
               key={link.href}
@@ -252,7 +270,30 @@ export default function AdminSidebar({
                 <span aria-hidden="true" className="transition-transform group-open:rotate-90">›</span>
               </summary>
               <div className="ml-5 mt-1 space-y-0.5 border-l border-slate-200 pl-2">
-                {children.map(renderLink)}
+                {children.map((link) => (
+                  <Fragment key={link.href}>
+                    {renderLink(link)}
+                    {link.href === "/admin/orders" && orderStatuses.map((status) => {
+                      const active = pathname === "/admin/orders" && selectedStatus === status.key;
+                      const count = orderStatusCounts?.[status.key];
+                      return (
+                        <Link
+                          key={status.key}
+                          href={"/admin/orders?status=" + status.key}
+                          aria-current={active ? "page" : undefined}
+                          onClick={() => setMobileOpen(false)}
+                          className={"flex min-w-0 items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm font-medium transition " +
+                            (active ? "bg-blue-100 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")}
+                        >
+                          <span>{status.label}</span>
+                          <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-bold tabular-nums">
+                            {count === undefined ? "…" : count}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </Fragment>
+                ))}
               </div>
             </details>
           );
