@@ -286,7 +286,14 @@ function AdminSidebarContent({
                             (active ? "bg-blue-100 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")}
                         >
                           <span>{status.label}</span>
-                          <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-bold tabular-nums">
+                          <span
+                            className={"inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs tabular-nums " +
+                              (status.key === "processing" || status.key === "review"
+                                ? "bg-red-500 font-black text-white shadow-sm"
+                                : "bg-white font-bold")}
+                            aria-label={count === undefined ? `${status.label} count loading` : `${count} ${status.label.toLowerCase()} orders`}
+                          >
+                            {(status.key === "processing" || status.key === "review") && (count ?? 0) > 0 && <span aria-hidden="true">●</span>}
                             {count === undefined ? "…" : count}
                           </span>
                         </Link>
