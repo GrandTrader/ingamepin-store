@@ -1,3 +1,4 @@
+import { deliveredUnits } from "@/lib/delivery-progress";
 import { notFound, redirect } from "next/navigation";
 import countries from "i18n-iso-countries";
 import englishCountries from "i18n-iso-countries/langs/en.json";
@@ -22,6 +23,8 @@ type OrderItem = {
   option_name: string | null;
   denomination: number | string | null;
   platform: string | null;
+  fulfillment_mode: string | null;
+  service_delivered_at: string | null;
   quantity: number;
   unit_price: number | string;
   total_price: number | string;
@@ -64,6 +67,8 @@ export default async function CustomerInvoicePage({
             option_name,
             denomination,
             platform,
+            fulfillment_mode,
+            service_delivered_at,
             quantity,
             unit_price,
             total_price
@@ -113,7 +118,7 @@ export default async function CustomerInvoicePage({
     );
   }
   const itemIsDelivered = (item: OrderItem) =>
-    (deliveredCountByItem.get(item.id) ?? 0) >= item.quantity;
+    deliveredUnits(item, deliveredCountByItem.get(item.id) ?? 0, order.status) >= item.quantity;
 
   if (
     (selectedItemIndex >= 0 && !itemIsDelivered(allItems[selectedItemIndex])) ||

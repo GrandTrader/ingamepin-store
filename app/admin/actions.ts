@@ -1,5 +1,6 @@
 "use server";
 
+import { hasRequiredAdminAssurance } from "@/lib/admin-assurance";
 import { redirect } from "next/navigation";
 import { getAuthErrorMessage } from "@/lib/auth-error-message";
 import { sendEmail } from "@/lib/email";
@@ -121,6 +122,8 @@ export async function sendTestEmail(
   if (!adminResult.data) {
     redirect("/admin/login?error=Access denied");
   }
+
+  if (!(await hasRequiredAdminAssurance(supabase))) redirect("/admin/login/verify");
 
   const recipient = String(
     formData.get("recipient") ?? ""

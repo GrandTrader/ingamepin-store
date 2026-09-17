@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { updateDigiSellerProductName } from "@/lib/digiseller-api";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/admin-session";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 
 export async function updateProductGeneral(formData: FormData) {

@@ -15,13 +15,13 @@
     "@vercel/speed-insights": "^2.0.0",
     "flag-icons": "^7.5.0",
     "i18n-iso-countries": "^7.14.0",
-    "next": "16.3.0",
-    "nodemailer": "^9.0.3",
+    "libphonenumber-js": "^1.13.13",
+    "next": "16.3.5",
+    "nodemailer": "^9.1.1",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "sharp": "^0.35.3",
-    "libphonenumber-js": "^1.13.13"
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -31,7 +31,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

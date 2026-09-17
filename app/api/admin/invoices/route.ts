@@ -1,3 +1,4 @@
+import { hasRequiredAdminAssurance } from "@/lib/admin-assurance";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -45,7 +46,7 @@ async function requireAdministrator() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user || !(await hasRequiredAdminAssurance(supabase))) {
     return { error: "Authentication is required.", status: 401 } as const;
   }
 

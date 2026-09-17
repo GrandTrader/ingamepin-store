@@ -66,6 +66,7 @@ export async function POST(
         `
           id,
           order_number,
+          customer_email,
           status,
           total,
           currency,
@@ -75,7 +76,6 @@ export async function POST(
         `,
       )
       .eq("order_number", orderNumber)
-      .ilike("customer_email", email)
       .maybeSingle();
 
     if (orderResult.error) {
@@ -84,7 +84,7 @@ export async function POST(
 
     const order = orderResult.data;
 
-    if (!order) {
+    if (!order || order.customer_email?.trim().toLowerCase() !== email) {
       return lookupDenied();
     }
 

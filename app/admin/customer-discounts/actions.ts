@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/admin-session";
 
 function resultRedirect(kind: "success" | "error", message: string, email = ""): never {
   const query = new URLSearchParams({ [kind]: message });

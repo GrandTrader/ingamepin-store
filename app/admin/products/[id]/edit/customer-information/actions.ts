@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/admin-session";
 const allowed = new Set(["TEXT", "EMAIL", "NUMBER", "TEXTAREA"]);
 export async function saveCustomerInformation(formData: FormData) {
   const id = String(formData.get("id") ?? ""); const path = `/admin/products/${id}/edit/customer-information`; const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) redirect("/admin/login"); const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle(); if (!access.data) redirect("/admin/login?error=Access denied");

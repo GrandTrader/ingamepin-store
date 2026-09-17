@@ -1,3 +1,4 @@
+import { hasRequiredAdminAssurance } from "@/lib/admin-assurance";
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,7 +12,7 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user || !(await hasRequiredAdminAssurance(supabase))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 

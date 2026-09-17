@@ -1,3 +1,4 @@
+import { deliveredUnits } from "@/lib/delivery-progress";
 import Link from "next/link";
 import styles from "./Receipt.module.css";
 import CopyCodeButton from "./CopyCodeButton";
@@ -28,6 +29,8 @@ type OrderItem = {
   option_name: string | null;
   denomination: number | null;
   platform: string | null;
+  fulfillment_mode: string | null;
+  service_delivered_at: string | null;
   quantity: number;
   unit_price: number | string;
   total_price: number | string;
@@ -67,7 +70,7 @@ export default async function CustomerOrderReceiptPage({
     admin
       .from("order_items")
       .select(
-        "id, product_name, option_name, denomination, platform, quantity, unit_price, total_price",
+        "id, product_name, option_name, denomination, platform, fulfillment_mode, service_delivered_at, quantity, unit_price, total_price",
       )
       .eq("order_id", id)
       .order("created_at"),
@@ -128,7 +131,8 @@ export default async function CustomerOrderReceiptPage({
     (sum, item) => sum + item.codes.length,
     0,
   );
-  const remainingCodeCount = Math.max(totalUnits - deliveredCodeCount, 0);
+  const deliveredUnitCount = items.reduce((sum, item) => sum + deliveredUnits(item, codesByItem.get(item.id)?.length ?? 0, order.status), 0);
+  const remainingCodeCount = Math.max(totalUnits - deliveredUnitCount, 0);
 
   return (
     <CustomerAccountShell displayName={displayName}>
@@ -190,7 +194,7 @@ export default async function CustomerOrderReceiptPage({
 
         <div className="mt-2 sm:mt-4 divide-y divide-slate-200">
           {items.map((item) => {
-            const itemDelivered = (codesByItem.get(item.id)?.length ?? 0) >= item.quantity;
+            const itemDelivered = deliveredUnits(item, codesByItem.get(item.id)?.length ?? 0, order.status) >= item.quantity;
             return (
             <article
               key={item.id}
@@ -211,7 +215,7 @@ export default async function CustomerOrderReceiptPage({
                 <p className="text-sm font-bold text-slate-900 sm:text-base sm:font-black">
                   {formatCustomerMoney(item.total_price, order.currency)}
                 </p>
-                {itemDelivered && (
+                {itemDelivered && order.status === "DELIVERED" && (
                   <Link
                     href={`/account/orders/${order.id}/invoice?itemId=${encodeURIComponent(item.id)}`}
                     className="inline-flex rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:border-cyan-400 hover:bg-cyan-100"

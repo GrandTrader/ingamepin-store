@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { isUnlimitedStock } from "@/lib/product-stock";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/admin-session";
 
 export async function saveDeliverySettings(formData: FormData) {
   const id = String(formData.get("id") ?? "");

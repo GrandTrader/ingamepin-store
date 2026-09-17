@@ -1,3 +1,4 @@
+import { hasRequiredAdminAssurance } from "@/lib/admin-assurance";
 import {
   createServerClient,
   type CookieOptions,
@@ -5,7 +6,7 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: request.headers } });
   let refreshedCookies: Array<{
     name: string;
     value: string;
@@ -22,7 +23,7 @@ export async function proxy(request: NextRequest) {
       setAll(cookiesToSet) {
         refreshedCookies = cookiesToSet;
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
+        response = NextResponse.next({ request: { headers: request.headers } });
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },
@@ -33,10 +34,12 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isAdminPage = pathname.startsWith("/admin");
+  const isAdminApi = pathname === "/api/admin" || pathname.startsWith("/api/admin/");
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/") || isAdminApi;
   const isAdminLoginPage = pathname.startsWith("/admin/login");
 
   function redirectWithSession(path: string) {
+    if (isAdminApi) return NextResponse.json({ error: "Administrator authentication and two-factor verification are required." }, { status: user ? 403 : 401, headers: { "Cache-Control": "no-store" } });
     const url = request.nextUrl.clone();
     url.pathname = path;
     url.search = "";
@@ -63,21 +66,7 @@ export async function proxy(request: NextRequest) {
       return redirectWithSession("/admin/login");
     }
 
-    const [assuranceResult, factorsResult] =
-      await Promise.all([
-        supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-        supabase.auth.mfa.listFactors(),
-      ]);
-
-    const hasVerifiedFactor =
-      !factorsResult.error &&
-      factorsResult.data.totp.length > 0;
-
-    if (
-      hasVerifiedFactor &&
-      (assuranceResult.error ||
-        assuranceResult.data.currentLevel !== "aal2")
-    ) {
+    if (!(await hasRequiredAdminAssurance(supabase))) {
       return redirectWithSession("/admin/login/verify");
     }
   }
@@ -86,5 +75,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

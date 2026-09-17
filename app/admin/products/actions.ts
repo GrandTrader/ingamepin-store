@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadDigiSellerProductImage } from "@/lib/digiseller-api";
 import { syncDigiSellerStatistics } from "@/lib/digiseller-stat-sync";
 import { uploadStoreImage } from "@/lib/store-image-upload";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/admin-session";
 
 const allowedProductTypes = [
   "GAME_TOPUP",

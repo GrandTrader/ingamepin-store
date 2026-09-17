@@ -1,3 +1,4 @@
+import { hasRequiredAdminAssurance } from "@/lib/admin-assurance";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,7 +14,7 @@ async function requireAdmin() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  if (!user || !(await hasRequiredAdminAssurance(supabase))) return null;
 
   const check = await supabase
     .from("admin_users")
@@ -27,7 +28,8 @@ async function requireAdmin() {
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAdmin();
-    if (!user) {
+  const supabase = await createClient();
+    if (!user || !(await hasRequiredAdminAssurance(supabase))) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
@@ -85,7 +87,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAdmin();
-    if (!user) {
+  const supabase = await createClient();
+    if (!user || !(await hasRequiredAdminAssurance(supabase))) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 

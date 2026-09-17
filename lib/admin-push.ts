@@ -1,4 +1,5 @@
 import "server-only";
+import { isAllowedPushEndpoint } from "./push-endpoint";
 
 import { createCipheriv, createECDH, createHmac, createPrivateKey, randomBytes, sign } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -41,6 +42,7 @@ function createVapidToken(endpoint: string, publicKey: Buffer, privateKey: Buffe
 }
 
 async function sendOne(subscription: Subscription, message: PushMessage) {
+  if (!isAllowedPushEndpoint(subscription.endpoint)) throw new Error("Unsupported push endpoint.");
   const vapidPublic = fromB64url(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "");
   const vapidPrivate = fromB64url(process.env.VAPID_PRIVATE_KEY ?? "");
   if (vapidPublic.length !== 65 || vapidPrivate.length !== 32) throw new Error("VAPID keys are missing or invalid.");
@@ -66,6 +68,8 @@ async function sendOne(subscription: Subscription, message: PushMessage) {
   const token = createVapidToken(subscription.endpoint, vapidPublic, vapidPrivate);
   return fetch(subscription.endpoint, {
     method: "POST",
+    redirect: "error",
+    signal: AbortSignal.timeout(10000),
     headers: {
       Authorization: `vapid t=${token}, k=${b64url(vapidPublic)}`,
       "Content-Encoding": "aes128gcm",
