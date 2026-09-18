@@ -1,0 +1,3 @@
+.pending { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 10000; background: #06b6d4; pointer-events: none; opacity: 0; animation: reveal .15s ease .25s forwards; }
+@keyframes reveal { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pending { animation: none; opacity: 1; } }

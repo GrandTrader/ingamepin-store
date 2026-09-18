@@ -2,7 +2,7 @@
 /* Product and category artwork use the existing store image URLs. */
 /* eslint-disable @next/next/no-img-element */
 
-import Link from "next/link";
+import Link from "@/components/NavigationLink";
 import { useEffect, useRef, useState } from "react";
 import type { BrowseProduct } from "./ProductBrowser";
 import CountryFlag from "./CountryFlag";

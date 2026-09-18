@@ -4,6 +4,7 @@ import { Inter, Roboto_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
+import NavigationWarmup from "../components/NavigationWarmup";
 import Header from "../components/Header";
 import MobileBottomNav from "../components/MobileBottomNav";
 import Footer from "../components/Footer";
@@ -51,6 +52,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       data-store-theme="light"
       style={{ colorScheme: "light" }}
     >
@@ -60,6 +62,7 @@ export default function RootLayout({
       >
         <StorePreferencesProvider>
           <WebsiteTranslator />
+          <NavigationWarmup />
           <Suspense fallback={null}>
             <SeasonalFall />
           </Suspense>
