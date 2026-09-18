@@ -1,0 +1,33 @@
+// Run with PGLITE_PATH pointing to an isolated @electric-sql/pglite installation.
+const {PGlite}=require(process.env.PGLITE_PATH||'@electric-sql/pglite');
+const fs=require('node:fs');const assert=require('node:assert/strict');
+(async()=>{
+ const db=new PGlite();
+ await db.exec(`create schema auth; create role anon; create role authenticated; create role service_role;
+ create table auth.users(id uuid primary key); create table public.admin_users(user_id uuid primary key);
+ create table public.orders(id uuid primary key,status text,customer_email text,currency text,total numeric,updated_at timestamptz);
+ create table public.order_items(id uuid primary key,order_id uuid references orders(id),quantity integer,total_price numeric);
+ `);
+ await db.exec(fs.readFileSync('supabase/migrations/20260821_120000_add_denomination_wallet_refunds.sql','utf8').split('create index')[0]);
+ await db.exec(fs.readFileSync('supabase/migrations/20260918_230000_manual_item_refunds.sql','utf8'));
+ const admin='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ await db.query('insert into auth.users values ($1);',[admin]);await db.query('insert into admin_users values ($1)',[admin]);
+ const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+ await db.query("insert into orders values ($1,'PROCESSING','buyer@example.com','USD',18,now()),($2,'PENDING_PAYMENT','buyer@example.com','USD',10,now())",[id(1),id(2)]);
+ await db.query('insert into order_items values ($1,$2,2,10),($3,$2,1,10),($4,$5,1,10)',[id(11),id(1),id(12),id(21),id(2)]);
+ const refund=({order=id(1),item=id(11),who=admin,qty=1,amount=5,dest='WALLET',ref='TX-1',reason='Already refunded'}={})=>db.query('select record_manual_item_refund($1,$2,$3,$4,$5,$6,$7,$8) id',[order,item,who,qty,amount,dest,ref,reason]);
+ for(const args of [{who:id(99)},{order:id(2),item:id(21)},{order:id(2)},{qty:3},{amount:11},{amount:1.001},{amount:0},{dest:'CASH'},{ref:''}])await assert.rejects(()=>refund(args));
+ const first=await refund();assert.equal((await refund()).rows[0].id,first.rows[0].id);
+ await assert.rejects(()=>refund({amount:4}));
+ await refund({ref:'TX-2'});await assert.rejects(()=>refund({ref:'TX-3'}));
+ assert.equal((await db.query('select status from orders where id=$1',[id(1)])).rows[0].status,'PROCESSING');
+ await assert.rejects(()=>refund({item:id(12),amount:9,ref:'TX-4'}));
+ await refund({item:id(12),amount:8,dest:'PAYMENT_METHOD',ref:'TX-4'});
+ assert.equal((await db.query('select status from orders where id=$1',[id(1)])).rows[0].status,'REFUNDED');
+ await refund({item:id(12),amount:8,dest:'PAYMENT_METHOD',ref:'TX-4'});
+ assert.equal((await db.query('select count(*)::int n from order_item_refunds')).rows[0].n,3);
+ assert.equal((await db.query("select count(*)::int n from order_item_refunds where status='PENDING_CLAIM' or claimed_by is not null")).rows[0].n,0);
+ await db.exec('set role authenticated');await assert.rejects(()=>refund(),/permission denied/);await db.exec('reset role');
+ console.log('PASS: actual SQL migration, admin access, paid-order eligibility, item ownership, quantity/amount caps, duplicate retries, partial/full order status, no wallet credit/claim, and RPC permissions.');
+ await db.close();
+})().catch(e=>{console.error(e);process.exitCode=1});

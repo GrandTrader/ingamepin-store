@@ -1,5 +1,7 @@
 "use server";
 
+import { parseManualRefund } from "@/lib/manual-refund";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -629,4 +631,21 @@ export async function completeManualOrder(
     "Products sent and order completed.",
     orderId,
   );
+}
+
+export async function recordManualRefund(formData: FormData) {
+  const administrator = await requireAdministrator();
+  let values: ReturnType<typeof parseManualRefund>;
+  try { values = parseManualRefund(formData); }
+  catch (error) { ordersRedirect("error", error instanceof Error ? error.message : "Invalid refund details.", String(formData.get("order_id") ?? "")); }
+  const result = await createAdminClient().rpc("record_manual_item_refund", {
+    p_order_id: values.orderId, p_item_id: values.itemId, p_admin_user_id: administrator.id,
+    p_quantity: values.quantity, p_amount: values.amount, p_destination: values.destination,
+    p_transaction_id: values.transactionId, p_reason: values.reason,
+  });
+  if (result.error) ordersRedirect("error", result.error.code === "PGRST202"
+    ? "Manual refund setup is required. Apply the manual item refunds database migration first."
+    : result.error.message, values.orderId);
+  for (const path of ["/admin", "/admin/orders", `/admin/orders/${values.orderId}/receipt`, "/account/dashboard", "/account/orders", `/account/orders/${values.orderId}`, "/account/wallet"]) revalidatePath(path);
+  ordersRedirect("success", "Manual refund recorded. No additional money was transferred.", values.orderId);
 }

@@ -1,3 +1,4 @@
+import { manualRefundLabel } from "@/lib/manual-refund";
 import { deliveredUnits } from "@/lib/delivery-progress";
 import Link from "next/link";
 import styles from "./Receipt.module.css";
@@ -99,6 +100,9 @@ export default async function CustomerOrderReceiptPage({
   const items = (itemsResult.data ?? []) as OrderItem[];
   const payment = paymentResult.data;
   const itemIds = items.map((item) => item.id);
+  const refundResult = await admin.from("order_item_refunds").select("*").eq("order_id", order.id).neq("status", "CANCELLED");
+  if (refundResult.error) throw new Error("Unable to load refund details.");
+  const refunds = refundResult.data ?? [];
   const deliveredCodes = await getAllDeliveredCodes(itemIds);
   const invoiceResult = await admin
     .from("saved_invoices")
@@ -131,8 +135,7 @@ export default async function CustomerOrderReceiptPage({
     (sum, item) => sum + item.codes.length,
     0,
   );
-  const deliveredUnitCount = items.reduce((sum, item) => sum + deliveredUnits(item, codesByItem.get(item.id)?.length ?? 0, order.status), 0);
-  const remainingCodeCount = Math.max(totalUnits - deliveredUnitCount, 0);
+  const remainingCodeCount = items.reduce((sum, item) => sum + Math.max(0, item.quantity - deliveredUnits(item, codesByItem.get(item.id)?.length ?? 0, order.status) - refunds.filter(r => r.order_item_id === item.id).reduce((n, r) => n + r.quantity, 0)), 0);
 
   return (
     <CustomerAccountShell displayName={displayName}>
@@ -162,7 +165,7 @@ export default async function CustomerOrderReceiptPage({
               order.status,
             )}`}
           >
-            {displayStatus(order.status)}
+            {order.status === "REFUNDED" && refunds.some(r => r.status === "MANUALLY_REFUNDED") ? "MANUALLY REFUNDED" : displayStatus(order.status)}
           </span>
           {order.status === "DELIVERED" && remainingCodeCount === 0 && (
             <Link
@@ -194,6 +197,8 @@ export default async function CustomerOrderReceiptPage({
 
         <div className="mt-2 sm:mt-4 divide-y divide-slate-200">
           {items.map((item) => {
+            const itemRefunds = refunds.filter(r => r.order_item_id === item.id);
+            const refundLabel = manualRefundLabel(itemRefunds, item.quantity);
             const itemDelivered = deliveredUnits(item, codesByItem.get(item.id)?.length ?? 0, order.status) >= item.quantity;
             return (
             <article
@@ -209,6 +214,11 @@ export default async function CustomerOrderReceiptPage({
                       : "Standard option")}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">Quantity: {item.quantity}</p>
+                {refundLabel && <p className="mt-1 text-xs font-bold text-orange-800">{refundLabel}</p>}
+                {itemRefunds.filter(r => r.status === "MANUALLY_REFUNDED").map(r => <div key={r.id} className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-xs text-orange-900">
+                  {r.quantity} item(s) · {formatCustomerMoney(r.amount, r.currency)} · {r.refund_destination === "WALLET" ? "Wallet" : "Payment method"}
+                  <p className="mt-1 break-all">Transaction ID: <span data-no-auto-translate>{r.transaction_id}</span></p>
+                </div>)}
               </div>
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">

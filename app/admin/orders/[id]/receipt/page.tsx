@@ -1,3 +1,4 @@
+import { manualRefundLabel, type ItemRefund } from "@/lib/manual-refund";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -253,15 +254,17 @@ export default async function OrderReceipt({
 
   const refundsResult = itemIds.length
     ? await admin.from("order_item_refunds")
-        .select("id, order_item_id, quantity, amount, currency, status")
+        .select("*")
         .in("order_item_id", itemIds)
         .order("created_at")
     : { data: [], error: null };
   if (refundsResult.error) throw new Error(`Unable to load refunds: ${refundsResult.error.message}`);
-  const refundsByItem = new Map<string, Array<{ id: string; quantity: number; amount: number | string; currency: string; status: string }>>();
+  const refundsByItem = new Map<string, ItemRefund[]>();
   for (const refund of refundsResult.data ?? []) {
     refundsByItem.set(refund.order_item_id, [...(refundsByItem.get(refund.order_item_id) ?? []), refund]);
   }
+  const orderRemainingAmount = Math.max(0, Number(order.total) - (refundsResult.data ?? []).filter(r => r.status !== "CANCELLED").reduce((n, r) => n + Number(r.amount), 0));
+  const hasManualRefund = (refundsResult.data ?? []).some(r => r.status === "MANUALLY_REFUNDED");
   const refundedQuantityFor = (itemId: string) => (refundsByItem.get(itemId) ?? [])
     .filter((refund) => refund.status !== "CANCELLED")
     .reduce((sum, refund) => sum + refund.quantity, 0);
@@ -316,7 +319,7 @@ export default async function OrderReceipt({
                   order.status,
                 )}`}
               >
-                {order.status === "DELIVERED"
+                {order.status === "REFUNDED" && hasManualRefund ? "MANUALLY REFUNDED" : order.status === "DELIVERED"
                   ? "COMPLETED"
                   : order.status.replaceAll("_", " ")}
               </span>
@@ -526,11 +529,11 @@ export default async function OrderReceipt({
                       (item.fulfillment_mode === "PLAYER_ID_TOPUP" && order.status === "DELIVERED")
                     );
                     const resolvedWithRefund = refundedCount > 0 && deliveredCount + refundedCount >= item.quantity;
-                    const deliveryLabel = completed ? "Completed"
+                    const deliveryLabel = manualRefundLabel(refundsByItem.get(item.id) ?? [], item.quantity) ?? (completed ? "Completed"
                       : resolvedWithRefund ? (deliveredCount > 0 ? "Delivered / refunded" : "Refunded")
-                      : deliveredCount > 0 ? "Partially delivered" : "Pending";
+                      : deliveredCount > 0 ? "Partially delivered" : "Pending");
                     return (
-                    <tr key={item.id} className={`grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-slate-200 p-3 md:table-row md:rounded-none md:border-x-0 md:border-b-0 md:p-0 ${completed ? "bg-emerald-50" : ""}`}>
+                    <tr key={item.id} className={`grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-slate-200 p-3 md:table-row md:rounded-none md:border-x-0 md:border-b-0 md:p-0 ${completed && refundedCount === 0 ? "bg-emerald-50" : ""}`}>
                       <td className="col-span-2 block min-w-0 break-words md:table-cell md:w-[36%] md:px-2 md:py-2.5 md:align-top">
                         <p className="font-bold leading-snug">{item.product_name}</p>
                         {item.platform && (
@@ -553,7 +556,7 @@ export default async function OrderReceipt({
                       <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top"><span className="mb-0.5 block text-xs text-slate-500 md:hidden">Quantity</span>{item.quantity}</td>
                       <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top">
                         <span className="mb-0.5 block text-xs text-slate-500 md:hidden">Delivery status</span>
-                        <span className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${completed ? "bg-emerald-100 text-emerald-700" : resolvedWithRefund ? "bg-slate-100 text-slate-600" : "bg-amber-100 text-amber-800"}`}>
+                        <span className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${completed && refundedCount === 0 ? "bg-emerald-100 text-emerald-700" : resolvedWithRefund ? "bg-slate-100 text-slate-600" : "bg-amber-100 text-amber-800"}`}>
                           {deliveryLabel}
                         </span>
                         {item.fulfillment_mode !== "PLAYER_ID_TOPUP" && (
@@ -746,9 +749,6 @@ export default async function OrderReceipt({
                 })}
               </div>
 
-              {canDeliver && <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                {manualCodeItems.filter((item) => !item.service_delivered_at).map((item) => <AdminRefundCard key={`refund-${item.id}`} orderId={order.id} item={item} deliveredQuantity={codesByItem.get(item.id)?.length ?? 0} refunds={refundsByItem.get(item.id) ?? []} />)}
-              </div>}
 
               {canDeliver && allManualCodesSent && playerTopupItems.length === 0 && (
                 <form action={finalizeManualOrderFromCodes} className="mt-5">
@@ -812,6 +812,18 @@ export default async function OrderReceipt({
                   Complete the code-delivery items before finalizing this top-up.
                 </p>
               )}
+            </section>
+          )}
+
+          {(["PAID", "PROCESSING", "DELIVERED", "REFUNDED"].includes(order.status)) && (
+            <section className="mt-6 rounded-2xl border border-orange-200 bg-orange-50/30 p-4 sm:p-5">
+              <h2 className="text-lg font-black text-slate-900">Refunds by product / denomination</h2>
+              <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                {items.map(item => <AdminRefundCard key={`refund-${item.id}`} orderId={order.id} item={item}
+                  deliveredQuantity={item.service_delivered_at || (item.fulfillment_mode === "PLAYER_ID_TOPUP" && order.status === "DELIVERED") ? item.quantity : codesByItem.get(item.id)?.length ?? 0}
+                  refunds={refundsByItem.get(item.id) ?? []} currency={order.currency}
+                  orderRemainingAmount={orderRemainingAmount} canRefund={order.status !== "REFUNDED"} />)}
+              </div>
             </section>
           )}
 
