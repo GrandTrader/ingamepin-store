@@ -184,8 +184,22 @@ export async function renderProductPage({
   }
 
   const product = productResult.data as ProductRow;
+  const category = getCategory(product.categories);
+  if (!canonicalRequest) {
+    const canonicalUrl = getProductUrl({
+      categorySlug: category.slug,
+      categoryPublicId: category.publicId,
+      productPublicId: product.public_id,
+    });
+    const referral = affiliateCode
+      ? `?ref=${encodeURIComponent(affiliateCode)}`
+      : "";
+    permanentRedirect(`${canonicalUrl}${referral}`);
+  }
 
-  const optionResult = await supabase
+  const admin = createAdminClient();
+  const [optionResult, customerFieldResult, reviewResult, digiSellerReviewResult, salesResult, customerDiscounts, affiliateSettingsResult] = await Promise.all([
+    supabase
     .from("product_options")
     .select(
       `
@@ -203,7 +217,37 @@ export async function renderProductPage({
     )
     .eq("product_id", product.id)
     .eq("is_active", true)
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true }),
+    supabase
+    .from("product_customer_fields")
+    .select("id, label, placeholder, field_type, is_required")
+    .eq("product_id", product.id)
+    .order("sort_order", { ascending: true }),
+    admin.from("order_reviews")
+      .select("id, customer_email, sentiment, comment, created_at, orders!inner(order_items!inner(product_id))")
+      .eq("orders.order_items.product_id", product.id)
+      .eq("is_visible", true)
+      .order("created_at", { ascending: false }).limit(50),
+    admin
+    .from("digiseller_reviews")
+    .select("id, sentiment, comment, reviewed_at")
+    .eq("product_id", product.id)
+    .eq("is_visible", true)
+    .order("reviewed_at", { ascending: false })
+    .limit(100),
+    admin
+    .from("order_items")
+    .select("quantity, orders!inner(status)")
+    .eq("product_id", product.id)
+    .in("orders.status", ["PAID", "PROCESSING", "DELIVERED"]),
+    getSignedInCustomerDiscounts(),
+    product.affiliate_enabled && Number(product.affiliate_commission_percent) > 0
+      ? admin.from("affiliate_settings").select("program_enabled").eq("id", 1).maybeSingle()
+      : Promise.resolve({ data: null, error: null })
+  ]);
+
+
+
 
   if (optionResult.error) {
     throw new Error(
@@ -211,11 +255,7 @@ export async function renderProductPage({
     );
   }
 
-  const customerFieldResult = await supabase
-    .from("product_customer_fields")
-    .select("id, label, placeholder, field_type, is_required")
-    .eq("product_id", product.id)
-    .order("sort_order", { ascending: true });
+
 
   if (customerFieldResult.error) {
     throw new Error(`Unable to load customer fields: ${customerFieldResult.error.message}`);
@@ -223,36 +263,8 @@ export async function renderProductPage({
 
   const customerFields = (customerFieldResult.data ?? []) as ProductCustomerFieldRow[];
   const options = (optionResult.data ?? []) as ProductOptionRow[];
-  const category = getCategory(product.categories);
 
-  const admin = createAdminClient();
-  const reviewItemResult = await admin
-    .from("order_items")
-    .select("order_id")
-    .eq("product_id", product.id);
 
-  if (reviewItemResult.error) {
-    throw new Error(
-      `Unable to load product review orders: ${reviewItemResult.error.message}`,
-    );
-  }
-
-  const reviewOrderIds = Array.from(
-    new Set(
-      (reviewItemResult.data ?? [])
-        .map((item) => item.order_id as string | null)
-        .filter((orderId): orderId is string => Boolean(orderId)),
-    ),
-  );
-  const reviewResult = reviewOrderIds.length
-    ? await admin
-        .from("order_reviews")
-        .select("id, customer_email, sentiment, comment, created_at")
-        .in("order_id", reviewOrderIds)
-        .eq("is_visible", true)
-        .order("created_at", { ascending: false })
-        .limit(50)
-    : { data: [], error: null };
 
   if (reviewResult.error) {
     throw new Error(
@@ -278,13 +290,7 @@ export async function renderProductPage({
     };
   });
 
-  const digiSellerReviewResult = await admin
-    .from("digiseller_reviews")
-    .select("id, sentiment, comment, reviewed_at")
-    .eq("product_id", product.id)
-    .eq("is_visible", true)
-    .order("reviewed_at", { ascending: false })
-    .limit(100);
+
 
   if (digiSellerReviewResult.error) {
     throw new Error(
@@ -309,23 +315,9 @@ export async function renderProductPage({
   ).length;
   const negativeReviewCount = allProductReviews.length - positiveReviewCount;
 
-  if (!canonicalRequest) {
-    const canonicalUrl = getProductUrl({
-      categorySlug: category.slug,
-      categoryPublicId: category.publicId,
-      productPublicId: product.public_id,
-    });
-    const referral = affiliateCode
-      ? `?ref=${encodeURIComponent(affiliateCode)}`
-      : "";
-    permanentRedirect(`${canonicalUrl}${referral}`);
-  }
 
-  const salesResult = await admin
-    .from("order_items")
-    .select("quantity, orders!inner(status)")
-    .eq("product_id", product.id)
-    .in("orders.status", ["PAID", "PROCESSING", "DELIVERED"]);
+
+
 
   if (salesResult.error) {
     throw new Error(`Unable to load product sales: ${salesResult.error.message}`);
@@ -335,7 +327,7 @@ export async function renderProductPage({
     (total, item) => total + Number(item.quantity || 0),
     0,
   );
-  const customerDiscounts = await getSignedInCustomerDiscounts();
+
   const customerDiscountPercent = customerDiscounts.get(product.id) ?? 0;
   let affiliateCommissionPercent = 0;
   let affiliateMaximumCommissionPercent = 0;
@@ -349,11 +341,7 @@ export async function renderProductPage({
     Number.isFinite(configuredAffiliateMaximum) &&
     configuredAffiliateMaximum > 0
   ) {
-    const settingsResult = await admin
-      .from("affiliate_settings")
-      .select("program_enabled")
-      .eq("id", 1)
-      .maybeSingle();
+    const settingsResult = affiliateSettingsResult;
 
     if (settingsResult.data?.program_enabled) {
       affiliateMaximumCommissionPercent = configuredAffiliateMaximum;
