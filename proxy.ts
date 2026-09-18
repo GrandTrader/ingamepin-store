@@ -56,17 +56,17 @@ export async function proxy(request: NextRequest) {
       return redirectWithSession("/admin/login");
     }
 
-    const adminResult = await supabase
+    const [adminResult, hasAssurance] = await Promise.all([supabase
       .from("admin_users")
       .select("user_id")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .maybeSingle(), hasRequiredAdminAssurance(supabase)]);
 
     if (adminResult.error || !adminResult.data) {
       return redirectWithSession("/admin/login");
     }
 
-    if (!(await hasRequiredAdminAssurance(supabase))) {
+    if (!hasAssurance) {
       return redirectWithSession("/admin/login/verify");
     }
   }

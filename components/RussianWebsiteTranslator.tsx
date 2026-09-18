@@ -1366,15 +1366,20 @@ export default function RussianWebsiteTranslator() {
     if (pathname.startsWith("/admin")) return;
 
     const root = document.body;
+    let frame = 0;
     const observer = new MutationObserver(() => {
-      observer.disconnect();
-      updatePage(root, language);
-      observer.observe(root, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        attributes: true,
-        attributeFilter: translatedAttributes,
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        observer.disconnect();
+        updatePage(root, language);
+        observer.observe(root, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: true,
+          attributeFilter: translatedAttributes,
+        });
       });
     });
 
@@ -1387,7 +1392,11 @@ export default function RussianWebsiteTranslator() {
       attributeFilter: translatedAttributes,
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      updatePage(root, "en");
+    };
   }, [language, pathname]);
 
   return null;

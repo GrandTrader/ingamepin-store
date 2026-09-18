@@ -136,7 +136,8 @@ export async function listDigiSellerReviews(
   };
 }
 
-export async function getDigiSellerToken() {
+export async function getDigiSellerToken(signal?: AbortSignal) {
+  signal?.throwIfAborted();
   const { sellerId, apiKey } = credentials();
   if (cachedDigiSellerToken && cachedDigiSellerToken.validUntil > Date.now() + 30_000) {
     return { token: cachedDigiSellerToken.token, sellerId };
@@ -150,6 +151,7 @@ export async function getDigiSellerToken() {
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({ seller_id: sellerId, timestamp, sign }),
       cache: "no-store",
+      signal,
     });
     if (!response.ok) {
       if (attempt < 2 && response.status >= 500) continue;
@@ -414,8 +416,8 @@ export async function listDigiSellerVariants(productId: number, accessToken?: st
   return details.flat();
 }
 
-export async function listDigiSellerProducts(): Promise<DigiSellerProduct[]> {
-  const { token, sellerId } = await getDigiSellerToken();
+export async function listDigiSellerProducts(signal?: AbortSignal): Promise<DigiSellerProduct[]> {
+  const { token, sellerId } = await getDigiSellerToken(signal);
   const response = await fetch(`https://api.digiseller.com/api/seller-goods?token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -431,6 +433,7 @@ export async function listDigiSellerProducts(): Promise<DigiSellerProduct[]> {
       owner_id: null,
     }),
     cache: "no-store",
+    signal,
   });
   if (!response.ok) throw new Error(`Unable to load DigiSeller products (${response.status}).`);
   const result = (await response.json()) as DigiSellerProductsResponse;

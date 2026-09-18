@@ -9,7 +9,7 @@ import MobileBottomNav from "../components/MobileBottomNav";
 import Footer from "../components/Footer";
 import LiveSupportWidget from "../components/LiveSupportWidget";
 import YandexMetrica from "../components/YandexMetrica";
-import RussianWebsiteTranslator from "../components/RussianWebsiteTranslator";
+import WebsiteTranslator from "../components/WebsiteTranslator";
 import { StorePreferencesProvider } from "../components/StorePreferences";
 import GoogleAdsTag from "../components/GoogleAdsTag";
 import SeasonalFall from "../components/SeasonalFall";
@@ -59,7 +59,7 @@ export default function RootLayout({
         className={`${inter.variable} ${robotoMono.variable} flex min-h-screen flex-col bg-slate-950 antialiased`}
       >
         <StorePreferencesProvider>
-          <RussianWebsiteTranslator />
+          <WebsiteTranslator />
           <Suspense fallback={null}>
             <SeasonalFall />
           </Suspense>

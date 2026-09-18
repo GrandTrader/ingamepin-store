@@ -77,6 +77,7 @@ export default function Header() {
   const [headerCategories, setHeaderCategories] = useState<HeaderCategory[]>([]);
 
   useEffect(() => {
+    if (hideProductSearch) return;
     const supabase = createClient();
     let active = true;
 
@@ -133,7 +134,7 @@ export default function Header() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [hideProductSearch]);
 
   useEffect(() => {
     const supabase = createClient();

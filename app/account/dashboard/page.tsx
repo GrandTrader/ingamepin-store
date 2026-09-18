@@ -3,7 +3,6 @@ import styles from "./Dashboard.module.css";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAllDeliveredCodes } from "@/lib/delivered-codes";
 import { createClient } from "@/lib/supabase/server";
 
 import { customerLogout } from "../actions";
@@ -65,42 +64,6 @@ export default async function CustomerDashboardPage({ searchParams }: {
   if (!user?.email) redirect("/account?error=Please sign in to continue.");
 
   const admin = createAdminClient();
-  const [walletResult, notificationResult, orderResult] = await Promise.all([
-    supabase
-      .from("customer_wallets")
-      .select("balance, currency")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("customer_notifications")
-      .select("id, notification_type, title, message, is_read, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(8),
-    admin
-      .from("orders")
-      .select(`
-        id,
-        order_number,
-        total,
-        currency,
-        status,
-        created_at,
-        delivered_at,
-        order_items (
-          id,
-          product_name,
-          option_name,
-          denomination,
-          platform,
-          quantity
-        )
-      `)
-      .eq("customer_email", user.email.toLowerCase())
-      .order("created_at", { ascending: false }),
-  ]);
-
-  const orders = (orderResult.data ?? []) as CustomerOrder[];
   const orderTabs = [
     { value: "all", label: "All", statuses: [] as string[] },
     { value: "completed", label: "Completed", statuses: ["DELIVERED"] },
@@ -108,31 +71,38 @@ export default async function CustomerDashboardPage({ searchParams }: {
     { value: "pending", label: "Pending", statuses: ["PENDING_PAYMENT", "PAYMENT_REVIEW"] },
   ];
   const activeTab = orderTabs.find(tab => tab.value === statusParam) ?? orderTabs[0];
-  const filteredOrders = activeTab.value === "all" ? orders : orders.filter(order => activeTab.statuses.includes(order.status));
-  const pageSize = 5;
-  const pageCount = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
   const requestedPage = typeof pageParam === "string" && /^\d+$/.test(pageParam) ? Number(pageParam) : 1;
-  const currentPage = Math.min(pageCount, Math.max(1, Number.isSafeInteger(requestedPage) ? requestedPage : 1));
-  const pageOrders = filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const currentPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage < 1000000 ? requestedPage : 1;
+  const pageSize = 5;
+  const email = user.email.toLowerCase();
+  let orderQuery = admin.from("orders").select(`
+    id, order_number, total, currency, status, created_at, delivered_at,
+    order_items(id, product_name, option_name, denomination, platform, quantity)
+  `).eq("customer_email", email);
+  if (activeTab.statuses.length) orderQuery = orderQuery.in("status", activeTab.statuses);
+  const [walletResult, notificationResult, orderResult, codeCountResult, ...countResults] = await Promise.all([
+    supabase.from("customer_wallets").select("balance, currency").eq("user_id", user.id).maybeSingle(),
+    supabase.from("customer_notifications").select("id, notification_type, title, message, is_read, created_at")
+      .eq("user_id", user.id).order("created_at", { ascending: false }).limit(8),
+    orderQuery.order("created_at", { ascending: false }).order("id", { ascending: false })
+      .range((currentPage - 1) * pageSize, currentPage * pageSize - 1),
+    admin.from("gift_card_codes")
+      .select("id,order_items!inner(orders!inner(customer_email))", { count: "exact", head: true })
+      .eq("status", "SOLD").eq("order_items.orders.customer_email", email),
+    ...orderTabs.map(tab => {
+      const query = admin.from("orders").select("id", { count: "exact", head: true }).eq("customer_email", email);
+      return tab.statuses.length ? query.in("status", tab.statuses) : query;
+    }),
+  ]);
+  if (orderResult.error || codeCountResult.error || countResults.some(result => result.error)) {
+    throw new Error("Unable to load account orders. Please try again.");
+  }
+  const orderCounts = Object.fromEntries(orderTabs.map((tab, index) => [tab.value, countResults[index].count ?? 0]));
+  const pageCount = Math.max(1, Math.ceil(orderCounts[activeTab.value] / pageSize));
+  if (currentPage > pageCount) redirect(`/account/dashboard?view=orders&status=${activeTab.value}&page=${pageCount}#orders`);
+  const pageOrders = (orderResult.data ?? []) as CustomerOrder[];
   const pageNumbers = Array.from(new Set([1, currentPage - 1, currentPage, currentPage + 1, pageCount]))
     .filter(page => page >= 1 && page <= pageCount).sort((a, b) => a - b);
-  const orderItems = orders.flatMap((order) => order.order_items);
-  const orderItemIds = orderItems.map((item) => item.id);
-  const deliveredCodes = await getAllDeliveredCodes(orderItemIds);
-
-  const codes = [...deliveredCodes].reverse().map((code) => {
-    const item = orderItems.find((orderItem) => orderItem.id === code.order_item_id);
-    const order = orders.find((customerOrder) =>
-      customerOrder.order_items.some((orderItem) => orderItem.id === code.order_item_id),
-    );
-    return {
-      ...code,
-      productName: item?.product_name ?? "Digital product",
-      optionName: item?.option_name ?? null,
-      denomination: item?.denomination ?? null,
-      orderNumber: order?.order_number ?? "Order",
-    };
-  });
 
   const wallet = walletResult.data ?? { balance: 0, currency: "USD" };
   const notifications = notificationResult.data ?? [];
@@ -175,8 +145,8 @@ export default async function CustomerDashboardPage({ searchParams }: {
 
             <div className={`${styles.summary} mt-7 grid gap-4 sm:grid-cols-3`}>
               <Link href="/account/wallet" className="scroll-mt-40 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-400"><p className="text-sm text-slate-500">Wallet balance</p><p className="mt-2 text-3xl font-black text-cyan-600">{formatMoney(wallet.balance, wallet.currency)}</p><p className="mt-2 text-xs font-bold text-cyan-600">Add money or view transactions →</p></Link>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Total orders</p><p className="mt-2 text-3xl font-black">{orders.length}</p><p className="mt-2 text-xs text-slate-400">Orders using {user.email}</p></div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Delivered codes</p><p className="mt-2 text-3xl font-black text-emerald-600">{codes.length}</p><p className="mt-2 text-xs text-slate-400">View inside each order</p></div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Total orders</p><p className="mt-2 text-3xl font-black">{orderCounts.all}</p><p className="mt-2 text-xs text-slate-400">Orders using {user.email}</p></div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Delivered codes</p><p className="mt-2 text-3xl font-black text-emerald-600">{codeCountResult.count ?? 0}</p><p className="mt-2 text-xs text-slate-400">View inside each order</p></div>
             </div>
           </section>
 
@@ -185,16 +155,16 @@ export default async function CustomerDashboardPage({ searchParams }: {
             {error && <p role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{error}</p>}
             <nav className={styles.orderTabs} aria-label="Order status">
               {orderTabs.map(tab => <Link key={tab.value} href={`?view=orders&status=${tab.value}#orders`} aria-current={activeTab.value === tab.value ? "page" : undefined}>
-                {tab.label}<span>{tab.value === "all" ? orders.length : orders.filter(order => tab.statuses.includes(order.status)).length}</span>
+                {tab.label}<span>{orderCounts[tab.value]}</span>
               </Link>)}
             </nav>
-            {filteredOrders.length === 0 ? (
+            {orderCounts[activeTab.value] === 0 ? (
               <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-7 text-center text-slate-500">{activeTab.value === "all" ? "No orders found for this email address." : `No ${activeTab.label.toLowerCase()} orders.`}</div>
             ) : (
               <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className={styles.orders}><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr><th className="px-5 py-4">Order</th><th className="px-5 py-4">Products</th><th className="px-5 py-4">Amount</th><th className="px-5 py-4">Status</th><th className="px-5 py-4">Date</th></tr></thead><tbody className="divide-y divide-slate-200">{pageOrders.map((order) => <tr key={order.id}><td className="px-5 py-5 font-bold"><Link href={`/account/orders/${order.id}`} className="text-cyan-700 underline decoration-cyan-300 underline-offset-4 hover:text-cyan-600">{order.order_number}</Link></td><td className="px-5 py-5">{order.order_items.map((item) => <p key={item.id}>{item.product_name}{item.option_name ? ` - ${item.option_name}` : ""}{item.quantity > 1 ? ` × ${item.quantity}` : ""}</p>)}</td><td className="px-5 py-5 font-bold">{formatMoney(order.total, order.currency)}</td><td className="px-5 py-5"><span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(order.status)}`}>{order.status === "DELIVERED" ? "COMPLETED" : order.status.replaceAll("_", " ")}</span></td><td className="px-5 py-5 text-slate-500">{formatDate(order.created_at)}</td></tr>)}</tbody></table></div>
                 <div className={styles.pagination}>
-                  <p>{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredOrders.length)} of {filteredOrders.length} orders</p>
+                  <p>{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, orderCounts[activeTab.value])} of {orderCounts[activeTab.value]} orders</p>
                   <nav aria-label="Order pages">
                     {currentPage > 1 && <Link href={`?view=orders&status=${activeTab.value}&page=${currentPage - 1}#orders`} aria-label="Previous order page">‹</Link>}
                     {pageNumbers.map((page, index) => <span key={page}>

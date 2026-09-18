@@ -124,13 +124,19 @@ function AdminSidebarContent({
 
   useEffect(() => {
     let active = true;
+    let inFlight = false;
+    let controller: AbortController | undefined;
 
     async function loadOrderCount() {
-      if (document.visibilityState !== "visible") return;
+      if (!active || inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+      controller = new AbortController();
+      const timeout = window.setTimeout(() => controller?.abort(), 10000);
 
       try {
         const response = await fetch("/api/admin/order-notifications", {
           cache: "no-store",
+          signal: controller.signal,
         });
         if (!response.ok) return;
 
@@ -151,14 +157,20 @@ function AdminSidebarContent({
         }
       } catch {
         // Keep the last known count when the network is temporarily unavailable.
+      } finally {
+        window.clearTimeout(timeout);
+        inFlight = false;
       }
     }
 
     void loadOrderCount();
-    const timer = window.setInterval(() => void loadOrderCount(), 5000);
+    const timer = window.setInterval(() => void loadOrderCount(), 15000);
+    document.addEventListener("visibilitychange", loadOrderCount);
 
     return () => {
       active = false;
+      controller?.abort();
+      document.removeEventListener("visibilitychange", loadOrderCount);
       window.clearInterval(timer);
     };
   }, []);
