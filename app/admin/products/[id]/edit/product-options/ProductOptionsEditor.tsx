@@ -2,7 +2,7 @@
 
 import { useState, type ChangeEvent } from "react";
 
-type Option = { id: string; name: string; denomination: number; currency: string; sellingPrice: number; isActive: boolean; isInStock: boolean };
+type Option = { id: string; name: string; denomination: number; currency: string; sellingPrice: number | string; isActive: boolean; isInStock: boolean };
 const currencies = ["INR", "USD", "EUR", "GBP", "TRY", "AED", "SAR", "CAD", "AUD", "JPY", "SGD"];
 
 export default function ProductOptionsEditor({ initialOptions, productName }: { initialOptions: Option[]; productName: string }) {
@@ -119,7 +119,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
           <input value={option.name} onChange={(event) => update(index, { name: event.target.value })} placeholder="1000 Rupees" className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
           <input type="number" min="1" step="1" value={option.denomination} onChange={(event) => update(index, { denomination: Number(event.target.value) })} className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
           <select value={option.currency} onChange={(event) => update(index, { currency: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2">{currencies.map((currency) => <option key={currency}>{currency}</option>)}</select>
-          <input type="number" min="0" step="0.01" value={option.sellingPrice} onChange={(event) => update(index, { sellingPrice: Number(event.target.value) })} className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
+          <input type="number" min="0" step="0.01" required value={option.sellingPrice} onChange={(event) => update(index, { sellingPrice: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
           <div className="flex items-center justify-center"><input type="radio" name="default_preview" checked={selected === index} onChange={() => setSelected(index)} aria-label={`Preview ${option.name}`} /></div>
           <label title={option.isInStock ? "In stock" : "Out of stock"} className="flex cursor-pointer items-center justify-center" onClick={(event) => event.stopPropagation()}>
             <input type="checkbox" checked={option.isInStock} onChange={(event) => update(index, { isInStock: event.target.checked })} className="peer sr-only" />
@@ -130,7 +130,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
         <div className="flex justify-end px-2 pt-3"><button type="button" onClick={add} className="rounded-lg bg-blue-600 px-4 py-2 text-lg font-black text-white">+</button></div>
       </div></div></section>
 
-      <aside className="h-fit rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm"><p className="text-sm font-black">Preview payment form</p><div className="mt-4 rounded-lg border border-slate-200 bg-white p-4"><p className="text-sm font-bold text-slate-700">{productName}</p><div className="mt-4 grid gap-3">{options.filter((option) => option.isActive).map((option, index) => <label key={option.id || `preview-${index}`} className={`flex items-center gap-2 text-sm ${option.isInStock ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}><input type="radio" name="preview_option" disabled={!option.isInStock} checked={option.isInStock && selected === options.indexOf(option)} onChange={() => setSelected(options.indexOf(option))} /><span>{option.name || `${option.denomination} ${option.currency}`}</span><span className="ml-auto text-right"><span className="block font-bold">${option.sellingPrice.toFixed(2)}</span>{!option.isInStock && <span className="text-xs font-bold text-red-600">Out of stock</span>}</span></label>)}</div><button type="button" className="mt-5 w-full rounded-lg bg-slate-300 px-4 py-3 font-black text-white">BUY</button></div></aside>
+      <aside className="h-fit rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm"><p className="text-sm font-black">Preview payment form</p><div className="mt-4 rounded-lg border border-slate-200 bg-white p-4"><p className="text-sm font-bold text-slate-700">{productName}</p><div className="mt-4 grid gap-3">{options.filter((option) => option.isActive).map((option, index) => <label key={option.id || `preview-${index}`} className={`flex items-center gap-2 text-sm ${option.isInStock ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}><input type="radio" name="preview_option" disabled={!option.isInStock} checked={option.isInStock && selected === options.indexOf(option)} onChange={() => setSelected(options.indexOf(option))} /><span>{option.name || `${option.denomination} ${option.currency}`}</span><span className="ml-auto text-right"><span className="block font-bold">${Number(option.sellingPrice).toFixed(2)}</span>{!option.isInStock && <span className="text-xs font-bold text-red-600">Out of stock</span>}</span></label>)}</div><button type="button" className="mt-5 w-full rounded-lg bg-slate-300 px-4 py-3 font-black text-white">BUY</button></div></aside>
     </div>
   </>;
 }
