@@ -37,12 +37,12 @@ export async function POST(request: NextRequest) {
     const [productsResult, optionsResult] = await Promise.all([
       admin
         .from("products")
-        .select("id, minimum_quantity, maximum_quantity, is_bulk_order")
+        .select("id, minimum_quantity, maximum_quantity, is_bulk_order, stock_quantity, status")
         .in("id", productIds),
       optionIds.length
         ? admin
             .from("product_options")
-            .select("id, product_id, minimum_quantity, maximum_quantity")
+            .select("id, product_id, minimum_quantity, maximum_quantity, is_active, is_in_stock")
             .in("id", optionIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A cart product is no longer available." }, { status: 400 });
     }
 
-    const limits = normalizedItems.map((item) => {
+    const limits = await Promise.all(normalizedItems.map(async (item) => {
       const product = products.get(item.productId)!;
       const option = item.productOptionId ? options.get(item.productOptionId) : null;
       if (option && option.product_id !== product.id) {
@@ -75,13 +75,23 @@ export async function POST(request: NextRequest) {
           ? null
           : storedMaximum;
 
+      let availableQuantity: number | null = null;
+      if (product.status !== 'ACTIVE' || (option && (!option.is_active || option.is_in_stock === false))) availableQuantity = 0;
+      else if (product.stock_quantity !== UNLIMITED_STOCK_QUANTITY) {
+        let query = admin.from('gift_card_codes').select('id', { count: 'exact', head: true }).eq('product_id', product.id).eq('status', 'AVAILABLE');
+        if (option) query = query.eq('product_option_id', option.id);
+        const count = await query;
+        if (count.error) throw new Error('Unable to check current stock.');
+        availableQuantity = count.count ?? 0;
+      }
       return {
+        availableQuantity,
         productId: item.productId,
         productOptionId: item.productOptionId,
         minimumQuantity,
         maximumQuantity,
       };
-    });
+    }));
 
     return NextResponse.json({ limits }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

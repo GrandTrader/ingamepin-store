@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useRef, useState } from "react";
+import { validateCartStock } from "@/lib/cart-stock";
 import Link from "next/link";
 import styles from "./ProductPurchaseForm.module.css";
 import { useRouter } from "next/navigation";
@@ -112,6 +113,7 @@ export default function ProductPurchaseForm({
   customerFields = [],
 }: ProductPurchaseFormProps) {
   const router = useRouter();
+  const purchaseBusy = useRef(false);
   const {
     language,
     t,
@@ -491,7 +493,9 @@ export default function ProductPurchaseForm({
       : [createCartItem(0, false)];
   }
 
-  function completeAddToCart() {
+  async function completeAddToCart() {
+    if (purchaseBusy.current) return;
+    purchaseBusy.current = true;
     try {
       const newItems = createCartItems();
       const savedCart = localStorage.getItem("shoppingCart");
@@ -499,27 +503,31 @@ export default function ProductPurchaseForm({
         ? (JSON.parse(savedCart) as StoredCartItem[])
         : [];
 
+      await validateCartStock([...currentCart, ...newItems]);
       currentCart.push(...newItems);
       localStorage.setItem("shoppingCart", JSON.stringify(currentCart));
       window.dispatchEvent(new Event("cartUpdated"));
       setMessageType("success");
       setMessage(`${newItems.length} item${newItems.length === 1 ? "" : "s"} added to your cart.`);
-    } catch {
-      showError("Unable to add this product to your cart.");
-    }
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Unable to add this product to your cart.");
+    } finally { purchaseBusy.current = false; }
   }
 
-  function completeBuyNow() {
+  async function completeBuyNow() {
+    if (purchaseBusy.current) return;
+    purchaseBusy.current = true;
     try {
       const newItems = createCartItems();
+      await validateCartStock(newItems);
       localStorage.setItem(
         "buyNowItem",
         JSON.stringify(newItems.length === 1 ? newItems[0] : newItems),
       );
       router.push("/checkout");
-    } catch {
-      showError("Unable to continue to checkout.");
-    }
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Unable to continue to checkout.");
+    } finally { purchaseBusy.current = false; }
   }
 
   function addToCart() {

@@ -1,5 +1,6 @@
 "use client";
 
+import { validateCartStock } from "@/lib/cart-stock";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,6 +31,7 @@ type QuantityLimit = {
 
 export default function CartPage() {
   const router = useRouter();
+  const [stockError, setStockError] = useState("");
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -154,7 +156,7 @@ export default function CartPage() {
     window.dispatchEvent(new Event("cartUpdated"));
   }
 
-  function updateQuantity(cartId: string, requestedQuantity: number) {
+  async function updateQuantity(cartId: string, requestedQuantity: number) {
     const updatedCart = cartItems.map((item) => {
       if (item.cartId !== cartId) {
         return item;
@@ -176,7 +178,8 @@ export default function CartPage() {
       };
     });
 
-    saveCart(updatedCart);
+    try { await validateCartStock(updatedCart); setStockError(""); saveCart(updatedCart); }
+    catch (error) { setStockError(error instanceof Error ? error.message : "Unable to check stock."); }
   }
 
   function removeItem(cartId: string) {
@@ -215,11 +218,13 @@ export default function CartPage() {
   );
   const payableTotal = Math.max(0, subtotal - discountAmount);
 
-  function proceedToCheckout() {
+  async function proceedToCheckout() {
     if (cartItems.length === 0) {
       return;
     }
 
+    try { await validateCartStock(cartItems); setStockError(""); }
+    catch (error) { setStockError(error instanceof Error ? error.message : "Unable to check stock."); return; }
     localStorage.setItem(
       "checkoutCart",
       JSON.stringify(cartItems)
@@ -254,6 +259,7 @@ export default function CartPage() {
               ← Continue shopping
             </Link>
 
+            {stockError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">{stockError}</p>}
             <h1 className="mt-3 text-2xl font-black sm:mt-4 sm:text-4xl">
               Shopping Cart
             </h1>

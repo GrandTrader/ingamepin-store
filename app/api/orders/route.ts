@@ -7,6 +7,7 @@ import {
   sendWalletDebitEmails,
 } from "@/lib/email";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
+import { quantityForOption } from "@/lib/cart-stock";
 import { isUnlimitedStock } from "@/lib/product-stock";
 import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import {
@@ -229,11 +230,15 @@ export async function POST(request: NextRequest) {
     }
     const customerIp = (request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
     const submittedItems = body.items as Array<{ productOptionId?: string; quantity?: number; customValue?: number }>;
+    if (submittedItems.some(item => !Number.isSafeInteger(Number(item.quantity ?? 1)) || Number(item.quantity ?? 1) < 1)) {
+      return NextResponse.json({ error: "The cart quantity is invalid." }, { status: 400 });
+    }
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
     if (optionIds.length) {
       const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price, stock_quantity, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
+      if (optionsResult.error) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
       const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
-      const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods").in("id", productIds) : { data: [] };
+      const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods, stock_quantity").in("id", productIds) : { data: [] };
       const disallowedProduct = (productsResult.data ?? []).find(
         (product) =>
           !((product.allowed_payment_methods ?? ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA", "UPI"]) as string[])
@@ -246,6 +251,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const stockCounts = new Map<string, number>();
       for (const item of submittedItems) {
         const option = options.find((entry) => entry.id === item.productOptionId);
         const product = (productsResult.data ?? []).find((entry) => entry.id === option?.product_id);
@@ -267,16 +273,25 @@ export async function POST(request: NextRequest) {
         ) {
           return NextResponse.json({ error: `Allowed quantity for ${product.name}: ${minimum}-${maximum}.`, minimumQuantity: minimum, maximumQuantity: maximum }, { status: 400 });
         }
-        const availableQuantity = Number(option.stock_quantity ?? 0);
+        if (!product) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
+        if (!stockCounts.has(option.id)) {
+          if (isUnlimitedStock(product.stock_quantity)) stockCounts.set(option.id, 2147483647);
+          else {
+            const count = await admin.from('gift_card_codes').select('id', { count: 'exact', head: true }).eq('product_id', option.product_id).eq('product_option_id', option.id).eq('status', 'AVAILABLE');
+            if (count.error) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
+            stockCounts.set(option.id, count.count ?? 0);
+          }
+        }
+        const availableQuantity = stockCounts.get(option.id)!;
         if (
           !isUnlimitedStock(availableQuantity) &&
-          quantity > availableQuantity
+          quantityForOption(submittedItems.map(entry => ({ ...entry, quantity: Number(entry.quantity ?? 1) })), option.id) > availableQuantity
         ) {
           return NextResponse.json(
             {
               error: `Only ${availableQuantity} code${availableQuantity === 1 ? " is" : "s are"} available for this option. Reduce the quantity to continue.`,
               productOptionId: option.id,
-              requestedQuantity: quantity,
+              requestedQuantity: quantityForOption(submittedItems.map(entry => ({ ...entry, quantity: Number(entry.quantity ?? 1) })), option.id),
               availableQuantity,
             },
             { status: 409 },
