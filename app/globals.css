@@ -1076,3 +1076,25 @@ html[data-store-theme="light"] body button.mobile-menu-toggle span {
   color: #17243d !important;
   -webkit-text-fill-color: #17243d !important;
 }
+
+/* High-contrast prices and remaining-stock notices on every product option. */
+html[data-store-theme="light"] button.product-option-button:not(.product-option-unavailable) .product-option-price,
+html[data-store-theme="light"] button.product-option-button:not(.product-option-unavailable) .product-option-price * {
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8 !important;
+  font-weight: 700;
+}
+html[data-store-theme="light"] button.product-option-button[aria-pressed="true"]:not(.product-option-unavailable) .product-option-price,
+html[data-store-theme="light"] button.product-option-button[aria-pressed="true"]:not(.product-option-unavailable) .product-option-price * {
+  color: #123a65 !important;
+  -webkit-text-fill-color: #123a65 !important;
+}
+html[data-store-theme="light"] button.product-option-button .product-option-low-stock {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background-color: #fef2f2 !important;
+  color: #b91c1c !important;
+  -webkit-text-fill-color: #b91c1c !important;
+}

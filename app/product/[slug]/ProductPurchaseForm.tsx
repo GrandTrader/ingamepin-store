@@ -673,7 +673,7 @@ export default function ProductPurchaseForm({
                       {option.platform}
                     </span>
                   )}
-                  <span className="mt-0.5 block text-xs leading-4">
+                  <span className="product-option-price mt-0.5 block text-xs leading-4">
                     {product.customerDiscountPercent > 0 ? (
                       <><span className="font-black">{formatPrice(applyAffiliateMarkup(option.sellingPrice) * (1 - product.customerDiscountPercent / 100))}</span>{" "}<span className="text-[10px] line-through opacity-60">{formatPrice(applyAffiliateMarkup(option.sellingPrice))}</span></>
                     ) : formatPrice(applyAffiliateMarkup(option.sellingPrice))}
@@ -684,7 +684,7 @@ export default function ProductPurchaseForm({
                       option.stockQuantity > 0 &&
                       option.stockQuantity < 5)) && (
                     <span className={`mt-0.5 block text-[10px] font-bold ${
-                      isUnavailable ? "opacity-70" : "text-amber-400"
+                      isUnavailable ? "opacity-70" : "product-option-low-stock text-amber-400"
                     }`}>
                       {isUnavailable
                         ? t("outOfStock")
