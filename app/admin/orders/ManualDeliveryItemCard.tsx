@@ -1,19 +1,27 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
 import { completeManualOrder, sendManualOrderItem } from "./actions";
 
 export default function ManualDeliveryItemCard({ orderId, item }: { orderId: string; item: { id: string; product_name: string; option_name: string | null; quantity: number; delivered_count?: number; is_bulk_order?: boolean } }) {
   const [codes, setCodes] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [, sendCodes, isSending] = useActionState(async (_state: null, formData: FormData) => {
+  const router = useRouter();
+  const [result, sendCodes, isSending] = useActionState(async (_state: {error: string; success: string}, formData: FormData) => {
     try {
-      await sendManualOrderItem(formData);
+      const saved = await sendManualOrderItem(formData);
+      if (saved.success) {
+        setCodes("");
+        router.refresh();
+      }
+      return saved;
+    } catch {
+      return { error: "Could not confirm the upload result. Your entered codes are kept. You can retry the same codes safely; already saved codes will be skipped.", success: "" };
     } finally {
       setShowConfirmation(false);
     }
-    return null;
-  }, null);
+  }, { error: "", success: "" });
   const deliveredCount = Math.max(0, Number(item.delivered_count ?? 0));
   const remainingQuantity = Math.max(0, item.quantity - deliveredCount);
   const enteredCodes = codes.split(/\r?\n/).map((code) => code.trim()).filter(Boolean);
@@ -33,6 +41,8 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
     reader.readAsText(file);
   }
   return <article className="rounded-xl border border-blue-200 bg-white p-3">
+    {result.error && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{result.error}</p>}
+    {result.success && <p role="status" className="mb-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{result.success}</p>}
     <p className="line-clamp-2 font-black text-slate-800">{item.product_name}{item.option_name ? ` · ${item.option_name}` : ""}</p>
     <p className="mt-1 text-xs text-slate-500">
       {item.is_bulk_order

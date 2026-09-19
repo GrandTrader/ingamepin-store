@@ -98,6 +98,9 @@ function createTransporter(
     host: getRequiredEnvironmentVariable("SMTP_HOST"),
     port,
     secure: port === 465,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
     auth: {
       user,
       pass,
