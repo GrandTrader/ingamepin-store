@@ -2,7 +2,7 @@
 
 import { validateCartStock } from "@/lib/cart-stock";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type CartItem = {
@@ -27,6 +27,7 @@ type QuantityLimit = {
   productOptionId: string | null;
   minimumQuantity: number;
   maximumQuantity: number | null;
+  availableQuantity?: number | null;
 };
 
 export default function CartPage() {
@@ -34,6 +35,11 @@ export default function CartPage() {
   const [stockError, setStockError] = useState("");
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const cartRef = useRef<CartItem[]>([]);
+  const limitsRef = useRef(new Map<string, QuantityLimit>());
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const checkoutBusy = useRef(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [customerDiscounts, setCustomerDiscounts] = useState<Record<string, number>>({});
 
@@ -64,6 +70,7 @@ export default function CartPage() {
         ? parsedCart
         : [];
 
+      cartRef.current = safeCart;
       setCartItems(safeCart);
     } catch {
       setCartItems([]);
@@ -104,21 +111,17 @@ export default function CartPage() {
             limit,
           ]),
         );
-        setCartItems((currentItems) =>
-          currentItems.map((item) => {
-            const limit = limits.get(`${item.productId}:${item.productOptionId ?? ""}`);
-            if (!limit) return item;
-            const maximum = limit.maximumQuantity ?? Number.MAX_SAFE_INTEGER;
-            const quantity = Math.min(maximum, Math.max(limit.minimumQuantity, item.quantity));
-            return {
-              ...item,
-              minQuantity: limit.minimumQuantity,
-              maxQuantity: limit.maximumQuantity ?? undefined,
-              quantity,
-              totalPrice: item.unitPrice * quantity,
-            };
-          }),
-        );
+        limitsRef.current = limits;
+        const updated = cartRef.current.map((item) => {
+          const limit = limits.get(`${item.productId}:${item.productOptionId ?? ""}`);
+          if (!limit) return item;
+          const maximum = limit.maximumQuantity ?? Number.MAX_SAFE_INTEGER;
+          const quantity = Math.min(maximum, Math.max(limit.minimumQuantity, item.quantity));
+          return { ...item, minQuantity: limit.minimumQuantity,
+            maxQuantity: limit.maximumQuantity ?? undefined,
+            quantity, totalPrice: item.unitPrice * quantity };
+        });
+        saveCart(updated);
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
           // Server-side order validation remains authoritative if this refresh fails.
@@ -146,6 +149,7 @@ export default function CartPage() {
   }, []);
 
   function saveCart(updatedCart: CartItem[]) {
+    cartRef.current = updatedCart;
     setCartItems(updatedCart);
 
     localStorage.setItem(
@@ -156,8 +160,9 @@ export default function CartPage() {
     window.dispatchEvent(new Event("cartUpdated"));
   }
 
-  async function updateQuantity(cartId: string, requestedQuantity: number) {
-    const updatedCart = cartItems.map((item) => {
+  function updateQuantity(cartId: string, requestedQuantity: number) {
+    if (!Number.isSafeInteger(requestedQuantity)) return;
+    const updatedCart = cartRef.current.map((item) => {
       if (item.cartId !== cartId) {
         return item;
       }
@@ -178,12 +183,45 @@ export default function CartPage() {
       };
     });
 
-    try { await validateCartStock(updatedCart); setStockError(""); saveCart(updatedCart); }
-    catch (error) { setStockError(error instanceof Error ? error.message : "Unable to check stock."); }
+    const changed = updatedCart.find(item => item.cartId === cartId);
+    if (!changed) return;
+    const limit = limitsRef.current.get(`${changed.productId}:${changed.productOptionId ?? ""}`);
+    const total = updatedCart.filter(item => item.productOptionId === changed.productOptionId)
+      .reduce((sum, item) => sum + item.quantity, 0);
+    if (limit?.availableQuantity != null && total > limit.availableQuantity) {
+      setStockError(`Only ${limit.availableQuantity} code(s) are available for this denomination. Your selected total is ${total}.`);
+      return;
+    }
+    setStockError("");
+    saveCart(updatedCart);
   }
 
+  function finishQuantityEdit(cartId: string) {
+    const draft = quantityDrafts[cartId];
+    if (draft !== undefined && /^\d+$/.test(draft)) updateQuantity(cartId, Number(draft));
+    setQuantityDrafts(current => {
+      const next = { ...current }; delete next[cartId]; return next;
+    });
+  }
+
+  useEffect(() => {
+    if (!isLoaded || !cartItems.length) { setStockError(""); return; }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        await validateCartStock(cartItems, controller.signal);
+        if (!controller.signal.aborted && cartRef.current === cartItems) setStockError("");
+      } catch (error) {
+        if (!controller.signal.aborted && cartRef.current === cartItems) {
+          setStockError(error instanceof Error ? error.message : "Unable to check stock.");
+        }
+      }
+    }, 450);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [cartItems, isLoaded]);
+
   function removeItem(cartId: string) {
-    const updatedCart = cartItems.filter(
+    const updatedCart = cartRef.current.filter(
       (item) => item.cartId !== cartId
     );
 
@@ -219,20 +257,24 @@ export default function CartPage() {
   const payableTotal = Math.max(0, subtotal - discountAmount);
 
   async function proceedToCheckout() {
-    if (cartItems.length === 0) {
-      return;
+    const snapshot = cartRef.current;
+    if (!snapshot.length || checkoutBusy.current) return;
+    checkoutBusy.current = true;
+    setIsCheckingOut(true);
+    try {
+      await validateCartStock(snapshot);
+      // Never check out an older cart after the customer changes its quantities.
+      if (cartRef.current !== snapshot) return;
+      setStockError("");
+      localStorage.setItem("checkoutCart", JSON.stringify(snapshot));
+      localStorage.removeItem("buyNowItem");
+      router.push("/checkout");
+    } catch (error) {
+      if (cartRef.current === snapshot) setStockError(error instanceof Error ? error.message : "Unable to check stock.");
+    } finally {
+      checkoutBusy.current = false;
+      setIsCheckingOut(false);
     }
-
-    try { await validateCartStock(cartItems); setStockError(""); }
-    catch (error) { setStockError(error instanceof Error ? error.message : "Unable to check stock."); return; }
-    localStorage.setItem(
-      "checkoutCart",
-      JSON.stringify(cartItems)
-    );
-
-    localStorage.removeItem("buyNowItem");
-
-    router.push("/checkout");
   }
 
   if (!isLoaded) {
@@ -370,7 +412,7 @@ export default function CartPage() {
                               onClick={() =>
                                 updateQuantity(
                                   item.cartId,
-                                  item.quantity - 1,
+                                  (cartRef.current.find(row => row.cartId === item.cartId)?.quantity ?? item.quantity) - 1,
                                 )
                               }
                               disabled={
@@ -383,7 +425,7 @@ export default function CartPage() {
                             </button>
 
                             <input
-                              type="number"
+                              type="text"
                               inputMode="numeric"
                               min={item.minQuantity ?? 1}
                               max={
@@ -392,13 +434,17 @@ export default function CartPage() {
                                   : item.maxQuantity
                               }
                               step={1}
-                              value={item.quantity}
+                              value={quantityDrafts[item.cartId] ?? String(item.quantity)}
                               onFocus={(event) => event.currentTarget.select()}
                               onChange={(event) => {
-                                const requested = event.currentTarget.valueAsNumber;
-                                if (Number.isSafeInteger(requested)) {
-                                  updateQuantity(item.cartId, requested);
-                                }
+                                const value = event.currentTarget.value;
+                                if (!/^\d*$/.test(value)) return;
+                                setQuantityDrafts(current => ({ ...current, [item.cartId]: value }));
+                                if (value && Number(value) >= (item.minQuantity ?? 1)) updateQuantity(item.cartId, Number(value));
+                              }}
+                              onBlur={() => finishQuantityEdit(item.cartId)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") event.currentTarget.blur();
                               }}
                               aria-label={`Enter quantity for ${item.productName}`}
                               className="h-10 w-20 rounded-lg border border-white/15 bg-slate-950 px-2 text-center font-black outline-none focus:border-cyan-400"
@@ -409,7 +455,7 @@ export default function CartPage() {
                               onClick={() =>
                                 updateQuantity(
                                   item.cartId,
-                                  item.quantity + 1,
+                                  (cartRef.current.find(row => row.cartId === item.cartId)?.quantity ?? item.quantity) + 1,
                                 )
                               }
                               disabled={
@@ -505,9 +551,10 @@ export default function CartPage() {
               <button
                 type="button"
                 onClick={proceedToCheckout}
+                disabled={isCheckingOut}
                 className="mt-6 w-full rounded-xl bg-cyan-400 px-6 py-4 font-black text-slate-950 transition hover:bg-cyan-300"
               >
-                Proceed to Checkout
+                {isCheckingOut ? "Checking stock..." : "Proceed to Checkout"}
               </button>
 
               <Link
