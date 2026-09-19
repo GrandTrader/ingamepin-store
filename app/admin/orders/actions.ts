@@ -295,75 +295,17 @@ export async function sendManualOrderItem(formData: FormData) {
   const itemResult = await admin.from("order_items").select("id, order_id, product_id, product_option_id, product_name, option_name, denomination, quantity, fulfillment_mode, products!inner(delivery_type, is_bulk_order)").eq("id", itemId).eq("order_id", orderId).eq("products.delivery_type", "MANUAL").maybeSingle();
   const item = itemResult.data; if (!item || item.fulfillment_mode === "PLAYER_ID_TOPUP") ordersRedirect("error", "This denomination cannot be sent as codes.", orderId);
   if (codes.length < 1) ordersRedirect("error", "Enter at least one delivery code.", orderId);
-  const productRelation = item.products as unknown as
-    | { is_bulk_order?: boolean }
-    | Array<{ is_bulk_order?: boolean }>;
-  const isBulkOrder = Array.isArray(productRelation)
-    ? Boolean(productRelation[0]?.is_bulk_order)
-    : Boolean(productRelation?.is_bulk_order);
-  const existing = await admin
-    .from("gift_card_codes")
-    .select("id, code, product_id, product_option_id, order_item_id, status")
-    .in("code", codes);
-  if (existing.error) ordersRedirect("error", existing.error.message, orderId);
-  for (const code of codes) {
-    const row = (existing.data ?? []).find((entry) => entry.code === code);
-    const alreadyDeliveredToThisItem =
-      row?.status === "SOLD" && row.order_item_id === item.id;
-    if (
-      row &&
-      !alreadyDeliveredToThisItem &&
-      (row.status !== "AVAILABLE" ||
-        row.product_id !== item.product_id ||
-        (item.product_option_id && row.product_option_id !== item.product_option_id))
-    ) {
-      ordersRedirect(
-        "error",
-        `Code ${code} is unavailable or belongs to another denomination.`,
-        orderId,
-      );
-    }
-  }
-  const codesToDeliver = codes.filter((code) => {
-    const row = (existing.data ?? []).find((entry) => entry.code === code);
-    return !(row?.status === "SOLD" && row.order_item_id === item.id);
+  const delivery = await admin.rpc("deliver_manual_codes_batch", {
+    p_order_id: orderId,
+    p_item_id: itemId,
+    p_admin_user_id: administrator.id,
+    p_codes: codes,
   });
-  const skippedCodeCount = codes.length - codesToDeliver.length;
-  const deliveredResult = await admin
-    .from("gift_card_codes")
-    .select("id", { count: "exact", head: true })
-    .eq("order_item_id", item.id)
-    .eq("status", "SOLD");
-  if (deliveredResult.error) ordersRedirect("error", deliveredResult.error.message, orderId);
-  const deliveredCount = deliveredResult.count ?? 0;
-  const refundResult = await admin.from("order_item_refunds").select("quantity").eq("order_item_id", item.id).neq("status", "CANCELLED");
-  if (refundResult.error) ordersRedirect("error", refundResult.error.message, orderId);
-  const refundedQuantity = (refundResult.data ?? []).reduce((sum, row) => sum + row.quantity, 0);
-  const remainingQuantity = item.quantity - deliveredCount - refundedQuantity;
-  if (remainingQuantity <= 0) {
-    ordersRedirect("error", `${item.product_name} already has all ${item.quantity} ordered code(s).`, orderId);
-  }
-  if (codesToDeliver.length > remainingQuantity) {
-    ordersRedirect(
-      "error",
-      `Only ${remainingQuantity} code(s) remain for ${item.product_name}. You cannot deliver more than the ordered quantity of ${item.quantity}.`,
-      orderId,
-    );
-  }
-  if (!isBulkOrder && codesToDeliver.length !== remainingQuantity) {
-    ordersRedirect("error", `${item.product_name} requires exactly ${remainingQuantity} remaining code(s).`, orderId);
-  }
-  if (codesToDeliver.length < 1) {
-    ordersRedirect(
-      "success",
-      `All ${skippedCodeCount} code(s) were already delivered to this order. Nothing was sent twice.`,
-      orderId,
-    );
-  }
-  for (const code of codesToDeliver) {
-    const row = (existing.data ?? []).find((entry) => entry.code === code);
-    const result = row ? await admin.from("gift_card_codes").update({ status: "SOLD", order_item_id: item.id, reserved_at: new Date().toISOString(), sold_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", row.id) : await admin.from("gift_card_codes").insert({ product_id: item.product_id, product_option_id: item.product_option_id, order_item_id: item.id, denomination: item.denomination, code, status: "SOLD", reserved_at: new Date().toISOString(), sold_at: new Date().toISOString(), created_by: administrator.id });
-    if (result.error) ordersRedirect("error", result.error.message, orderId);
+  if (delivery.error) ordersRedirect("error", delivery.error.message, orderId);
+  const codesToDeliver = (delivery.data?.codes ?? []) as string[];
+  const skippedCodeCount = Number(delivery.data?.skipped ?? 0);
+  if (codesToDeliver.length === 0) {
+    ordersRedirect("success", `All ${skippedCodeCount} code(s) were already delivered to this order. Nothing was sent twice.`, orderId);
   }
   const orderResult = await admin.from("orders").select("order_number, customer_name, customer_email, total, currency, status").eq("id", orderId).single();
   if (orderResult.data) await sendOrderStatusEmails({ orderId, event: "PRODUCT_SENT", orderNumber: orderResult.data.order_number, customerName: orderResult.data.customer_name ?? "Customer", customerEmail: orderResult.data.customer_email, total: Number(orderResult.data.total), currency: orderResult.data.currency, orderStatus: orderResult.data.status, deliveredItems: [{ productName: item.product_name, optionName: item.option_name, codes: codesToDeliver }] });

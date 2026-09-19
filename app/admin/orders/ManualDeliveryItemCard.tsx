@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { completeManualOrder, sendManualOrderItem } from "./actions";
 
 export default function ManualDeliveryItemCard({ orderId, item }: { orderId: string; item: { id: string; product_name: string; option_name: string | null; quantity: number; delivered_count?: number; is_bulk_order?: boolean } }) {
   const [codes, setCodes] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [, sendCodes, isSending] = useActionState(async (_state: null, formData: FormData) => {
+    try {
+      await sendManualOrderItem(formData);
+    } finally {
+      setShowConfirmation(false);
+    }
+    return null;
+  }, null);
   const deliveredCount = Math.max(0, Number(item.delivered_count ?? 0));
   const remainingQuantity = Math.max(0, item.quantity - deliveredCount);
   const enteredCodes = codes.split(/\r?\n/).map((code) => code.trim()).filter(Boolean);
@@ -33,8 +41,12 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
     </p>
     <form
       id={`send-${item.id}`}
-      action={sendManualOrderItem}
+      action={sendCodes}
       onSubmit={(event) => {
+        if (isSending) {
+          event.preventDefault();
+          return;
+        }
         if (!showConfirmation) {
           event.preventDefault();
           setShowConfirmation(true);
@@ -43,13 +55,13 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
       className="mt-3 grid gap-2"
     >
       <input type="hidden" name="order_id" value={orderId} /><input type="hidden" name="item_id" value={item.id} />
-      <label className="text-xs font-bold text-slate-600">CSV file<input type="file" accept=".csv,.txt" onChange={(event) => loadCsv(event.target.files?.[0])} className="mt-1 block w-full rounded-lg border border-blue-200 bg-blue-50 text-xs text-slate-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-bold file:text-white hover:file:bg-blue-500" /></label>
-      <textarea name="codes" value={codes} onChange={(event) => { setCodes(event.target.value); setShowConfirmation(false); }} rows={4} required placeholder="One code per line" className="w-full resize-y rounded-lg border border-blue-200 px-3 py-2 font-mono text-sm outline-none focus:border-blue-500" />
+      <label className="text-xs font-bold text-slate-600">CSV file<input type="file" disabled={isSending} accept=".csv,.txt" onChange={(event) => loadCsv(event.target.files?.[0])} className="mt-1 block w-full rounded-lg border border-blue-200 bg-blue-50 text-xs text-slate-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-bold file:text-white hover:file:bg-blue-500" /></label>
+      <textarea readOnly={isSending} name="codes" value={codes} onChange={(event) => { setCodes(event.target.value); setShowConfirmation(false); }} rows={4} required placeholder="One code per line" className="w-full resize-y rounded-lg border border-blue-200 px-3 py-2 font-mono text-sm outline-none focus:border-blue-500" />
     </form>
     <p className={`mt-2 text-xs font-bold ${enteredCodeCount > remainingQuantity ? "text-red-600" : "text-slate-500"}`}>
       Entered: {enteredCodeCount} / Remaining: {remainingQuantity}
     </p>
-    <button form={`send-${item.id}`} disabled={invalidCodeCount} className="mt-2 w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300">Review codes before sending</button>
+    <button type="button" onClick={() => setShowConfirmation(true)} disabled={invalidCodeCount || isSending} className="mt-2 w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300">Review codes before sending</button>
     <div className="my-3 flex items-center gap-3 text-[11px] font-black uppercase tracking-wider text-slate-400">
       <span className="h-px flex-1 bg-slate-200" />or<span className="h-px flex-1 bg-slate-200" />
     </div>
@@ -83,8 +95,8 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
             ))}
           </ol>
           <div className="grid grid-cols-2 gap-3 border-t border-slate-200 bg-slate-50 p-4">
-            <button type="button" onClick={() => setShowConfirmation(false)} className="rounded-xl border border-slate-300 px-4 py-3 font-black text-slate-700">Back and edit</button>
-            <button form={`send-${item.id}`} type="submit" className="rounded-xl bg-emerald-600 px-4 py-3 font-black text-white hover:bg-emerald-500">Confirm and send</button>
+            <button type="button" disabled={isSending} onClick={() => setShowConfirmation(false)} className="rounded-xl border border-slate-300 px-4 py-3 font-black text-slate-700">Back and edit</button>
+            <button form={`send-${item.id}`} type="submit" disabled={isSending || invalidCodeCount} className="rounded-xl bg-emerald-600 px-4 py-3 font-black text-white hover:bg-emerald-500">{isSending ? "Saving codes... Please wait" : "Confirm and send"}</button>
           </div>
         </div>
       </div>
