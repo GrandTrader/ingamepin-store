@@ -122,7 +122,7 @@ export default function FullProductImportForm({ categories }: { categories: Impo
             <table className="w-full text-left text-sm">
               <caption className="mb-2 text-left font-bold">{product.options.length} denominations · Selling prices in USD</caption>
               <thead className="bg-slate-100"><tr>{["Name", "Card value", "Price (USD)", "Stock quantity", "In stock"].map(label => <th key={label} className="p-3">{label}</th>)}</tr></thead>
-              <tbody>{product.options.map(option => <tr key={option.currency + option.denomination} className="border-b">
+              <tbody>{product.options.map(option => <tr key={option.name} className="border-b">
                 <td className="p-3">{option.name}</td><td className="p-3">{option.denomination} {option.currency}</td>
                 <td className="p-3">${option.price.toFixed(2)}</td>
                 <td className="p-3">{option.stockQuantity === UNLIMITED_STOCK_QUANTITY ? "Unlimited" : option.stockQuantity}</td>

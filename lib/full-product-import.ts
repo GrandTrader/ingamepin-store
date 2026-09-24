@@ -148,7 +148,6 @@ export function parseFullProductCsv(input: string): FullProductImport {
       isInStock: booleanValue(record.is_in_stock ?? "", true, `${label} in-stock flag`) };
   });
   if (new Set(options.map(o => o.name.toLowerCase())).size !== options.length) throw new Error("Denomination names must be unique.");
-  if (new Set(options.map(o => `${o.currency}:${o.denomination}`)).size !== options.length) throw new Error("Each denomination and currency can appear only once.");
   const finiteStock = options.filter(o => o.stockQuantity !== UNLIMITED_STOCK_QUANTITY).reduce((sum, o) => sum + o.stockQuantity, 0);
   if (finiteStock > UNLIMITED_STOCK_QUANTITY) throw new Error("Combined stock quantity is too large.");
   return { titleEn, titleRu, descriptionEn, descriptionRu, categorySlug, region, deliveryType, isBulkOrder, bulkDeliveryInstructions, slug, options };

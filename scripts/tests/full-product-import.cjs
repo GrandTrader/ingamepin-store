@@ -136,3 +136,19 @@ test("duplicate slugs never overwrite existing products or insert more options",
   assert.equal(f.writes[0].operation,"insert");
 });
 
+
+test("different subscription plans may share a duration without merging their prices",async()=>{
+ const input=csv([
+  {denomination_name:"Essential 1 Month US",denomination:"1",price:"9.24"},
+  {denomination_name:"Ultimate 1 Month US",denomination:"1",price:"20.70"},
+  {denomination_name:"Essential 3 Months US",denomination:"3",price:"23.13"},
+  {denomination_name:"Ultimate 3 Months US",denomination:"3",price:"62.12"}
+ ]);
+ const p=parse(input);
+ assert.equal(p.options.length,4);
+ assert.deepEqual(p.options.map(o=>o.price),[9.24,20.70,23.13,62.12]);
+ const f=actionFixture();assert.equal((await f.run(input,"")).productId,"new-draft");
+ assert.deepEqual(f.writes[1].values.map(o=>o.option_name),p.options.map(o=>o.name));
+ assert.deepEqual(f.writes[1].values.map(o=>o.selling_price),[9.24,20.70,23.13,62.12]);
+ assert.throws(()=>parse(csv([{denomination_name:"Same name"},{denomination_name:"same name"}])),/unique/);
+});

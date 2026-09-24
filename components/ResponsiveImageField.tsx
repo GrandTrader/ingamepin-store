@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   label: string;
@@ -10,6 +10,7 @@ type Props = {
   variant: "product" | "slide";
   required?: boolean;
   helpText?: string;
+  categoryImage?: { name: string; url: string | null };
 };
 
 export default function ResponsiveImageField({
@@ -19,10 +20,12 @@ export default function ResponsiveImageField({
   defaultValue = "",
   variant,
   required = false,
+  categoryImage,
   helpText = "Upload an image or paste its URL. Uploaded images must be smaller than 10 MB.",
 }: Props) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [filePreview, setFilePreview] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
   const preview = filePreview || url;
   const isProduct = variant === "product";
 
@@ -33,8 +36,16 @@ export default function ResponsiveImageField({
   }, [filePreview]);
 
   function selectFile(file: File | undefined) {
-    if (filePreview) URL.revokeObjectURL(filePreview);
-    setFilePreview(file ? URL.createObjectURL(file) : "");
+    if (!file) return;
+    setUrl("");
+    setFilePreview(URL.createObjectURL(file));
+  }
+
+  function selectUrl(value: string) {
+    // A previous file must not override the URL when the form is submitted.
+    if (fileInput.current) fileInput.current.value = "";
+    setFilePreview("");
+    setUrl(value);
   }
 
   return (
@@ -51,6 +62,27 @@ export default function ResponsiveImageField({
         </span>
       </div>
 
+      {categoryImage && (
+        <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          {categoryImage.url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={categoryImage.url} alt={categoryImage.name + " category"} className="h-16 w-16 rounded-lg border border-slate-200 bg-white object-contain" />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold">Category image · {categoryImage.name}</p>
+            <p className="mt-1 text-xs text-slate-600">
+              {categoryImage.url ? "Use this image for the product, or upload your own below. Click Save Gallery to apply." : "This category has no image. Add one in Categories, or upload a product image below."}
+            </p>
+          </div>
+          <button type="button" disabled={!categoryImage.url}
+            aria-pressed={Boolean(categoryImage.url && !filePreview && url === categoryImage.url)}
+            onClick={() => { if (categoryImage.url) selectUrl(categoryImage.url); }}
+            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+            Use category image
+          </button>
+        </div>
+      )}
+
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
         <div className="grid gap-4">
           <label className="cursor-pointer rounded-xl border-2 border-dashed border-blue-300 bg-white p-5 text-center transition hover:border-blue-500 hover:bg-blue-50">
@@ -58,6 +90,7 @@ export default function ResponsiveImageField({
             <span className="mt-2 block font-black text-blue-600">Upload Image</span>
             <span className="mt-1 block text-xs text-slate-500">JPG, PNG, WebP or GIF</span>
             <input
+              ref={fileInput}
               type="file"
               name={fileName}
               accept="image/jpeg,image/png,image/webp,image/gif"
@@ -74,8 +107,7 @@ export default function ResponsiveImageField({
               value={url}
               required={required && !filePreview}
               onChange={(event) => {
-                setUrl(event.target.value);
-                setFilePreview("");
+                selectUrl(event.target.value);
               }}
               placeholder="https://example.com/image.jpg"
               className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
