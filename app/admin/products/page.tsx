@@ -342,6 +342,7 @@ export default async function AdminProductsPage({
           <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-bold">
+                <Link href="/admin/products/import" className="text-blue-600 transition hover:text-blue-800">Import full product</Link>
                 <form action={createDraftProduct}>
                   <button className="text-blue-600 transition hover:text-blue-800">
                     + Add new product
