@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/admin-session";
 import { isUnlimitedStock, UNLIMITED_STOCK_QUANTITY } from "@/lib/product-stock";
 
-type SubmittedOption = { id: string; name: string; denomination: number; currency: string; sellingPrice: number; isActive: boolean; isInStock: boolean };
+import { parseProductOptions, type SubmittedProductOption } from "@/lib/product-option-input";
 
 export async function saveProductOptions(formData: FormData) {
   const productId = String(formData.get("id") ?? "").trim();
@@ -19,11 +19,11 @@ export async function saveProductOptions(formData: FormData) {
   const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
   if (!access.data) redirect("/admin/login?error=Access denied");
 
-  let options: SubmittedOption[];
-  try { options = JSON.parse(String(formData.get("options") ?? "[]")) as SubmittedOption[]; }
-  catch { redirect(`${path}?error=${encodeURIComponent("Product options are invalid.")}`); }
-  if (!Array.isArray(options) || options.length === 0 || options.length > 50) redirect(`${path}?error=${encodeURIComponent("Keep at least one product option.")}`);
-  if (options.some((option) => !option.name.trim() || !Number.isInteger(option.denomination) || option.denomination <= 0 || !/^[A-Z]{3}$/.test(option.currency) || !Number.isFinite(option.sellingPrice) || option.sellingPrice < 0)) redirect(`${path}?error=${encodeURIComponent("Complete every option with a valid denomination and selling price.")}`);
+  let options: SubmittedProductOption[];
+  try { options = parseProductOptions(String(formData.get("options") ?? "[]")); }
+  catch (error) {
+    redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Product options are invalid.")}`);
+  }
 
   const admin = createAdminClient();
   const product = await admin.from("products").select("category_id, stock_quantity").eq("id", productId).maybeSingle();
