@@ -1,3 +1,5 @@
+import CatalogueSelection from "./CatalogueSelection";
+import { parseSupplierSelection } from "@/lib/definiteplay-import";
 import Link from "next/link";
 import AdminSidebar from "../AdminSidebar";
 import {requireDefinitePlayAdmin} from "@/lib/definiteplay-admin";
@@ -7,7 +9,7 @@ import RefreshButton from "./RefreshButton";
 import CategoryFilter from "./CategoryFilter";
 
 export const dynamic="force-dynamic";
-export default async function DefinitePlayPage({searchParams}:{searchParams:Promise<{q?:string;page?:string;category?:string;region?:string;variant?:string}>}) {
+export default async function DefinitePlayPage({searchParams}:{searchParams:Promise<{q?:string;page?:string;category?:string;region?:string;variant?:string;selected?:string|string[]}>}) {
   await requireDefinitePlayAdmin();
   const params=await searchParams;
   const q=(typeof params.q==="string"?params.q:"").slice(0,200);
@@ -23,7 +25,11 @@ export default async function DefinitePlayPage({searchParams}:{searchParams:Prom
     try{balances=readSupplierBalances(status.balances);}
     catch{error="Supplier balance details could not be read.";}
   }
-  const href=(p:number)=>"/admin/definiteplay?"+new URLSearchParams({q,category,region,variant,page:String(p)});
+  let selected: string[] = [];
+  if (params.selected !== undefined) {
+    try { selected = parseSupplierSelection(params.selected); }
+    catch { error = "The previous selection is invalid. Select products again from the catalogue."; }
+  }
   return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
     <AdminSidebar/><main className="min-w-0 flex-1 p-5 sm:p-8">
       <header className="flex flex-wrap items-start justify-between gap-4"><div>
@@ -66,21 +72,8 @@ export default async function DefinitePlayPage({searchParams}:{searchParams:Prom
           <p className="text-xs text-slate-500">Categories follow the supplier’s brands and product groups.</p>
         </div>
       </form>
-      {data&&<><div className="my-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500">{data.total.toLocaleString()} matching products</p>
-        {data.total>0&&<Link href={"/admin/definiteplay/import?"+new URLSearchParams({q,category,region,variant})} className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700">Import filtered items into one product</Link>}
-      </div>
-      <div className="overflow-x-auto rounded-xl border"><table className="w-full text-left text-sm">
-        <thead className="bg-slate-50"><tr>{["Product","Region / value","Supplier cost","Availability","Delivery","Import"].map(t=><th key={t} className="p-3">{t}</th>)}</tr></thead>
-        <tbody>{data.items.map(item=><tr key={item.sku} className="border-t">
-          <td className="p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-slate-500">Code: {item.sku}</p></td>
-          <td className="p-3">{item.region}<br/>{item.cardValue} {item.cardCurrency}</td>
-          <td className="whitespace-nowrap p-3">{item.currency} {item.price}</td>
-          <td className="p-3">{item.stock===null?"Available (quantity unspecified)":item.stock.toLocaleString()}</td>
-          <td className="p-3">{item.asyncOnly?"Processing required":"Standard processing"}<br/>{item.deliveryMethod}</td>
-          <td className="p-3"><Link className="whitespace-nowrap font-bold text-blue-600" href={"/admin/definiteplay/import?"+new URLSearchParams({sku:item.sku,q,category,region,variant})}>Import product</Link></td>
-        </tr>)}</tbody></table>{data.items.length===0&&<p className="p-6 text-slate-500">No products found.</p>}</div>
-        <nav className="mt-5 flex items-center justify-between">{page>1?<Link className="text-blue-600" href={href(page-1)}>← Previous</Link>:<span/>}<span>Page {page}</span>{page*30<data.total?<Link className="text-blue-600" href={href(page+1)}>Next →</Link>:<span/>}</nav>
-      </>}
+      {data && <CatalogueSelection key={JSON.stringify([q,category,region,variant,page,selected])}
+        items={data.items} total={data.total} page={page} filters={{q,category,region,variant}} initialSelection={selected} />}
       <Link className="mt-6 inline-block font-semibold text-blue-600" href="/admin/products">Open website products →</Link>
     </main></div></div>;
 }

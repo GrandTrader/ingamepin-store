@@ -61,3 +61,14 @@ export function prepareSupplierDraft(input:SupplierImportInput,items:DefinitePla
   if(region.length>100)throw new Error("Supplier region is too long.");
   return {title,titleRu,description,descriptionRu,region,options};
 }
+
+// Explicit catalogue selections must never fall back to a broader filter.
+export function parseSupplierSelection(value: unknown): string[] {
+  if (typeof value !== "string" || value.length > 5049) throw new Error("Select between 1 and 50 supplier items.");
+  const skus = value.split(",");
+  if (!skus.length || skus.length > 50 || new Set(skus).size !== skus.length ||
+      skus.some(sku => !/^[A-Za-z0-9._-]{1,100}$/.test(sku))) {
+    throw new Error("Select between 1 and 50 unique supplier items from the catalogue.");
+  }
+  return skus;
+}

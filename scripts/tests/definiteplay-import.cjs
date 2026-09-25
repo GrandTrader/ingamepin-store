@@ -6,7 +6,7 @@ const ts=require("typescript");
 function load(file,deps={}) {
   const exports={};
   const code=ts.transpileModule(fs.readFileSync(file,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
-  vm.runInNewContext(code,{exports,URLSearchParams,require:n=>{if(n in deps)return deps[n];throw Error("Unmocked "+n);}});
+  vm.runInNewContext(code,{exports,Error,URLSearchParams,require:n=>{if(n in deps)return deps[n];throw Error("Unmocked "+n);}});
   return exports;
 }
 const logic=load("lib/definiteplay-import.ts");
@@ -102,7 +102,12 @@ test("partial failures preserve a draft and return a review warning",async()=>{
 test("import preview shows actual supplier cost and separate denomination without writes",()=>{
   const React=require("react");
   const {renderToStaticMarkup}=require("react-dom/server");
+  const warning=load("components/PaypalychProductWarning.tsx",{
+    "react/jsx-runtime":require("react/jsx-runtime"),
+    "@/lib/paypalych-product-policy":load("lib/paypalych-product-policy.ts"),
+  }).default;
   const form=load("app/admin/definiteplay/import/SupplierImportForm.tsx",{
+    "@/components/PaypalychProductWarning":warning,
     "react":React,"react/jsx-runtime":require("react/jsx-runtime"),
     "next/link":()=>null,
     "@/lib/definiteplay-import":logic,
@@ -164,8 +169,8 @@ test("concurrent category creation resolves the existing unique slug",async()=>{
   assert.equal(result.category.name,"PSN");
 });
 
-function importPageHarness({total=2,stale=false,selectedItem=item}={}) {
-  const React=require("react");const calls=[];let renderedItems;
+function importPageHarness({total=2,stale=false,selectedItem=item,selectionItems}={}) {
+  const React=require("react");const calls=[];const selectionCalls=[];let renderedItems;
   const categories={select(){return this;},eq(){return this;},async order(){return {data:[{id:categoryId,name:"PSN"}]};}};
   const page=load("app/admin/definiteplay/import/page.tsx",{
     "react/jsx-runtime":require("react/jsx-runtime"),
@@ -174,13 +179,13 @@ function importPageHarness({total=2,stale=false,selectedItem=item}={}) {
     "../../AdminSidebar":()=>null,
     "@/lib/definiteplay-admin":{requireDefinitePlayAdmin:async()=>({from:()=>categories})},
     "@/lib/definiteplay-relay":{
-      getDefinitePlayItems:async()=>({items:[selectedItem],total:1,stale}),
+      getDefinitePlayItems:async(skus)=>{selectionCalls.push(skus);const items=selectionItems??[selectedItem];return {items,total:items.length,stale};},
       getDefinitePlayCatalogue:async(...args)=>{calls.push(args);return {items:[{...item,sku:"PSN20US",cardValue:"20",name:"PSN 20 USD"},item],total,stale:false};},
     },
     "@/lib/definiteplay-import":logic,
     "./SupplierImportForm":({items})=>{renderedItems=items;return React.createElement("p",null,"Import preview");},
   }).default;
-  return {page,calls,items:()=>renderedItems};
+  return {page,calls,selectionCalls,items:()=>renderedItems};
 }
 test("clicking one denomination loads the authoritative category and region, ignoring narrow search",async()=>{
   const {renderToStaticMarkup}=require("react-dom/server");
@@ -219,4 +224,37 @@ test("discount item expands only within its own version",async()=>{
   const h=importPageHarness({selectedItem:{...item,name:"PSN 10 USD - 2% Discount"}});
   renderToStaticMarkup(await h.page({searchParams:Promise.resolve({sku:item.sku,variant:"regular"})}));
   assert.equal(h.calls[0][3].variant,"discounted");
+});
+
+
+test("explicit selected items never expand to all denominations, even with conflicting SKU or filters",async()=>{
+  const {renderToStaticMarkup}=require("react-dom/server");
+  const selected=[item,{...item,sku:"PSN50US",cardValue:"50"}];
+  const h=importPageHarness({selectionItems:selected});
+  renderToStaticMarkup(await h.page({searchParams:Promise.resolve({skus:"PSN10US,PSN50US",sku:"OTHER",category:"Wrong",q:"all"})}));
+  assert.equal(h.calls.length,0);assert.deepEqual(Array.from(h.selectionCalls[0]),["PSN10US","PSN50US"]);
+  assert.deepEqual(h.items().map(i=>i.sku),["PSN10US","PSN50US"]);
+});
+
+test("missing selected items and invalid selections never silently import a partial or broader set",async()=>{
+  const {renderToStaticMarkup}=require("react-dom/server");
+  for(const skus of ["",["PSN10US","PSN50US"],"PSN10US,PSN10US","PSN10US,missing",Array.from({length:51},(_,i)=>"SKU"+i).join(",")]){
+    const h=importPageHarness();
+    const html=renderToStaticMarkup(await h.page({searchParams:Promise.resolve({skus})}));
+    assert.equal(h.items(),undefined);assert.equal(h.calls.length,0);
+    assert.match(html,/Select between|no longer in the supplier catalogue/);
+  }
+});
+
+test("selected items still respect region, version and stale-data restrictions",async()=>{
+  const {renderToStaticMarkup}=require("react-dom/server");
+  for(const config of [
+    {selectionItems:[item,{...item,sku:"OTHER",region:"UK"}]},
+    {selectionItems:[item,{...item,sku:"OTHER",name:"PSN 10 USD - 2% Discount"}]},
+    {selectionItems:[item,{...item,sku:"OTHER"}],stale:true},
+  ]){
+    const h=importPageHarness(config);const html=renderToStaticMarkup(await h.page({searchParams:Promise.resolve({skus:"PSN10US,OTHER"})}));
+    assert.equal(h.items(),undefined);assert.equal(h.calls.length,0);assert.match(html,/role="alert"/);
+    assert.ok(!html.includes("Import regular denominations"),"must not offer to broaden an explicit selection");
+  }
 });
