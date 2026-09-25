@@ -9,6 +9,7 @@ import {
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
 import { quantityForOption } from "@/lib/cart-stock";
 import { isUnlimitedStock } from "@/lib/product-stock";
+import { supplierProductIds, supplierAvailableQuantity } from "@/lib/definiteplay-fulfillment";
 import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import {
   calculateGatewayCommission,
@@ -251,6 +252,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const supplierProducts = await supplierProductIds(productIds);
       const stockCounts = new Map<string, number>();
       for (const item of submittedItems) {
         const option = options.find((entry) => entry.id === item.productOptionId);
@@ -275,7 +277,9 @@ export async function POST(request: NextRequest) {
         }
         if (!product) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
         if (!stockCounts.has(option.id)) {
-          if (isUnlimitedStock(product.stock_quantity)) stockCounts.set(option.id, 2147483647);
+          if (supplierProducts.has(product.id)) {
+            stockCounts.set(option.id, await supplierAvailableQuantity(option.id));
+          } else if (isUnlimitedStock(product.stock_quantity)) stockCounts.set(option.id, 2147483647);
           else {
             const count = await admin.from('gift_card_codes').select('id', { count: 'exact', head: true }).eq('product_id', option.product_id).eq('product_option_id', option.id).eq('status', 'AVAILABLE');
             if (count.error) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });

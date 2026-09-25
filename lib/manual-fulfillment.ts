@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { supplierDeliveryEnabled } from "@/lib/definiteplay-fulfillment";
 
 export async function prepareOrderForManualFulfillment(
   orderId: string,
@@ -15,12 +16,18 @@ export async function prepareOrderForManualFulfillment(
     );
   }
 
+  const supplierIds = new Set<string>();
+  if (supplierDeliveryEnabled()) {
+    const jobs = await admin.from("definiteplay_jobs").select("item_id").eq("order_id", orderId);
+    if (jobs.error) throw new Error("Unable to check supplier delivery.");
+    for (const job of jobs.data ?? []) supplierIds.add(job.item_id);
+  }
   const itemIds = (itemResult.data ?? [])
     .filter((item) => {
       const product = Array.isArray(item.products)
         ? item.products[0]
         : item.products;
-      return product?.delivery_type === "MANUAL";
+      return product?.delivery_type === "MANUAL" && !supplierIds.has(item.id);
     })
     .map((item) => item.id);
 
@@ -47,7 +54,7 @@ export async function prepareOrderForManualFulfillment(
       sold_at: null,
     })
     .in("order_item_id", itemIds)
-    .in("status", ["RESERVED", "SOLD"]);
+    .in("status", ["RESERVED"]);
 
   if (releaseResult.error) {
     throw new Error(
@@ -65,7 +72,6 @@ export async function prepareOrderForManualFulfillment(
     .in("status", [
       "PAID",
       "PROCESSING",
-      "DELIVERED",
     ])
     .select("id, status")
     .maybeSingle();
@@ -77,6 +83,8 @@ export async function prepareOrderForManualFulfillment(
   }
 
   if (!orderResult.data) {
+    const completed = await admin.from("orders").select("id,status").eq("id", orderId).eq("status","DELIVERED").maybeSingle();
+    if (!completed.error && completed.data) return completed.data;
     throw new Error(
       "Only a successfully paid order can enter manual fulfillment.",
     );

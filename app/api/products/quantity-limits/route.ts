@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { UNLIMITED_STOCK_QUANTITY } from "@/lib/product-stock";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { supplierProductIds, supplierAvailableQuantity } from "@/lib/definiteplay-fulfillment";
 
 type QuantityRequestItem = {
   productId?: unknown;
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A cart product is no longer available." }, { status: 400 });
     }
 
+    const supplierProducts = await supplierProductIds(productIds);
     const limits = await Promise.all(normalizedItems.map(async (item) => {
       const product = products.get(item.productId)!;
       const option = item.productOptionId ? options.get(item.productOptionId) : null;
@@ -77,6 +79,9 @@ export async function POST(request: NextRequest) {
 
       let availableQuantity: number | null = null;
       if (product.status !== 'ACTIVE' || (option && (!option.is_active || option.is_in_stock === false))) availableQuantity = 0;
+      else if (supplierProducts.has(product.id)) {
+        availableQuantity = option ? await supplierAvailableQuantity(option.id) : 0;
+      }
       else if (product.stock_quantity !== UNLIMITED_STOCK_QUANTITY) {
         let query = admin.from('gift_card_codes').select('id', { count: 'exact', head: true }).eq('product_id', product.id).eq('status', 'AVAILABLE');
         if (option) query = query.eq('product_option_id', option.id);
