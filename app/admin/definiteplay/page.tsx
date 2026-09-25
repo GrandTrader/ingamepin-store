@@ -4,6 +4,7 @@ import {requireDefinitePlayAdmin} from "@/lib/definiteplay-admin";
 import {getDefinitePlayCatalogue,getDefinitePlayStatus} from "@/lib/definiteplay-relay";
 import {readSupplierBalances} from "@/lib/definiteplay-money";
 import RefreshButton from "./RefreshButton";
+import CategoryFilter from "./CategoryFilter";
 
 export const dynamic="force-dynamic";
 export default async function DefinitePlayPage({searchParams}:{searchParams:Promise<{q?:string;page?:string;category?:string;region?:string;variant?:string}>}) {
@@ -45,13 +46,7 @@ export default async function DefinitePlayPage({searchParams}:{searchParams:Prom
           <label className="min-w-0 text-sm font-bold">Search
             <input name="q" defaultValue={q} placeholder="Product name or code" className="mt-2 w-full rounded-xl border bg-white px-4 py-3 font-normal"/>
           </label>
-          <label className="min-w-0 text-sm font-bold">Category
-            <select name="category" defaultValue={category} className="mt-2 w-full rounded-xl border bg-white px-3 py-3 font-normal">
-              <option value="">All categories</option>
-              {category&&!data?.categories?.includes(category)&&<option value={category}>{category}</option>}
-              {(data?.categories??[]).map(value=><option key={value} value={value}>{value}</option>)}
-            </select>
-          </label>
+          <CategoryFilter categories={data?.categories ?? []} defaultValue={category} />
           <label className="min-w-0 text-sm font-bold">Region
             <select name="region" defaultValue={region} className="mt-2 w-full rounded-xl border bg-white px-3 py-3 font-normal">
               <option value="">All regions</option>
