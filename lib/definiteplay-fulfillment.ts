@@ -2,12 +2,14 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export function supplierDeliveryEnabled() {
-  return process.env.DEFINITEPLAY_FULFILLMENT_ENABLED === "true";
+  return process.env.DEFINITEPLAY_FULFILLMENT_ENABLED?.trim() === "true";
 }
 
 export async function supplierProductIds(ids: string[]): Promise<Set<string>> {
-  if (!supplierDeliveryEnabled() || !ids.length) return new Set();
+  // Existing products follow their durable stock source even if rollout settings change.
+  if (!ids.length) return new Set();
   const result = await createAdminClient().from("products").select("id,stock_source").in("id", ids);
+  if (result.error?.code === "42703") return new Set(); // Schema not installed yet.
   if (result.error) throw new Error("Supplier delivery setup is not ready.");
   return new Set((result.data ?? []).filter(p => p.stock_source === "DEFINITEPLAY").map(p => p.id));
 }

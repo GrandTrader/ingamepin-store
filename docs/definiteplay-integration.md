@@ -44,18 +44,20 @@ The relay has no purchasing endpoint; its upstream allowlist contains only sessi
 - Live diagnostics: scripts/definiteplay-check.cjs is read-only. Avoid running it concurrently with a service sync to respect the supplier's shared request limit.
 
 
-## Supplier delivery implementation (worker connected; products not activated)
+## Supplier delivery implementation
 
 Migration: supabase/migrations/20260925_150000_definiteplay_fulfillment.sql.
 The website and bridge default to automatic purchasing OFF. On 25 September 2026,
 the user applied the migration and its tables/column were verified on the hosted database.
 The VPS worker was connected successfully, with zero jobs and no products enabled.
 Website release 513880e was deployed successfully, with supplier environment settings
-imported by the user. The local feature flag is enabled. Product activation is pending
-the follow-up migration 20260925_160000_fix_definiteplay_order_status_guard.sql:
-the original function referenced EXPIRED, which is absent from the hosted order_status
-enum. Activation failed atomically and no product was switched. The corrected migration
-has passed the isolated PostgreSQL test with the real order_status enum values.
+imported by the user. The user then applied the follow-up migration
+20260925_160000_fix_definiteplay_order_status_guard.sql, removing the unsupported EXPIRED
+enum value. The Apple USA product 683c3e6b-23d9-40a8-a400-dae37f823270 was enabled
+successfully with 19 linked options. No synthetic purchases were made.
+Checkout and paid-order preparation now follow saved database stock modes and supplier
+jobs independently of the website rollout flag. The flag gates enabling new products;
+it must not make existing supplier orders fall back to uploaded-code fulfillment.
 
 The Supplier tab can enable a dedicated DEFINITEPLAY stock source after all active
 options are linked. Availability comes from supplier USD costs and explicitly
@@ -102,8 +104,8 @@ Activation sequence for the maintainer:
    from their Supplier tab. Enabling does not publish a draft product.
    Review denomination/region links, selling prices and product visibility.
 
-Do not switch the global website flag off while enabled supplier products or jobs
-remain. To stop new orders, make affected products inactive. Keep reconciliation
+The website flag controls activation of additional products, not existing supplier
+stock or jobs. To stop new orders, make affected products inactive. Keep reconciliation
 running for already submitted orders. Jobs in REVIEW require investigation using
 the displayed supplier reference. Never reset submitted_at or generate a new
 reference to retry an uncertain purchase. Pre-submission failures can be cancelled

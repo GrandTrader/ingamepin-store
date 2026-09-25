@@ -8,10 +8,15 @@ function load(file,deps,extra={}) {
 }
 test("supplier mode blocks stock access when DB fails and stale quantities are unavailable",async()=>{
  let row={available_quantity:20,unit_cost:9,synced_at:new Date().toISOString()},error=null,calls=0;
- const chain={select(){return this;},eq(){return this;},async maybeSingle(){calls++;return {data:row,error};}};
+ const chain={select(){return this;},eq(){return this;},async in(){calls++;return {data:[{id:"x",stock_source:"DEFINITEPLAY"}],error};},async maybeSingle(){calls++;return {data:row,error};}};
  const api=load("lib/definiteplay-fulfillment.ts",{"@/lib/supabase/admin":{createAdminClient:()=>({from:()=>chain})}});
+ assert.equal((await api.supplierProductIds(["x"])).size,1);
+ assert.equal(calls,1,"saved supplier mode must work without the rollout flag");
+ error={code:"42703"};
  assert.equal((await api.supplierProductIds(["x"])).size,0);
- assert.equal(calls,0,"feature off does not depend on new schema");
+ error={code:"CONNECTION_ERROR"};
+ await assert.rejects(api.supplierProductIds(["x"]));
+ error=null;
  assert.equal(await api.supplierAvailableQuantity("x"),20);
  row={...row,synced_at:new Date(Date.now()-16*60000).toISOString()};
  assert.equal(await api.supplierAvailableQuantity("x"),0);
@@ -30,7 +35,7 @@ test("manual preparation never releases supplier codes or reopens a completed su
  }};
  const api=load("lib/manual-fulfillment.ts",{
    "@/lib/supabase/admin":{createAdminClient:()=>client},
-   "@/lib/definiteplay-fulfillment":{supplierDeliveryEnabled:()=>true}});
+   "@/lib/definiteplay-fulfillment":{supplierDeliveryEnabled:()=>false}});
  assert.equal((await api.prepareOrderForManualFulfillment("order")).status,"DELIVERED");
  assert.equal(calls.length,0);
 });

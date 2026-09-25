@@ -21,8 +21,8 @@ export default async function ProductSupplierPage({params}:{params:Promise<{id:s
   ]);
   if (product.error || options.error) throw new Error("Unable to load product details.");
   if (!product.data) notFound();
-  const configured=supplierDeliveryEnabled();
   const enabled=(await supplierProductIds([id])).has(id);
+  const configured=enabled||supplierDeliveryEnabled();
   const jobs=configured ? await createAdminClient().from("definiteplay_jobs")
     .select("item_id,supplier_reference,state,issue,order_items!inner(product_id)")
     .eq("order_items.product_id",id).order("created_at",{ascending:false}).limit(20) : null;

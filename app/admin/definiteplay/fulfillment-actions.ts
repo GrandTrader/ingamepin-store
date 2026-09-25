@@ -8,7 +8,7 @@ import { getDefinitePlayMappings, getDefinitePlayStatus } from "@/lib/definitepl
 export async function configureSupplierDelivery(productId: string, enabled: boolean): Promise<{error?: string; success?: boolean}> {
   await requireDefinitePlayAdmin();
   if (!validProductId(productId) || typeof enabled !== "boolean") return {error:"Invalid product."};
-  if (!supplierDeliveryEnabled()) return {error:"Supplier delivery setup must be completed first."};
+  if (enabled && !supplierDeliveryEnabled()) return {error:"Supplier delivery setup must be completed first."};
   try {
     const mappings = enabled ? (await getDefinitePlayMappings(productId)).mappings : [];
     if (enabled) {

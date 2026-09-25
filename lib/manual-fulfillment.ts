@@ -1,5 +1,4 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { supplierDeliveryEnabled } from "@/lib/definiteplay-fulfillment";
 
 export async function prepareOrderForManualFulfillment(
   orderId: string,
@@ -17,11 +16,13 @@ export async function prepareOrderForManualFulfillment(
   }
 
   const supplierIds = new Set<string>();
-  if (supplierDeliveryEnabled()) {
-    const jobs = await admin.from("definiteplay_jobs").select("item_id").eq("order_id", orderId);
-    if (jobs.error) throw new Error("Unable to check supplier delivery.");
-    for (const job of jobs.data ?? []) supplierIds.add(job.item_id);
+  const jobs = await admin.from("definiteplay_jobs").select("item_id").eq("order_id", orderId);
+  // A missing table means the integration has not been installed. Other failures
+  // must block release of any codes until supplier ownership can be verified.
+  if (jobs.error && !["42P01", "PGRST205"].includes(jobs.error.code)) {
+    throw new Error("Unable to check supplier delivery.");
   }
+  for (const job of jobs.data ?? []) supplierIds.add(job.item_id);
   const itemIds = (itemResult.data ?? [])
     .filter((item) => {
       const product = Array.isArray(item.products)
