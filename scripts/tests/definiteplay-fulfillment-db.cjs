@@ -5,9 +5,10 @@ const {PGlite}=require(process.env.PGLITE_PATH || path.join(process.env.TEMP,"ig
  const db=new PGlite();
  await db.exec(
   "create role anon; create role authenticated; create role service_role;"+
+  "create type order_status as enum ('PENDING_PAYMENT','PAYMENT_REVIEW','PAID','PROCESSING','DELIVERED','CANCELLED','REFUNDED');"+
   "create table products(id uuid primary key,name text,seller_id uuid,stock_quantity int default 0,delivery_type text default 'MANUAL',allows_custom_value boolean default false,allows_player_id_topup boolean default false,updated_at timestamptz);"+
   "create table product_options(id uuid primary key,product_id uuid references products(id),is_active boolean default true,stock_quantity int default 0,is_in_stock boolean default false,updated_at timestamptz);"+
-  "create table orders(id uuid primary key,status text default 'PENDING',paid_at timestamptz,currency text default 'USD',subtotal numeric default 20,discount numeric default 0,total numeric default 20,delivered_at timestamptz,updated_at timestamptz);"+
+  "create table orders(id uuid primary key,status order_status default 'PENDING_PAYMENT',paid_at timestamptz,currency text default 'USD',subtotal numeric default 20,discount numeric default 0,total numeric default 20,delivered_at timestamptz,updated_at timestamptz);"+
   "create table order_items(id uuid primary key,order_id uuid references orders(id),product_id uuid,product_option_id uuid,quantity int,custom_value numeric,fulfillment_mode text default 'CODE',service_delivered_at timestamptz,denomination numeric,unit_price numeric default 20,total_price numeric default 20);"+
   "create table gift_card_codes(id uuid primary key default gen_random_uuid(),product_id uuid,product_option_id uuid,order_item_id uuid,denomination numeric,code text unique,status text,note text,reserved_at timestamptz,sold_at timestamptz);"+
   "create table payments(order_id uuid,status text,currency text,amount numeric);"+
@@ -23,6 +24,8 @@ const {PGlite}=require(process.env.PGLITE_PATH || path.join(process.env.TEMP,"ig
  await query("insert into products(id,name) values($1,'Test')",[id(1)]);
  await query("insert into product_options(id,product_id) values($1,$2)",[id(2),id(1)]);
  const mappings=JSON.stringify([{optionId:id(2),sku:"APPLE10"}]);
+ await assert.rejects(query("select configure_definiteplay_product($1,true,$2)",[id(1),mappings]),/invalid input value for enum order_status/);
+ await db.exec(fs.readFileSync("supabase/migrations/20260925_160000_fix_definiteplay_order_status_guard.sql","utf8"));
  await query("select configure_definiteplay_product($1,true,$2)",[id(1),mappings]);
  assert.equal((await one("select stock_source from products")).stock_source,"DEFINITEPLAY");
  const rows=JSON.stringify([{sku:"APPLE10",currency:"USD",cost:"9.80",quantity:10}]);

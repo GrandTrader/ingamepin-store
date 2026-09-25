@@ -50,8 +50,12 @@ Migration: supabase/migrations/20260925_150000_definiteplay_fulfillment.sql.
 The website and bridge default to automatic purchasing OFF. On 25 September 2026,
 the user applied the migration and its tables/column were verified on the hosted database.
 The VPS worker was connected successfully, with zero jobs and no products enabled.
-The live website deployment and website feature flag remain pending. Do not enable
-published products until the website checkout and fulfillment changes are deployed.
+Website release 513880e was deployed successfully, with supplier environment settings
+imported by the user. The local feature flag is enabled. Product activation is pending
+the follow-up migration 20260925_160000_fix_definiteplay_order_status_guard.sql:
+the original function referenced EXPIRED, which is absent from the hosted order_status
+enum. Activation failed atomically and no product was switched. The corrected migration
+has passed the isolated PostgreSQL test with the real order_status enum values.
 
 The Supplier tab can enable a dedicated DEFINITEPLAY stock source after all active
 options are linked. Availability comes from supplier USD costs and explicitly
