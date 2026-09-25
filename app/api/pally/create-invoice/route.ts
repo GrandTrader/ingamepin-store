@@ -1,3 +1,5 @@
+import { getPaypalychRestrictions } from "@/lib/paypalych-product-policy-server";
+import { PAYPALYCH_BLOCK_MESSAGE, paypalychBlockedBrand } from "@/lib/paypalych-product-policy";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
     const itemResult = await admin
       .from("order_items")
       .select(
-        "product_id, product_name, unit_price, quantity, player_id, platform",
+        "product_id, product_name, option_name, unit_price, quantity, player_id, platform",
       )
       .eq("order_id", order.id)
       .order("created_at", { ascending: true });
@@ -90,6 +92,11 @@ export async function POST(request: NextRequest) {
     const productIds = Array.from(
       new Set(itemResult.data.map((item) => item.product_id)),
     );
+    const restrictions = await getPaypalychRestrictions(admin, productIds);
+    if ([...restrictions.values()].some(Boolean) || itemResult.data.some(item =>
+      paypalychBlockedBrand(item.product_name, item.option_name))) {
+      return NextResponse.json({ error: PAYPALYCH_BLOCK_MESSAGE }, { status: 400 });
+    }
     const productResult = await admin
       .from("products")
       .select("id, category_id")

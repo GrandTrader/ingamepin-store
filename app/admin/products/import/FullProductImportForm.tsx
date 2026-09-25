@@ -1,4 +1,5 @@
 "use client";
+import PaypalychProductWarning from "@/components/PaypalychProductWarning";
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -76,6 +77,8 @@ export default function FullProductImportForm({ categories }: { categories: Impo
 
   return (
     <div className="mt-6 space-y-6">
+      <PaypalychProductWarning identities={[product?.titleEn, product?.titleRu, category?.name, category?.slug,
+        ...(product?.options ?? []).map(option => option.name)]} />
       <section className="space-y-4 rounded-xl border bg-white p-5">
         <p>One file creates one new draft product, with up to 50 denominations. English and Russian text can be included together.</p>
         <label className="block font-semibold" htmlFor="import-category">Product category</label>

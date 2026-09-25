@@ -1,3 +1,4 @@
+import { getPaypalychRestrictions } from "@/lib/paypalych-product-policy-server";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -30,6 +31,8 @@ export async function POST(request: NextRequest) {
     }
 
     const products = result.data ?? [];
+    const paypalychRules = await getPaypalychRestrictions(admin, productIds);
+    const paypalychBlocked = [...paypalychRules.values()].some(Boolean);
     const settingsResult = await admin
       .from("payment_gateway_settings")
       .select("gateway_commissions")
@@ -40,6 +43,7 @@ export async function POST(request: NextRequest) {
       { enabled?: boolean }
     >;
     const allowedPaymentMethods = ALL_METHODS.filter((method) =>
+      !(method === "PALLY" && paypalychBlocked) &&
       (method === "UPI"
         ? gatewaySettings[method]?.enabled === true
         : gatewaySettings[method]?.enabled !== false) &&

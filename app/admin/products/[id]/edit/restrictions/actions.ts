@@ -1,4 +1,5 @@
 "use server";
+import { getProductPaypalychRestriction } from "@/lib/paypalych-product-policy-server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -77,8 +78,9 @@ export async function saveProductRestriction(formData: FormData) {
     redirect(`${path}?error=${encodeURIComponent("Enter a valid minimum order quantity")}`);
   }
 
+  const paypalychBlocked = Boolean(await getProductPaypalychRestriction(id));
   const allowedPaymentMethods = PAYMENT_METHODS.filter(
-    (method) => formData.get(`payment_method_${method}`) === "on",
+    (method) => formData.get(`payment_method_${method}`) === "on" && !(method === "PALLY" && paypalychBlocked),
   );
   const allowedUsdtNetworks = USDT_NETWORKS.filter(
     (network) => formData.get(`usdt_network_${network}`) === "on",

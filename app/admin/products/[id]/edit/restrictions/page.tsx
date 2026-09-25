@@ -1,3 +1,4 @@
+import { getProductPaypalychRestriction } from "@/lib/paypalych-product-policy-server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -64,6 +65,7 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
   if (optionsResult.error) throw new Error(`Unable to load product options: ${optionsResult.error.message}`);
 
   const product = productResult.data;
+  const paypalychBlocked = Boolean(await getProductPaypalychRestriction(id));
   const rule = restrictionResult.data;
   const allowedPayments = new Set<string>(product.allowed_payment_methods ?? paymentMethods.map(([value]) => value));
   const allowedNetworks = new Set<string>(product.allowed_usdt_networks ?? usdtNetworks.map(([value]) => value));
@@ -111,8 +113,8 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {paymentMethods.map(([value, label, description]) => (
                   <label key={value} className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-300">
-                    <input type="checkbox" name={`payment_method_${value}`} defaultChecked={allowedPayments.has(value)} className="mt-1 h-5 w-5 shrink-0 accent-blue-600" />
-                    <span><span className="block font-black">{label}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{description}</span></span>
+                    <input type="checkbox" name={`payment_method_${value}`} disabled={value === "PALLY" && paypalychBlocked} defaultChecked={allowedPayments.has(value) && !(value === "PALLY" && paypalychBlocked)} className="mt-1 h-5 w-5 shrink-0 accent-blue-600" />
+                    <span><span className="block font-black">{label}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{value === "PALLY" && paypalychBlocked ? "Automatically blocked by your product exclusion list." : description}</span></span>
                   </label>
                 ))}
               </div>

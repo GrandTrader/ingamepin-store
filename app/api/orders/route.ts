@@ -1,3 +1,5 @@
+import { getPaypalychRestrictions } from "@/lib/paypalych-product-policy-server";
+import { PAYPALYCH_BLOCK_MESSAGE } from "@/lib/paypalych-product-policy";
 import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -230,9 +232,27 @@ export async function POST(request: NextRequest) {
       }
     }
     const customerIp = (request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
-    const submittedItems = body.items as Array<{ productOptionId?: string; quantity?: number; customValue?: number }>;
+    const submittedItems = body.items as Array<{ productId?: string; productOptionId?: string; quantity?: number; customValue?: number }>;
     if (submittedItems.some(item => !Number.isSafeInteger(Number(item.quantity ?? 1)) || Number(item.quantity ?? 1) < 1)) {
       return NextResponse.json({ error: "The cart quantity is invalid." }, { status: 400 });
+    }
+    if (requestedPaymentMethod === "pally") {
+      const submittedProductIds = submittedItems.map(item => String(item.productId ?? "")).filter(Boolean);
+      const selectedOptionIds = submittedItems.map(item => String(item.productOptionId ?? "")).filter(Boolean);
+      const selectedOptions = selectedOptionIds.length
+        ? await admin.from("product_options").select("id,product_id").in("id", selectedOptionIds)
+        : { data: [], error: null };
+      if (selectedOptions.error || selectedOptions.data?.length !== new Set(selectedOptionIds).size) {
+        return NextResponse.json({ error: "Unable to check product payment restrictions." }, { status: 400 });
+      }
+      const checkedProductIds = [...submittedProductIds, ...(selectedOptions.data ?? []).map(option => option.product_id)];
+      // Legacy custom-value carts are resolved by the order RPC. The invoice
+      // endpoint rechecks every persisted order item before contacting Paypalych.
+      const restrictions = checkedProductIds.length
+        ? await getPaypalychRestrictions(admin, checkedProductIds) : new Map();
+      if ([...restrictions.values()].some(Boolean)) {
+        return NextResponse.json({ error: PAYPALYCH_BLOCK_MESSAGE }, { status: 400 });
+      }
     }
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
     if (optionIds.length) {

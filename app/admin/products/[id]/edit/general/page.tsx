@@ -1,3 +1,4 @@
+import PaypalychFormWarning from "@/components/PaypalychFormWarning";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -88,6 +89,7 @@ export default async function ProductGeneralPage({
           </section>
 
           <form action={updateProductGeneral} className="mt-6 grid gap-6">
+            <PaypalychFormWarning initialIdentities={[product.name, product.name_ru ?? "", product.slug]} />
             <input type="hidden" name="id" value={id} />
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-xl font-black">General</h2>

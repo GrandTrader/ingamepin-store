@@ -1,3 +1,5 @@
+import { getProductPaypalychRestriction } from "@/lib/paypalych-product-policy-server";
+import PaypalychProductWarning from "./PaypalychProductWarning";
 import Link from "@/components/NavigationLink";
 
 const tabs = [
@@ -15,14 +17,16 @@ const tabs = [
   ["affiliate", "Affiliate"],
 ] as const;
 
-export default function ProductEditPageTabs({
+export default async function ProductEditPageTabs({
   productId,
   current,
 }: {
   productId: string;
   current: string;
 }) {
+  const blockedBrand = await getProductPaypalychRestriction(productId);
   return (
+    <>
     <nav className="overflow-x-auto border border-slate-300 bg-slate-100 p-1 shadow-sm">
       <div className="flex min-w-max gap-px">
         {tabs.map(([id, label]) => (
@@ -40,5 +44,7 @@ export default function ProductEditPageTabs({
         ))}
       </div>
     </nav>
+    <PaypalychProductWarning brand={blockedBrand} />
+    </>
   );
 }

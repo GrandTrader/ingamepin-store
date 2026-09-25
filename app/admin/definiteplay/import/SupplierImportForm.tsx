@@ -1,4 +1,5 @@
 "use client";
+import PaypalychProductWarning from "@/components/PaypalychProductWarning";
 import Link from "next/link";
 import {useRef,useState,useTransition} from "react";
 import type {DefinitePlayItem} from "@/lib/definiteplay-types";
@@ -68,12 +69,14 @@ export default function SupplierImportForm({items,categories,requestId}:{items:D
   }
   if(result)return <section className="mt-6 rounded-xl border bg-white p-6">
     <h2 className="text-xl font-bold">Draft created</h2>
+    <PaypalychProductWarning identities={[title,titleRu,...items.filter(i=>selected.includes(i.sku)).map(i=>i.name)]} />
     <p className="mt-2 text-slate-600">Review its details, image and selling prices before publishing. Automatic supplier delivery is not enabled.</p>
     {result.warning&&<p role="alert" className="mt-4 rounded-lg bg-amber-50 p-3 text-amber-900">{result.warning}</p>}
     <Link className="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-3 font-bold text-white" href={"/admin/products/"+result.productId+"/edit/general"}>Review draft</Link>
   </section>;
   return <form onSubmit={e=>{e.preventDefault();save();}} className="mt-6 space-y-5">
     <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">The product will be saved as a draft with zero sellable stock. Supplier links will be saved automatically. No supplier purchase is made.</p>
+    <PaypalychProductWarning identities={[title,titleRu,categoryOptions.find(c=>c.id===categoryId)?.name,...items.filter(i=>selected.includes(i.sku)).flatMap(i=>[i.name,i.brand])]} />
     <fieldset disabled={pending} className="space-y-5 disabled:opacity-60">
       <section className="grid gap-4 rounded-xl border bg-white p-5 sm:grid-cols-2">
         <label className="text-sm font-bold sm:col-span-2">Website category
