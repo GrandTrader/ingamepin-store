@@ -4,6 +4,22 @@ export function supplierProductVariant(item:Pick<DefinitePlayItem,"name">):"regu
   return /\bdiscount(?:ed)?\b/i.test(item.name) ? "discounted" : "regular";
 }
 
+// A Game Pass card value is the retail price, not the subscription length.
+// Keep duration as a whole number; prices have their own decimal fields.
+export function supplierSubscriptionMonths(item:Pick<DefinitePlayItem,"name">):number|null {
+  if(!/\bgame\s+pass\b/i.test(item.name))return null;
+  const term=item.name.match(/\b(\d+)\s*(months?|mos?|m|years?|yrs?|y)\b/i);
+  if(!term)return null;
+  const months=Number(term[1])*(/^y/i.test(term[2])?12:1);
+  return Number.isSafeInteger(months)&&months>0&&months<=1200?months:null;
+}
+export function supplierDefaultDenomination(item:Pick<DefinitePlayItem,"name"|"cardValue">):string {
+  const months=supplierSubscriptionMonths(item);
+  if(months!==null)return String(months);
+  // Preserve fractional card values for review, never round their face value.
+  return /^\d+(?:\.\d{1,4})?$/.test(item.cardValue)&&Number(item.cardValue)>0?item.cardValue:"1";
+}
+
 export type SupplierImportInput = {
   requestId:string; categoryId:string; title:string; titleRu:string;
   description:string; descriptionRu:string; markup:string;
@@ -51,10 +67,11 @@ export function prepareSupplierDraft(input:SupplierImportInput,items:DefinitePla
       if(cents<BigInt(1)||cents>BigInt(999999999))throw new Error("Enter a selling price between USD 0.01 and 9,999,999.99.");
       sellingPrice=(Number(cents)/100).toFixed(2);
     }
-    const denomination=Number(row.denomination);
-    if(typeof row.denomination!=="string" || !/^\d+(?:\.\d{1,4})?$/.test(row.denomination) || !Number.isFinite(denomination) || denomination<=0 || denomination>1000000000)throw new Error("Enter a positive denomination for every option.");
+    const months=supplierSubscriptionMonths(item);
+    const denomination=months??Number(row.denomination);
+    if(months===null && (typeof row.denomination!=="string" || !/^\d+(?:\.0+)?$/.test(row.denomination) || !Number.isSafeInteger(denomination) || denomination<=0 || denomination>1000000000))throw new Error("Enter a positive whole-number denomination for "+item.name+". Selling prices can contain decimals.");
     if(typeof row.currency!=="string" || !/^[A-Z]{3}$/.test(row.currency))throw new Error("Use a three-letter denomination currency.");
-    return {sku:item.sku,name:item.name.slice(0,150)||item.sku,denomination,currency:row.currency,price:Number(sellingPrice)};
+    return {sku:item.sku,name:item.name.slice(0,150)||item.sku,denomination,currency:row.currency,optionType:months===null?"CURRENCY":"OTHER",price:Number(sellingPrice)};
   });
   if(groups.size!==1)throw new Error("Import one supplier category, region and product version at a time.");
   const region=items.find(i=>i.sku===options[0].sku)!.region.trim()||"Global";

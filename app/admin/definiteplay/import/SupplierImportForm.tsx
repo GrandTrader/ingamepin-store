@@ -3,7 +3,7 @@ import PaypalychProductWarning from "@/components/PaypalychProductWarning";
 import Link from "next/link";
 import {useRef,useState,useTransition} from "react";
 import type {DefinitePlayItem} from "@/lib/definiteplay-types";
-import {priceWithMarkup} from "@/lib/definiteplay-import";
+import {priceWithMarkup,supplierDefaultDenomination,supplierSubscriptionMonths} from "@/lib/definiteplay-import";
 import {importSupplierProduct} from "./actions";
 import {createSupplierImportCategory} from "./category-actions";
 
@@ -24,7 +24,7 @@ export default function SupplierImportForm({items,categories,requestId}:{items:D
   const [descriptionRu,setDescriptionRu]=useState("");
   const [markup,setMarkup]=useState("0");
   const [prices,setPrices]=useState<Record<string,string>>({});
-  const [values,setValues]=useState(()=>Object.fromEntries(items.map(i=>[i.sku,/^\d+(?:\.\d{1,4})?$/.test(i.cardValue)&&Number(i.cardValue)>0?i.cardValue:"1"])));
+  const [values,setValues]=useState(()=>Object.fromEntries(items.map(i=>[i.sku,supplierDefaultDenomination(i)])));
   const [currencies,setCurrencies]=useState(()=>Object.fromEntries(items.map(i=>[i.sku,/^[A-Z]{3}$/.test(i.cardCurrency)?i.cardCurrency:"USD"])));
   const [message,setMessage]=useState("");
   const [result,setResult]=useState<{productId:string;warning?:string}|null>(null);
@@ -116,12 +116,12 @@ export default function SupplierImportForm({items,categories,requestId}:{items:D
         <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{["Include / supplier item","Value","Currency","Supplier cost","Your price (USD)"].map(h=><th key={h} className="p-2">{h}</th>)}</tr></thead>
           <tbody>{items.map(item=><tr key={item.sku} className="border-t">
             <td className="min-w-52 p-2"><label className="flex gap-2"><input type="checkbox" checked={selected.includes(item.sku)} onChange={e=>setSelected(e.target.checked?[...selected,item.sku]:selected.filter(s=>s!==item.sku))}/><span>{item.name}<small className="block text-slate-500">{item.sku} · {item.region} · {item.available?"Supplier available":"Supplier out of stock"}</small></span></label></td>
-            <td className="p-2"><input aria-label={"Denomination for "+item.name} type="number" min="0.0001" max="1000000000" step="0.0001" required={selected.includes(item.sku)} disabled={!selected.includes(item.sku)} value={values[item.sku]} onChange={e=>setValues({...values,[item.sku]:e.target.value})} className="w-24 rounded-lg border p-2"/></td>
-            <td className="p-2"><input aria-label={"Denomination currency for "+item.name} required={selected.includes(item.sku)} disabled={!selected.includes(item.sku)} pattern="[A-Z]{3}" maxLength={3} value={currencies[item.sku]} onChange={e=>setCurrencies({...currencies,[item.sku]:e.target.value.toUpperCase()})} className="w-20 rounded-lg border p-2"/></td>
+            <td className="p-2"><input aria-label={"Denomination for "+item.name} type="number" min="1" max="1000000000" step="1" readOnly={supplierSubscriptionMonths(item)!==null} required={selected.includes(item.sku)} disabled={!selected.includes(item.sku)} value={values[item.sku]} onChange={e=>setValues({...values,[item.sku]:e.target.value})} className="w-24 rounded-lg border p-2"/>{supplierSubscriptionMonths(item)!==null&&<small className="block text-slate-500">Months</small>}</td>
+            <td className="p-2">{supplierSubscriptionMonths(item)!==null?<span>Subscription</span>:<input aria-label={"Denomination currency for "+item.name} required={selected.includes(item.sku)} disabled={!selected.includes(item.sku)} pattern="[A-Z]{3}" maxLength={3} value={currencies[item.sku]} onChange={e=>setCurrencies({...currencies,[item.sku]:e.target.value.toUpperCase()})} className="w-20 rounded-lg border p-2"/>}</td>
             <td className="whitespace-nowrap p-2">USD {item.price}</td>
             <td className="p-2"><input aria-label={"Selling price for "+item.name} type="number" min="0.01" max="9999999.99" step="0.01" required={selected.includes(item.sku)} disabled={!selected.includes(item.sku)} value={prices[item.sku]??suggested(item)} onChange={e=>setPrices({...prices,[item.sku]:e.target.value})} className="w-28 rounded-lg border p-2"/>{prices[item.sku]!==undefined&&<small className="block text-blue-600">Manual price</small>}</td>
           </tr>)}</tbody></table></div>
-        <p className="mt-3 text-xs text-slate-500">Check the value and currency fields. Items without a numeric card value start at 1; the full product name identifies the edition or plan.</p>
+        <p className="mt-3 text-xs text-slate-500">Game Pass values show the subscription length in months. Other denominations must be whole numbers. Items without a numeric card value start at 1; the full product name identifies the edition or plan.</p>
       </section>
       <button disabled={pending||!selected.length||Boolean(markupError)||!categoryOptions.length||creatingCategory} className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white disabled:opacity-40">{pending?(creatingCategory?"Creating category…":"Creating draft…"):"Create draft product"}</button>
     </fieldset>

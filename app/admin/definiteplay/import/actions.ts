@@ -28,7 +28,7 @@ export async function importSupplierProduct(input:SupplierImportInput):Promise<{
     draft=prepareSupplierDraft(input,stock.items);
   }catch(e){return {error:e instanceof Error?e.message:"Unable to check supplier prices."};}
   const options=draft.options.map((o,index)=>({
-    id:randomUUID(),product_id:productId,category_id:input.categoryId,option_type:"CURRENCY",
+    id:randomUUID(),product_id:productId,category_id:input.categoryId,option_type:o.optionType,
     option_name:o.name,denomination:o.denomination,denomination_currency:o.currency,
     selling_price:o.price,stock_quantity:0,is_active:true,is_in_stock:false,is_custom_value:false,sort_order:index,
   }));
@@ -44,15 +44,19 @@ export async function importSupplierProduct(input:SupplierImportInput):Promise<{
     return {error:"Draft creation could not be confirmed. Retry with this page to check the same import, or review your product list."};
   }
   let warning="";
+  let optionsSaved=false;
   try {
     const saved=await admin.from("product_options").insert(options);
     if(saved.error)throw new Error("options");
+    optionsSaved=true;
     // Keep the draft if any link fails. Retrying the same import cannot create another product.
     for(let i=0;i<options.length;i++){
       await definitePlayRequest("mapping",{method:"PUT",body:{productId,optionId:options[i].id,sku:draft.options[i].sku}});
     }
   }catch {
-    warning="Draft created, but some options or supplier links could not be confirmed. Review Product options and Supplier before publishing.";
+    warning=optionsSaved
+      ? "Draft and options saved, but some supplier links could not be confirmed. Review the Supplier tab before publishing."
+      : "Draft created, but its options could not be saved. No supplier links were created. Review Product options before publishing.";
   }
   revalidatePath("/admin/products");
   return {productId,...(warning?{warning}:{})};
