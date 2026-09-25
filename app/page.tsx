@@ -1,3 +1,4 @@
+import { hasInstantDelivery } from "@/lib/product-delivery";
 import Link from "next/link";
 import MobileStorefront from "@/components/MobileStorefront";
 
@@ -53,6 +54,7 @@ type ProductRow = {
   is_featured: boolean;
   is_bulk_order: boolean;
   delivery_type: string;
+  stock_source: string | null;
   product_options:
     | {
         stock_quantity: number;
@@ -209,7 +211,7 @@ export default async function Home() {
       isBulkOrder:
         product.is_bulk_order,
       isInstantDelivery:
-        product.delivery_type === "AUTOMATIC",
+        hasInstantDelivery(product),
       discountPercent: customerDiscounts.get(product.id) ?? 0,
       }));
 

@@ -33,7 +33,7 @@ function MobileProduct({ product }: { product: BrowseProduct }) {
   const image = language === "ru" && product.imageRu ? product.imageRu : product.image;
   const name = language === "ru" && product.nameRu ? product.nameRu : product.name;
   const unavailable = !product.isBulkOrder && product.stock <= 0;
-  const instantDelivery = !!product.isInstantDelivery && !product.isBulkOrder;
+  const instantDelivery = !!product.isInstantDelivery;
   const discount = Math.min(100, Math.max(0, product.discountPercent ?? 0));
   return <Link className={styles.card} href={product.href ?? `/product/${product.slug}`}>
     <div className={styles.art} data-unavailable={unavailable}>

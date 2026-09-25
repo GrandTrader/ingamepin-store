@@ -1,3 +1,4 @@
+import { hasInstantDelivery } from "@/lib/product-delivery";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -43,6 +44,7 @@ type ProductRow = {
   sold_count: number;
   is_bulk_order: boolean;
   delivery_type: string;
+  stock_source: string | null;
   product_options:
     | {
         selling_price: number | string;
@@ -127,6 +129,7 @@ export default async function CategoryPage({
         sold_count,
         is_bulk_order,
         delivery_type,
+        stock_source,
         product_options (
           selling_price,
           stock_quantity,
@@ -174,7 +177,7 @@ export default async function CategoryPage({
       category: category.short_name ?? category.name,
       discountPercent: customerDiscounts.get(product.id) ?? 0,
       isBulkOrder: product.is_bulk_order,
-      isInstantDelivery: product.delivery_type === "AUTOMATIC",
+      isInstantDelivery: hasInstantDelivery(product),
     }),
   ).sort((first, second) => second.sold - first.sold);
 

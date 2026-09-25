@@ -39,6 +39,7 @@ const getCachedHomepageData = unstable_cache(
           is_featured,
           is_bulk_order,
           delivery_type,
+          stock_source,
           product_options (stock_quantity, is_active, is_in_stock),
           categories (short_name, slug, public_id)
         `)
@@ -83,7 +84,7 @@ const getCachedHomepageData = unstable_cache(
       slides: slidesResult.data ?? [],
     };
   },
-  ["homepage-store-data-v2"],
+  ["homepage-store-data-v3"],
   { revalidate: 30, tags: ["homepage-store-data"] },
 );
 

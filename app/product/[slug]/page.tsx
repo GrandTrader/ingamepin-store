@@ -1,3 +1,4 @@
+import { hasInstantDelivery } from "@/lib/product-delivery";
 ﻿import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 
@@ -55,6 +56,7 @@ type ProductRow = {
   bulk_delivery_instructions: string | null;
   product_type: string;
   delivery_type: string;
+  stock_source: string | null;
   delivery_instructions: string | null;
   allows_fixed_values: boolean;
   allows_custom_value: boolean;
@@ -147,6 +149,7 @@ export async function renderProductPage({
         bulk_delivery_instructions,
         product_type,
         delivery_type,
+        stock_source,
         delivery_instructions,
         allows_fixed_values,
         allows_custom_value,
@@ -420,11 +423,11 @@ export async function renderProductPage({
         <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
           <div className="contents">
             <div className="relative order-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
-              <span className={`absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm ${product.delivery_type === "AUTOMATIC" ? "border border-emerald-200 bg-emerald-400 text-slate-950" : product.is_bulk_order ? "border border-amber-200 bg-amber-300 text-slate-950" : "border border-white/20 bg-slate-950/90 text-white"}`}>
+              <span className={`absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm ${hasInstantDelivery(product) ? "border border-emerald-200 bg-emerald-400 text-slate-950" : product.is_bulk_order ? "border border-amber-200 bg-amber-300 text-slate-950" : "border border-white/20 bg-slate-950/90 text-white"}`}>
                   <span aria-hidden="true">◆</span>
                   <LocalizedProductText
-                    english={product.delivery_type === "AUTOMATIC" ? "Instant Delivery" : "Digital Delivery"}
-                    russian={product.delivery_type === "AUTOMATIC" ? "Мгновенная доставка" : "Цифровая доставка"}
+                    english={hasInstantDelivery(product) ? "Instant Delivery" : "Digital Delivery"}
+                    russian={hasInstantDelivery(product) ? "Мгновенная доставка" : "Цифровая доставка"}
                   />
                 </span>
 
@@ -461,8 +464,8 @@ export async function renderProductPage({
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
                   <LocalizedProductText
-                    english={product.delivery_type === "AUTOMATIC" ? "Instant Delivery" : "Digital Delivery"}
-                    russian={product.delivery_type === "AUTOMATIC" ? "Мгновенная доставка" : "Цифровая доставка"}
+                    english={hasInstantDelivery(product) ? "Instant Delivery" : "Digital Delivery"}
+                    russian={hasInstantDelivery(product) ? "Мгновенная доставка" : "Цифровая доставка"}
                   />
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
@@ -470,7 +473,7 @@ export async function renderProductPage({
                 </span>
               </div>
 
-              {product.delivery_type === "MANUAL" && !product.is_bulk_order && (
+              {!hasInstantDelivery(product) && !product.is_bulk_order && (
                 <div className="mt-3 rounded-xl border border-cyan-300 bg-cyan-50 px-3 py-2 sm:mt-4 sm:py-3">
                   <div className="flex items-start gap-2">
                     <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-cyan-400 font-black text-slate-950">◆</span>
@@ -491,7 +494,7 @@ export async function renderProductPage({
                 </div>
               )}
 
-              {product.is_bulk_order && (
+              {product.is_bulk_order && !hasInstantDelivery(product) && (
                   <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 sm:mt-4 sm:py-3">
                     <div className="flex items-start gap-2">
                       <span
