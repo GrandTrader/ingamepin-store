@@ -1,6 +1,7 @@
+import { loadAdminOrders } from "@/lib/admin-orders-query";
 ﻿import { redirect } from "next/navigation";
 
-import Link from "next/link";
+import Link from "@/components/NavigationLink";
 import AdminOrderLink from "../AdminOrderLink";
 import AdminSidebar from "../AdminSidebar";
 import AdminOrdersAutoRefresh from "./AdminOrdersAutoRefresh";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 type Order = {
   id: string;
   order_number: string;
+  customer_id: string | null;
   customer_name: string | null;
   customer_email: string;
   customer_phone: string | null;
@@ -125,105 +127,23 @@ export default async function AdminOrdersPage({
     redirect("/admin/login?error=Access denied");
   }
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select(
-      `
-        id,
-        order_number,
-        customer_name,
-        customer_email,
-        customer_phone,
-        total,
-        currency,
-        status,
-        created_at,
-        paid_at,
-        delivered_at,
-        order_items (
-          id,
-          product_name,
-          option_name,
-          denomination,
-          platform,
-          fulfillment_mode,
-          player_id,
-          customer_information,
-          quantity,
-          affiliate_commission_percent
-        )
-      `,
-    )
-    .order("created_at", {
-      ascending: false,
-    });
-
-  const orders = (data ?? []) as Order[];
-  const authUsersResult = await createAdminClient().auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-  const customerIdByEmail = new Map(
-    (authUsersResult.data?.users ?? [])
-      .filter((customer) => customer.email)
-      .map((customer) => [customer.email!.trim().toLowerCase(), customer.id]),
-  );
-  const query = (requestedQuery ?? "").trim().toLowerCase();
-  const activeStatus = ["pending", "review", "processing", "completed", "trash"].includes(
-    requestedStatus ?? "",
-  )
-    ? requestedStatus!
-    : "all";
-  const statusMatches = (order: Order) => {
-    switch (activeStatus) {
-      case "pending":
-        return order.status === "PENDING_PAYMENT";
-      case "review":
-        return order.status === "PAYMENT_REVIEW";
-      case "processing":
-        return order.status === "PAID" || order.status === "PROCESSING";
-      case "completed":
-        return order.status === "DELIVERED";
-      case "trash":
-        return order.status === "TRASHED";
-      default:
-        return order.status !== "TRASHED";
-    }
-  };
-  const statusFilteredOrders = orders.filter(statusMatches);
-  const filteredOrders = query
-    ? statusFilteredOrders.filter(
-        (order) =>
-          order.order_number.toLowerCase().includes(query) ||
-          order.customer_email.toLowerCase().includes(query),
-      )
-    : statusFilteredOrders;
-  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / 10));
-  const page = Math.min(Math.max(Number.parseInt(requestedPage ?? "1", 10) || 1, 1), totalPages);
-  const visibleOrders = filteredOrders.slice((page - 1) * 10, page * 10);
-
-  const paymentReviewCount = orders.filter(
-    (order) =>
-      order.status === "PAYMENT_REVIEW",
-  ).length;
-
-  const pendingCount = orders.filter(
-    (order) => order.status === "PENDING_PAYMENT",
-  ).length;
-
-  const trashedCount = orders.filter(
-    (order) => order.status === "TRASHED",
-  ).length;
-
-  const activeOrderCount = orders.length - trashedCount;
-
-  const deliveredCount = orders.filter(
-    (order) => order.status === "DELIVERED",
-  ).length;
-
-  const processingCount = orders.filter(
-    (order) => order.status === "PROCESSING",
-  ).length;
+  const admin = createAdminClient();
+  const result = await loadAdminOrders(admin, { status: requestedStatus, query: requestedQuery, page: requestedPage });
+  const { query, status: activeStatus, page, totalPages, matchedCount, counts } = result;
+  const visibleOrders = result.orders as unknown as Order[];
+  const customerIdByEmail = new Map<string, string>();
+  for (const order of visibleOrders) if (order.customer_id) customerIdByEmail.set(order.customer_email.trim().toLowerCase(), order.customer_id);
+  const missingEmails = [...new Set(visibleOrders.filter(order => !order.customer_id).map(order => order.customer_email.trim().toLowerCase()))];
+  if (missingEmails.length) {
+    const profiles = await admin.from("profiles").select("id,email").in("email", missingEmails);
+    for (const profile of profiles.data ?? []) if (profile.email) customerIdByEmail.set(profile.email.trim().toLowerCase(), profile.id);
+  }
+  const activeOrderCount = counts.all;
+  const pendingCount = counts.pending;
+  const paymentReviewCount = counts.review;
+  const processingCount = counts.processing;
+  const deliveredCount = counts.completed;
+  const trashedCount = counts.trash;
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -299,20 +219,10 @@ export default async function AdminOrdersPage({
             </div>
           </section>
 
-          {error && (
-            <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-              Unable to load orders:{" "}
-              {error.message}
-            </div>
+          {counts.all + counts.trash === 0 && (
+            <div className="mt-8 rounded-2xl border border-slate-200 p-8 text-center text-slate-500">No orders are available.</div>
           )}
-
-          {!error && orders.length === 0 && (
-            <div className="mt-8 rounded-2xl border border-slate-200 p-8 text-center text-slate-500">
-              No orders are available.
-            </div>
-          )}
-
-          {!error && orders.length > 0 && (
+          {counts.all + counts.trash > 0 && (
             <section className="mt-8">
               <nav className="mb-5 flex flex-wrap gap-2" aria-label="Order status filters">
                 {[
@@ -329,7 +239,7 @@ export default async function AdminOrdersPage({
                   const href = params.size ? `/admin/orders?${params.toString()}` : "/admin/orders";
 
                   return (
-                    <Link
+                    <Link prefetch={false}
                       key={tab.key}
                       href={href}
                       className={`rounded-xl border px-4 py-2.5 text-sm font-black transition ${
@@ -358,7 +268,7 @@ export default async function AdminOrdersPage({
                   <p className="mt-1 text-sm text-slate-500">
                     {activeStatus === "trash"
                       ? "Orders in Trash are permanently deleted after 30 days."
-                      : "Newest orders appear first."}
+                      : "Newest orders appear first. Updates automatically every 30 seconds."}
                   </p>
                 </div>
                 <form method="get" className="flex w-full max-w-xl gap-2">
@@ -366,6 +276,7 @@ export default async function AdminOrdersPage({
                     <input type="hidden" name="status" value={activeStatus} />
                   )}
                   <input
+                    maxLength={200}
                     name="q"
                     defaultValue={requestedQuery ?? ""}
                     placeholder="Search order number or customer email"
@@ -375,16 +286,16 @@ export default async function AdminOrdersPage({
                     Search
                   </button>
                   {query && (
-                    <Link href={activeStatus === "all" ? "/admin/orders" : `/admin/orders?status=${activeStatus}`} className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-600 hover:border-blue-300">
+                    <Link prefetch={false} href={activeStatus === "all" ? "/admin/orders" : `/admin/orders?status=${activeStatus}`} className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-600 hover:border-blue-300">
                       Clear
                     </Link>
                   )}
                 </form>
               </div>
 
-              {query && filteredOrders.length === 0 && (
+              {matchedCount === 0 && (
                 <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-5 text-center font-bold text-amber-800">
-                  No orders found for “{requestedQuery}”.
+                  {query ? `No orders found for “${requestedQuery}”.` : "No orders in this status."}
                 </div>
               )}
 
@@ -443,7 +354,7 @@ export default async function AdminOrdersPage({
 
                           <td className="break-words px-3 py-5 align-top">
                             {customerIdByEmail.get(order.customer_email.trim().toLowerCase()) ? (
-                              <Link
+                              <Link prefetch={false}
                                 href={`/admin/customers/${encodeURIComponent(customerIdByEmail.get(order.customer_email.trim().toLowerCase())!)}`}
                                 className="break-all font-bold text-blue-600 hover:text-blue-500 hover:underline"
                               >
@@ -564,7 +475,7 @@ export default async function AdminOrdersPage({
               {totalPages > 1 && (
                 <nav className="mt-5 flex flex-wrap justify-center gap-2" aria-label="Order pages">
                   {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                    <Link key={pageNumber} href={`/admin/orders?${new URLSearchParams({ page: String(pageNumber), ...(query ? { q: requestedQuery ?? "" } : {}), ...(activeStatus !== "all" ? { status: activeStatus } : {}) }).toString()}`} className={`rounded-lg border px-3 py-2 text-sm font-bold ${pageNumber === page ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}>{pageNumber}</Link>
+                    <Link prefetch={false} key={pageNumber} href={`/admin/orders?${new URLSearchParams({ page: String(pageNumber), ...(query ? { q: requestedQuery ?? "" } : {}), ...(activeStatus !== "all" ? { status: activeStatus } : {}) }).toString()}`} className={`rounded-lg border px-3 py-2 text-sm font-bold ${pageNumber === page ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}>{pageNumber}</Link>
                   ))}
                 </nav>
               )}

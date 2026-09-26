@@ -17,6 +17,7 @@ export default function AdminOrderLink({
 
   return (
     <Link
+      prefetch={false}
       href={destination}
       className={`font-bold text-blue-600 hover:text-blue-500 hover:underline ${className}`}
     >
