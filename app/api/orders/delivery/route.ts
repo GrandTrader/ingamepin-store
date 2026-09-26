@@ -1,3 +1,4 @@
+import { getAuthorizedDeliveryReceipts } from "@/lib/delivery-receipts";
 import {
   createHash,
   timingSafeEqual,
@@ -154,6 +155,8 @@ export async function POST(
     const orderItems =
       itemResult.data ?? [];
 
+    const deliveryReceipts = await getAuthorizedDeliveryReceipts(admin, order.id, order.status);
+
     const itemIds = orderItems.map(
       (item) => item.id,
     );
@@ -228,6 +231,7 @@ export async function POST(
 
       codes: orderItems.map((item) => ({
         productName: item.product_name,
+          receiptUrl: deliveryReceipts.get(item.id) ?? null,
         optionName:
           item.option_name ?? null,
         denomination:

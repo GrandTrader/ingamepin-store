@@ -1,5 +1,7 @@
 "use server";
 
+import { completeServiceWithReceipt } from "@/lib/delivery-receipts";
+
 import { parseManualRefund } from "@/lib/manual-refund";
 
 import { revalidatePath } from "next/cache";
@@ -408,11 +410,17 @@ export async function completeManualOrder(
 
   const serviceItemId = String(formData.get("service_item_id") ?? "").trim();
   if (serviceItemId) {
-    const completion = await admin.rpc("complete_manual_service_item", {
-      p_order_id: orderId,
-      p_item_id: serviceItemId,
-      p_admin_user_id: administrator.id,
-    });
+    const receipt = formData.get("delivery_receipt");
+    let completion;
+    try {
+      completion = receipt instanceof File && receipt.name
+        ? await completeServiceWithReceipt(admin, orderId, serviceItemId, administrator.id, receipt)
+        : await admin.rpc("complete_manual_service_item", {
+            p_order_id: orderId, p_item_id: serviceItemId, p_admin_user_id: administrator.id,
+          });
+    } catch (error) {
+      ordersRedirect("error", error instanceof Error ? error.message : "Receipt delivery failed. Refresh before retrying.", orderId);
+    }
     if (completion.error) ordersRedirect("error", completion.error.message, orderId);
     if (completion.data?.orderStatus === "DELIVERED" && !completion.data?.alreadyCompleted) {
       const orderResult = await admin.from("orders")

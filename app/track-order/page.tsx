@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DeliveryReceiptLink from "@/components/DeliveryReceiptLink";
 import {
   FormEvent,
   useEffect,
@@ -17,6 +18,8 @@ type LookupItem = {
   platform: string | null;
   region: string | null;
   quantity: number;
+  receiptUrl?: string | null;
+  serviceCompleted?: boolean;
   codes: string[];
 };
 
@@ -316,7 +319,7 @@ export default function TrackOrderPage() {
                 </div>
 
                 {items.map((item, index) => {
-                  const itemCompleted = item.codes.length >= item.quantity;
+                  const itemCompleted = Boolean(item.serviceCompleted) || item.codes.length >= item.quantity;
                   return <article
                     key={`${item.productName}-${item.optionName ?? index}`}
                     className={`rounded-2xl border bg-slate-950 p-5 ${itemCompleted ? "border-emerald-400/20" : "border-amber-400/20"}`}
@@ -360,6 +363,7 @@ export default function TrackOrderPage() {
                       )}
                     </div>
 
+                    <DeliveryReceiptLink url={item.receiptUrl ?? undefined} />
                     <details
                       className="mt-4 rounded-xl border border-white/10 p-3"
                       open={item.codes.length === 1}
@@ -367,7 +371,7 @@ export default function TrackOrderPage() {
                       <summary className="cursor-pointer text-sm font-black text-slate-200">
                         {item.codes.length > 0
                           ? `Show ${item.codes.length} delivered code${item.codes.length === 1 ? "" : "s"}`
-                          : "Delivery pending"}
+                          : item.serviceCompleted ? "UID / account delivery completed" : "Delivery pending"}
                       </summary>
                       <div className="mt-3 space-y-2">
                       {item.codes.map((code) => (
@@ -395,7 +399,7 @@ export default function TrackOrderPage() {
 
                       {item.codes.length === 0 && (
                         <p className="text-sm text-amber-300">
-                          This denomination is waiting for delivery.
+                          {item.serviceCompleted ? "Your UID / account purchase has been completed." : "This denomination is waiting for delivery."}
                         </p>
                       )}
                       </div>

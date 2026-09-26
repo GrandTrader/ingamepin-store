@@ -1,3 +1,5 @@
+import DeliveryReceiptLink from "@/components/DeliveryReceiptLink";
+import { getAuthorizedDeliveryReceipts } from "@/lib/delivery-receipts";
 import { manualRefundLabel, type ItemRefund } from "@/lib/manual-refund";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -9,12 +11,11 @@ import ManualDeliveryItemCard from "../../ManualDeliveryItemCard";
 import CopyableCustomerInformation from "../../CopyableCustomerInformation";
 import AdminRefundCard from "../../AdminRefundCard";
 import {
-  completeManualOrder,
   finalizeManualOrderFromCodes,
   verifyOrderPaymentManually,
 } from "../../actions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/admin-session";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
 import { approvePayment, rejectPayment } from "../../../payments/actions";
 
@@ -275,6 +276,8 @@ export default async function OrderReceipt({
       codes: codesByItem.get(item.id) ?? [],
     }))
     .filter(({ codes }) => codes.length > 0);
+
+  const deliveryReceipts = await getAuthorizedDeliveryReceipts(admin, order.id, order.status, "admin");
 
   const manualItems = items.filter(
     (item) => getDeliveryType(item.products) === "MANUAL",
@@ -690,6 +693,7 @@ export default async function OrderReceipt({
                       <p className="font-black">{item.product_name} / {item.option_name ?? item.denomination}</p>
                       <p className="mt-2 font-bold text-emerald-700">Completed - UID / account delivery</p>
                       <p className="mt-1 text-xs text-slate-500">{formatDate(item.service_delivered_at)}</p>
+                      <DeliveryReceiptLink url={deliveryReceipts.get(item.id)} />
                     </article>;
                   }
                   if (itemCompleted) {
@@ -777,39 +781,17 @@ export default async function OrderReceipt({
                 <p className="mt-4 rounded-xl bg-white p-4 font-bold text-emerald-700">
                   Player ID top-up completed.
                 </p>
-              ) : canDeliver && manualCodeItems.length === 0 ? (
-                <form action={completeManualOrder} className="mt-4 grid gap-3">
-                  <input type="hidden" name="order_id" value={order.id} />
-                  {playerTopupItems.map((item) => (
-                    <label
-                      key={item.id}
-                      className="flex items-start gap-3 rounded-xl bg-white p-4"
-                    >
-                      <input
-                        type="checkbox"
-                        name={`completed_${item.id}`}
-                        required
-                        className="mt-1 h-4 w-4"
-                      />
-                      <span>
-                        <strong className="block">
-                          Confirm {item.product_name} completed
-                        </strong>
-                        <span className="mt-1 block text-sm text-slate-500">
-                          {item.player_id
-                            ? `Player ID: ${item.player_id}`
-                            : "Confirm the customer top-up is complete."}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                  <button className="rounded-xl bg-emerald-600 px-5 py-3 font-black text-white hover:bg-emerald-500">
-                    Finalize Player ID Delivery
-                  </button>
-                </form>
+              ) : canDeliver ? (
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  {playerTopupItems.map(item => <div key={item.id}>
+                    {item.player_id && <p className="mb-2 text-sm font-bold">Player ID: {item.player_id}</p>}
+                    <ManualDeliveryItemCard orderId={order.id}
+                      item={{ id: item.id, product_name: item.product_name, option_name: item.option_name, quantity: item.quantity, service_only: true }} />
+                  </div>)}
+                </div>
               ) : (
                 <p className="mt-4 rounded-xl bg-white p-4 text-sm font-bold text-amber-800">
-                  Complete the code-delivery items before finalizing this top-up.
+                  Payment must be verified before delivery.
                 </p>
               )}
             </section>

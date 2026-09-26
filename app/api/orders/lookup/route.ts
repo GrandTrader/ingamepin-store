@@ -1,3 +1,4 @@
+import { getAuthorizedDeliveryReceipts } from "@/lib/delivery-receipts";
 import {
   NextRequest,
   NextResponse,
@@ -98,6 +99,8 @@ export async function POST(
           option_name,
           denomination,
           platform,
+          fulfillment_mode,
+          service_delivered_at,
           quantity
         `,
       )
@@ -111,6 +114,8 @@ export async function POST(
     }
 
     const orderItems = itemResult.data ?? [];
+    const deliveryReceipts = await getAuthorizedDeliveryReceipts(admin, order.id, order.status);
+
     const itemIds = orderItems.map(
       (item) => item.id,
     );
@@ -188,6 +193,7 @@ export async function POST(
         },
         items: orderItems.map((item) => ({
           productName: item.product_name,
+          receiptUrl: deliveryReceipts.get(item.id) ?? null,
           optionName: item.option_name ?? null,
           denomination:
             item.denomination ?? null,
@@ -197,6 +203,7 @@ export async function POST(
               item.product_id,
             ) ?? null,
           quantity: item.quantity,
+          serviceCompleted: Boolean(item.service_delivered_at) || (item.fulfillment_mode === "PLAYER_ID_TOPUP" && order.status === "DELIVERED"),
           codes:
             codesByItem.get(item.id) ?? [],
         })),

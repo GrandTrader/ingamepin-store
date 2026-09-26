@@ -1,3 +1,5 @@
+import DeliveryReceiptLink from "@/components/DeliveryReceiptLink";
+import { getAuthorizedDeliveryReceipts } from "@/lib/delivery-receipts";
 import { manualRefundLabel } from "@/lib/manual-refund";
 import { deliveredUnits } from "@/lib/delivery-progress";
 import Link from "next/link";
@@ -98,6 +100,7 @@ export default async function CustomerOrderReceiptPage({
 
   const order = orderResult.data;
   const items = (itemsResult.data ?? []) as OrderItem[];
+  const deliveryReceipts = await getAuthorizedDeliveryReceipts(admin, order.id, order.status);
   const payment = paymentResult.data;
   const itemIds = items.map((item) => item.id);
   const refundResult = await admin.from("order_item_refunds").select("*").eq("order_id", order.id).neq("status", "CANCELLED");
@@ -214,6 +217,7 @@ export default async function CustomerOrderReceiptPage({
                       : "Standard option")}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">Quantity: {item.quantity}</p>
+                <DeliveryReceiptLink url={deliveryReceipts.get(item.id)} />
                 {refundLabel && <p className="mt-1 text-xs font-bold text-orange-800">{refundLabel}</p>}
                 {itemRefunds.filter(r => r.status === "MANUALLY_REFUNDED").map(r => <div key={r.id} className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-xs text-orange-900">
                   {r.quantity} item(s) · {formatCustomerMoney(r.amount, r.currency)} · {r.refund_destination === "WALLET" ? "Wallet" : "Payment method"}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DeliveryReceiptLink from "@/components/DeliveryReceiptLink";
 import {
   useCallback,
   useEffect,
@@ -37,6 +38,8 @@ type DeliveredItem = {
   platform: string | null;
   region: string | null;
   fulfillmentMode: string | null;
+  receiptUrl?: string | null;
+  serviceCompleted?: boolean;
   codes: string[];
 };
 
@@ -576,6 +579,8 @@ export default function CheckoutSuccessPage() {
                             </span>
                           )}
                         </div>
+
+                        <DeliveryReceiptLink url={item.receiptUrl ?? undefined} />
 
                         {item.fulfillmentMode ===
                         "PLAYER_ID_TOPUP" ? (
