@@ -1,0 +1,9 @@
+.receipt { overflow-wrap: anywhere; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  :global(body):has(.receipt) *:not(:has(.receipt)):not(.receipt):not(.receipt *) { display: none !important; }
+  :global(body):has(.receipt), :global(body):has(.receipt) *:has(.receipt) { background: white !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; min-height: 0 !important; display: block !important; }
+  .receipt { width: 100%; padding: 0; border: 0; box-shadow: none; color: #0f172a; }
+  .receipt tr, .receipt dl > div { break-inside: avoid; }
+  .receipt h2 { break-after: avoid; }
+}
