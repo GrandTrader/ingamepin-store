@@ -1,3 +1,4 @@
+import { regionalFaceValue, exceedsRegionalLimit } from "@/lib/regional-purchase-limit";
 import { getPaypalychRestrictions } from "@/lib/paypalych-product-policy-server";
 import { PAYPALYCH_BLOCK_MESSAGE } from "@/lib/paypalych-product-policy";
 import { createHash, randomBytes } from "node:crypto";
@@ -256,7 +257,7 @@ export async function POST(request: NextRequest) {
     }
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
     if (optionIds.length) {
-      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, selling_price, stock_quantity, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
+      const optionsResult = await admin.from("product_options").select("id, product_id, denomination, denomination_currency, is_custom_value, selling_price, stock_quantity, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
       if (optionsResult.error) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
       const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
       const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods, stock_quantity").in("id", productIds) : { data: [] };
@@ -322,19 +323,46 @@ export async function POST(request: NextRequest) {
           );
         }
       }
-      const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("product_id, weekly_limit, limit_currency, identity_mode, reset_mode, notification_message").in("product_id", productIds).eq("is_enabled", true) : { data: [] };
+      const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("product_id, weekly_limit, limit_currency, identity_mode, reset_mode, notification_message").in("product_id", productIds).eq("is_enabled", true) : { data: [], error: null };
+      if (restrictionsResult.error) return NextResponse.json({ error: "Unable to verify purchase limits. Please retry." }, { status: 503 });
       for (const rule of restrictionsResult.data ?? []) {
-        const currentValue = submittedItems.reduce((sum, item) => { const option = options.find((entry) => entry.id === item.productOptionId && entry.product_id === rule.product_id); if (!option) return sum; const quantity = Math.max(1, Number(item.quantity ?? 1)); return sum + (rule.limit_currency === "INR" ? Number(item.customValue ?? option.denomination ?? 0) : Number(option.selling_price ?? 0)) * quantity; }, 0);
+        let currentValue: number;
+        try {
+          currentValue = regionalFaceValue(submittedItems.flatMap(item => {
+            const option = options.find(entry => entry.id === item.productOptionId && entry.product_id === rule.product_id);
+            if (!option) return [];
+            const faceValue = option.is_custom_value ? Number(item.customValue) : Number(option.denomination);
+            return [{ denomination: faceValue, currency: option.denomination_currency, quantity: Number(item.quantity ?? 1) }];
+          }), rule.limit_currency);
+        } catch (error) {
+          return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to verify purchase limits." }, { status: 409 });
+        }
+        if (currentValue === 0) continue;
+        if (rule.identity_mode !== "ACCOUNT_EMAIL" && !customerIp) return NextResponse.json({ error: "Unable to verify the purchase limit. Please retry." }, { status: 503 });
         const since = new Date(); if (rule.reset_mode === "CALENDAR_WEEK") { const day = (since.getUTCDay() + 6) % 7; since.setUTCDate(since.getUTCDate() - day); since.setUTCHours(0, 0, 0, 0); } else since.setUTCDate(since.getUTCDate() - 7);
         const orderIds = new Set<string>();
         const identityQueries = [];
         if (rule.identity_mode !== "IP") identityQueries.push(admin.from("orders").select("id").eq("customer_email", customerEmailForLimit).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
         if (rule.identity_mode !== "IP" && signedInUser) identityQueries.push(admin.from("orders").select("id").eq("customer_id", signedInUser.id).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
         if (rule.identity_mode !== "ACCOUNT_EMAIL" && customerIp) identityQueries.push(admin.from("orders").select("id").eq("customer_ip", customerIp).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
-        for (const query of await Promise.all(identityQueries)) for (const order of query.data ?? []) orderIds.add(order.id);
+        for (const query of await Promise.all(identityQueries)) {
+          if (query.error || (query.data?.length ?? 0) >= 1000) return NextResponse.json({ error: "Unable to verify complete purchase history. Please contact support." }, { status: 503 });
+          for (const order of query.data ?? []) orderIds.add(order.id);
+        }
         let previousValue = 0;
-        if (orderIds.size) { const previous = await admin.from("order_items").select("denomination, quantity, total_price").eq("product_id", rule.product_id).in("order_id", [...orderIds]); previousValue = (previous.data ?? []).reduce((sum, item) => sum + (rule.limit_currency === "INR" ? Number(item.denomination ?? 0) * Number(item.quantity ?? 1) : Number(item.total_price ?? 0)), 0); }
-        const limit = Number(rule.weekly_limit); if (previousValue + currentValue > limit) return NextResponse.json({ error: rule.notification_message, weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
+        if (orderIds.size) {
+          const previous = await admin.from("order_items").select("denomination, custom_value, quantity, product_options(denomination_currency)").eq("product_id", rule.product_id).in("order_id", [...orderIds]);
+          if (previous.error || (previous.data?.length ?? 0) >= 1000) return NextResponse.json({ error: "Unable to verify complete purchase history. Please contact support." }, { status: 503 });
+          try {
+            previousValue = regionalFaceValue((previous.data ?? []).map(item => {
+              const option = Array.isArray(item.product_options) ? item.product_options[0] : item.product_options;
+              return { denomination: item.custom_value ?? item.denomination, quantity: item.quantity, currency: option?.denomination_currency };
+            }), rule.limit_currency);
+          } catch (error) {
+            return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to verify purchase history." }, { status: 409 });
+          }
+        }
+        const limit = Number(rule.weekly_limit); if (exceedsRegionalLimit(previousValue, currentValue, limit)) return NextResponse.json({ error: rule.notification_message || "Weekly purchase limit reached. Please try again after your limit resets.", weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
       }
     }
     const orderResult = await admin.rpc("create_store_order", {

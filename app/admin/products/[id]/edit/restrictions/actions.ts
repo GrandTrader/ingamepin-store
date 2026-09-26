@@ -1,4 +1,5 @@
 "use server";
+import { isRestrictionCurrency } from "@/lib/purchase-restriction-currencies";
 import { getProductPaypalychRestriction } from "@/lib/paypalych-product-policy-server";
 
 import { revalidatePath } from "next/cache";
@@ -98,7 +99,16 @@ export async function saveProductRestriction(formData: FormData) {
     redirect(`${path}?error=${encodeURIComponent("Enter a valid weekly limit")}`);
   }
 
+  const limitCurrency = String(formData.get("limit_currency") ?? "INR").trim().toUpperCase();
+  const enabled = formData.get("is_enabled") === "on";
+  if (!isRestrictionCurrency(limitCurrency)) redirect(`${path}?error=${encodeURIComponent("Select a supported limit currency.")}`);
   const admin = createAdminClient();
+  if (enabled) {
+    const matchingOptions = await admin.from("product_options").select("id")
+      .eq("product_id", id).eq("is_active", true).eq("denomination_currency", limitCurrency).limit(1);
+    if (matchingOptions.error) redirect(`${path}?error=${encodeURIComponent("Unable to verify product currencies. Please retry.")}`);
+    if (!matchingOptions.data?.length) redirect(`${path}?error=${encodeURIComponent("Choose the currency of an active product denomination.")}`);
+  }
   const productResult = await admin
     .from("products")
     .update({
@@ -121,12 +131,12 @@ export async function saveProductRestriction(formData: FormData) {
 
   const restrictionResult = await admin.from("product_purchase_restrictions").upsert({
     product_id: id,
-    is_enabled: formData.get("is_enabled") === "on",
+    is_enabled: enabled,
     weekly_limit: weeklyLimit,
-    limit_currency: String(formData.get("limit_currency") ?? "INR"),
+    limit_currency: limitCurrency,
     identity_mode: String(formData.get("identity_mode") ?? "ACCOUNT_EMAIL_IP"),
     reset_mode: String(formData.get("reset_mode") ?? "ROLLING_7_DAYS"),
-    notification_message: String(formData.get("notification_message") ?? "").trim(),
+    notification_message: String(formData.get("notification_message") ?? "").trim() || "Weekly purchase limit reached. Please try again after your limit resets.",
     updated_at: new Date().toISOString(),
   });
 

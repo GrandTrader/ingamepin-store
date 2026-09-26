@@ -1,3 +1,5 @@
+import { restrictionCurrencies } from "@/lib/purchase-restriction-currencies";
+import { hasInstantDelivery } from "@/lib/product-delivery";
 import ProductSettingsActions from "@/components/ProductSettingsActions";
 import { getProductPaypalychRestriction } from "@/lib/paypalych-product-policy-server";
 import Link from "next/link";
@@ -48,13 +50,13 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
   const [productResult, restrictionResult, optionsResult] = await Promise.all([
     admin
       .from("products")
-      .select("id, name, slug, delivery_type, minimum_quantity, maximum_quantity, allowed_payment_methods, allowed_usdt_networks")
+      .select("id, name, slug, delivery_type, stock_source, is_bulk_order, minimum_quantity, maximum_quantity, allowed_payment_methods, allowed_usdt_networks")
       .eq("id", id)
       .maybeSingle(),
     admin.from("product_purchase_restrictions").select("*").eq("product_id", id).maybeSingle(),
     admin
       .from("product_options")
-      .select("id, option_name, denomination, denomination_currency, selling_price, minimum_quantity, maximum_quantity")
+      .select("id, option_name, denomination, denomination_currency, selling_price, minimum_quantity, maximum_quantity, is_active")
       .eq("product_id", id)
       .eq("is_active", true)
       .order("sort_order"),
@@ -134,15 +136,15 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
               </div>
             </section>
 
-            {product.delivery_type === "AUTOMATIC" ? (
+            {(hasInstantDelivery(product) || rule?.is_enabled) ? (
               <section className="mt-7 border-t border-slate-200 pt-6">
-                <label className="flex items-center gap-3 font-black"><input type="checkbox" name="is_enabled" defaultChecked={rule?.is_enabled ?? false} className="h-5 w-5 accent-blue-600" />Weekly purchase restriction ON</label>
+                <label className="flex items-center gap-3 font-black"><input type="checkbox" name="is_enabled" defaultChecked={rule?.is_enabled ?? false} className="h-5 w-5 accent-blue-600" />Weekly purchase restriction ON</label><p className="mt-2 text-sm text-slate-500">Counts gift-card face value only for denominations in the selected currency. For example, a 500 USD limit allows 500 USD of USA cards per customer for this product. Selling prices and exchange rates are not used.</p>
                 <div className="mt-6 grid gap-5 sm:grid-cols-2">
                   <label className="font-bold">Weekly purchase limit<input name="weekly_limit" type="number" min="1" step="1" defaultValue={rule?.weekly_limit ?? 25000} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
-                  <label className="font-bold">Limit currency<select name="limit_currency" defaultValue={rule?.limit_currency ?? "INR"} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"><option>INR</option><option>USD</option></select></label>
+                  <label className="font-bold">Limit currency<select name="limit_currency" defaultValue={rule?.limit_currency ?? optionsResult.data?.find(option => option.is_active)?.denomination_currency ?? "INR"} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">{restrictionCurrencies.map(currency => <option key={currency.code} value={currency.code}>{currency.code} — {currency.name}</option>)}</select></label>
                   <label className="font-bold">Identify customer by<select name="identity_mode" defaultValue={rule?.identity_mode ?? "ACCOUNT_EMAIL_IP"} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"><option value="ACCOUNT_EMAIL_IP">User account + email + IP address</option><option value="ACCOUNT_EMAIL">User account + email</option><option value="IP">IP address only</option></select></label>
                   <label className="font-bold">Reset period<select name="reset_mode" defaultValue={rule?.reset_mode ?? "ROLLING_7_DAYS"} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"><option value="ROLLING_7_DAYS">Every 7 days</option><option value="CALENDAR_WEEK">Calendar week</option></select></label>
-                  <label className="font-bold sm:col-span-2">Customer notification<textarea name="notification_message" rows={3} defaultValue={rule?.notification_message ?? "Weekly purchase limit reached. Please try again after your limit resets."} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+                  <label className="font-bold sm:col-span-2">Customer notification<textarea name="notification_message" rows={3} defaultValue={rule?.notification_message || "Weekly purchase limit reached. Please try again after your limit resets."} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
                 </div>
               </section>
             ) : (
