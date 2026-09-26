@@ -1,3 +1,4 @@
+import ProductSettingsActions from "@/components/ProductSettingsActions";
 import PaypalychFormWarning from "@/components/PaypalychFormWarning";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -67,7 +68,7 @@ export default async function ProductGeneralPage({
               <h1 className="mt-2 text-3xl font-black">Edit product</h1>
               <p className="mt-1 text-sm text-slate-500">{product.slug}</p>
             </div>
-            <Link href="/admin/products" className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold">← Product list</Link>
+            <ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold">← Product list</Link></ProductSettingsActions>
           </header>
 
           {success && <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}

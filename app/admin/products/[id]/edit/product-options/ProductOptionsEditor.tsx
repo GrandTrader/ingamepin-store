@@ -2,7 +2,7 @@
 
 import { useState, type ChangeEvent } from "react";
 
-type Option = { id: string; name: string; denomination: number; currency: string; sellingPrice: number | string; isActive: boolean; isInStock: boolean };
+type Option = { id: string; name: string; denomination: number | string; currency: string; sellingPrice: number | string; isActive: boolean; isInStock: boolean };
 const currencies = ["INR", "USD", "EUR", "GBP", "TRY", "AED", "SAR", "CAD", "AUD", "JPY", "SGD"];
 
 export default function ProductOptionsEditor({ initialOptions, productName }: { initialOptions: Option[]; productName: string }) {
@@ -117,7 +117,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
         {options.map((option, index) => <div key={option.id || `row-${index}`} draggable onDragStart={() => setDragging(index)} onDragOver={(event) => event.preventDefault()} onDrop={() => drop(index)} className={`grid grid-cols-[30px_minmax(135px,1fr)_78px_82px_92px_54px_70px_34px] items-center gap-2 border-b border-slate-200 px-2 py-3 ${selected === index ? "bg-blue-50" : ""}`} onClick={() => setSelected(index)}>
           <button type="button" aria-label={`Drag ${option.name}`} className="cursor-grab rounded border border-slate-200 bg-white px-2 py-2 text-slate-500 active:cursor-grabbing">⋮⋮</button>
           <input value={option.name} onChange={(event) => update(index, { name: event.target.value })} placeholder="1000 Rupees" className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
-          <input type="number" min="1" step="1" value={option.denomination} onChange={(event) => update(index, { denomination: Number(event.target.value) })} className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
+          <input type="number" min="1" step="1" value={option.denomination} onChange={(event) => update(index, { denomination: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
           <select value={option.currency} onChange={(event) => update(index, { currency: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2">{currencies.map((currency) => <option key={currency}>{currency}</option>)}</select>
           <input type="number" min="0" step="0.01" required value={option.sellingPrice} onChange={(event) => update(index, { sellingPrice: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
           <div className="flex items-center justify-center"><input type="radio" name="default_preview" checked={selected === index} onChange={() => setSelected(index)} aria-label={`Preview ${option.name}`} /></div>

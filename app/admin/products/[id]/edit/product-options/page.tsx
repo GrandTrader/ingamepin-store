@@ -1,3 +1,4 @@
+import ProductSettingsActions from "@/components/ProductSettingsActions";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -52,15 +53,15 @@ export default async function ProductOptionsPage({
       <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar />
         <main className="min-w-0 flex-1 p-5 sm:p-8">
-          <header className="flex justify-between gap-4">
+          <header className="flex flex-wrap justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Product settings</p>
               <h1 className="mt-2 text-3xl font-black">{product.name}</h1>
               <p className="mt-1 text-sm text-slate-500">{product.slug}</p>
             </div>
-            <Link href="/admin/products" className="h-fit rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold">
+            <ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="h-fit rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold">
               ← Product list
-            </Link>
+            </Link></ProductSettingsActions>
           </header>
 
           {success && <div role="status" className="fixed bottom-6 right-6 z-[100] max-w-sm rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-4 font-bold text-emerald-800 shadow-xl">✓ {success}</div>}

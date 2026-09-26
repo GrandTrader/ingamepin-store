@@ -1,3 +1,4 @@
+import ProductSettingsActions from "@/components/ProductSettingsActions";
 import { getProductPaypalychRestriction } from "@/lib/paypalych-product-policy-server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -80,7 +81,7 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
               <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Product settings</p>
               <h1 className="mt-2 text-3xl font-black">{product.name}</h1>
             </div>
-            <Link href="/admin/products" className="h-fit rounded-xl border border-slate-200 px-5 py-3 font-bold">← Product list</Link>
+            <ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="h-fit rounded-xl border border-slate-200 px-5 py-3 font-bold">← Product list</Link></ProductSettingsActions>
           </header>
 
           <div className="mt-8"><ProductEditPageTabs productId={id} current="restrictions" /></div>

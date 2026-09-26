@@ -1,3 +1,4 @@
+import ProductSettingsActions from "@/components/ProductSettingsActions";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -275,10 +276,10 @@ export default async function EditProductPage({
               </p>
             </div>
 
-            <Link
+            <ProductSettingsActions slug={product.slug}><Link
               href="/admin/products"
               className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
-            >{"\u2190 Product list"}</Link>
+            >{"\u2190 Product list"}</Link></ProductSettingsActions>
           </header>
 
           {success && (

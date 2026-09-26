@@ -1,3 +1,4 @@
+import ProductSettingsActions from "@/components/ProductSettingsActions";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -69,12 +70,12 @@ export default async function ProductAffiliatePage({
               <p className="mt-1 text-sm text-slate-500">{product.slug}</p>
             </div>
 
-            <Link
+            <ProductSettingsActions slug={product.slug}><Link
               href="/admin/products"
               className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold"
             >
               ← Product list
-            </Link>
+            </Link></ProductSettingsActions>
           </header>
 
           {success && (

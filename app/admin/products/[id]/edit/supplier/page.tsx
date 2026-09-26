@@ -1,3 +1,4 @@
+import ProductSettingsActions from "@/components/ProductSettingsActions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdminSidebar from "../../../../AdminSidebar";
@@ -34,7 +35,7 @@ export default async function ProductSupplierPage({params}:{params:Promise<{id:s
     <AdminSidebar/><main className="min-w-0 flex-1 p-5 sm:p-8">
       <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-600">Product settings</p>
         <h1 className="mt-2 text-3xl font-black">{product.data.name}</h1><p className="mt-1 text-sm text-slate-500">{product.data.slug}</p></div>
-        <Link href="/admin/definiteplay" className="rounded-xl border px-5 py-3 font-bold text-blue-600">Supplier catalogue</Link></header>
+        <ProductSettingsActions slug={product.data.slug}><Link href="/admin/definiteplay" className="rounded-xl border px-5 py-3 font-bold text-blue-600">Supplier catalogue</Link></ProductSettingsActions></header>
       <div className="mt-8"><ProductEditPageTabs productId={id} current="supplier"/></div>
       <SupplierDeliveryControl productId={id} enabled={enabled} configured={configured}/>
       {jobs?.data?.length ? <section className="mt-6 rounded-2xl border p-5"><h2 className="font-black">Recent supplier orders</h2>
