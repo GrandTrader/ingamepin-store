@@ -1,0 +1,26 @@
+[Unit]
+Description=iNgamePIN GiftPort supplier connection
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=ingamepin-giftport
+StateDirectoryMode=0700
+WorkingDirectory=/opt/ingamepin-giftport
+EnvironmentFile=/etc/ingamepin-giftport.env
+ExecStart=/usr/bin/python3 /opt/ingamepin-giftport/server.py
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=192M
+TasksMax=48
+
+[Install]
+WantedBy=multi-user.target

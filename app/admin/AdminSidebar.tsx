@@ -23,6 +23,7 @@ const links = [
   { label: "Products", href: "/admin/products", icon: "PR" },
   { label: "Sellers", href: "/admin/sellers", icon: "SE" },
   { label: "Definite Play", href: "/admin/definiteplay", icon: "DP" },
+  { label: "GiftPort", href: "/admin/giftport", icon: "GP" },
   { label: "Categories", href: "/admin/categories", icon: "CA" },
   { label: "Orders", href: "/admin/orders", icon: "OR" },
   { label: "Sales Report", href: "/admin/sales-report", icon: "SR" },
@@ -48,7 +49,8 @@ const menuGroups = [
     "paths": [
       "/admin/products",
       "/admin/categories",
-      "/admin/definiteplay"
+      "/admin/definiteplay",
+      "/admin/giftport"
     ]
   },
   {
