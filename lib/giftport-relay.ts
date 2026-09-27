@@ -1,7 +1,7 @@
 import "server-only";
 import type { GiftPortStatus } from "./giftport-types";
 
-export async function giftPortRequest<T>(endpoint: "status" | "configure" | "refresh", body?: unknown): Promise<T> {
+export async function giftPortRequest<T>(endpoint: "status" | "configure" | "refresh" | "links", body?: unknown): Promise<T> {
   // Share the existing private gateway credential by default, never supplier keys.
   const existing = process.env.DEFINITEPLAY_RELAY_URL;
   const base = process.env.GIFTPORT_RELAY_URL || (existing ? new URL("/giftport", existing).href : "");
@@ -19,6 +19,7 @@ export async function giftPortRequest<T>(endpoint: "status" | "configure" | "ref
   } catch { throw new Error("Unable to reach the GiftPort server. Try again shortly."); }
   if (!response.ok) {
     if (response.status === 429) throw new Error("Please wait 30 seconds before trying again.");
+    if (response.status === 400) throw new Error("Check the option value and currency, then refresh the GiftPort catalogue before trying again.");
     if (response.status === 401) throw new Error("GiftPort server authentication needs attention.");
     throw new Error("GiftPort server request failed. Check the connection and try again.");
   }

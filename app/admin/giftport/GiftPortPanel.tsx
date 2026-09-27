@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import GiftPortCatalogue from "./Catalogue";
 import type { GiftPortStatus } from "@/lib/giftport-types";
 import { connectGiftPort, readGiftPortStatus, refreshGiftPort } from "./actions";
 const input = "mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3";
@@ -9,7 +10,6 @@ export default function GiftPortPanel({ initialStatus, initialError }: { initial
   const [error, setError] = useState(initialError);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [query, setQuery] = useState("");
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   async function run(form?: HTMLFormElement) {
@@ -41,8 +41,8 @@ export default function GiftPortPanel({ initialStatus, initialError }: { initial
     } finally { if (mounted.current) setBusy(false); }
   }
   const snapshot = status?.snapshot;
-  const items = snapshot?.items.filter(i => `${i.brandName} ${i.operatorCode}`.toLowerCase().includes(query.toLowerCase())) ?? [];
   return <div className="mt-6 space-y-6">
+    <details open={!status?.configured} className="rounded-2xl border p-4"><summary className="cursor-pointer font-bold text-blue-700">Connection settings</summary><div className="mt-4 space-y-4">
     <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
       <h2 className="text-lg font-bold">GiftPort API settings</h2>
       <p className="mt-2 text-sm">Use these details in your GiftPort account before connecting.</p>
@@ -61,6 +61,7 @@ export default function GiftPortPanel({ initialStatus, initialError }: { initial
         <div className="sm:col-span-2"><button className={button} disabled={busy}>{busy ? "Checking…" : "Save and check connection"}</button></div>
       </form>
     </section>
+    </div></details>
     {(error || status?.error) && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{error || status?.error}</p>}
     {message && <p role="status" className="text-sm text-blue-700">{message}</p>}
     <section className="rounded-2xl border p-5">
@@ -69,17 +70,11 @@ export default function GiftPortPanel({ initialStatus, initialError }: { initial
       {snapshot && <><div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm text-slate-600">GiftPort wallet balance{status?.stale ? " (last known)" : ""}</p><p className="mt-2 text-2xl font-bold">{snapshot.balance === null ? "Unavailable" : `₹${Number(snapshot.balance).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</p></div>
         <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm text-slate-600">Catalogue brands</p><p className="mt-2 text-2xl font-bold">{snapshot.items.length}</p></div>
-      </div><p className="mt-3 text-xs text-slate-500">Last checked: {new Date(snapshot.syncedAt * 1000).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST. Use Refresh to check again.</p></>}
+      </div><p className="mt-3 text-xs text-slate-500">Last checked: {new Date(snapshot.syncedAt * 1000).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST. The server refreshes every five minutes; use Refresh to check now.</p></>}
       {snapshot?.warnings?.map(warning => <p key={warning} role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{warning}</p>)}
       {status?.stale && status.configured && <p className="mt-3 text-sm text-amber-800">Supplier data is out of date. Refresh before using these figures.</p>}
-      <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Automatic purchasing is not enabled. Connect your account first; supplier prices, product links and delivery verification still need to be set up.</p>
+      <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Import products and save supplier links below. Automatic purchasing and delivery remain disabled while supplier costs and order verification are being set up.</p>
     </section>
-    {snapshot && <section className="rounded-2xl border p-5"><h2 className="text-lg font-bold">Supplier catalogue</h2>
-      <label className="mt-4 block text-sm">Search brands<input className={input} value={query} onChange={e => setQuery(e.target.value)} placeholder="Brand name or operator code" /></label>
-      <p className="mt-3 text-sm text-slate-500">Denominations are face values, not your purchase cost. Stock quantities and wholesale prices are not supplied by this catalogue.</p>
-      <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="p-3">Brand</th><th className="p-3">Operator code</th><th className="p-3">Denominations</th><th className="p-3">Variable value</th></tr></thead>
-        <tbody>{items.slice(0, 100).map(item => <tr key={item.operatorCode} className="border-b"><td className="p-3 font-semibold">{item.brandName}</td><td className="p-3">{item.operatorCode}</td><td className="max-w-sm p-3">{item.currency && <span className="mr-1 text-xs font-semibold">{item.currency}</span>}{item.denominations.join(", ") || "Not confirmed"}{item.denominationsIncomplete && <span className="mt-1 block text-xs text-amber-800">Values incomplete — confirm with GiftPort</span>}</td><td className="p-3">{item.variable === true ? (item.variableRange ? `Yes · ${item.currency || "Currency unconfirmed"} ${item.variableRange.min}–${item.variableRange.max}` : "Yes — range unconfirmed") : item.variable === false ? "No" : "Not confirmed"}</td></tr>)}</tbody></table></div>
-      <p className="mt-3 text-xs text-slate-500">Showing {Math.min(items.length, 100)} of {items.length} matching brands.{items.length > 100 ? " Narrow your search to see other brands." : ""}</p>
-    </section>}
+    {snapshot && <GiftPortCatalogue items={snapshot.items} stale={!!status?.stale} />}
   </div>;
 }

@@ -164,6 +164,51 @@ class BridgeTests(unittest.TestCase):
         with self.assertRaises(server.SafeError):
             server.NoRedirect().redirect_request(None, None, 302, None, None, "https://evil.example")
 
+    def link_fixture(self):
+        item = server.normalize_catalogue({"catalogue": [{**CATALOGUE["catalogue"][0], "currency_code": "INR", "variable_denomination": "Yes", "variable_denomination_range": "100-10000"}]})[0]
+        server.atomic_json("snapshot.json", {"items": [item], "syncedAt": server.time.time()})
+        return {"operation": "save", "productId": "11111111-1111-4111-8111-111111111111", "mappings": [{"optionId": "22222222-2222-4222-8222-222222222222", "operatorCode": "AMZN", "amount": "500", "currency": "INR"}]}
+
+    def test_links_persist_and_support_confirmed_variable_values(self):
+        body = self.link_fixture()
+        body["mappings"][0]["amount"] = "750"
+        self.assertTrue(server.manage_links(body)["success"])
+        result = server.manage_links({"operation": "list", "productId": body["productId"]})
+        self.assertEqual(result["mappings"][0]["amount"], "750.00")
+        self.assertEqual(result["mappings"][0]["supplier"]["operatorCode"], "AMZN")
+        # Retrying the same update does not create another link.
+        server.manage_links(body)
+        self.assertEqual(len(server.manage_links({"operation": "list", "productId": body["productId"]})["mappings"]), 1)
+
+    def test_links_reject_stale_currency_and_unconfirmed_amounts(self):
+        body = self.link_fixture()
+        for change in ({"amount": "10001"}, {"amount": "0"}, {"currency": "USD"}, {"operatorCode": "MISSING"}):
+            with self.subTest(change=change), self.assertRaises(server.SafeError):
+                server.manage_links({**body, "mappings": [{**body["mappings"][0], **change}]})
+        snapshot = server.read_json("snapshot.json")
+        snapshot["syncedAt"] -= 1000
+        server.atomic_json("snapshot.json", snapshot)
+        with self.assertRaises(server.SafeError):
+            server.manage_links(body)
+
+    def test_invalid_batch_does_not_save_partial_links(self):
+        body = self.link_fixture()
+        body["mappings"].append({**body["mappings"][0], "optionId": "33333333-3333-4333-8333-333333333333", "amount": "99999"})
+        with self.assertRaises(server.SafeError):
+            server.manage_links(body)
+        self.assertEqual(server.manage_links({"operation": "list", "productId": body["productId"]})["mappings"], [])
+
+    def test_links_cannot_be_reassigned_or_removed_by_another_product(self):
+        body = self.link_fixture()
+        server.manage_links(body)
+        other = "44444444-4444-4444-8444-444444444444"
+        with self.assertRaises(server.SafeError):
+            server.manage_links({**body, "productId": other})
+        server.manage_links({"operation": "remove", "productId": other, "optionId": body["mappings"][0]["optionId"]})
+        self.assertEqual(len(server.manage_links({"operation": "list", "productId": body["productId"]})["mappings"]), 1)
+        server.manage_links({"operation": "remove", "productId": body["productId"], "optionId": body["mappings"][0]["optionId"]})
+        self.assertEqual(server.manage_links({"operation": "list", "productId": body["productId"]})["mappings"], [])
+
     def test_http_boundary_callback_cannot_fulfil(self):
         with patch.dict(server.os.environ, {"GIFTPORT_RELAY_SECRET": "relay-test"}):
             http = server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
@@ -174,6 +219,10 @@ class BridgeTests(unittest.TestCase):
                 with self.assertRaises(urllib.error.HTTPError) as denied:
                     urllib.request.urlopen(base + "/status")
                 self.assertEqual(denied.exception.code, 401)
+                request = urllib.request.Request(base + "/links", data=b'{}')
+                with self.assertRaises(urllib.error.HTTPError) as private_links:
+                    urllib.request.urlopen(request)
+                self.assertEqual(private_links.exception.code, 401)
                 request = urllib.request.Request(base + "/callback", data=b'{"status":"success","redeem_code":"untrusted"}')
                 with urllib.request.urlopen(request) as response:
                     self.assertEqual(json.load(response), {"status": "received", "processed": False})

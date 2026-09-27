@@ -1,4 +1,4 @@
-"""GiftPort onboarding bridge. Catalogue/balance only; no purchasing route.
+"""GiftPort catalogue, import links and balance bridge; no purchasing route.
 
 Callbacks are acknowledged, never trusted as proof of payment or delivery.
 Supplier credentials stay in the service's private state directory.
@@ -7,6 +7,8 @@ import hmac
 import json
 import os
 import re
+import sqlite3
+from contextlib import contextmanager
 import threading
 import time
 import urllib.error
@@ -190,6 +192,9 @@ def normalize_catalogue(result):
         values, incomplete = normalize_denominations(row.get("denominations"))
         variable = normalize_variable(row.get("variable_denomination", row.get("variable")))
         variable_range = normalize_variable_range(row.get("variable_denomination_range")) if variable is True else None
+        category = str(row.get("category", ""))[:300]
+        country = str(row.get("country", ""))[:100]
+        delivery = str(row.get("delivery_type", ""))[:100]
         currency = row.get("currency_code")
         currency = currency.strip().upper() if isinstance(currency, str) else None
         if currency is not None and not re.fullmatch(r"[A-Z]{3}", currency):
@@ -197,7 +202,8 @@ def normalize_catalogue(result):
         seen.add(code)
         items.append({"operatorCode": code, "brandName": name.strip(),
                       "denominations": values, "denominationsIncomplete": incomplete, "variable": variable,
-                      "variableRange": variable_range, "currency": currency})
+                      "variableRange": variable_range, "currency": currency,
+                      "category": category, "country": country, "deliveryType": delivery})
     return items
 
 
@@ -258,6 +264,81 @@ def start_sync(new_keys=None):
         return True
 
 
+@contextmanager
+def links_db():
+    db = sqlite3.connect(STATE / "links.db", timeout=10)
+    db.row_factory = sqlite3.Row
+    try:
+        with db:
+            db.execute("CREATE TABLE IF NOT EXISTS mappings (option_id TEXT PRIMARY KEY, product_id TEXT NOT NULL, operator_code TEXT NOT NULL, amount TEXT NOT NULL, currency TEXT NOT NULL, updated REAL NOT NULL)")
+            yield db
+    finally:
+        db.close()
+
+
+def valid_uuid(value):
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}", value)
+
+
+def amount_allowed(item, amount):
+    if amount in item.get("denominations", []) and not item.get("denominationsIncomplete"):
+        return True
+    allowed = item.get("variableRange")
+    return item.get("variable") is True and allowed is not None and Decimal(allowed["min"]) <= Decimal(amount) <= Decimal(allowed["max"])
+
+
+def manage_links(body):
+    if not isinstance(body, dict) or not valid_uuid(body.get("productId")):
+        raise SafeError("Choose a valid website product.")
+    product_id = body["productId"].lower()
+    operation = body.get("operation")
+    with LOCK:
+        snapshot = read_json("snapshot.json")
+        items = {item["operatorCode"]: item for item in (snapshot or {}).get("items", [])}
+        with links_db() as db:
+            if operation == "list":
+                rows = db.execute("SELECT * FROM mappings WHERE product_id=? ORDER BY option_id", (product_id,)).fetchall()
+                return {"mappings": [{**dict(row), "supplier": items.get(row["operator_code"])} for row in rows]}
+            if operation == "remove":
+                if not valid_uuid(body.get("optionId")):
+                    raise SafeError("Choose a valid product option.")
+                db.execute("DELETE FROM mappings WHERE product_id=? AND option_id=?", (product_id, body["optionId"].lower()))
+                return {"success": True}
+            if operation != "save":
+                raise SafeError("Unsupported link operation.")
+            if not snapshot or not 0 <= time.time() - snapshot["syncedAt"] < 900:
+                raise SafeError("Refresh the GiftPort catalogue before saving links.")
+            rows = body.get("mappings")
+            if not isinstance(rows, list) or not 1 <= len(rows) <= 50:
+                raise SafeError("Choose between 1 and 50 options.")
+            prepared, seen = [], set()
+            for row in rows:
+                if not isinstance(row, dict) or not valid_uuid(row.get("optionId")) or row["optionId"].lower() in seen:
+                    raise SafeError("Choose unique valid product options.")
+                option_id = row["optionId"].lower()
+                code = row.get("operatorCode")
+                item = items.get(code) if isinstance(code, str) else None
+                amount = money(row.get("amount"), positive=True)
+                if not item or item.get("currency") != "INR" or row.get("currency") != "INR" or not amount_allowed(item, amount):
+                    raise SafeError("The denomination or currency is not confirmed in the current GiftPort catalogue.")
+                existing = db.execute("SELECT product_id FROM mappings WHERE option_id=?", (option_id,)).fetchone()
+                if existing and existing["product_id"] != product_id:
+                    raise SafeError("This option belongs to another product link.")
+                seen.add(option_id)
+                prepared.append((option_id, product_id, code, amount, "INR", time.time()))
+            db.executemany("INSERT INTO mappings VALUES (?,?,?,?,?,?) ON CONFLICT(option_id) DO UPDATE SET operator_code=excluded.operator_code,amount=excluded.amount,currency=excluded.currency,updated=excluded.updated", prepared)
+            return {"success": True}
+
+
+def periodic_sync():
+    while True:
+        time.sleep(300)
+        try:
+            start_sync()
+        except Exception:
+            pass  # Config/status already explains missing keys; never log them.
+
+
 def status():
     with LOCK:
         snapshot = read_json("snapshot.json")
@@ -315,6 +396,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(401, {"error": "Unauthorized"})
             if self.command == "GET" and self.path == "/status":
                 return self.respond(200, status())
+            if self.command == "POST" and self.path == "/links":
+                return self.respond(200, manage_links(json.loads(self.read_body())))
             if self.command == "POST" and self.path in ("/configure", "/refresh"):
                 raw = self.read_body()
                 keys = credentials(json.loads(raw)) if self.path == "/configure" else None
@@ -337,4 +420,5 @@ if __name__ == "__main__":
     if not os.environ.get("GIFTPORT_RELAY_SECRET"):
         raise SystemExit("Missing private relay configuration")
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
+    threading.Thread(target=periodic_sync, daemon=True).start()
     ThreadingHTTPServer(("127.0.0.1", 8800), Handler).serve_forever()
