@@ -25,3 +25,5 @@ Before enabling purchasing, implement explicit product/denomination mappings, pa
 `node scripts/giftport-install-bridge.cjs` installs only the dedicated service and additive Caddy route, validates routing, and checks service readiness. Existing supplier services and their credentials are untouched. The installer preserves saved GiftPort credentials and backs up replaced code and Caddy configuration.
 
 `python -m unittest discover -s vps-giftport -p 'test_*.py'` checks authentication, untrusted callback isolation, credential replacement failure, request limits, POST-only secrets, redirect refusal, data validation, and blocked purchasing. No test calls the real supplier.
+
+Variable-denomination flags accept case/whitespace variations of Yes/No, true/false, 1/0 and variable/fixed, plus JSON booleans and integer 1/0. Missing or unrecognised flags are represented as null and displayed as "Not confirmed"; they do not prevent catalogue loading or imply permission to purchase arbitrary amounts.

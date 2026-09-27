@@ -32,6 +32,27 @@ class BridgeTests(unittest.TestCase):
         self.assertNotIn("stock", rows[0])
         self.assertNotIn("price", rows[0])
 
+    def test_variable_flag_formats(self):
+        for value in ("Yes", "yes", " YES ", "true", "TRUE", "1", "Variable", True, 1):
+            with self.subTest(value=value):
+                self.assertIs(server.normalize_variable(value), True)
+        for value in ("No", "no", " NO ", "false", "FALSE", "0", "Fixed", False, 0):
+            with self.subTest(value=value):
+                self.assertIs(server.normalize_variable(value), False)
+
+    def test_unknown_flags_do_not_block_other_brands_or_imply_permission(self):
+        for value in (None, "", "unknown", "sometimes", 2, [], {}):
+            with self.subTest(value=value):
+                row = {**CATALOGUE["catalogue"][0], "operator_code": "OTHER", "variable": value}
+                items = server.normalize_catalogue({"catalogue": [*CATALOGUE["catalogue"], row]})
+                self.assertEqual(len(items), 2)
+                self.assertIs(items[0]["variable"], True)
+                self.assertIsNone(items[1]["variable"])
+                self.assertEqual(items[1]["denominations"], ["100.00", "500.00", "1000.00"])
+        row = dict(CATALOGUE["catalogue"][0])
+        row.pop("variable")
+        self.assertIsNone(server.normalize_catalogue({"catalogue": [row]})[0]["variable"])
+
     def test_invalid_amounts_rejected(self):
         for value in (True, -1, "NaN", "Infinity", "1.001", "1e2", None):
             with self.subTest(value=value), self.assertRaises(server.SafeError):

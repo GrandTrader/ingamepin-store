@@ -102,6 +102,21 @@ def money(value, positive=False):
         raise SafeError("GiftPort returned an invalid INR amount.") from None
 
 
+def normalize_variable(value):
+    """Normalize flag representations; missing/unknown is not permission to vary."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return value == 1
+    if isinstance(value, str):
+        flag = value.strip().casefold()
+        if flag in {"yes", "true", "1", "variable"}:
+            return True
+        if flag in {"no", "false", "0", "fixed"}:
+            return False
+    return None
+
+
 def normalize_catalogue(result):
     rows = result.get("catalogue")
     if not isinstance(rows, list) or len(rows) > 10000:
@@ -120,12 +135,10 @@ def normalize_catalogue(result):
         if not isinstance(raw, str) or len(raw) > 10000:
             raise SafeError("GiftPort returned invalid denominations.")
         values = list(dict.fromkeys(money(v.strip(), positive=True) for v in raw.split(",") if v.strip()))
-        variable = row.get("variable")
-        if variable not in ("Yes", "No"):
-            raise SafeError("GiftPort returned an unknown denomination type.")
+        variable = normalize_variable(row.get("variable"))
         seen.add(code)
         items.append({"operatorCode": code, "brandName": name.strip(),
-                      "denominations": values, "variable": variable == "Yes"})
+                      "denominations": values, "variable": variable})
     return items
 
 

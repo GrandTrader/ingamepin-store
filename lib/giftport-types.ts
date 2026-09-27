@@ -8,6 +8,6 @@ export type GiftPortStatus = {
     balance: string;
     currency: "INR";
     syncedAt: number;
-    items: { operatorCode: string; brandName: string; denominations: string[]; variable: boolean }[];
+    items: { operatorCode: string; brandName: string; denominations: string[]; variable: boolean | null }[];
   };
 };
