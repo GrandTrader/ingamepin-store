@@ -62,9 +62,45 @@ class BridgeTests(unittest.TestCase):
         with self.assertRaises(server.SafeError):
             server.normalize_catalogue({"catalogue": CATALOGUE["catalogue"] * 2})
 
-    def test_non_inr_balance_rejected(self):
-        with patch.object(server, "supplier_request", side_effect=[CATALOGUE, {**BALANCE, "currency": "USD"}]), self.assertRaises(server.SafeError):
-            server.fetch_snapshot(KEYS)
+    def test_non_inr_balance_is_unavailable_not_converted(self):
+        with patch.object(server, "supplier_request", side_effect=[CATALOGUE, {**BALANCE, "currency": "USD"}]):
+            snapshot = server.fetch_snapshot(KEYS)
+        self.assertIsNone(snapshot["balance"])
+        self.assertTrue(snapshot["warnings"])
+        self.assertEqual(len(snapshot["items"]), 1)
+
+    def test_amount_formats_preserve_exact_value(self):
+        cases = [(" 500.0000 ", "500.00"), ("INR 1,23,456.00", "123456.00"),
+                 ("₹1,234.50", "1234.50"), ("Rs. 1000.00", "1000.00"),
+                 ("0.000000", "0.00"), (500.0, "500.00")]
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.assertEqual(server.money(value), expected)
+        for value in ("1,23", "USD 500", "500.0001", "12,34,56", "-1", "100-500"):
+            with self.subTest(value=value), self.assertRaises(server.SafeError):
+                server.money(value)
+
+    def test_denominations_do_not_infer_ranges_or_include_zero(self):
+        values, incomplete = server.normalize_denominations("0,100,500.0000,100-1000,invalid")
+        self.assertEqual(values, ["100.00", "500.00"])
+        self.assertTrue(incomplete)
+        self.assertEqual(server.normalize_denominations([100, "500.000", "INR 1,000"]),
+                         (["100.00", "500.00", "1000.00"], False))
+        for value in (None, {}, "100-1000", "", True):
+            with self.subTest(value=value):
+                self.assertEqual(server.normalize_denominations(value), ([], True))
+
+    def test_successful_api_access_with_bad_amount_keeps_usable_connection(self):
+        catalogue = {"catalogue": [{**CATALOGUE["catalogue"][0], "denominations": "0,100-10000"}]}
+        with patch.object(server, "supplier_request", side_effect=[catalogue, {**BALANCE, "balance": "unknown"}]):
+            server.sync_job(KEYS)
+        result = server.status()
+        self.assertTrue(result["configured"])
+        self.assertIsNone(result["error"])
+        self.assertIsNone(result["snapshot"]["balance"])
+        self.assertTrue(result["snapshot"]["warnings"])
+        self.assertTrue(result["snapshot"]["items"][0]["denominationsIncomplete"])
+        self.assertFalse(result["purchasingEnabled"])
 
     def test_connect_saves_keys_only_after_success(self):
         with patch.object(server, "supplier_request", side_effect=[CATALOGUE, BALANCE]) as call:

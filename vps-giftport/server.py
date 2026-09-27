@@ -91,15 +91,56 @@ def supplier_request(endpoint, keys):
 
 
 def money(value, positive=False):
-    if isinstance(value, bool) or not re.fullmatch(r"\d+(?:\.\d{1,2})?", str(value)):
-        raise SafeError("GiftPort returned an invalid INR amount.")
+    """Parse explicit INR formats without guessing separators or rounding value."""
+    if isinstance(value, bool) or not isinstance(value, (str, int, float, Decimal)):
+        raise SafeError("GiftPort returned an unreadable amount.")
+    text = str(value).strip()
+    if len(text) > 80:
+        raise SafeError("GiftPort returned an unreadable amount.")
+    text = re.sub(r"^(?:INR\s*|Rs\.?\s*|₹\s*)", "", text, flags=re.I)
+    if "," in text:
+        # Accept conventional Indian or international thousands groups only.
+        if not re.fullmatch(r"(?:\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})*,\d{3})(?:\.\d+)?", text):
+            raise SafeError("GiftPort returned an unreadable amount.")
+        text = text.replace(",", "")
+    if not re.fullmatch(r"\d+(?:\.\d+)?", text):
+        raise SafeError("GiftPort returned an unreadable amount.")
     try:
-        number = Decimal(str(value))
+        number = Decimal(text)
         if not number.is_finite() or number > Decimal("999999999999") or (positive and number <= 0):
             raise InvalidOperation
-        return format(number, ".2f")
+        pennies = number.quantize(Decimal("0.01"))
+        if pennies != number:
+            raise InvalidOperation  # Do not silently round or truncate supplier values.
+        return format(pennies, ".2f")
     except InvalidOperation:
-        raise SafeError("GiftPort returned an invalid INR amount.") from None
+        raise SafeError("GiftPort returned an unreadable amount.") from None
+
+
+def normalize_denominations(raw):
+    # In catalogue strings, commas mean separate denominations per API docs.
+    # Currency grouping is only unambiguous in an individual array value.
+    if isinstance(raw, str) and len(raw) <= 10000:
+        parts = raw.split(",")
+    elif isinstance(raw, list) and len(raw) <= 1000:
+        parts = raw
+    elif isinstance(raw, (int, float, Decimal)) and not isinstance(raw, bool):
+        parts = [raw]
+    else:
+        return [], True
+    values, incomplete = [], False
+    for part in parts:
+        if isinstance(part, str) and not part.strip():
+            incomplete = True
+            continue
+        try:
+            amount = money(part, positive=True)
+        except SafeError:
+            incomplete = True
+            continue
+        if amount not in values:
+            values.append(amount)
+    return values, incomplete or not values
 
 
 def normalize_variable(value):
@@ -131,23 +172,29 @@ def normalize_catalogue(result):
             raise SafeError("GiftPort returned an invalid or duplicate operator code.")
         if not isinstance(name, str) or not name.strip() or len(name) > 300:
             raise SafeError("GiftPort returned an invalid brand name.")
-        raw = row.get("denominations")
-        if not isinstance(raw, str) or len(raw) > 10000:
-            raise SafeError("GiftPort returned invalid denominations.")
-        values = list(dict.fromkeys(money(v.strip(), positive=True) for v in raw.split(",") if v.strip()))
+        values, incomplete = normalize_denominations(row.get("denominations"))
         variable = normalize_variable(row.get("variable"))
         seen.add(code)
         items.append({"operatorCode": code, "brandName": name.strip(),
-                      "denominations": values, "variable": variable})
+                      "denominations": values, "denominationsIncomplete": incomplete, "variable": variable})
     return items
 
 
 def fetch_snapshot(keys):
     items = normalize_catalogue(supplier_request("catalogue", keys))
     balance = supplier_request("balance", keys)
-    if balance.get("currency") != "INR":
-        raise SafeError("GiftPort did not return an INR wallet balance.")
-    return {"items": items, "balance": money(balance.get("balance")),
+    warnings = []
+    if any(item["denominationsIncomplete"] for item in items):
+        warnings.append("Some brands have unconfirmed denominations. Only readable fixed values are shown; confirm ranges and other values with GiftPort.")
+    balance_amount = None
+    if str(balance.get("currency", "")).strip().upper() != "INR":
+        warnings.append("GiftPort did not confirm INR for the wallet balance. The balance is unavailable.")
+    else:
+        try:
+            balance_amount = money(balance.get("balance"))
+        except SafeError:
+            warnings.append("GiftPort's wallet balance could not be read without changing its value. Check the balance in your GiftPort account.")
+    return {"items": items, "balance": balance_amount, "warnings": warnings,
             "currency": "INR", "syncedAt": time.time()}
 
 

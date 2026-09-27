@@ -5,9 +5,10 @@ export type GiftPortStatus = {
   stale: boolean;
   purchasingEnabled: false;
   snapshot: null | {
-    balance: string;
+    balance: string | null;
+    warnings?: string[];
     currency: "INR";
     syncedAt: number;
-    items: { operatorCode: string; brandName: string; denominations: string[]; variable: boolean | null }[];
+    items: { operatorCode: string; brandName: string; denominations: string[]; denominationsIncomplete?: boolean; variable: boolean | null }[];
   };
 };

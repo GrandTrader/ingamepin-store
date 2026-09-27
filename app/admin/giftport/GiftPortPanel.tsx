@@ -30,7 +30,7 @@ export default function GiftPortPanel({ initialStatus, initialError }: { initial
           setStatus(next.status);
           if (!next.status.syncing) {
             if (next.status.error) throw new Error(next.status.error);
-            setMessage("Connected. Your catalogue and wallet balance are up to date.");
+            setMessage(next.status.snapshot?.warnings?.length ? "Connected. Review the supplier data notices below." : "Connected. Your catalogue and wallet balance are up to date.");
             return;
           }
         }
@@ -67,9 +67,10 @@ export default function GiftPortPanel({ initialStatus, initialError }: { initial
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">{status?.configured ? "Account connected" : "Awaiting credentials"}</h2>
         <button onClick={() => void run()} className={button} disabled={busy || !status?.configured}>Refresh balance and catalogue</button></div>
       {snapshot && <><div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm text-slate-600">GiftPort wallet balance{status?.stale ? " (last known)" : ""}</p><p className="mt-2 text-2xl font-bold">₹{Number(snapshot.balance).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
+        <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm text-slate-600">GiftPort wallet balance{status?.stale ? " (last known)" : ""}</p><p className="mt-2 text-2xl font-bold">{snapshot.balance === null ? "Unavailable" : `₹${Number(snapshot.balance).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</p></div>
         <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm text-slate-600">Catalogue brands</p><p className="mt-2 text-2xl font-bold">{snapshot.items.length}</p></div>
       </div><p className="mt-3 text-xs text-slate-500">Last checked: {new Date(snapshot.syncedAt * 1000).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST. Use Refresh to check again.</p></>}
+      {snapshot?.warnings?.map(warning => <p key={warning} role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{warning}</p>)}
       {status?.stale && status.configured && <p className="mt-3 text-sm text-amber-800">Supplier data is out of date. Refresh before using these figures.</p>}
       <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Automatic purchasing is not enabled. Connect your account first; supplier prices, product links and delivery verification still need to be set up.</p>
     </section>
@@ -77,7 +78,7 @@ export default function GiftPortPanel({ initialStatus, initialError }: { initial
       <label className="mt-4 block text-sm">Search brands<input className={input} value={query} onChange={e => setQuery(e.target.value)} placeholder="Brand name or operator code" /></label>
       <p className="mt-3 text-sm text-slate-500">Denominations are face values, not your purchase cost. Stock quantities and wholesale prices are not supplied by this catalogue.</p>
       <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b text-slate-500"><th className="p-3">Brand</th><th className="p-3">Operator code</th><th className="p-3">Denominations</th><th className="p-3">Variable value</th></tr></thead>
-        <tbody>{items.slice(0, 100).map(item => <tr key={item.operatorCode} className="border-b"><td className="p-3 font-semibold">{item.brandName}</td><td className="p-3">{item.operatorCode}</td><td className="max-w-sm p-3">{item.denominations.join(", ") || "Not provided"}</td><td className="p-3">{item.variable === true ? "Yes — confirm allowed range" : item.variable === false ? "No" : "Not confirmed"}</td></tr>)}</tbody></table></div>
+        <tbody>{items.slice(0, 100).map(item => <tr key={item.operatorCode} className="border-b"><td className="p-3 font-semibold">{item.brandName}</td><td className="p-3">{item.operatorCode}</td><td className="max-w-sm p-3">{item.denominations.join(", ") || "Not confirmed"}{item.denominationsIncomplete && <span className="mt-1 block text-xs text-amber-800">Values incomplete — confirm with GiftPort</span>}</td><td className="p-3">{item.variable === true ? "Yes — confirm allowed range" : item.variable === false ? "No" : "Not confirmed"}</td></tr>)}</tbody></table></div>
       <p className="mt-3 text-xs text-slate-500">Showing {Math.min(items.length, 100)} of {items.length} matching brands.{items.length > 100 ? " Narrow your search to see other brands." : ""}</p>
     </section>}
   </div>;
