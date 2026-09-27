@@ -1,3 +1,6 @@
+import OrderRefundHistory from "@/components/OrderRefundHistory";
+import RefundReviewForm from "@/app/admin/refund-requests/RefundReviewForm";
+import { getOrderRefundHistory } from "@/lib/order-refund-data";
 import DeliveryReceiptLink from "@/components/DeliveryReceiptLink";
 import { getAuthorizedDeliveryReceipts } from "@/lib/delivery-receipts";
 import { manualRefundLabel, type ItemRefund } from "@/lib/manual-refund";
@@ -294,8 +297,8 @@ export default async function OrderReceipt({
       (item) =>
         Boolean(item.service_delivered_at) || (codesByItem.get(item.id)?.length ?? 0) + refundedQuantityFor(item.id) === item.quantity,
     );
-  const canDeliver =
-    order.status === "PAID" || order.status === "PROCESSING";
+  const refundHistory = await getOrderRefundHistory(order.id);
+  const canDeliver = !refundHistory.held && (order.status === "PAID" || order.status === "PROCESSING");
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -600,6 +603,13 @@ export default async function OrderReceipt({
             </div>
           </section>
 
+          {refundHistory.requests.length > 0 && <section className="mt-6 space-y-4 rounded-2xl border bg-white p-5">
+            <h2 className="text-xl font-bold">Customer refund request</h2>
+            {refundHistory.held && <p className="text-sm text-amber-800">Delivery and other refund actions are blocked for this order.</p>}
+            <OrderRefundHistory requests={refundHistory.requests} events={refundHistory.events} />
+            {refundHistory.requests.filter(r => ["REQUESTED", "APPROVED"].includes(r.status)).map(request => <RefundReviewForm key={request.id} request={request} />)}
+          </section>}
+
           {deliveredContentItems.length > 0 && (
             <details className="group mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm sm:p-6">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
@@ -671,7 +681,7 @@ export default async function OrderReceipt({
             </details>
           )}
 
-          {manualCodeItems.length > 0 && (
+          {!refundHistory.held && manualCodeItems.length > 0 && (
             <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 sm:p-6">
               <h2 className="text-xl font-black text-blue-900">
                 Manual delivery
@@ -771,7 +781,7 @@ export default async function OrderReceipt({
             </section>
           )}
 
-          {playerTopupItems.length > 0 && (
+          {!refundHistory.held && playerTopupItems.length > 0 && (
             <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
               <h2 className="text-xl font-black text-amber-900">
                 Player ID top-up delivery
@@ -804,7 +814,7 @@ export default async function OrderReceipt({
                 {items.map(item => <AdminRefundCard key={`refund-${item.id}`} orderId={order.id} item={item}
                   deliveredQuantity={item.service_delivered_at || (item.fulfillment_mode === "PLAYER_ID_TOPUP" && order.status === "DELIVERED") ? item.quantity : codesByItem.get(item.id)?.length ?? 0}
                   refunds={refundsByItem.get(item.id) ?? []} currency={order.currency}
-                  orderRemainingAmount={orderRemainingAmount} canRefund={order.status !== "REFUNDED"} />)}
+                  orderRemainingAmount={orderRemainingAmount} canRefund={!refundHistory.held && order.status !== "REFUNDED"} />)}
               </div>
             </section>
           )}

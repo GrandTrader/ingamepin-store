@@ -1,3 +1,7 @@
+import RefundRequestForm from "../RefundRequestForm";
+import OrderRefundHistory from "@/components/OrderRefundHistory";
+import { getOrderRefundHistory } from "@/lib/order-refund-data";
+import { refundMethods } from "@/lib/order-refund-request";
 import DeliveryReceiptLink from "@/components/DeliveryReceiptLink";
 import { getAuthorizedDeliveryReceipts } from "@/lib/delivery-receipts";
 import { manualRefundLabel } from "@/lib/manual-refund";
@@ -107,6 +111,7 @@ export default async function CustomerOrderReceiptPage({
   if (refundResult.error) throw new Error("Unable to load refund details.");
   const refunds = refundResult.data ?? [];
   const deliveredCodes = await getAllDeliveredCodes(itemIds);
+  const refundHistory = await getOrderRefundHistory(order.id);
   const invoiceResult = await admin
     .from("saved_invoices")
     .select("order_item_id")
@@ -139,6 +144,12 @@ export default async function CustomerOrderReceiptPage({
     0,
   );
   const remainingCodeCount = items.reduce((sum, item) => sum + Math.max(0, item.quantity - deliveredUnits(item, codesByItem.get(item.id)?.length ?? 0, order.status) - refunds.filter(r => r.order_item_id === item.id).reduce((n, r) => n + r.quantity, 0)), 0);
+
+  const canRequestRefund = !refundHistory.held && ["PAID", "PROCESSING"].includes(order.status) &&
+    !!order.paid_at && !order.delivered_at && payment?.status === "VERIFIED" && !deliveredCodes.length &&
+    !items.some(item => item.service_delivered_at) && !refunds.length && !deliveryReceipts.size;
+  const refundSettings = canRequestRefund ? await admin.from("payment_gateway_settings").select("gateway_commissions").eq("id", true).maybeSingle() : null;
+  const availableRefundMethods = refundMethods(refundSettings?.data?.gateway_commissions ?? null, payment?.method ?? "").filter(method => method !== "WALLET" || order.currency === "USD");
 
   return (
     <CustomerAccountShell displayName={displayName}>
@@ -191,9 +202,16 @@ export default async function CustomerOrderReceiptPage({
         <dl className={styles.summaryCounts}>
           <SummaryCard label="Ordered units" value={String(totalUnits)} />
           <SummaryCard label="Delivered codes" value={String(deliveredCodeCount)} />
-          <SummaryCard label="Remaining delivery" value={String(remainingCodeCount)} />
+          <SummaryCard label="Remaining delivery" value={order.status === "CANCELLED" ? "Cancelled" : String(remainingCodeCount)} />
         </dl>
       </div>
+
+      {(refundHistory.requests.length > 0 || canRequestRefund) && <section className="mt-5 space-y-4 rounded-xl border bg-white p-4 sm:p-6">
+        <h2 className="text-lg font-bold">Order refund</h2>
+        {refundHistory.held && !refundHistory.requests.some(r => r.status === "COMPLETED") && <p className="text-sm text-amber-800">Delivery is paused while your refund request is being handled.</p>}
+        <OrderRefundHistory requests={refundHistory.requests} events={refundHistory.events} />
+        {canRequestRefund && (refundSettings?.error ? <p className="text-sm text-red-700">Refund methods could not be loaded. Please reload this page.</p> : <RefundRequestForm orderId={order.id} amount={Number(order.total)} currency={order.currency} originalMethod={payment?.method ?? ""} methods={availableRefundMethods} />)}
+      </section>}
 
       <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-6 sm:rounded-2xl sm:p-6">
         <h2 className="text-base font-bold sm:text-xl sm:font-black">Order items</h2>

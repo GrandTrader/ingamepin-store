@@ -26,6 +26,7 @@ const links = [
   { label: "GiftPort", href: "/admin/giftport", icon: "GP" },
   { label: "Categories", href: "/admin/categories", icon: "CA" },
   { label: "Orders", href: "/admin/orders", icon: "OR" },
+  { label: "Refund requests", href: "/admin/refund-requests", icon: "RF" },
   { label: "Sales Report", href: "/admin/sales-report", icon: "SR" },
   { label: "Invoices", href: "/admin/invoices", icon: "IN" },
   { label: "Payment Settings", href: "/admin/payment-settings", icon: "PS" },
@@ -58,6 +59,7 @@ const menuGroups = [
     "icon": "OR",
     "paths": [
       "/admin/orders",
+      "/admin/refund-requests",
       "/admin/sales-report",
       "/admin/invoices"
     ]
