@@ -1,3 +1,4 @@
+import OrderRefundPermission from "@/app/admin/refund-requests/OrderRefundPermission";
 import OrderRefundHistory from "@/components/OrderRefundHistory";
 import RefundReviewForm from "@/app/admin/refund-requests/RefundReviewForm";
 import { getOrderRefundHistory } from "@/lib/order-refund-data";
@@ -602,6 +603,8 @@ export default async function OrderReceipt({
               </div>
             </div>
           </section>
+
+          <OrderRefundPermission orderId={order.id} enabled={refundHistory.enabled} locked={refundHistory.held} />
 
           {refundHistory.requests.length > 0 && <section className="mt-6 space-y-4 rounded-2xl border bg-white p-5">
             <h2 className="text-xl font-bold">Customer refund request</h2>

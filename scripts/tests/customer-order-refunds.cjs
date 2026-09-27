@@ -113,3 +113,16 @@ test('server sends the validated network, never a browser-supplied fee or refund
  const h=customerHarness();await h.api.requestOrderRefund(form({method:'USDT_DIRECT',network:'TRC20',wallet_address:'T'+'A'.repeat(33),network_fee:'0',net_amount:'99999'}));
  const args=h.calls.find(c=>c[0]==='rpc')[2];assert.equal(args.p_network,'TRC20');assert.equal(args.network_fee,undefined);assert.equal(args.net_amount,undefined);
 });
+
+
+test('per-order refund switch requires admin session and strict order/enabled values',async()=>{
+ const denied=adminHarness({denied:true});await assert.rejects(()=>denied.api.setOrderRefundPermission(form({enabled:'true'})),/denied/);assert.equal(denied.calls.length,1);
+ for(const fields of [{enabled:'on'},{enabled:'true',order_id:'invalid'}]) {
+  const h=adminHarness();assert.ok((await h.api.setOrderRefundPermission(form(fields))).error);assert.ok(!h.calls.some(c=>c[0]==='rpc'));
+ }
+ for(const enabled of ['true','false']) {
+  const h=adminHarness();await h.api.setOrderRefundPermission(form({enabled,admin_id:'attacker'}));
+  const args=h.calls.find(c=>c[0]==='rpc');assert.equal(args[1],'set_order_refund_permission');assert.equal(args[2].p_admin_id,user);assert.equal(args[2].p_order_id,order);assert.equal(args[2].p_enabled,enabled==='true');
+  assert.ok(h.calls.some(c=>c[0]==='revalidate'&&c[1]===`/account/orders/${order}`));
+ }
+});

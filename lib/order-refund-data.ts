@@ -16,10 +16,14 @@ export async function requireRefundAdmin() {
 // Call only after the page has checked customer ownership or administrator access.
 export async function getOrderRefundHistory(orderId: string) {
   const admin = createAdminClient();
-  const requests = await admin.from("order_refund_requests").select("*").eq("order_id", orderId).order("created_at", { ascending: false });
+  const [requests, permission] = await Promise.all([
+    admin.from("order_refund_requests").select("*").eq("order_id", orderId).order("created_at", { ascending: false }),
+    admin.from("order_refund_permissions").select("enabled").eq("order_id", orderId).maybeSingle(),
+  ]);
+  if (permission.error) throw new Error("Unable to load the order refund setting.");
   if (requests.error) throw new Error("Unable to load refund requests.");
   const rows = (requests.data ?? []) as OrderRefundRequest[];
   const events = rows.length ? await admin.from("order_refund_events").select("id,request_id,status,note,created_at").in("request_id", rows.map(row => row.id)).order("created_at") : { data: [], error: null };
   if (events.error) throw new Error("Unable to load refund history.");
-  return { requests: rows, events: (events.data ?? []) as RefundEvent[], held: rows.some(r => r.status !== "REJECTED") };
+  return { enabled: permission.data?.enabled === true, requests: rows, events: (events.data ?? []) as RefundEvent[], held: rows.some(r => r.status !== "REJECTED") };
 }

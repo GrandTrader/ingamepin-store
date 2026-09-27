@@ -145,7 +145,7 @@ export default async function CustomerOrderReceiptPage({
   );
   const remainingCodeCount = items.reduce((sum, item) => sum + Math.max(0, item.quantity - deliveredUnits(item, codesByItem.get(item.id)?.length ?? 0, order.status) - refunds.filter(r => r.order_item_id === item.id).reduce((n, r) => n + r.quantity, 0)), 0);
 
-  const canRequestRefund = !refundHistory.held && ["PAID", "PROCESSING"].includes(order.status) &&
+  const canRequestRefund = refundHistory.enabled && !refundHistory.held && ["PAID", "PROCESSING"].includes(order.status) &&
     !!order.paid_at && !order.delivered_at && payment?.status === "VERIFIED" && !deliveredCodes.length &&
     !items.some(item => item.service_delivered_at) && !refunds.length && !deliveryReceipts.size;
   const refundSettings = canRequestRefund ? await admin.from("payment_gateway_settings").select("gateway_commissions").eq("id", true).maybeSingle() : null;

@@ -22,3 +22,17 @@ export async function reviewOrderRefund(form: FormData) {
   for (const path of ["/admin/refund-requests", "/admin/orders", "/admin/wallet", "/account/wallet", "/account/dashboard", `/admin/orders/${existing.data.order_id}/receipt`, `/account/orders/${existing.data.order_id}`]) revalidatePath(path);
   return { status: String(result.data) };
 }
+
+
+export async function setOrderRefundPermission(form: FormData) {
+  const user = await requireRefundAdmin();
+  let orderId: string;
+  try { orderId = refundId(form.get("order_id")); } catch { return { error: "Invalid order reference." }; }
+  const enabled = form.get("enabled");
+  if (enabled !== "true" && enabled !== "false") return { error: "Choose whether to enable customer refunds." };
+  const result = await createAdminClient().rpc("set_order_refund_permission", { p_order_id: orderId, p_admin_id: user.id, p_enabled: enabled === "true" });
+  if (result.error) return { error: result.error.code === "P0001" ? result.error.message : "Unable to update the refund option. Reload the order and try again." };
+  revalidatePath(`/account/orders/${orderId}`);
+  revalidatePath(`/admin/orders/${orderId}/receipt`);
+  return { enabled: result.data === true };
+}
