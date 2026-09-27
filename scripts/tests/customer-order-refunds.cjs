@@ -52,3 +52,35 @@ test('external refund completion requires explicit confirmation and transaction 
  }
  const h=adminHarness();assert.equal((await h.api.reviewOrderRefund(form({request_id:order,action:'COMPLETE',reference:'TX-123',confirmed:'on',admin_id:'attacker'}))).status,'COMPLETED');assert.equal(h.calls.find(c=>c[0]==='rpc')[2].p_admin_id,user);
 });
+
+test('crypto refund networks preserve the selected network and trimmed address',()=>{
+ for(const [network,label,address] of [
+  ['TRC20','TRON (TRC20)','T'+'A'.repeat(33)],
+  ['BEP20','BNB Smart Chain (BEP20)','0x'+'a'.repeat(40)],
+  ['SOLANA','Solana','A'.repeat(44)],
+ ]) {
+  const result=logic.parseRefundRequest(form({method:'USDT_DIRECT',network,wallet_address:' '+address+' ',details:'stale details'}));
+  assert.equal(result.details,`Network: ${label}\nWallet address: ${address}`);
+ }
+});
+test('crypto refunds reject missing or mismatched network and address before issuing a request',async()=>{
+ for(const fields of [
+  {},{network:'ERC20',wallet_address:'0x'+'a'.repeat(40)},
+  {network:'TRC20'},{network:'TRC20',wallet_address:'0x'+'a'.repeat(40)},
+  {network:'BEP20',wallet_address:'0x123'},
+  {network:'SOLANA',wallet_address:'0'.repeat(44)},
+ ]) {
+  const h=customerHarness();
+  const result=await h.api.requestOrderRefund(form({method:'USDT_DIRECT',...fields}));
+  assert.ok(result.error);assert.ok(!h.calls.some(c=>c[0]==='rpc'));
+ }
+});
+test('customer action stores the crypto network and address in payout details',async()=>{
+ const h=customerHarness(),address='0x'+'b'.repeat(40);
+ assert.equal((await h.api.requestOrderRefund(form({method:'USDT_DIRECT',network:'BEP20',wallet_address:address}))).success,true);
+ assert.equal(h.calls.find(c=>c[0]==='rpc')[2].p_details,`Network: BNB Smart Chain (BEP20)\nWallet address: ${address}`);
+});
+test('other refund methods retain receiving details without requiring a crypto network',()=>{
+ assert.equal(logic.parseRefundRequest(form({method:'UPI',details:' customer@upi ',network:'invalid',wallet_address:'stale'})).details,'customer@upi');
+ assert.equal(logic.parseRefundRequest(form()).details,'');
+});

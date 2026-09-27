@@ -1,4 +1,9 @@
 export const REFUND_METHODS = ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA", "UPI", "PAYTM"] as const;
+export const CRYPTO_REFUND_NETWORKS = [
+  { value: "TRC20", label: "TRON (TRC20)" },
+  { value: "BEP20", label: "BNB Smart Chain (BEP20)" },
+  { value: "SOLANA", label: "Solana" },
+] as const;
 export function refundMethods(settings: Record<string, { enabled?: boolean }> | null, originalMethod: string) {
   return REFUND_METHODS.filter(method => method === "WALLET" || method === originalMethod ||
     (["UPI", "PAYTM"].includes(method) ? settings?.[method]?.enabled === true : settings?.[method]?.enabled !== false));
@@ -11,9 +16,23 @@ export function parseRefundRequest(form: FormData) {
   const orderId = refundId(form.get("order_id"));
   const method = String(form.get("method") ?? "");
   const reason = String(form.get("reason") ?? "").trim();
-  const details = String(form.get("details") ?? "").trim();
+  let details = String(form.get("details") ?? "").trim();
   if (!(REFUND_METHODS as readonly string[]).includes(method)) throw new Error("Choose a refund method.");
   if (reason.length < 3 || reason.length > 1000 || details.length > 1000) throw new Error("Enter a reason between 3 and 1,000 characters and valid refund details.");
+  if (method === "USDT_DIRECT") {
+    const network = String(form.get("network") ?? "");
+    const selectedNetwork = CRYPTO_REFUND_NETWORKS.find(option => option.value === network);
+    if (!selectedNetwork) throw new Error("Select a crypto refund network.");
+    const address = String(form.get("wallet_address") ?? "").trim();
+    const patterns: Record<string, RegExp> = {
+      TRC20: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,
+      BEP20: /^0x[0-9a-fA-F]{40}$/,
+      SOLANA: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
+    };
+    // Format checks do not verify ownership or that a receiving exchange supports USDT.
+    if (!patterns[network].test(address)) throw new Error(`Enter a valid wallet address format for ${selectedNetwork.label}.`);
+    details = `Network: ${selectedNetwork.label}\nWallet address: ${address}`;
+  }
   return { orderId, method, reason, details };
 }
 export const REFUND_STATUS_LABELS: Record<string, string> = {

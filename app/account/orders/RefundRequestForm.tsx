@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
+import { CRYPTO_REFUND_NETWORKS } from "@/lib/order-refund-request";
 import { requestOrderRefund } from "./refund-actions";
 
 export default function RefundRequestForm({ orderId, methods, originalMethod, amount, currency }: { orderId: string; methods: string[]; originalMethod: string; amount: number; currency: string }) {
@@ -22,7 +23,16 @@ export default function RefundRequestForm({ orderId, methods, originalMethod, am
         <p className="text-sm">Request a full refund of <strong>{currency} {amount.toFixed(2)}</strong>. Delivery will pause for admin review. The order is cancelled after the refund is completed.</p>
         <label className="block text-sm font-bold">Refund method<select name="method" value={method} onChange={e => setMethod(e.target.value)} className={field}>{methods.map(value => <option key={value} value={value}>{formatPaymentMethod(value)}{value === originalMethod ? " (original payment method)" : ""}</option>)}</select></label>
         <p className="text-sm text-slate-600">{method === "WALLET" ? "The admin can credit your InGamePIN wallet upon approval." : "The admin will arrange the refund transfer after approval. Approval alone does not mean the money has been sent."}</p>
-        {method !== "WALLET" && <label className="block text-sm font-bold">Receiving account or wallet details<textarea name="details" maxLength={1000} minLength={3} required={method !== originalMethod} rows={3} className={field} placeholder={method === "USDT_DIRECT" ? "USDT network and wallet address" : method === originalMethod ? "Optional if returning to the original payment account" : "Account identifier, UPI ID, or wallet address and network"} /><span className="text-xs font-normal text-slate-500">Do not enter passwords, OTPs, private keys or card security codes.</span></label>}
+        {method === "USDT_DIRECT" ? <div className="max-w-2xl space-y-2">
+          <div className="grid gap-3 sm:grid-cols-[210px_minmax(0,1fr)]">
+            <label className="block text-sm font-bold">Refund network<select name="network" required defaultValue="" className={field}>
+              <option value="" disabled>Select network</option>
+              {CRYPTO_REFUND_NETWORKS.map(network => <option key={network.value} value={network.value}>{network.label}</option>)}
+            </select></label>
+            <label className="block min-w-0 text-sm font-bold">USDT wallet address<input name="wallet_address" required maxLength={100} autoComplete="off" autoCapitalize="none" spellCheck={false} className={field} placeholder="Receiving wallet address" /></label>
+          </div>
+          <p className="text-xs text-slate-500">Select the network supported by your receiving USDT wallet. The network and address will be saved with your refund request.</p>
+        </div> : method !== "WALLET" && <label className="block max-w-lg text-sm font-bold">Receiving account details<input name="details" maxLength={1000} minLength={3} required={method !== originalMethod} className={field} placeholder={method === originalMethod ? "Optional for the original payment account" : "Account identifier or UPI ID"} /><span className="text-xs font-normal text-slate-500">Do not enter passwords, OTPs or card security codes.</span></label>}
         <label className="block text-sm font-bold">Reason<textarea name="reason" required minLength={3} maxLength={1000} rows={3} className={field} /></label>
         <button className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50" disabled={pending}>{pending ? "Submitting…" : "Submit refund request"}</button>
       </fieldset>
