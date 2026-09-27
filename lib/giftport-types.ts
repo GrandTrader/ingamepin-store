@@ -9,6 +9,6 @@ export type GiftPortStatus = {
     warnings?: string[];
     currency: "INR";
     syncedAt: number;
-    items: { operatorCode: string; brandName: string; denominations: string[]; denominationsIncomplete?: boolean; variable: boolean | null }[];
+    items: { operatorCode: string; brandName: string; denominations: string[]; denominationsIncomplete?: boolean; variable: boolean | null; variableRange?: { min: string; max: string } | null; currency?: string | null }[];
   };
 };

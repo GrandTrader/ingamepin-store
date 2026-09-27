@@ -140,7 +140,7 @@ def normalize_denominations(raw):
             continue
         if amount not in values:
             values.append(amount)
-    return values, incomplete or not values
+    return ([] if incomplete else values), incomplete or not values
 
 
 def normalize_variable(value):
@@ -158,6 +158,21 @@ def normalize_variable(value):
     return None
 
 
+def normalize_variable_range(raw):
+    if not isinstance(raw, str) or len(raw) > 80:
+        return None
+    match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*", raw)
+    if not match:
+        return None
+    try:
+        minimum, maximum = [money(v, positive=True) for v in match.groups()]
+        if Decimal(minimum) > Decimal(maximum):
+            return None
+        return {"min": minimum, "max": maximum}
+    except SafeError:
+        return None
+
+
 def normalize_catalogue(result):
     rows = result.get("catalogue")
     if not isinstance(rows, list) or len(rows) > 10000:
@@ -173,10 +188,16 @@ def normalize_catalogue(result):
         if not isinstance(name, str) or not name.strip() or len(name) > 300:
             raise SafeError("GiftPort returned an invalid brand name.")
         values, incomplete = normalize_denominations(row.get("denominations"))
-        variable = normalize_variable(row.get("variable"))
+        variable = normalize_variable(row.get("variable_denomination", row.get("variable")))
+        variable_range = normalize_variable_range(row.get("variable_denomination_range")) if variable is True else None
+        currency = row.get("currency_code")
+        currency = currency.strip().upper() if isinstance(currency, str) else None
+        if currency is not None and not re.fullmatch(r"[A-Z]{3}", currency):
+            currency = None
         seen.add(code)
         items.append({"operatorCode": code, "brandName": name.strip(),
-                      "denominations": values, "denominationsIncomplete": incomplete, "variable": variable})
+                      "denominations": values, "denominationsIncomplete": incomplete, "variable": variable,
+                      "variableRange": variable_range, "currency": currency})
     return items
 
 
@@ -185,7 +206,7 @@ def fetch_snapshot(keys):
     balance = supplier_request("balance", keys)
     warnings = []
     if any(item["denominationsIncomplete"] for item in items):
-        warnings.append("Some brands have unconfirmed denominations. Only readable fixed values are shown; confirm ranges and other values with GiftPort.")
+        warnings.append("Some brands have unconfirmed denominations. Their fixed-value lists are hidden until verified with GiftPort.")
     balance_amount = None
     if str(balance.get("currency", "")).strip().upper() != "INR":
         warnings.append("GiftPort did not confirm INR for the wallet balance. The balance is unavailable.")

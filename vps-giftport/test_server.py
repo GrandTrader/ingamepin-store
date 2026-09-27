@@ -53,6 +53,27 @@ class BridgeTests(unittest.TestCase):
         row.pop("variable")
         self.assertIsNone(server.normalize_catalogue({"catalogue": [row]})[0]["variable"])
 
+    def test_live_catalogue_field_names_and_ranges(self):
+        row = {**CATALOGUE["catalogue"][0], "variable_denomination": "Yes",
+               "variable_denomination_range": "1000-10000", "currency_code": "INR"}
+        row.pop("variable")
+        item = server.normalize_catalogue({"catalogue": [row]})[0]
+        self.assertIs(item["variable"], True)
+        self.assertEqual(item["variableRange"], {"min": "1000.00", "max": "10000.00"})
+        self.assertEqual(item["currency"], "INR")
+        row["variable_denomination"] = "No"
+        item = server.normalize_catalogue({"catalogue": [row]})[0]
+        self.assertIs(item["variable"], False)
+        self.assertIsNone(item["variableRange"])
+
+    def test_invalid_ranges_never_imply_allowed_purchase_values(self):
+        for raw in (None, "-", "10000-1000", "0-100", "100-NaN", "100.001-200", "100 to 200"):
+            with self.subTest(raw=raw):
+                self.assertIsNone(server.normalize_variable_range(raw))
+        values, incomplete = server.normalize_denominations("2,00,01,000")
+        self.assertEqual(values, [])
+        self.assertTrue(incomplete)
+
     def test_invalid_amounts_rejected(self):
         for value in (True, -1, "NaN", "Infinity", "1.001", "1e2", None):
             with self.subTest(value=value), self.assertRaises(server.SafeError):
@@ -82,7 +103,7 @@ class BridgeTests(unittest.TestCase):
 
     def test_denominations_do_not_infer_ranges_or_include_zero(self):
         values, incomplete = server.normalize_denominations("0,100,500.0000,100-1000,invalid")
-        self.assertEqual(values, ["100.00", "500.00"])
+        self.assertEqual(values, [])
         self.assertTrue(incomplete)
         self.assertEqual(server.normalize_denominations([100, "500.000", "INR 1,000"]),
                          (["100.00", "500.00", "1000.00"], False))
