@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { GiftPortItem } from "@/lib/giftport-types";
 import { giftPortAmount, giftPortAmountAllowed } from "@/lib/giftport-import";
 import { importGiftPortProduct } from "./actions";
+import { calculateGiftPortPrices } from "./pricing-actions";
 import { createSupplierImportCategory } from "@/app/admin/definiteplay/import/category-actions";
 
 export default function GiftPortImportForm({ item, categories: initialCategories, requestId }: { item: GiftPortItem; categories: { id: string; name: string }[]; requestId: string }) {
@@ -14,6 +15,8 @@ export default function GiftPortImportForm({ item, categories: initialCategories
   const [amounts, setAmounts] = useState(item.denominations);
   const [selected, setSelected] = useState(item.denominations.filter(v => Number.isSafeInteger(Number(v))).slice(0, 50));
   const [prices, setPrices] = useState<Record<string, string>>({});
+  const [markup, setMarkup] = useState("0");
+  const [pricingMessage, setPricingMessage] = useState("");
   const [custom, setCustom] = useState("");
   const [message, setMessage] = useState("");
   const [created, setCreated] = useState<string | null>(null);
@@ -59,7 +62,25 @@ export default function GiftPortImportForm({ item, categories: initialCategories
           <button type="button" className="self-end rounded-xl border border-blue-600 px-4 py-3 font-bold text-blue-700" onClick={() => startTransition(async () => { try { const r = await createSupplierImportCategory(categoryName, categoryType); if (r.category) { setCategories(c => [...c.filter(i => i.id !== r.category!.id), r.category!].sort((a, b) => a.name.localeCompare(b.name))); setCategoryId(r.category.id); setMessage("Category ready."); } else setMessage(r.error || "Unable to create category."); } catch { setMessage("Category creation could not be confirmed. Retry with the same name."); } })}>Save category</button>
         </div></details>
       </section>
-      <section className="rounded-2xl border bg-white p-5"><h2 className="text-xl font-bold">Denominations and selling prices</h2><p className="mt-2 text-sm text-slate-600">Select up to 50 options. Face values stay in INR; enter each customer’s selling price in USD. Supplier costs are not provided.</p>
+      <section className="rounded-2xl border bg-white p-5"><h2 className="text-xl font-bold">Denominations and selling prices</h2><p className="mt-2 text-sm text-slate-600">Select up to 50 options. Face values stay in INR. Calculate USD selling prices using your website rate, or enter them manually.</p>
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h3 className="font-bold">Convert face value and add markup</h3>
+          <p className="mt-2 text-sm text-slate-600">USD selling price = face value ÷ website exchange rate × (1 + markup ÷ 100). This is a markup on face value; supplier costs are not provided.</p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="text-sm font-semibold">Markup (%)<input type="number" min="0" max="1000" step="0.01" value={markup} onChange={e => setMarkup(e.target.value)} className="mt-2 block w-36 rounded-lg border border-slate-300 bg-white p-3" /></label>
+            <button type="button" disabled={!selected.length || pending} className="rounded-xl bg-blue-600 px-4 py-3 font-bold text-white disabled:opacity-50" onClick={() => startTransition(async () => {
+              try {
+                const response = await calculateGiftPortPrices(selected, item.currency || "", markup);
+                if (!response.result) { setPricingMessage(response.error || "Unable to calculate prices."); return; }
+                setPrices(previous => ({ ...previous, ...response.result.prices }));
+                setPricingMessage(`Applied ${response.result.markup}% markup to ${selected.length} selected options at 1 USD = ${response.result.rate} ${response.result.currency}. Prices are rounded to two decimals. You can edit them below.`);
+              } catch { setPricingMessage("Unable to calculate prices. Try again or enter them manually."); }
+            })}>Apply to selected prices</button>
+            <Link href="/admin/payment-settings" target="_blank" rel="noopener noreferrer" className="py-3 text-sm font-semibold text-blue-700 underline">Website exchange rates ↗</Link>
+          </div>
+          <p className="mt-3 text-xs text-slate-600">Replaces prices for selected options only. Uses the latest saved rate when applied. Imported prices stay fixed until you change them.</p>
+          {pricingMessage && <p role="status" className="mt-3 text-sm font-semibold">{pricingMessage}</p>}
+        </div>
         <div className="mt-4 flex flex-wrap items-center gap-4"><strong className="text-sm">{selected.length} selected</strong><button type="button" onClick={() => setSelected(amounts.filter(v => Number.isSafeInteger(Number(v))).slice(0, 50))} className="text-sm font-bold text-blue-700">Select up to 50</button><button type="button" onClick={() => setSelected([])} className="text-sm font-bold text-blue-700">Clear selection</button></div>
         <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-3">Select</th><th className="p-3">Face value INR</th><th className="p-3">Selling price USD</th></tr></thead><tbody>{amounts.map(amount => <tr key={amount} className="border-t"><td className="p-3"><input aria-label={`Import INR ${amount}`} type="checkbox" checked={selected.includes(amount)} disabled={!Number.isSafeInteger(Number(amount)) || (!selected.includes(amount) && selected.length >= 50)} onChange={() => setSelected(s => s.includes(amount) ? s.filter(v => v !== amount) : [...s, amount])} /></td><td className="p-3">{amount}{!Number.isSafeInteger(Number(amount)) && <span className="block text-xs text-amber-800">Website requires whole-number face values</span>}</td><td className="p-3"><input aria-label={`USD selling price for INR ${amount}`} type="number" step="0.01" min="0.01" max="9999999.99" disabled={!selected.includes(amount)} required={selected.includes(amount)} value={prices[amount] || ""} onChange={e => setPrices({ ...prices, [amount]: e.target.value })} className="w-40 rounded-lg border p-2" placeholder="USD price" /></td></tr>)}</tbody></table></div>
         {item.variable === true && item.variableRange && <div className="mt-5 rounded-xl bg-blue-50 p-4"><label className="block text-sm font-semibold">Add a fixed option from the variable range ({item.variableRange.min}–{item.variableRange.max} INR)<input type="number" min={item.variableRange.min} max={item.variableRange.max} step="1" value={custom} onChange={e => setCustom(e.target.value)} className={field} placeholder="Enter INR face value" /></label><button type="button" onClick={addValue} className="mt-3 rounded-lg border border-blue-600 px-4 py-2 font-bold text-blue-700">Add denomination</button></div>}

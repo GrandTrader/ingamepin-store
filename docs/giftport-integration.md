@@ -4,7 +4,7 @@
 
 `/admin/giftport` shows the INR supplier wallet balance, searchable catalogue, category/country/delivery filters and 30-brand pages. API configuration is collapsed after a successful connection. Each brand has an Import brand action; the import screen supports a website category (including creating one), English/Russian titles and descriptions, selecting up to 50 denominations, adding fixed options within an explicitly confirmed variable range, and entering USD selling prices.
 
-GiftPort has no wholesale-cost field. Selling prices are entered manually; INR face value is never treated as USD or as verified wholesale cost. Website denomination columns are integers, so fractional face values are not silently rounded.
+GiftPort has no wholesale-cost field. Selling prices can be entered manually or filled using the website exchange rate plus a percentage markup. The calculator divides face value by local-currency units per USD, adds markup, then rounds the final USD price to two decimals. Each Apply reads the current saved storefront rate from Payment Settings; missing or invalid rates block calculation rather than guessing. Only selected options are replaced, and all prices remain editable. This is markup on face value, not verified profit margin or wholesale cost. Imported prices remain fixed when exchange rates later change. GiftPort imports currently support confirmed INR brands; the shared calculator supports USD, INR and RUB where website rates exist. Website denomination columns are integers, so fractional face values are not silently rounded.
 
 An import creates a DRAFT/MANUAL product with OWNED stock source, zero stock, options marked out of stock, and one batch of saved GiftPort links. It does not publish products, buy gift cards or activate delivery. The import UUID remains the import reference across retries; a repeated reference returns the existing draft rather than creating duplicates. If options or links fail, the draft is retained with a warning and a review link.
 
@@ -43,7 +43,7 @@ Before activation, confirm wholesale costs/fees and recipient handling, then imp
 `node scripts/giftport-install-bridge.cjs` installs the dedicated VPS service and additive Caddy route, preserves credentials and link state, backs up replaced code/routing and checks readiness. Website changes deploy through the approved production release branch.
 
 - `python -m unittest discover -s vps-giftport -p 'test_*.py'`
-- `node --test scripts/tests/giftport-import.cjs`
+- `node --test scripts/tests/giftport-import.cjs scripts/tests/supplier-price-calculator.cjs`
 - Targeted ESLint and production Next build.
 
 Tests cover auth boundaries, credential replacement failure, safe callback handling, blocked purchases, live-format amount parsing, range validation, stale links, atomic batches, cross-product ownership, import pricing and denomination currency, duplicate retries and partial database/link failures. Tests use fake supplier responses and never purchase cards.
