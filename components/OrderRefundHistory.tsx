@@ -5,6 +5,8 @@ export default function OrderRefundHistory({ requests, events }: { requests: Ord
   return <div className="space-y-4">{requests.map(request => <article key={request.id} className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-slate-900">
     <h3 className="font-bold">{REFUND_STATUS_LABELS[request.status] || request.status}</h3>
     <p className="mt-2">{request.currency} {Number(request.amount).toFixed(2)} · {formatPaymentMethod(request.refund_method)}</p>
+    <p className="mt-1">Network fee / commission: {request.currency} {Number(request.network_fee ?? 0).toFixed(2)}</p>
+    <p className="mt-1 font-bold">{request.status === "COMPLETED" ? "Refund sent" : "Customer receives"}: {request.currency} {Number(request.net_amount ?? request.amount).toFixed(2)}</p>
     <p className="mt-2 whitespace-pre-wrap break-words">Reason: {request.reason}</p>
     {request.payout_details && <p className="mt-2 whitespace-pre-wrap break-words">Refund details: {request.payout_details}</p>}
     {request.admin_note && <p className="mt-2 whitespace-pre-wrap break-words">Admin response: {request.admin_note}</p>}

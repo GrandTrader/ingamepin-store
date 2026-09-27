@@ -84,3 +84,32 @@ test('other refund methods retain receiving details without requiring a crypto n
  assert.equal(logic.parseRefundRequest(form({method:'UPI',details:' customer@upi ',network:'invalid',wallet_address:'stale'})).details,'customer@upi');
  assert.equal(logic.parseRefundRequest(form()).details,'');
 });
+
+test('refund network fee schedule matches the configured dollar fees',()=>{
+ for(const [network,fee] of [['TRC20',4.5],['SOLANA',2.5],['BEP20',0.5],['OTHER',3.5]]) {
+  assert.equal(logic.CRYPTO_REFUND_NETWORKS.find(n=>n.value===network).feeUsd,fee);
+ }
+});
+test('other crypto networks require a clear network name and receiving address',()=>{
+ for(const fields of [{},{other_network:'x'},{other_network:'TRON (TRC20)'},{other_network:'Solana'},{other_network:'BSC BEP20'},{other_network:'Ethereum\nNetwork: TRC20'},{other_network:'Ethereum',wallet_address:''}]) {
+  assert.throws(()=>logic.parseRefundRequest(form({method:'USDT_DIRECT',network:'OTHER',wallet_address:'0x'+'a'.repeat(40),...fields})));
+ }
+ const address='0x'+'a'.repeat(40);
+ assert.equal(logic.parseRefundRequest(form({method:'USDT_DIRECT',network:'OTHER',other_network:'Ethereum (ERC20)',wallet_address:address})).details,`Network: Ethereum (ERC20)\nWallet address: ${address}`);
+});
+
+
+test('refund quote deducts exact network fees and leaves noncrypto methods fee free',()=>{
+ for(const [network,net] of [['TRC20',95.5],['SOLANA',97.5],['BEP20',99.5],['OTHER',96.5]]) {
+  const result=logic.refundQuote(100,'USD','USDT_DIRECT',network);assert.equal(result.net,net);assert.equal(result.error,'');
+ }
+ for(const method of ['PALLY','FREEKASSA','WALLET','BINANCE_PAY','UPI','PAYTM']) {
+  const result=logic.refundQuote(100,'USD',method,'TRC20');assert.equal(result.fee,0);assert.equal(result.net,100);
+ }
+ assert.equal(logic.refundQuote(4.51,'USD','USDT_DIRECT','TRC20').net,0.01);
+ for(const args of [[4.5,'USD','USDT_DIRECT','TRC20'],[1,'USD','USDT_DIRECT','TRC20'],[100,'USD','USDT_DIRECT',''],[100,'INR','USDT_DIRECT','TRC20']]) assert.ok(logic.refundQuote(...args).error);
+});
+test('server sends the validated network, never a browser-supplied fee or refund amount',async()=>{
+ const h=customerHarness();await h.api.requestOrderRefund(form({method:'USDT_DIRECT',network:'TRC20',wallet_address:'T'+'A'.repeat(33),network_fee:'0',net_amount:'99999'}));
+ const args=h.calls.find(c=>c[0]==='rpc')[2];assert.equal(args.p_network,'TRC20');assert.equal(args.network_fee,undefined);assert.equal(args.net_amount,undefined);
+});

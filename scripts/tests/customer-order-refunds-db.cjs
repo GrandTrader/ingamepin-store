@@ -34,8 +34,15 @@ const assert = require('node:assert/strict');
     await q('insert into payments(id,order_id,method,status,currency,amount,verified_at) values($1,$2,$3,$4,$5,$6,now())',[payment,o,method,verified?'VERIFIED':'PENDING',currency,amount]);
     return {o,item,payment};
   }
-  const request=async(t,method='WALLET',who=user,details='')=>(await one('select request_customer_order_refund($1,$2,$3,$4,$5) id',[t.o,who,method,details,'Customer changed their mind'])).id;
+  const request=async(t,method='WALLET',who=user,details='',network=null)=>(await one('select request_customer_order_refund($1,$2,$3,$4,$5,$6) id',[t.o,who,method,details,'Customer changed their mind',network])).id;
   const review=async(r,action='APPROVE',who=admin,note='',ref='')=>(await one('select review_customer_order_refund($1,$2,$3,$4,$5) status',[r,who,action,note,ref])).status;
+  const legacy=await order({method:'USDT_DIRECT',amount:100});
+  const legacyId=(await one('select request_customer_order_refund($1,$2,$3,$4,$5) id',[legacy.o,user,'USDT_DIRECT','TRON wallet','Legacy request'])).id;
+  await db.exec(fs.readFileSync('supabase/migrations/20260927_210000_customer_refund_network_fees.sql','utf8'));
+  const legacyRow=await one('select * from order_refund_requests where id=$1',[legacyId]);
+  assert.equal(Number(legacyRow.network_fee),0);assert.equal(Number(legacyRow.net_amount),100);
+  assert.equal(await request(legacy,'USDT_DIRECT',user,'changed','TRC20'),legacyId);
+  assert.equal(Number((await one('select network_fee from order_refund_requests where id=$1',[legacyId])).network_fee),0,'existing requests keep the previously agreed fee');
   const t=await order();
   await assert.rejects(()=>request(t,'WALLET',other),/not found/);
   await assert.rejects(()=>request(t,'WALLET',unverified),/verified email/);
@@ -84,6 +91,35 @@ const assert = require('node:assert/strict');
   await q('update order_items set service_delivered_at=now() where id=$1',[declined.item]);
   await assert.rejects(()=>request(declined),/delivered/);
   const foreign=await order({currency:'INR'}); await assert.rejects(()=>request(foreign),/USD/);
+  for(const [network,fee] of [['TRC20',4.5],['SOLANA',2.5],['BEP20',0.5],['OTHER',3.5]]) {
+    const crypto=await order({amount:100,method:'USDT_DIRECT'});
+    const cr=await request(crypto,'USDT_DIRECT',user,'Network and address',network);
+    const row=await one('select * from order_refund_requests where id=$1',[cr]);
+    assert.equal(Number(row.amount),100);assert.equal(Number(row.network_fee),fee);assert.equal(Number(row.net_amount),100-fee);
+    assert.equal(await request(crypto,'USDT_DIRECT',user,'Changed address','OTHER'),cr);
+    assert.equal(Number((await one('select network_fee from order_refund_requests where id=$1',[cr])).network_fee),fee);
+    assert.equal(await review(cr),'APPROVED');assert.equal(await review(cr,'COMPLETE',admin,'Sent','TX-'+network),'COMPLETED');
+    const event=await one("select note from order_refund_events where request_id=$1 and status='COMPLETED'",[cr]);
+    assert.ok(event.note.includes((100-fee).toFixed(2)));assert.ok(event.note.includes(fee.toFixed(2)));
+  }
+  for(const method of ['PALLY','FREEKASSA','BINANCE_PAY','PAYTM']) {
+    const free=await order({method});const fr=await request(free,method,user,'Original account','TRC20');
+    const row=await one('select network_fee,net_amount from order_refund_requests where id=$1',[fr]);
+    assert.equal(Number(row.network_fee),0);assert.equal(Number(row.net_amount),17.33);
+  }
+  for(const amount of [0.5,4.5]) {
+    const small=await order({amount,method:'USDT_DIRECT'});
+    await q("insert into definiteplay_jobs(item_id,order_id,state) values($1,$2,'QUEUED')",[small.item,small.o]);
+    await assert.rejects(()=>request(small,'USDT_DIRECT',user,'Wallet','TRC20'),/greater than/);
+    assert.equal((await one('select count(*)::int n from order_refund_requests where order_id=$1',[small.o])).n,0);
+    assert.equal((await one('select state from definiteplay_jobs where item_id=$1',[small.item])).state,'QUEUED','invalid fee request rolls back delivery hold');
+  }
+  const invalid=await order({method:'USDT_DIRECT'});
+  for(const network of [null,'FAKE']) await assert.rejects(()=>request(invalid,'USDT_DIRECT',user,'Wallet',network),/Select a crypto/);
+  await assert.rejects(()=>order({currency:'INR',amount:100}).then(t=>request(t,'USDT_DIRECT',user,'Wallet','TRC20')),/USD/);
+  await db.exec('set role service_role');
+  await assert.rejects(()=>one('select request_customer_order_refund_without_fee_internal($1,$2,$3,$4,$5)',[invalid.o,user,'USDT_DIRECT','Wallet','test']),/permission denied/);
+  await db.exec('reset role');
   await db.exec('set role authenticated');
   await assert.rejects(()=>request(t),/permission denied/); await assert.rejects(()=>review(rid),/permission denied/);
   await assert.rejects(()=>q('select * from order_refund_requests'),/permission denied/);

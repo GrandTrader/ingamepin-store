@@ -19,3 +19,10 @@ Validation:
 - Targeted ESLint and a clean-release production build.
 
 No production browser test or live money transfer is required to install this feature. After installation, verify the request and review screens with a controlled paid test order before using real external transfers.
+
+
+## Network fee deductions
+
+Apply `supabase/migrations/20260927_210000_customer_refund_network_fees.sql` before releasing the fee UI. It preserves all existing requests with zero deducted fees. New Direct USDT requests deduct USD 4.50 for TRC20, USD 2.50 for Solana, USD 0.50 for BEP20, and USD 3.50 for another named crypto network. Paypalych/PALLY, FreeKassa, wallet and other non-network payment methods have zero commission; Binance Pay is an off-chain payment method. Crypto requests currently require the order currency to be USD; no unverified exchange rate is applied to foreign-currency orders.
+
+The database calculates and snapshots the fee and generated net payout, never trusting browser amounts. A request whose fee consumes the order amount is rejected atomically, without leaving a delivery hold. Repeated requests retain the original agreed fee. The original order amount remains the basis for payment validation; external transfers pay the net amount. Admin completion explicitly confirms that amount and records the net payout and fee in the event history. Wallet credits remain the full order amount with zero fee. No external transfer is initiated automatically.
