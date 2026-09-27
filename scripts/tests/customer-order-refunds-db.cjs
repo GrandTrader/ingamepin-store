@@ -146,6 +146,21 @@ const assert = require('node:assert/strict');
   await db.exec('set role service_role');
   await assert.rejects(()=>q('update order_refund_permissions set enabled=true'),/permission denied/);
   await db.exec('reset role');
+  await db.exec(fs.readFileSync('supabase/migrations/20260928_010000_refund_gateway_policy.sql','utf8'));
+  await q("update payment_gateway_settings set gateway_commissions='{}'");
+  await q(`update payment_gateway_settings set gateway_commissions='{"UPI":{"enabled":true},"PAYTM":{"enabled":true}}'`);
+  const gateways=['WALLET','BINANCE_PAY','USDT_DIRECT','PALLY','FREEKASSA','UPI','PAYTM'];
+  for(const original of gateways) for(const destination of gateways) {
+    const x=await order({amount:100,method:original});await permission(x);
+    const allowed=destination==='WALLET'||destination===original||(['BINANCE_PAY','USDT_DIRECT'].includes(original)&&['BINANCE_PAY','USDT_DIRECT'].includes(destination));
+    if(allowed) {
+      const rr=await request(x,destination,user,'Receiving account',destination==='USDT_DIRECT'?'TRC20':null);
+      assert.ok(rr);assert.equal((await one('select original_method from order_refund_requests where id=$1',[rr])).original_method,original);
+    } else {
+      await assert.rejects(()=>request(x,destination,user,'Receiving account',destination==='USDT_DIRECT'?'TRC20':null),/Crypto payments|original payment method/);
+      assert.equal((await one('select count(*)::int n from order_refund_requests where order_id=$1',[x.o])).n,0);
+    }
+  }
   await db.exec('set role authenticated');
   await assert.rejects(()=>request(t),/permission denied/); await assert.rejects(()=>review(rid),/permission denied/);
   await assert.rejects(()=>q('select * from order_refund_requests'),/permission denied/);

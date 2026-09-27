@@ -8,10 +8,18 @@ function load(file, deps={}) {
 const logic=load('lib/order-refund-request.ts');
 const order='00000000-0000-4000-8000-000000000001', user='00000000-0000-4000-8000-000000000002';
 function form(fields={}) {const f=new FormData();for(const [k,v] of Object.entries({order_id:order,method:'WALLET',reason:'No longer needed',...fields}))f.set(k,v);return f;}
-test('refund methods match enabled website methods while retaining wallet and original payment',()=>{
-  const methods=logic.refundMethods({UPI:{enabled:false},PAYTM:{enabled:true},FREEKASSA:{enabled:false}},'FREEKASSA');
-  assert.ok(methods.includes('WALLET'));assert.ok(methods.includes('FREEKASSA'));assert.ok(methods.includes('PAYTM'));assert.ok(!methods.includes('UPI'));
-  assert.ok(!logic.refundMethods({},'BINANCE_PAY').includes('PAYTM'));
+test('refund choices follow original gateway while keeping wallet common to every gateway',()=>{
+ for(const original of ['PALLY','FREEKASSA','UPI','PAYTM']) {
+  const methods=Array.from(logic.refundMethods({[original]:{enabled:false}},original));
+  assert.deepEqual(methods,['WALLET',original]);
+ }
+ assert.deepEqual(Array.from(logic.refundMethods({},'WALLET')),['WALLET']);
+ for(const original of ['BINANCE_PAY','USDT_DIRECT']) {
+  assert.deepEqual(Array.from(logic.refundMethods({},original)),['WALLET','BINANCE_PAY','USDT_DIRECT']);
+  const other=original==='BINANCE_PAY'?'USDT_DIRECT':'BINANCE_PAY';
+  assert.deepEqual(Array.from(logic.refundMethods({[other]:{enabled:false},[original]:{enabled:false}},original)),['WALLET',original]);
+ }
+ assert.deepEqual(Array.from(logic.refundMethods({},'UNKNOWN')),['WALLET']);
 });
 test('customer cannot submit arbitrary references, methods or unbounded text',()=>{
   for(const fields of [{order_id:'wrong'},{method:'BANK_UNSUPPORTED'},{reason:'x'},{reason:'x'.repeat(1001)},{details:'x'.repeat(1001)}])assert.throws(()=>logic.parseRefundRequest(form(fields)));

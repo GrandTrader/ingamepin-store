@@ -14,8 +14,11 @@ export function refundQuote(amount: number, currency: string, method: string, ne
   return { fee, net, error: !Number.isFinite(net) || net <= 0 ? "The refund amount must be greater than the network fee. Choose another refund method." : "" };
 }
 export function refundMethods(settings: Record<string, { enabled?: boolean }> | null, originalMethod: string) {
-  return REFUND_METHODS.filter(method => method === "WALLET" || method === originalMethod ||
-    (["UPI", "PAYTM"].includes(method) ? settings?.[method]?.enabled === true : settings?.[method]?.enabled !== false));
+  const cryptoMethods: readonly string[] = ["BINANCE_PAY", "USDT_DIRECT"];
+  return REFUND_METHODS.filter(method => {
+    if (method === "WALLET" || method === originalMethod) return true;
+    return cryptoMethods.includes(originalMethod) && cryptoMethods.includes(method) && settings?.[method]?.enabled !== false;
+  });
 }
 export function refundId(value: unknown) {
   if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) throw new Error("Invalid order or refund reference.");
