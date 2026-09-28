@@ -1,3 +1,4 @@
+import { businessApplication } from "@/lib/business-verification-data";
 import Link from "next/link";
 import styles from "./Dashboard.module.css";
 import { redirect } from "next/navigation";
@@ -62,6 +63,9 @@ export default async function CustomerDashboardPage({ searchParams }: {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user?.email) redirect("/account?error=Please sign in to continue.");
+
+  const business = await businessApplication(user.id).catch(() => null);
+  if (business?.status === "APPROVED" && user.email_confirmed_at) redirect("/account/portal");
 
   const admin = createAdminClient();
   const orderTabs = [
