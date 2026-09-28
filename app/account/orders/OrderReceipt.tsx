@@ -1,3 +1,4 @@
+import RefreshOrderButton from "../portal/orders/RefreshOrderButton";
 import RefundRequestForm from "./RefundRequestForm";
 import OrderRefundHistory from "@/components/OrderRefundHistory";
 import { getOrderRefundHistory } from "@/lib/order-refund-data";
@@ -219,7 +220,12 @@ export default async function CustomerOrderReceiptPage({
       </section>}
 
       <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-6 sm:rounded-2xl sm:p-6">
-        <h2 className="text-base font-bold sm:text-xl sm:font-black">Order items</h2>
+        {portal ? (
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-bold sm:text-xl sm:font-black">Order items</h2>
+            <RefreshOrderButton />
+          </div>
+        ) : <h2 className="text-base font-bold sm:text-xl sm:font-black">Order items</h2>}
 
         <div className="mt-2 sm:mt-4 divide-y divide-slate-200">
           {items.map((item) => {
