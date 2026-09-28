@@ -1,5 +1,6 @@
 "use client";
 import {useRef,useState} from "react";
+import {useStorePreferences} from "@/components/StorePreferences";
 import {useRouter} from "next/navigation";
 import {rangePrice,type ProductRange} from "@/lib/product-range";
 import {validateCartStock} from "@/lib/cart-stock";
@@ -11,7 +12,7 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
  const [value,setValue]=useState(String(range.minimum)),[quantity,setQuantity]=useState(String(Math.max(1,product.minimum_quantity))),[error,setError]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
  const markedPrice=(price:number)=>Math.round((price+Math.round(price*Math.max(0,affiliatePercent))/100)*100)/100;
  let price=0;try{price=markedPrice(rangePrice(range,Number(value)));}catch{}
- const money=(n:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);
+ const {formatPrice:money}=useStorePreferences();
  async function purchase(buyNow:boolean){
   if(lock.current)return;lock.current=true;setBusy(true);setError("");setMessage("");
   try{
