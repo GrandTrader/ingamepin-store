@@ -8,7 +8,7 @@ import { validateCartStock } from "@/lib/cart-stock";
 import s from "../Portal.module.css";
 type DraftItem=ReturnType<typeof portalCartItem>;
 type Limit={productOptionId:string;availableQuantity:number|null;minimumQuantity:number;maximumQuantity:number|null};
-export default function ProductTable({userId,products,discounts,filters}:{userId:string;products:PortalProduct[];discounts:Record<string,number>;filters:React.ReactNode}) {
+export default function ProductTable({userId,products,discounts,filters,stockProducts=products}:{userId:string;products:PortalProduct[];stockProducts?:PortalProduct[];discounts:Record<string,number>;filters:React.ReactNode}) {
   const router=useRouter(), key="business-order-draft:"+userId;
   const [draft,setDraft]=useState<DraftItem[]>([]), [ready,setReady]=useState(false), [busy,setBusy]=useState(false), [message,setMessage]=useState(""), [error,setError]=useState("");
   const [quantities,setQuantities]=useState<Record<string,string>>({}),[limits,setLimits]=useState<Record<string,Limit>>({}),[stockError,setStockError]=useState("");
@@ -21,7 +21,7 @@ export default function ProductTable({userId,products,discounts,filters}:{userId
   useEffect(()=>{
     const controller=new AbortController();
     async function check(){
-      const items=products.flatMap(p=>p.product_options.filter(o=>o.is_active).map(o=>({productId:p.id,productOptionId:o.id})));
+      const items=stockProducts.flatMap(p=>p.product_options.filter(o=>o.is_active).map(o=>({productId:p.id,productOptionId:o.id})));
       const next:Record<string,Limit>={};
       try {
         for(let i=0;i<items.length;i+=100){const r=await fetch("/api/products/quantity-limits",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items:items.slice(i,i+100)}),signal:controller.signal});const data=await r.json();if(!r.ok||!Array.isArray(data.limits))throw Error(data.error??"Unable to check current stock.");for(const l of data.limits)next[l.productOptionId]=l;}
@@ -29,7 +29,7 @@ export default function ProductTable({userId,products,discounts,filters}:{userId
       }catch(e){if(!controller.signal.aborted)setStockError(e instanceof Error?e.message:"Stock check unavailable.");}
     }
     void check();return()=>controller.abort();
-  },[products]);
+  },[stockProducts]);
   function save(next:DraftItem[]){localStorage.setItem(key,JSON.stringify(next));setDraft(next);}
   function add(product:PortalProduct,option:PortalOption){
     setError("");setMessage("");
