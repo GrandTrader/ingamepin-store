@@ -1,7 +1,5 @@
 "use client";
-import RangePurchaseForm from "@/components/RangePurchaseForm";
 import type {ProductRange} from "@/lib/product-range";
-import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { portalPage, type PortalProduct } from "@/lib/business-portal";
@@ -58,7 +56,7 @@ export default function Catalogue({userId,products,categories,discounts,initialF
   const totalPages=Math.max(1,Math.ceil(matching.length/20)),page=Math.min(portalPage(filters.page),totalPages);
   const visible=useMemo(()=>matching.slice((page-1)*20,page*20),[matching,page]);
   return <div ref={container} className={s.catalogueStable} style={{minHeight:minimumHeight||undefined}}>
-    <ProductTable userId={userId} products={visible.map(p=>({...p,product_options:p.product_options.filter(o=>!ranges.some(r=>r.option_id===o.id))}))} stockProducts={products} discounts={discounts} filters={<>
+    <ProductTable userId={userId} products={visible} ranges={ranges} stockProducts={products} discounts={discounts} filters={<>
       <div className={s.filterGroup}>
         <button type="button" className={s.filterChoice} aria-pressed={filters.popular!=="yes"} onClick={()=>change({popular:""})}>All products</button>
         <button type="button" className={s.filterChoice} aria-pressed={filters.popular==="yes"} onClick={()=>change({popular:"yes"})}>Popular products</button>
@@ -81,7 +79,6 @@ export default function Catalogue({userId,products,categories,discounts,initialF
         <label>Brand / category<select name="category" value={filters.category} onChange={e=>change({category:e.target.value})}><option value="">All brands</option>{brands.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
         <button className={s.button} type="submit">Search</button><button className={s.button} type="button" onClick={()=>change({},true)}>Reset</button>
       </form>
-      {visible.map(product=>{const range=ranges.find(r=>r.product_id===product.id);return range&&product.product_customer_fields.length?<p key={range.option_id}><Link className={s.button} href={`/product/${product.slug}`}>{product.name} — choose range and delivery details ↗</Link></p>:range?<RangePurchaseForm key={range.option_id} range={range} product={product} discountPercent={discounts[product.id]??0}/>:null;})}
     </>}/>
     <div className={s.pagination}><span>{matching.length} records · Page {page} of {totalPages}</span><div className={s.actions}>{page>1&&<button className={s.button} onClick={()=>change({page:String(page-1)})}>← Previous</button>}{page<totalPages&&<button className={s.button} onClick={()=>change({page:String(page+1)})}>Next →</button>}</div></div>
   </div>;

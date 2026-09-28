@@ -21,7 +21,7 @@ function html(markup,script=''){return '<!doctype html><html><head><meta charset
  fs.writeFileSync(path.join(out,'link.js'),`const React=require('react');module.exports={__esModule:true,default:({href,children,...p})=>React.createElement('a',{...p,href},children)};`);
  fs.writeFileSync(path.join(out,'image.js'),`const React=require('react');module.exports={__esModule:true,default:({unoptimized,...p})=>React.createElement('img',p)};`);
  fs.writeFileSync(path.join(out,'navigation.js'),`exports.useRouter=()=>({push:path=>{window.portalNavigation=path;}});`);
- fs.writeFileSync(path.join(out,'entry.js'),`const React=require('react'),{createRoot}=require('react-dom/client');const Table=require('./Catalogue').default;createRoot(document.getElementById('app')).render(React.createElement(Table,{userId:'fixture',products:${JSON.stringify(products.map(p=>({...p,category_id:p.id==='steam'?'steam':'gaming'})))},categories:[{id:'gaming',name:'Gaming',image_url:null},{id:'steam',name:'Steam',image_url:null}],initialFilters:{},discounts:{apple:2},filters:React.createElement('div',{className:'toolbar'},React.createElement('input',{placeholder:'Search products'}),React.createElement('select',null,React.createElement('option',null,'All regions')),React.createElement('select',null,React.createElement('option',null,'All brands')))}));`);
+ fs.writeFileSync(path.join(out,'entry.js'),`const React=require('react'),{createRoot}=require('react-dom/client');const Table=require('./Catalogue').default;const root=createRoot(document.getElementById('app'));window.showRange=()=>root.render(React.createElement(Table,{key:'range',userId:'range-fixture',products:${JSON.stringify([{...products[0],category_id:'gaming',product_options:[...products[0].product_options,{...products[0].product_options[0],id:'apple-range',option_name:'Range denomination',is_custom_value:true,stock_quantity:0}]}])},categories:[{id:'gaming',name:'Gaming',image_url:null}],initialFilters:{},discounts:{apple:2},ranges:[{product_id:'apple',option_id:'apple-range',enabled:true,currency:'USD',minimum:2,maximum:500,step:1,price_basis:100,price_usd:95,delivery_mode:'MANUAL'}]}));root.render(React.createElement(Table,{userId:'fixture',products:${JSON.stringify(products.map(p=>({...p,category_id:p.id==='steam'?'steam':'gaming'})))},categories:[{id:'gaming',name:'Gaming',image_url:null},{id:'steam',name:'Steam',image_url:null}],initialFilters:{},discounts:{apple:2},filters:React.createElement('div',{className:'toolbar'},React.createElement('input',{placeholder:'Search products'}),React.createElement('select',null,React.createElement('option',null,'All regions')),React.createElement('select',null,React.createElement('option',null,'All brands')))}));`);
  const webpack=require('next/dist/compiled/webpack/webpack').webpack;
  await new Promise((resolve,reject)=>webpack({mode:'development',devtool:false,entry:path.join(out,'entry.js'),output:{path:out,filename:'bundle.js'},resolve:{alias:{'@/components/RangePurchaseForm':path.join(out,'RangePurchase.js'),'@/lib/product-range':path.join(out,'range-logic.js'),'next/link':path.join(out,'link.js'),'next/image':path.join(out,'image.js'),'next/navigation':path.join(out,'navigation.js'),'@/lib/business-portal':path.join(out,'helpers.js'),'@/lib/cart-stock':path.join(out,'stock.js'),'../Portal.module.css':path.join(out,'styles.js')}}},(error,stats)=>error||stats.hasErrors()?reject(error??Error(stats.toString({all:false,errors:true}))):resolve()));
  const server=http.createServer((req,res)=>{const file=path.join(out,req.url==='/'?'new.html':req.url.slice(1));if(!file.startsWith(out)||!fs.existsSync(file)){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':'text/html');res.end(fs.readFileSync(file));});await new Promise(r=>server.listen(0,'127.0.0.1',r));
@@ -33,7 +33,7 @@ function html(markup,script=''){return '<!doctype html><html><head><meta charset
 
  let requests=0;page.on('request',()=>requests++);
  await page.goto(base+'/new.html');await page.getByRole('button',{name:'Add',exact:true}).first().waitFor();
- await page.getByLabel('Quantity for Apple Gift Card 50 USD').fill('10');
+ await page.getByLabel('Quantity for Apple Gift Card 50 USD',{exact:true}).fill('10');
  await page.getByRole('button',{name:'Add',exact:true}).first().click();
  await page.getByRole('status').filter({hasText:'added to your draft'}).waitFor();
  await page.getByRole('button',{name:'India',exact:true}).scrollIntoViewIfNeeded();
@@ -68,5 +68,32 @@ function html(markup,script=''){return '<!doctype html><html><head><meta charset
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No mobile horizontal overflow');
  assert.equal(errors.length,0,errors.join('\n'));
  console.log('PASS: instant region/brand/search/popular filtering, no navigation requests, stable desktop/mobile scroll, empty results, draft retention and browser Back.');
+ await page.setViewportSize({width:1440,height:1000});
+ await page.evaluate(()=>window.showRange());
+ const rangeRow=page.locator('tr.rangeRow');await rangeRow.waitFor();
+ assert.equal(await rangeRow.count(),1,'One compact row for the range');
+ assert.equal(await page.locator('section[aria-label^="Range purchase"]').count(),0,'No separate range card');
+ const value=rangeRow.getByRole('spinbutton',{name:'Card value for Apple Gift Card',exact:true});
+ const qty=rangeRow.getByRole('spinbutton',{name:'Quantity for Apple Gift Card Range denomination',exact:true});
+ await value.fill('10');await qty.fill('2');assert.equal(await rangeRow.locator('td').nth(4).innerText(),'$9.31','Live price includes assigned discount');
+ await rangeRow.getByRole('button',{name:'Add',exact:true}).click();await page.getByRole('status').waitFor();
+ await value.fill('20');await rangeRow.getByRole('button',{name:'Add',exact:true}).click();
+ let draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('business-order-draft:range-fixture')));
+ assert.equal(draft.length,2);assert.deepEqual(draft.map(i=>i.customValue),[10,20]);assert.deepEqual(draft.map(i=>i.unitPrice),[9.5,19]);
+ await value.fill('10');await qty.fill('1');await rangeRow.getByRole('button',{name:'Add',exact:true}).click();
+ draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('business-order-draft:range-fixture')));assert.equal(draft.find(i=>i.customValue===10).quantity,3);assert.equal(draft.length,2);
+ for(const amount of ['1','501','10.5']){await value.fill(amount);await rangeRow.getByRole('button',{name:'Add',exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('business-order-draft:range-fixture')).length),2);}
+ await page.locator('section.draft tbody tr').filter({hasText:'20 USD'}).getByRole('button',{name:'Remove'}).click();
+ assert.equal(await page.locator('section.draft tbody tr').count(),1,'Remove only one denomination');
+ await value.fill('50');await rangeRow.getByRole('button',{name:'Increase quantity for Apple Gift Card Range denomination',exact:true}).click();assert.equal(await qty.inputValue(),'2');
+ await rangeRow.getByRole('button',{name:'Decrease quantity for Apple Gift Card Range denomination',exact:true}).click();assert.equal(await qty.inputValue(),'1');
+ await rangeRow.getByRole('button',{name:'Add',exact:true}).click();
+ await page.screenshot({path:path.join(out,'compact-range-desktop.png'),fullPage:true});
+ await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Compact row must scroll inside its table on mobile');
+ await page.screenshot({path:path.join(out,'compact-range-mobile.png'),fullPage:true});
+ await page.getByRole('button',{name:'Review in cart →',exact:true}).click();await page.waitForFunction(()=>window.portalNavigation==='/cart');
+ const cart=await page.evaluate(()=>JSON.parse(localStorage.getItem('shoppingCart')));assert.equal(cart.length,2);assert.equal(new Set(cart.map(i=>i.cartId)).size,2);assert.deepEqual(cart.map(i=>i.customValue).sort((a,b)=>a-b),[10,50]);assert.equal(cart.find(i=>i.customValue===10).unitPrice,9.5,'Cart carries undiscounted price for authoritative checkout');
+ assert.equal(errors.length,0,errors.join('\n'));
+ console.log('PASS: compact range rows, live discounted prices, multiple denominations, merge/remove, invalid bounds/steps, quantity controls, cart data and mobile containment.');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

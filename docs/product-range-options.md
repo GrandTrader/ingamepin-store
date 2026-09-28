@@ -15,3 +15,5 @@ Validation:
 - product-range-ui.cjs: browser cart/Buy now payloads, exact price rounding, invalid denomination and quantity.
 - Existing portal access tests, supplier quantity checks and browser filter stability pass.
 - Isolated production build and type check pass.
+
+The admin form now shows currency, minimum, maximum and one clearly labelled USD selling price, with a live example. Increments, pricing amount and delivery configuration are under Advanced settings; existing saved values are retained. The business catalogue displays range options as compact table rows with card value, live discounted price, quantity buttons and Add. Different entered values remain separate draft/cart lines; adding the same value merges only that value. Fixed options continue alongside them. No additional migration is required for this interface update.
