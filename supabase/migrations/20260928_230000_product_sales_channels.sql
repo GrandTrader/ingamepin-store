@@ -4,10 +4,34 @@ begin;
 alter table public.products add column if not exists retail_enabled boolean not null default true;
 alter table public.products add column if not exists business_enabled boolean not null default true;
 
--- This setting is scoped to the service-only portal function and automatically
--- restored when it returns (including quotes, errors and idempotent replays).
-alter function public.portal_wallet_checkout(uuid,uuid,text,jsonb,text,numeric,text)
-  set app.order_sales_channel to 'BUSINESS';
+-- ALTER FUNCTION ... SET custom parameters requires superuser permissions.
+-- Set the channel only around order creation instead. Restore it on success;
+-- the existing checkout subtransaction restores it automatically on failure.
+do $migration$
+declare
+  source text;
+  start_marker text := '  if has_seller then';
+  end_marker text := '  oid:=(made->>''id'')::uuid;';
+begin
+  select pg_get_functiondef('public.portal_wallet_checkout(uuid,uuid,text,jsonb,text,numeric,text)'::regprocedure) into source;
+  if position('-- product-sales-channel-runtime-v1' in source)=0 then
+    if (length(source)-length(replace(source,start_marker,'')))<>length(start_marker)
+       or (length(source)-length(replace(source,end_marker,'')))<>length(end_marker) then
+      raise exception 'The installed portal checkout differs from the expected version. No changes were applied.';
+    end if;
+    source := replace(source,start_marker,$patch$
+  -- product-sales-channel-runtime-v1
+  declare prior_sales_channel text := current_setting('app.order_sales_channel',true);
+  begin
+   perform set_config('app.order_sales_channel','BUSINESS',true);
+  if has_seller then$patch$);
+    source := replace(source,end_marker,$patch$
+   perform set_config('app.order_sales_channel',coalesce(prior_sales_channel,''),true);
+  end;
+  oid:=(made->>'id')::uuid;$patch$);
+    execute source;
+  end if;
+end $migration$;
 
 create or replace function public.guard_product_sales_channel()
 returns trigger language plpgsql security definer set search_path=public as $$
