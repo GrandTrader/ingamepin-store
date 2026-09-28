@@ -1,3 +1,4 @@
+-- PRODUCT CHANNELS FIX V2 - run this complete file in a NEW SQL query.
 begin;
 
 -- Existing products stay available in both channels until an administrator changes them.

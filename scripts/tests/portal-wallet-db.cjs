@@ -58,6 +58,11 @@ const {PGlite}=require(process.env.PGLITE_PATH||'@electric-sql/pglite');
  set role channel_migrator;`);
  await assert.rejects(db.exec("alter function portal_wallet_checkout(uuid,uuid,text,jsonb,text,numeric,text) set app.order_sales_channel to 'BUSINESS'"),/permission denied to set parameter/);
  await db.exec(channelMigration);await db.exec(channelMigration);
+ // Reproduce an installed definition carrying the original superuser-only SET.
+ await db.exec("reset role;alter function portal_wallet_checkout(uuid,uuid,text,jsonb,text,numeric,text) set app.order_sales_channel to 'BUSINESS';set role channel_migrator;");
+ const repair=fs.readFileSync('supabase/migrations/20260928_231000_product_sales_channels_fix.sql','utf8');
+ await db.exec(repair);await db.exec(repair);
+ assert.equal((await db.query("select exists(select 1 from pg_proc p,unnest(p.proconfig) c where p.oid='portal_wallet_checkout(uuid,uuid,text,jsonb,text,numeric,text)'::regprocedure and c like 'app.order_sales_channel=%') present")).rows[0].present,false,'Remove stored forbidden function setting');
  const runtimeSource=(await db.query("select pg_get_functiondef('portal_wallet_checkout(uuid,uuid,text,jsonb,text,numeric,text)'::regprocedure) src")).rows[0].src;
  assert.equal(runtimeSource.split('-- product-sales-channel-runtime-v1').length,2,'Migration patches once');
  await db.exec(`reset role;alter table products owner to "${owner}";alter table order_items owner to "${owner}";
@@ -117,5 +122,5 @@ const {PGlite}=require(process.env.PGLITE_PATH||'@electric-sql/pglite');
  await db.exec(migration);await db.exec(channelMigration);
  assert.equal((await db.query("select pg_get_functiondef('next_store_order_number()'::regprocedure) src")).rows[0].src,retailBefore);
  assert.match((await db.query('select next_store_order_number() n')).rows[0].n,/^IP[0-9]{8}[1-9][0-9]{5}$/);
- console.log('PASS: restricted-role installation and repeat migration, retail/business channel matrix, channel scope isolation, stale-cart rejection, replay after disable, portal quote rollback, authoritative pricing, KYB, wallet restrictions, atomic manual/automatic delivery, payment/stock rollback, B2B numbers, unchanged retail generator and replay protection.');
+ console.log('PASS: restricted-role installation, repair of stored forbidden SET, repeat migration, retail/business channel matrix, channel scope isolation, stale-cart rejection, replay after disable, portal quote rollback, authoritative pricing, KYB, wallet restrictions, atomic manual/automatic delivery, payment/stock rollback, B2B numbers, unchanged retail generator and replay protection.');
 }finally{await db.close();}}})().catch(e=>{console.error(e);process.exitCode=1;});

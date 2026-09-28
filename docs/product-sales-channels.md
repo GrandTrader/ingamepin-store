@@ -11,3 +11,5 @@ Validation: database channel matrix/rollback/replay tests; action authorization,
 Permission fix: function-level SET of a custom parameter fails for a non-superuser (42501). The migration now patches the installed function with runtime set_config and explicit restoration, guarded by version markers. Restricted-role installation and repeated execution are tested.
 
 Tests: scripts/tests/admin-product-channels.cjs, scripts/tests/admin-product-channels-ui.cjs, scripts/tests/portal-wallet-db.cjs, scripts/tests/portal-checkout-api.cjs. UI fixture CSS is read from the isolated release build by default; CHANNEL_CSS_DIR overrides it. PGLITE_PATH may be needed for database tests.
+
+V2 repair: use 20260928_231000_product_sales_channels_fix.sql as a standalone complete retry. It removes any stored function-level app.order_sales_channel SET from pg_get_functiondef before replacing the function, including when the runtime patch is already present. Restricted-role tests cover this retained-setting case, fresh install and repeated repair. Actual remote cause has not been inspected; a new filename also avoids reusing the earlier SQL editor query.
