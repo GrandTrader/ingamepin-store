@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),ts=require('typescript');
-function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>{if(n in mocks)return mocks[n];throw Error('Missing mock '+n);},Date,Intl,Map,Set,URL,Response,console},{filename:file});return exports;}
+function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:n=>{if(n in mocks)return mocks[n];throw Error('Missing mock '+n);},Date,Intl,Map,Set,URL,Response,console},{filename:file});return exports;}
 const helpers=load('lib/business-portal.ts'),now=new Date('2026-09-28T06:00:00Z');
 const order=(patch={})=>({id:'order-1',subtotal:'5000',discount:'0',currency:'USD',status:'PAID',paid_at:'2026-09-15T12:00:00+00:00',...patch});
 test('Reseller threshold is exactly USD 5000, after discounts and refunds',()=>{
@@ -62,4 +62,25 @@ test('Code exports reject other customers, unrelated items and unpaid orders',as
 });
 test('Own delivered code export is an uncached attachment',async()=>{
  const h=exportRoute();const r=await h.GET(new Request(`http://test/export?kind=codes&order=${oid}&item=i1&format=txt`));assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'private, no-store');assert.match(r.headers.get('content-disposition'),/^attachment/);assert.equal(await r.text(),'SECRET-CODE');assert(h.scoped());
+});
+
+function pageMocks(file,overrides) {
+ const js=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+ return Object.assign(Object.fromEntries([...js.matchAll(/require\("([^"\n]+)"\)/g)].map(m=>[m[1],{}])),overrides);
+}
+test('Legacy B2B catalogue checks approval before any catalogue query',async()=>{
+ const file='app/products/[[...collection]]/page.tsx';
+ for(const approved of [false,true]){
+  let checks=0,reads=0;
+  const page=load(file,pageMocks(file,{'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;if(!approved)throw Error('KYB required');}},'next/navigation':{redirect:path=>{throw Error('REDIRECT:'+path)},notFound:()=>{throw Error('Not found')}},'@/lib/supabase/server':{createClient:async()=>{reads++;throw Error('Unexpected public catalogue read')}}})).default;
+  await assert.rejects(page({params:Promise.resolve({collection:['bulk']})}),approved?/REDIRECT:\/account\/portal\/new/:/KYB required/);assert.equal(checks,1);assert.equal(reads,0);
+ }
+});
+test('Bulk product links require KYB for both slug and canonical rendering',async()=>{
+ const file='app/product/[slug]/page.tsx';
+ for(const canonicalRequest of [false,true]){
+  let checks=0;const reads=[];const query={select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'bulk-product',is_bulk_order:true}})};
+  const page=load(file,pageMocks(file,{'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;throw Error('KYB required')}},'@/lib/supabase/server':{createClient:async()=>({from:table=>{reads.push(table);return query}})}}));
+  await assert.rejects(page.renderProductPage({slug:'bulk-product',searchParams:Promise.resolve({}),canonicalRequest}),/KYB required/);assert.equal(checks,1);assert.deepEqual(reads,['products']);
+ }
 });

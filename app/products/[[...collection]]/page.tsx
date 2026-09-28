@@ -1,6 +1,7 @@
 import { hasInstantDelivery } from "@/lib/product-delivery";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { portalCustomer } from "@/lib/business-portal-data";
 
 import ProductCard, {
   type ProductCardData,
@@ -209,6 +210,11 @@ export default async function ProductsPage({
     (segments.length > 1 || !(requestedCollection in collections))
   ) {
     notFound();
+  }
+
+  if (requestedCollection === "bulk") {
+    await portalCustomer();
+    redirect("/account/portal/new");
   }
 
   const collection = requestedCollection as CollectionKey;

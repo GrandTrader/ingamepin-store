@@ -1,3 +1,4 @@
+import { portalCustomer } from "@/lib/business-portal-data";
 import { hasInstantDelivery } from "@/lib/product-delivery";
 ﻿import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -187,6 +188,7 @@ export async function renderProductPage({
   }
 
   const product = productResult.data as ProductRow;
+  if (product.is_bulk_order) await portalCustomer();
   const category = getCategory(product.categories);
   if (!canonicalRequest) {
     const canonicalUrl = getProductUrl({

@@ -18,7 +18,7 @@ type Product = {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createAdminClient();
   const entries: MetadataRoute.Sitemap = [
-    "/", "/products", "/products/bulk", "/support", "/work-with-us",
+    "/", "/products", "/support", "/work-with-us",
     "/affiliate-program", "/terms", "/privacy-policy", "/refund-policy",
   ].map((path) => ({ url: `${siteUrl}${path}` }));
 
@@ -43,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select("slug, public_id, categories(slug, public_id)")
       .eq("status", "ACTIVE")
       .eq("is_preorder_only", false)
+      .eq("is_bulk_order", false)
       .order("id")
       .range(offset, offset + pageSize - 1);
 

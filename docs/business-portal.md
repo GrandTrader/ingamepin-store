@@ -26,3 +26,5 @@ CSV exports are private uncached attachments with spreadsheet-formula escaping. 
 - Read-only checks of the configured Supabase schema and anonymous localhost access redirects.
 
 No real KYB approval, order, payment or wallet credit is created by these tests. Localhost currently uses the configured Supabase database, so approvals and wallet credits made manually are real database writes.
+
+All storefront B2B links lead to the protected business portal. The legacy /products/bulk route verifies approval before redirecting to the portal catalogue. Bulk-product detail pages require the same approval, including their canonical category URLs. Private bulk pages are excluded from the public sitemap. An email-verified login alone is not sufficient: admin-approved business KYB is required.
