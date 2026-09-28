@@ -44,6 +44,8 @@ function html(markup,script=''){return '<!doctype html><html><head><meta charset
  await page.getByLabel('Quantity for Apple Gift Card 50 USD',{exact:true}).fill('10');
  await page.getByRole('button',{name:'Add',exact:true}).first().click();
  await page.getByRole('status').filter({hasText:'added to your draft'}).waitFor();
+ assert.equal(await page.getByLabel('Quantity for Apple Gift Card 50 USD',{exact:true}).inputValue(),'','Fixed-option quantity clears after Add');
+ assert.equal(await page.getByLabel('Quantity for PlayStation Store Gift Card 50 USD',{exact:true}).inputValue(),'1','Other rows remain unchanged');
  await page.getByRole('button',{name:'India',exact:true}).scrollIntoViewIfNeeded();
  const scroll=await page.evaluate(()=>scrollY),top=await page.getByRole('button',{name:'India',exact:true}).evaluate(e=>e.getBoundingClientRect().top);
  await page.evaluate(()=>window.stabilityMarker='same-page');
@@ -85,12 +87,14 @@ function html(markup,script=''){return '<!doctype html><html><head><meta charset
  const qty=rangeRow.getByRole('spinbutton',{name:'Quantity for Apple Gift Card Range denomination',exact:true});
  await value.fill('10');await qty.fill('2');assert.equal(await rangeRow.locator('td').nth(4).innerText(),'$9.31','Live price includes assigned discount');
  await rangeRow.getByRole('button',{name:'Add',exact:true}).click();await page.getByRole('status').waitFor();
- await value.fill('20');await rangeRow.getByRole('button',{name:'Add',exact:true}).click();
+ assert.equal(await value.inputValue(),'','Range value clears after Add');assert.equal(await qty.inputValue(),'','Range quantity clears after Add');
+ await rangeRow.getByRole('button',{name:'Increase quantity for Apple Gift Card Range denomination',exact:true}).click();assert.equal(await qty.inputValue(),'1','Plus on empty starts at minimum');
+ await value.fill('20');await qty.fill('2');await rangeRow.getByRole('button',{name:'Add',exact:true}).click();
  let draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('business-order-draft:range-fixture')));
  assert.equal(draft.length,2);assert.deepEqual(draft.map(i=>i.customValue),[10,20]);assert.deepEqual(draft.map(i=>i.unitPrice),[9.5,19]);
  await value.fill('10');await qty.fill('1');await rangeRow.getByRole('button',{name:'Add',exact:true}).click();
  draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('business-order-draft:range-fixture')));assert.equal(draft.find(i=>i.customValue===10).quantity,3);assert.equal(draft.length,2);
- for(const amount of ['1','501','10.5']){await value.fill(amount);await rangeRow.getByRole('button',{name:'Add',exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('business-order-draft:range-fixture')).length),2);}
+ for(const amount of ['1','501','10.5']){await value.fill(amount);await qty.fill('1');await rangeRow.getByRole('button',{name:'Add',exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(await value.inputValue(),amount,'Invalid value stays for correction');assert.equal(await qty.inputValue(),'1','Failed Add retains quantity');assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('business-order-draft:range-fixture')).length),2);}
  await page.locator('section.draft tbody tr').filter({hasText:'20 USD'}).getByRole('button',{name:'Remove'}).click();
  assert.equal(await page.locator('section.draft tbody tr').count(),1,'Remove only one denomination');
  await value.fill('50');await rangeRow.getByRole('button',{name:'Increase quantity for Apple Gift Card Range denomination',exact:true}).click();assert.equal(await qty.inputValue(),'2');
