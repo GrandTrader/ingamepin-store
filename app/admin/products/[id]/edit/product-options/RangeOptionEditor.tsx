@@ -1,9 +1,12 @@
 "use client";
 import {useState} from "react";
+import {restrictionCurrencies} from "@/lib/purchase-restriction-currencies";
 import {rangePrice,type ProductRange} from "@/lib/product-range";
-export default function RangeOptionEditor({range,ready}:{range:ProductRange|null;ready:boolean}){
+export default function RangeOptionEditor({range,ready,productCurrency="USD"}:{range:ProductRange|null;ready:boolean;productCurrency?:string}){
  const [enabled,setEnabled]=useState(range?.enabled??false),[mode,setMode]=useState(range?.delivery_mode??"MANUAL");
- const [currency,setCurrency]=useState(range?.currency??"USD"),[minimum,setMinimum]=useState(String(range?.minimum??2)),[maximum,setMaximum]=useState(String(range?.maximum??500));
+ const [currencyChoice,setCurrencyChoice]=useState(range?.currency??"PRODUCT");
+ const currency=currencyChoice==="PRODUCT"?productCurrency:currencyChoice;
+ const [minimum,setMinimum]=useState(String(range?.minimum??2)),[maximum,setMaximum]=useState(String(range?.maximum??500));
  const [basis,setBasis]=useState(String(range?.price_basis??100)),[price,setPrice]=useState(String(range?.price_usd??"")),[step,setStep]=useState(String(range?.step??1));
  const input="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900";
  let example="—";
@@ -12,7 +15,7 @@ export default function RangeOptionEditor({range,ready}:{range:ProductRange|null
   <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">Custom card value</h2><p className="mt-1 text-sm text-slate-500">Customers enter an amount, choose quantity, and add to their order.</p></div><label className="flex items-center gap-2 font-bold"><input type="checkbox" name="enabled" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/>Enable range</label></div>
   {!ready&&<p role="status" className="mt-3 text-sm text-amber-800">The range database update must be installed before saving.</p>}
   <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-   <label className="text-sm font-semibold">Currency<input name="currency" className={input} required pattern="[A-Za-z]{3}" maxLength={3} value={currency} onChange={e=>setCurrency(e.target.value.toUpperCase())}/></label>
+   <label className="text-sm font-semibold">Currency<select className={input} value={currencyChoice} onChange={e=>{const next=e.target.value;setCurrencyChoice(next);if((next==="PRODUCT"?productCurrency:next)!==currency)setPrice("");}}><option value="PRODUCT">Use product currency ({productCurrency})</option>{!restrictionCurrencies.some(c=>c.code===currency)&&<option value={currency}>{currency}</option>}{restrictionCurrencies.map(c=><option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}</select><input type="hidden" name="currency" value={currency}/></label>
    <label className="text-sm font-semibold">Minimum value<input name="minimum" className={input} type="number" min="0.01" step="0.01" required value={minimum} onChange={e=>setMinimum(e.target.value)}/></label>
    <label className="text-sm font-semibold">Maximum value<input name="maximum" className={input} type="number" min="0.01" step="0.01" required value={maximum} onChange={e=>setMaximum(e.target.value)}/></label>
    <label className="text-sm font-semibold">Price for {basis} {currency} (USD)<input name="price_usd" className={input} type="number" min="0.01" step="0.01" required placeholder="Enter selling price" value={price} onChange={e=>setPrice(e.target.value)}/></label>

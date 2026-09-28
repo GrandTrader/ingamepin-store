@@ -38,7 +38,7 @@ export default async function ProductOptionsPage({
   if (!access.data) redirect("/admin/login?error=Access denied");
 
   const [productResult, optionsResult] = await Promise.all([
-    supabase.from("products").select("id, name, slug").eq("id", id).maybeSingle(),
+    supabase.from("products").select("id, name, slug, currency").eq("id", id).maybeSingle(),
     supabase
       .from("product_options")
       .select("id, option_name, denomination, denomination_currency, selling_price, is_active, is_in_stock")
@@ -51,6 +51,8 @@ export default async function ProductOptionsPage({
   if (!productResult.data) notFound();
   const product = productResult.data;
   const rangeData=await productRanges([id]);
+  const optionCurrencies=[...new Set((optionsResult.data??[]).map(o=>o.denomination_currency).filter((value):value is string=>typeof value==="string"&&/^[A-Z]{3}$/.test(value)))];
+  const productCurrency=optionCurrencies.length===1?optionCurrencies[0]:product.currency||"USD";
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -73,7 +75,7 @@ export default async function ProductOptionsPage({
 
           <div className="mt-8"><ProductEditPageTabs productId={id} current="product-options" /></div>
 
-          <form action={saveRangeOption} className="mt-6"><input type="hidden" name="id" value={id}/><RangeOptionEditor ready={rangeData.ready} range={rangeData.ranges[0]??null}/></form>
+          <form action={saveRangeOption} className="mt-6"><input type="hidden" name="id" value={id}/><RangeOptionEditor productCurrency={productCurrency} ready={rangeData.ready} range={rangeData.ranges[0]??null}/></form>
           <form action={saveProductOptions} className="mt-6 grid gap-6">
             <input type="hidden" name="id" value={id} />
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
