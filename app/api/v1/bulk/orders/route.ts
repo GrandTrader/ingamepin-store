@@ -61,17 +61,17 @@ export async function POST(request: NextRequest) {
     if (reservation.error) return bulkApiNoStore({ error: "Unable to reserve this request." }, { status: 409 });
 
     const optionIds = [...new Set(normalizedItems.map((item) => item.productOptionId))];
-    const optionResult = await admin.from("product_options").select("id, is_active, is_in_stock, products!inner(id, status, delivery_type, is_bulk_order)").in("id", optionIds);
+    const optionResult = await admin.from("product_options").select("id, is_active, is_in_stock, products!inner(id, status, delivery_type, is_bulk_order, business_enabled)").in("id", optionIds);
     const options = optionResult.data ?? [];
     const eligible = options.length === optionIds.length && options.every((option) => {
       const relation = Array.isArray(option.products) ? option.products[0] : option.products;
-      return option.is_active && option.is_in_stock !== false && relation?.status === "ACTIVE" && relation.delivery_type === "MANUAL" && relation.is_bulk_order === true;
+      return option.is_active && option.is_in_stock !== false && relation?.status === "ACTIVE" && relation.delivery_type === "MANUAL" && relation.is_bulk_order === true && relation.business_enabled === true;
     });
     if (optionResult.error || !eligible) {
       let rejectedQuery = admin.from("bulk_api_requests").update({ status: "REJECTED" }).eq("idempotency_key", idempotencyKey);
       rejectedQuery = auth.principal.clientId ? rejectedQuery.eq("client_id", auth.principal.clientId) : rejectedQuery.is("client_id", null);
       await rejectedQuery;
-      return bulkApiNoStore({ error: "Only active manual Bulk Delivery products are allowed." }, { status: 403 });
+      return bulkApiNoStore({ error: "Only active manual Bulk Delivery products enabled for business are allowed." }, { status: 403 });
     }
 
     const orderResult = await admin.rpc("create_business_checked_order", {

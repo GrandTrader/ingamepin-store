@@ -1,0 +1,40 @@
+const fs=require('fs'),path=require('path'),vm=require('vm'),ts=require('typescript'),http=require('http'),assert=require('assert/strict'),React=require('react');
+const {renderToStaticMarkup}=require('react-dom/server');
+const out=path.resolve('tmp/admin-channels-ui');fs.mkdirSync(out,{recursive:true});
+function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{exports,console,URLSearchParams,Date,Map,Set,Intl,require:n=>n in mocks?mocks[n]:require(n)});return exports;}
+const noop={__esModule:true,default:()=>null},link={__esModule:true,default:({scroll,...p})=>React.createElement('a',p)},form={__esModule:true,default:({scroll,...p})=>React.createElement('form',p)};
+const switches=load('app/admin/products/ProductChannelSwitches.tsx',{'./channel-actions':{setProductChannel:async()=>({})}});
+const products=Array.from({length:24},(_,i)=>({id:'p'+i,public_id:100+i,name:'Apple India '+i,slug:'apple-'+i,price:10,currency:'USD',stock_quantity:100,sold_count:2,bulk_discount_percent:0,status:'ACTIVE',category_id:'apple',region:'India',is_bulk_order:true,retail_enabled:i!==0,business_enabled:i!==1,categories:{name:'Apple',slug:'apple',public_id:1},product_options:[]}));
+products.push({...products[0],id:'steam',public_id:500,name:'Steam USA Retail',region:'USA',is_bulk_order:false,category_id:'steam',categories:{name:'Steam',slug:'steam',public_id:2}});
+const chain=data=>({select(){return this},eq(){return this},gte(){return this},maybeSingle:async()=>({data:{role:'ADMIN'}}),then:resolve=>resolve({data,error:null})});
+const actions=Object.fromEntries(['cloneProduct','createDraftProduct','deleteSelectedProducts','syncAllProductImagesToDigiSeller','syncAllDigiSellerStatistics','toggleProductSales'].map(k=>[k,async()=>{}]));
+const pageModule=load('app/admin/products/page.tsx',{
+ 'next/form':form,'next/link':link,'next/navigation':{redirect:()=>{throw Error('Unexpected redirect')}},
+ './ProductChannelSwitches':switches,'./CodeSearch':noop,'../AdminSidebar':noop,'./ProductBulkSelection':{DeleteSelectedProductsButton:()=>null,SelectAllProductsCheckbox:()=>null},'./actions':actions,
+ '@/lib/admin-product-filters':load('lib/admin-product-filters.ts'),'@/lib/product-url':{getProductUrl:()=>'/product'},'@/lib/product-sales':{getPaidProductSales:async()=>new Map()},'@/lib/product-stock':{isUnlimitedStock:q=>q===-1},
+ '@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'admin'}}})},from:table=>chain(table==='products'?products:[])})},'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>chain([])})}
+});
+(async()=>{
+ const cssRoot=process.env.CHANNEL_CSS_DIR||'C:/Users/amans/AppData/Local/Temp/igp-full-product-import-20260925/.next/static/css';
+ const css=fs.readdirSync(cssRoot).filter(f=>f.endsWith('.css')).map(f=>fs.readFileSync(path.join(cssRoot,f),'utf8')).join('\n');
+ fs.writeFileSync(path.join(out,'switches.js'),ts.transpileModule(fs.readFileSync('app/admin/products/ProductChannelSwitches.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText);
+ fs.writeFileSync(path.join(out,'channel-actions.js'),`exports.setProductChannel=async(id,channel,enabled)=>{window.calls.push({id,channel,enabled});await new Promise(r=>setTimeout(r,100));if(window.failSave)return {error:'Save failed'};window.updateProduct(channel,enabled);return {};};`);
+ fs.writeFileSync(path.join(out,'entry.js'),`const React=require('react'),{createRoot}=require('react-dom/client'),Switches=require('./switches').default;window.calls=[];function App(){const [value,setValue]=React.useState({business:true,retail:true});window.updateProduct=(channel,enabled)=>setValue(s=>({...s,[channel]:enabled}));return React.createElement(Switches,{id:'fixture',name:'Test product',...value});}createRoot(document.getElementById('interactive')).render(React.createElement(App));`);
+ const webpack=require('next/dist/compiled/webpack/webpack').webpack;
+ await new Promise((resolve,reject)=>webpack({mode:'development',devtool:false,entry:path.join(out,'entry.js'),output:{path:out,filename:'bundle.js'}},(e,s)=>e||s.hasErrors()?reject(e??Error(s.toString())):resolve()));
+ const server=http.createServer(async(req,res)=>{try{if(req.url==='/bundle.js'){res.setHeader('Content-Type','text/javascript');res.end(fs.readFileSync(path.join(out,'bundle.js')));return;}const params=Object.fromEntries(new URL(req.url,'http://local').searchParams);const markup=renderToStaticMarkup(await pageModule.default({searchParams:Promise.resolve(params)}));res.setHeader('Content-Type','text/html');res.end('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body>'+markup+'<section class="p-6" id="interactive"></section><script src="/bundle.js"></script></body></html>');}catch(e){res.writeHead(500);res.end(String(e));}});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const {chromium}=require('C:/Users/amans/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+ try{const page=await browser.newPage({viewport:{width:1440,height:900}}),base='http://127.0.0.1:'+server.address().port;await page.goto(base);
+ assert.equal(await page.locator('tbody tr').count(),20);await page.getByLabel('Category',{exact:true}).selectOption('apple');await page.getByLabel('Region',{exact:true}).selectOption('India');await page.getByLabel('Purchase type').selectOption('BULK');await page.getByRole('button',{name:'Apply filters'}).click();await page.waitForURL(/category=apple/);
+ assert.equal(await page.locator('tbody tr').count(),20);await page.getByRole('navigation',{name:'Product list pages'}).getByRole('link',{name:'2',exact:true}).click();await page.waitForURL(/page=2/);assert.equal(await page.locator('tbody tr').count(),4);assert(page.url().includes('region=India'));assert(page.url().includes('kind=BULK'));
+ await page.getByLabel('Category',{exact:true}).selectOption('steam');await page.getByRole('button',{name:'Apply filters'}).click();await page.getByText('No products match these filters.').waitFor();
+ await page.getByRole('link',{name:'Reset filters'}).click();await page.waitForURL(base+'/admin/products');assert.equal(await page.getByLabel('Category',{exact:true}).inputValue(),'');
+ await page.screenshot({path:path.join(out,'admin-products-desktop.png'),fullPage:true});
+ const biz=page.getByRole('switch',{name:'Business portal for Test product'}),retail=page.getByRole('switch',{name:'Retail site for Test product'});
+ await biz.click();await page.waitForFunction(()=>window.calls.length===1 && document.querySelector('[aria-label="Business portal for Test product"]').disabled===false);assert.equal(await biz.getAttribute('aria-checked'),'false');assert.equal(await retail.getAttribute('aria-checked'),'true');
+ await page.evaluate(()=>window.failSave=true);await retail.click();await page.getByRole('alert').filter({hasText:'Save failed'}).waitFor();assert.equal(await retail.getAttribute('aria-checked'),'true','Failed save rolls back switch');assert.equal(await biz.getAttribute('aria-checked'),'false');
+ await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Table must scroll inside mobile layout');await page.screenshot({path:path.join(out,'admin-products-mobile.png'),fullPage:true});
+ console.log('PASS: actual admin page category/region/type filters, paging, empty state, reset, independent switch updates, save failure rollback and mobile overflow.');
+ }finally{await browser.close();await new Promise(r=>server.close(r));}
+})().catch(e=>{console.error(e);process.exitCode=1;});

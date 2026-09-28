@@ -11,7 +11,7 @@ export default async function NewBusinessOrder({searchParams}:{searchParams:Prom
   const catalogue=async()=>{
     const rows:CatalogueProduct[]=[];
     for(let from=0;;from+=500){
-      const result=await session.from("products").select("id,name,slug,image_url,region,category_id,currency,is_bulk_order,delivery_type,product_type,minimum_quantity,maximum_quantity,stock_quantity,allows_player_id_topup,sold_count,categories(name,slug),product_customer_fields(id),product_options(id,option_name,denomination,selling_price,minimum_quantity,maximum_quantity,is_custom_value,is_active,is_in_stock,stock_quantity)").eq("status","ACTIVE").eq("is_preorder_only",false).order("sort_order").order("id").range(from,from+499);
+      const result=await session.from("products").select("id,name,slug,image_url,region,category_id,currency,is_bulk_order,delivery_type,product_type,minimum_quantity,maximum_quantity,stock_quantity,allows_player_id_topup,sold_count,categories(name,slug),product_customer_fields(id),product_options(id,option_name,denomination,selling_price,minimum_quantity,maximum_quantity,is_custom_value,is_active,is_in_stock,stock_quantity)").eq("status","ACTIVE").eq("business_enabled", true).eq("is_preorder_only",false).order("sort_order").order("id").range(from,from+499);
       if(result.error)throw Error("Unable to load the business catalogue. Please try again.");
       rows.push(...result.data as unknown as CatalogueProduct[]);
       if(result.data.length<500)return rows;

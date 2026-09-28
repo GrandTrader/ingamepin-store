@@ -62,10 +62,10 @@ export function customerStatement(userId: string, filters: PortalFilters) {
 export const catalogueRegions = unstable_cache(async () => {
   const regions = new Set<string>();
   for(let from=0;;from+=1000) {
-    const r=await createAdminClient().from("products").select("region").eq("status","ACTIVE").eq("is_preorder_only",false).order("id").range(from,from+999);
+    const r=await createAdminClient().from("products").select("region").eq("status","ACTIVE").eq("business_enabled", true).eq("is_preorder_only",false).order("id").range(from,from+999);
     if(r.error)throw Error("Unable to load catalogue regions.");
     for(const row of r.data)if(row.region)regions.add(row.region);
     if(r.data.length<1000)break;
   }
   return [...regions].sort();
-}, ["business-catalogue-regions"], {revalidate:60});
+}, ["business-catalogue-regions"], {revalidate:60,tags:["business-catalogue"]});

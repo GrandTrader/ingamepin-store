@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const result = await createAdminClient()
     .from("products")
     .select("id, name, slug, currency, minimum_quantity, maximum_quantity, bulk_delivery_instructions, product_options(id, option_name, denomination, denomination_currency, selling_price, minimum_quantity, maximum_quantity, is_active, is_in_stock)")
-    .eq("status", "ACTIVE")
+    .eq("status", "ACTIVE").eq("business_enabled", true)
     .eq("delivery_type", "MANUAL")
     .eq("is_bulk_order", true)
     .order("sort_order", { ascending: true });

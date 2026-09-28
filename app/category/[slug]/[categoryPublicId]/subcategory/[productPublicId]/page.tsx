@@ -64,7 +64,7 @@ export default async function CanonicalProductPage({
       `,
     )
     .eq("public_id", productPublicId)
-    .eq("status", "ACTIVE")
+    .eq("status", "ACTIVE").eq("retail_enabled", true)
     .eq("is_preorder_only", false)
     .maybeSingle();
 

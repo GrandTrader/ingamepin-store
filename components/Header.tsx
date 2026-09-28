@@ -90,7 +90,7 @@ export default function Header() {
         supabase
           .from("products")
           .select("sold_count, stock_quantity, is_bulk_order, category_id, product_options(stock_quantity, is_active, is_in_stock)")
-          .eq("status", "ACTIVE")
+          .eq("status", "ACTIVE").eq("retail_enabled", true)
           .eq("is_preorder_only", false),
       ]);
 

@@ -43,7 +43,7 @@ const getCachedHomepageData = unstable_cache(
           product_options (stock_quantity, is_active, is_in_stock),
           categories (short_name, slug, public_id)
         `)
-        .eq("status", "ACTIVE")
+        .eq("status", "ACTIVE").eq("retail_enabled", true)
         .eq("is_preorder_only", false)
         .order("sort_order", { ascending: true }),
       supabase

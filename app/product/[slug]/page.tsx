@@ -175,7 +175,7 @@ export async function renderProductPage({
       `,
     )
     .eq("slug", slug)
-    .eq("status", "ACTIVE")
+    .eq("status", "ACTIVE").eq("retail_enabled", true)
     .eq("is_preorder_only", false)
     .maybeSingle();
 

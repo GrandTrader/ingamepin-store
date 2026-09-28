@@ -76,7 +76,7 @@ export default async function PreorderPage() {
           "id, name, name_ru, slug, description, image_url, image_url_ru, currency, delivery_type",
         )
         .eq("id", settings.product_id)
-        .eq("status", "ACTIVE")
+        .eq("status", "ACTIVE").eq("retail_enabled", true)
         .eq("is_preorder_only", true)
         .maybeSingle(),
       supabase

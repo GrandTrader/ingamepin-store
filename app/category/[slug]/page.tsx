@@ -139,7 +139,7 @@ export default async function CategoryPage({
       `,
     )
     .eq("category_id", category.id)
-    .eq("status", "ACTIVE")
+    .eq("status", "ACTIVE").eq("retail_enabled", true)
     .eq("is_preorder_only", false)
     .order("is_featured", { ascending: false })
     .order("sort_order", { ascending: true });

@@ -1,3 +1,6 @@
+import Form from "next/form";
+import ProductChannelSwitches from "./ProductChannelSwitches";
+import {adminProductPageUrl as buildPageUrl,matchesAdminProduct} from "@/lib/admin-product-filters";
 import Link from "next/link";
 import CodeSearch from "./CodeSearch";
 import { redirect } from "next/navigation";
@@ -31,6 +34,7 @@ type AdminProductsPageProps = {
     q?: string;
     status?: string;
     sort?: string;
+    category?:string;region?:string;kind?:string;
   }>;
 };
 
@@ -60,6 +64,7 @@ type ProductRow = {
   sold_count: number;
   bulk_discount_percent: number | string;
   status: ProductStatus;
+  category_id:string|null;region:string|null;is_bulk_order:boolean;retail_enabled:boolean;business_enabled:boolean;
   categories:
     | {
         name: string;
@@ -166,23 +171,6 @@ function getAvailableLabel(product: ProductRow) {
     : availableStock.toLocaleString("en-IN");
 }
 
-function buildPageUrl(
-  page: number,
-  filters: { q: string; status: string; sort: string },
-) {
-  const query = new URLSearchParams();
-  if (filters.q) query.set("q", filters.q);
-  if (filters.status && filters.status !== "ALL") {
-    query.set("status", filters.status);
-  }
-  if (filters.sort && filters.sort !== "ID_DESC") {
-    query.set("sort", filters.sort);
-  }
-  if (page > 1) query.set("page", String(page));
-  const value = query.toString();
-  return value ? `/admin/products?${value}` : "/admin/products";
-}
-
 export default async function AdminProductsPage({
   searchParams,
 }: AdminProductsPageProps) {
@@ -190,6 +178,8 @@ export default async function AdminProductsPage({
   const success = params.success;
   const error = params.error;
   const search = String(params.q ?? "").trim();
+  const category=String(params.category??""),region=String(params.region??"");
+  const kind=["BULK","RETAIL"].includes(params.kind??"")?params.kind!:"";
   const requestedStatus = String(params.status ?? "ALL").toUpperCase();
   const status = ["ALL", "ACTIVE", "INACTIVE", "DRAFT"].includes(
     requestedStatus,
@@ -233,7 +223,7 @@ export default async function AdminProductsPage({
         stock_quantity,
         sold_count,
         bulk_discount_percent,
-        status,
+        status, category_id, region, is_bulk_order, retail_enabled, business_enabled,
         categories (
           name,
           short_name,
@@ -255,6 +245,8 @@ export default async function AdminProductsPage({
   }
 
   const allProducts = (productResult.data ?? []) as ProductRow[];
+  const categoryChoices=[...new Map(allProducts.filter(p=>p.category_id).map(p=>[p.category_id!,getCategoryName(p)])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+  const regionChoices=[...new Set(allProducts.map(p=>p.region||"Global"))].sort();
   const admin = createAdminClient();
   const twentyFourHoursAgo = new Date(
     Date.now() - 24 * 60 * 60 * 1000,
@@ -285,6 +277,7 @@ export default async function AdminProductsPage({
   const normalizedSearch = search.toLocaleLowerCase();
   const filteredProducts = allProducts
     .filter((product) => {
+      if(!matchesAdminProduct(product,{category,region,kind}))return false;
       if (status !== "ALL" && product.status !== status) return false;
       if (!normalizedSearch) return true;
 
@@ -323,7 +316,7 @@ export default async function AdminProductsPage({
     (currentPage - 1) * PRODUCTS_PER_PAGE,
     currentPage * PRODUCTS_PER_PAGE,
   );
-  const filters = { q: search, status, sort };
+  const filters = { q: search, status, sort, category, region, kind };
 
   const counts = {
     all: allProducts.length,
@@ -340,7 +333,7 @@ export default async function AdminProductsPage({
         <main className="min-w-0 flex-1 p-4 sm:p-6">
           <CodeSearch />
           <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-4">
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-bold">
                 <Link href="/admin/products/import" className="text-blue-600 transition hover:text-blue-800">Import full product</Link>
                 <form action={createDraftProduct}>
@@ -369,13 +362,16 @@ export default async function AdminProductsPage({
                 </span>
               </div>
 
-              <form className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_170px_170px_auto]" method="get">
+              <Form key={JSON.stringify(filters)} action="/admin/products" scroll={false} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 <input
                   name="q"
                   defaultValue={search}
                   placeholder="Product name or ID"
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
                 />
+                <select name="category" aria-label="Category" defaultValue={category} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">All categories</option>{categoryChoices.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select>
+                <select name="region" aria-label="Region" defaultValue={region} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">All regions</option>{regionChoices.map(name=><option key={name} value={name}>{name}</option>)}</select>
+                <select name="kind" aria-label="Purchase type" defaultValue={kind} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">Bulk &amp; retail products</option><option value="BULK">Bulk products</option><option value="RETAIL">Retail products</option></select>
                 <select
                   name="status"
                   defaultValue={status}
@@ -398,16 +394,16 @@ export default async function AdminProductsPage({
                   <option value="SOLD_DESC">Best selling</option>
                 </select>
                 <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white hover:bg-blue-700">
-                  Apply
-                </button>
-              </form>
+                  Apply filters
+                </button><Link href="/admin/products" scroll={false} className="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-bold">Reset filters</Link>
+              </Form>
             </div>
 
             <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold">
-              <Link href="/admin/products" className="rounded-full bg-white px-3 py-1.5 text-slate-600 shadow-sm">All {counts.all}</Link>
-              <Link href="/admin/products?status=ACTIVE" className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-700">Active {counts.active}</Link>
-              <Link href="/admin/products?status=INACTIVE" className="rounded-full bg-red-100 px-3 py-1.5 text-red-700">Suspended {counts.inactive}</Link>
-              <Link href="/admin/products?status=DRAFT" className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-700">Draft {counts.draft}</Link>
+              <Link href={buildPageUrl(1,{...filters,status:"ALL"})} scroll={false} className="rounded-full bg-white px-3 py-1.5 text-slate-600 shadow-sm">All {counts.all}</Link>
+              <Link href={buildPageUrl(1,{...filters,status:"ACTIVE"})} scroll={false} className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-700">Active {counts.active}</Link>
+              <Link href={buildPageUrl(1,{...filters,status:"INACTIVE"})} scroll={false} className="rounded-full bg-red-100 px-3 py-1.5 text-red-700">Suspended {counts.inactive}</Link>
+              <Link href={buildPageUrl(1,{...filters,status:"DRAFT"})} scroll={false} className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-700">Draft {counts.draft}</Link>
             </div>
 
             {success && (
@@ -437,7 +433,8 @@ export default async function AdminProductsPage({
                     <th className="px-4 py-3 text-center">Sales</th>
                     <th className="px-3 py-3">Item ID</th>
                     <th className="px-3 py-3">Item name</th>
-                    <th className="px-3 py-3">Category</th>
+                    <th className="px-3 py-3">Category / region</th>
+                    <th className="px-3 py-3">Sales channels</th>
                     <th className="px-3 py-3 text-right">Price</th>
                     <th className="px-3 py-3 text-center">Discount</th>
                     <th className="px-3 py-3 text-center">Sold</th>
@@ -492,8 +489,9 @@ export default async function AdminProductsPage({
                         </td>
 
                         <td className="whitespace-nowrap px-3 py-2.5 text-slate-600">
-                          {getCategoryName(product)}
+                          {getCategoryName(product)}<p className="mt-1 text-xs text-slate-500">{product.region||"Global"} · {product.is_bulk_order?"Bulk":"Retail"}</p>
                         </td>
+                        <td className="px-3 py-2.5"><ProductChannelSwitches id={product.id} name={product.name} business={product.business_enabled} retail={product.retail_enabled}/></td>
 
                         <td className="whitespace-nowrap px-3 py-2.5 text-right font-black text-slate-900">
                           {getPriceLabel(product)}
@@ -552,7 +550,7 @@ export default async function AdminProductsPage({
 
                   {visibleProducts.length === 0 && (
                     <tr>
-                      <td colSpan={11} className="px-5 py-16 text-center text-slate-500">
+                      <td colSpan={12} className="px-5 py-16 text-center text-slate-500">
                         No products match these filters.
                       </td>
                     </tr>
@@ -566,7 +564,7 @@ export default async function AdminProductsPage({
                 {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
                   <Link
                     key={pageNumber}
-                    href={buildPageUrl(pageNumber, filters)}
+                    href={buildPageUrl(pageNumber, filters)} scroll={false}
                     aria-current={pageNumber === currentPage ? "page" : undefined}
                     className={`flex h-9 min-w-9 items-center justify-center rounded-lg border px-3 text-xs font-black transition ${pageNumber === currentPage ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-600"}`}
                   >

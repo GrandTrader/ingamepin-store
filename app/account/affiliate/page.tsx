@@ -93,7 +93,7 @@ export default async function CustomerAffiliatePage({
               )
             `,
           )
-          .eq("status", "ACTIVE")
+          .eq("status", "ACTIVE").eq("retail_enabled", true)
           .eq("affiliate_enabled", true)
           .gt("affiliate_commission_percent", 0)
           .order("name", { ascending: true }),

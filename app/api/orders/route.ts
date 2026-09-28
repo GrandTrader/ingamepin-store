@@ -281,7 +281,10 @@ export async function POST(request: NextRequest) {
       const optionsResult = await admin.from("product_options").select("id, product_id, denomination, denomination_currency, is_custom_value, selling_price, stock_quantity, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
       if (optionsResult.error) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
       const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
-      const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods, stock_quantity").in("id", productIds) : { data: [] };
+      const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods, stock_quantity, retail_enabled, business_enabled").in("id", productIds) : { data: [], error: null };
+      if(productsResult.error || productsResult.data?.length !== productIds.length) return NextResponse.json({error:"Unable to check product availability."},{status:503});
+      const unavailableChannel = (productsResult.data ?? []).find(product => (isPortal ? product.business_enabled : product.retail_enabled) !== true);
+      if(unavailableChannel) return NextResponse.json({error:`${unavailableChannel.name} is unavailable in the ${isPortal ? "business portal" : "retail store"}. Remove it from your order.`},{status:409});
       const disallowedProduct = (productsResult.data ?? []).find(
         (product) =>
           !((product.allowed_payment_methods ?? ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA", "UPI"]) as string[])

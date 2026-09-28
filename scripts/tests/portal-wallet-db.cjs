@@ -50,17 +50,35 @@ const {PGlite}=require(process.env.PGLITE_PATH||'@electric-sql/pglite');
  await db.query('insert into customer_wallets(user_id,balance) values($1,100)',[buyer]);
  await db.query('insert into customer_product_discounts values($1,$2,true,10)',[product,buyer]);
  const migration=fs.readFileSync('supabase/migrations/20260928_223000_portal_wallet_checkout.sql','utf8');await db.exec(migration);await db.exec(migration);
+ const channelMigration=fs.readFileSync('supabase/migrations/20260928_230000_product_sales_channels.sql','utf8');await db.exec(channelMigration);await db.exec(channelMigration);
  await db.query('select save_product_range($1,$2,$3)',[product,buyer,{enabled:true,currency:'INR',minimum:100,maximum:10000,step:1,price_basis:100,price_usd:1.08,delivery_mode:'MANUAL'}]);
  const option=(await db.query('select option_id from product_range_settings')).rows[0].option_id;
  const items=[{productOptionId:option,customValue:1000,quantity:2,unitPrice:0.01}];
  const call=async(action,key=20,expected=null,cart=items,user=buyer,reference='TEST-REF')=>(await db.query('select portal_wallet_checkout($1,$2,$3,$4,$5,$6,null) as result',[user,id(key),action,JSON.stringify(cart),reference,expected])).rows[0].result;
  const counts=async()=>(await db.query('select (select count(*)::int from orders) as orders,(select count(*)::int from order_items) as items,(select count(*)::int from wallet_transactions) as debits,(select balance from customer_wallets limit 1) as balance')).rows[0];
+ // Channel selection is server-owned; portal context must not leak into retail checkout.
+ const originalChannel=(await db.query("select current_setting('app.order_sales_channel',true) value")).rows[0].value;
+ const retailQuote=async()=>{await db.exec('begin');try{await db.query("select create_business_checked_order('Buyer','buyer@example.com','','wallet',$1,null,$2)",[JSON.stringify(items),buyer]);}finally{await db.exec('rollback');}};
+ for(const [retail,business] of [[true,true],[true,false],[false,true],[false,false]]){
+  await db.query('update products set retail_enabled=$1,business_enabled=$2',[retail,business]);
+  const baseline=await counts();
+  if(business)await call('quote');else await assert.rejects(call('quote'),/unavailable in the business portal/);
+  if(retail)await retailQuote();else await assert.rejects(retailQuote(),/unavailable in the retail store/);
+  assert.deepEqual(await counts(),baseline,'Channel checks and quotes never debit or reserve inventory');
+  assert.equal((await db.query("select coalesce(current_setting('app.order_sales_channel',true),'') value")).rows[0].value,originalChannel??'','Portal channel cannot leak');
+ }
+ await db.query('update products set retail_enabled=true,business_enabled=true');
  const before=await counts();const quote=await call('quote');assert.equal(Number(quote.total),20.44);assert.equal(Number(quote.discount),2.16);assert.equal(Number(quote.walletBalance),100);assert.deepEqual(await counts(),before,'Quote must roll back every order write');
  await assert.rejects(call('confirm',20,1),/price changed/);assert.deepEqual(await counts(),before);
  await assert.rejects(call('quote',21,null,items,other),/Approved business/);
  await db.query("update auth.users set raw_app_meta_data='{"+String.fromCharCode(34)+"wallet_disabled"+String.fromCharCode(34)+":true}' where id=$1",[buyer]);await assert.rejects(call('quote'),/disabled/);await db.query("update auth.users set raw_app_meta_data='{}' where id=$1",[buyer]);
  const result=await call('confirm',20,20.44);assert.match(result.orderNumber,/^IPB2B[0-9]{8}[1-9][0-9]{5}$/);assert.equal(result.status,'PROCESSING');assert.equal(Number(result.balanceAfter),79.56);
  const after=await counts();assert.equal(after.orders,1);assert.equal(after.debits,1);assert.equal(Number(after.balance),79.56);
+ await db.query('update products set business_enabled=false');
+ assert.equal((await call('confirm',20,20.44)).orderId,result.orderId,'Completed order replay survives channel disable');
+ await assert.rejects(call('confirm',24,20.44),/unavailable in the business portal/);
+ assert.deepEqual(await counts(),after,'Disabled channel cannot create orders or debit wallets');
+ await db.query('update products set business_enabled=true');
  assert.equal((await call('confirm',20,20.44)).orderId,result.orderId);assert.equal((await call('recover',20,20.44)).replayed,true);assert.deepEqual(await counts(),after);
  await assert.rejects(call('confirm',20,20.44,[{...items[0],quantity:3}]),/different order/);
  await assert.rejects(call('confirm',20,20.44,items,buyer,'OTHER'),/different order/);
@@ -84,8 +102,8 @@ const {PGlite}=require(process.env.PGLITE_PATH||'@electric-sql/pglite');
  // Installing the portal generator leaves the retail generator untouched.
  await db.exec(fs.readFileSync('supabase/migrations/20260928_110000_ip_order_numbers.sql','utf8'));
  const retailBefore=(await db.query("select pg_get_functiondef('next_store_order_number()'::regprocedure) src")).rows[0].src;
- await db.exec(migration);
+ await db.exec(migration);await db.exec(channelMigration);
  assert.equal((await db.query("select pg_get_functiondef('next_store_order_number()'::regprocedure) src")).rows[0].src,retailBefore);
  assert.match((await db.query('select next_store_order_number() n')).rows[0].n,/^IP[0-9]{8}[1-9][0-9]{5}$/);
- console.log('PASS: portal quote rollback, authoritative pricing, KYB, wallet restrictions, atomic manual/automatic delivery, payment/stock rollback, B2B numbers, unchanged retail generator and replay protection.');
+ console.log('PASS: retail/business channel matrix, channel scope isolation, stale-cart rejection, replay after disable, portal quote rollback, authoritative pricing, KYB, wallet restrictions, atomic manual/automatic delivery, payment/stock rollback, B2B numbers, unchanged retail generator and replay protection.');
 }finally{await db.close();}}})().catch(e=>{console.error(e);process.exitCode=1;});

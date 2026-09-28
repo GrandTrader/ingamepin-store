@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
           .from("products")
           .select("id")
           .eq("id", productId)
-          .eq("status", "ACTIVE")
+          .eq("status", "ACTIVE").eq("retail_enabled", true)
           .eq("affiliate_enabled", true)
           .maybeSingle(),
       ]);
