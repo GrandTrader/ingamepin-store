@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-function walletRedirect(kind: "error" | "success", message: string): never {
-  redirect(`/account/wallet?${kind}=${encodeURIComponent(message)}`);
+function walletRedirect(kind: "error" | "success", message: string, returnTo = "/account/wallet"): never {
+  redirect(`${returnTo}?${kind}=${encodeURIComponent(message)}`);
 }
 
 export async function startBinanceWalletTopup(formData: FormData) {
@@ -41,18 +41,21 @@ export async function startBinanceWalletTopup(formData: FormData) {
 
   revalidatePath("/account/dashboard");
   revalidatePath("/account/wallet");
+  revalidatePath("/account/portal", "layout");
   redirect(`/account/wallet/binance-pay/${result.data}`);
 }
 
 export async function claimWalletRefund(formData: FormData) {
+  const returnTo = formData.get("return_to") === "/account/portal/wallet" ? "/account/portal/wallet" : "/account/wallet";
   const refundId = String(formData.get("refund_id") ?? "").trim();
-  if (!/^[0-9a-f-]{36}$/i.test(refundId)) walletRedirect("error", "Refund is invalid.");
+  if (!/^[0-9a-f-]{36}$/i.test(refundId)) walletRedirect("error", "Refund is invalid.", returnTo);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) redirect("/account?error=Please sign in to continue.");
   const result = await supabase.rpc("credit_order_item_refund", { p_refund_id: refundId });
-  if (result.error) walletRedirect("error", result.error.message);
+  if (result.error) walletRedirect("error", result.error.message, returnTo);
   revalidatePath("/account/dashboard");
   revalidatePath("/account/wallet");
-  walletRedirect("success", `Refund credited. Your wallet balance is now USD ${Number(result.data?.balance ?? 0).toFixed(2)}.`);
+  revalidatePath("/account/portal", "layout");
+  walletRedirect("success", `Refund credited. Your wallet balance is now USD ${Number(result.data?.balance ?? 0).toFixed(2)}.`, returnTo);
 }

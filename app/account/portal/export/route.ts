@@ -10,7 +10,7 @@ export async function GET(request:Request) {
   if(kind==="codes") {
     const id=params.get("order")??"", item=params.get("item");
     if(!/^[a-f0-9-]{36}$/i.test(id))return new Response("Order not found",{status:404});
-    const result=await createAdminClient().from("orders").select("id,order_number,status,order_items(id,product_name,option_name)").eq("id",id).eq("customer_email",email).maybeSingle();
+    const result=await createAdminClient().from("orders").select("id,order_number,status,order_items(id,product_name,option_name)").eq("id",id).eq("customer_email",email).eq("sales_channel","BUSINESS").maybeSingle();
     if(result.error) return new Response("Unable to load order",{status:503});
     if(!result.data||!["PAID","PROCESSING","DELIVERED"].includes(result.data.status))return new Response("Order not found",{status:404});
     const order=result.data;

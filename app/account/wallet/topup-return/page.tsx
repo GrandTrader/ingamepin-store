@@ -1,17 +1,18 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 function WalletTopupReturnContent() {
   const router = useRouter();
+  const walletBase = usePathname()?.startsWith("/account/portal/") ? "/account/portal/wallet" : "/account/wallet";
   const searchParams = useSearchParams();
   const requestId = searchParams.get("requestId") ?? "";
   const [message, setMessage] = useState("Confirming your wallet payment...");
 
   useEffect(() => {
     if (!requestId) {
-      router.replace("/account/wallet?error=Wallet+payment+reference+is+missing");
+      router.replace(`${walletBase}?error=Wallet+payment+reference+is+missing`);
       return;
     }
 
@@ -33,11 +34,11 @@ function WalletTopupReturnContent() {
           throw new Error(result.error ?? "Unable to verify payment.");
         }
         if (result.topupStatus === "APPROVED") {
-          router.replace("/account/wallet?success=Wallet+top-up+completed");
+          router.replace(`${walletBase}?success=Wallet+top-up+completed`);
           return;
         }
         if (["REJECTED", "EXPIRED"].includes(result.topupStatus ?? "")) {
-          router.replace("/account/wallet?error=Wallet+payment+was+not+completed");
+          router.replace(`${walletBase}?error=Wallet+payment+was+not+completed`);
           return;
         }
 
@@ -56,7 +57,7 @@ function WalletTopupReturnContent() {
       stopped = true;
       if (timer) clearTimeout(timer);
     };
-  }, [requestId, router]);
+  }, [requestId, router, walletBase]);
 
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center px-4 py-16">

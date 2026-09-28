@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const topup = orderId
     ? await createAdminClient()
         .from("wallet_topup_requests")
-        .select("id")
+        .select("id,return_to_business")
         .eq("id", orderId)
         .eq("payment_method", "PALLY")
         .maybeSingle()
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.redirect(
     new URL(
       topup?.data
-        ? `/account/wallet/topup-return?requestId=${encodeURIComponent(orderId)}`
+        ? `${topup.data.return_to_business ? "/account/portal/wallet" : "/account/wallet"}/topup-return?requestId=${encodeURIComponent(orderId)}`
         : "/checkout/success",
       request.url,
     ),

@@ -1,4 +1,5 @@
-﻿import type { Metadata } from "next";
+import StorefrontFrame from "@/components/StorefrontFrame";
+import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import { Inter, Roboto_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -62,18 +63,11 @@ export default function RootLayout({
         <StorePreferencesProvider>
           <WebsiteTranslator />
           <NavigationWarmup />
-          <Suspense fallback={null}>
-            <SeasonalFall />
-          </Suspense>
-          <Header />
-
-          <main className="flex flex-1 flex-col">
-            {children}
-          </main>
-
-          <Footer />
-          <Suspense fallback={null}><MobileBottomNav /></Suspense>
-          <LiveSupportWidget />
+          <StorefrontFrame
+            header={<><Suspense fallback={null}><SeasonalFall /></Suspense><Header /></>}
+            footer={<Footer />}
+            extras={<><Suspense fallback={null}><MobileBottomNav /></Suspense><LiveSupportWidget /></>}
+          >{children}</StorefrontFrame>
         </StorePreferencesProvider>
 
         <YandexMetrica />

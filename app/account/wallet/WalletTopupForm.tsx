@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+import { isBusinessPortalPath } from "@/lib/portal-navigation";
 import { useEffect, useState } from "react";
 import { readWalletTopupResponse } from "@/lib/wallet-topup-response";
 
@@ -15,6 +17,7 @@ export default function WalletTopupForm({
   gateways: WalletGateway[];
   currentBalance: number;
 }) {
+  const portal = isBusinessPortalPath(usePathname());
   const [amount, setAmount] = useState("25");
   const [gateway, setGateway] = useState<WalletGatewayId>(
     gateways[0]?.id ?? "BINANCE_PAY",
@@ -63,6 +66,7 @@ export default function WalletTopupForm({
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
+          portal,
           amount: amountNumber,
           gateway,
           network: gateway === "USDT_DIRECT" ? network : undefined,

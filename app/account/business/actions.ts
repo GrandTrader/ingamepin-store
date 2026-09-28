@@ -27,7 +27,7 @@ export async function submitBusinessApplication(form:FormData) {
     if(saved.error?.code==="P0001"||saved.error?.code==="23505")saveAttempted=false;
     if(saved.error) throw Error(saved.error.code==="P0001"?saved.error.message:"Unable to submit the application. Refresh and try again.");
   } catch(error) { if(paths.length&&!saveAttempted)await db.storage.from(BUSINESS_BUCKET).remove(paths);return {error:error instanceof Error?error.message:"Unable to apply."}; }
-  revalidatePath("/account/business");revalidatePath("/admin/business-verification");
+  revalidatePath("/account/business");revalidatePath("/account/portal/business");revalidatePath("/admin/business-verification");
   return {success:"Application submitted. An administrator will review your personal and business documents."};
 }
 
@@ -46,6 +46,6 @@ export async function submitBusinessDeposit(form:FormData) {
     if(r.error?.code==="P0001"||r.error?.code==="23505")saveAttempted=false;
     if(r.error)throw Error(r.error.code==="P0001"?r.error.message:"Unable to submit this deposit.");
   } catch(error){if(path&&!saveAttempted)await db.storage.from(BUSINESS_BUCKET).remove([path]);return {error:error instanceof Error?error.message:"Unable to submit."};}
-  revalidatePath("/account/business");revalidatePath("/admin/business-verification/deposits");
+  revalidatePath("/account/business");revalidatePath("/account/portal/business");revalidatePath("/admin/business-verification/deposits");
   return {success:"Deposit submitted. Your wallet is credited only after the bank receipt is confirmed."};
 }

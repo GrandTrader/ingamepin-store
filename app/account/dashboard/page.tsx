@@ -82,7 +82,7 @@ export default async function CustomerDashboardPage({ searchParams }: {
   let orderQuery = admin.from("orders").select(`
     id, order_number, total, currency, status, created_at, delivered_at,
     order_items(id, product_name, option_name, denomination, platform, quantity)
-  `).eq("customer_email", email);
+  `).eq("customer_email", email).eq("sales_channel","RETAIL");
   if (activeTab.statuses.length) orderQuery = orderQuery.in("status", activeTab.statuses);
   const [walletResult, notificationResult, orderResult, codeCountResult, ...countResults] = await Promise.all([
     supabase.from("customer_wallets").select("balance, currency").eq("user_id", user.id).maybeSingle(),
@@ -91,10 +91,10 @@ export default async function CustomerDashboardPage({ searchParams }: {
     orderQuery.order("created_at", { ascending: false }).order("id", { ascending: false })
       .range((currentPage - 1) * pageSize, currentPage * pageSize - 1),
     admin.from("gift_card_codes")
-      .select("id,order_items!inner(orders!inner(customer_email))", { count: "exact", head: true })
-      .eq("status", "SOLD").eq("order_items.orders.customer_email", email),
+      .select("id,order_items!inner(orders!inner(customer_email,sales_channel))", { count: "exact", head: true })
+      .eq("status", "SOLD").eq("order_items.orders.customer_email", email).eq("order_items.orders.sales_channel","RETAIL"),
     ...orderTabs.map(tab => {
-      const query = admin.from("orders").select("id", { count: "exact", head: true }).eq("customer_email", email);
+      const query = admin.from("orders").select("id", { count: "exact", head: true }).eq("customer_email", email).eq("sales_channel","RETAIL");
       return tab.statuses.length ? query.in("status", tab.statuses) : query;
     }),
   ]);

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ScopedAccountLink";
 import { useState } from "react";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
 import { saveCustomerInvoice } from "./actions";

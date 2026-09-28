@@ -13,6 +13,7 @@ export async function requestOrderRefund(form: FormData) {
   });
   if (result.error) return { error: result.error.code === "P0001" ? result.error.message : "Unable to submit the refund request. Please try again or contact support." };
   revalidatePath(`/account/orders/${input.orderId}`);
+  revalidatePath(`/account/portal/orders/${input.orderId}`);
   revalidatePath(`/admin/orders/${input.orderId}/receipt`);
   revalidatePath("/admin/refund-requests");
   return { success: true };

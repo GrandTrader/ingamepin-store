@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),ts=require('typescript');
-function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:n=>{if(n in mocks)return mocks[n];throw Error('Missing mock '+n);},Date,Intl,Map,Set,URL,Response,console},{filename:file});return exports;}
+function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:n=>{if(n in mocks)return mocks[n];throw Error('Missing mock '+n);},Date,Intl,Map,Set,URL,Response,Buffer,console},{filename:file});return exports;}
 const helpers=load('lib/business-portal.ts'),now=new Date('2026-09-28T06:00:00Z');
 const order=(patch={})=>({id:'order-1',subtotal:'5000',discount:'0',currency:'USD',status:'PAID',paid_at:'2026-09-15T12:00:00+00:00',...patch});
 test('Reseller threshold is exactly USD 5000, after discounts and refunds',()=>{
@@ -48,7 +48,8 @@ test('Order and statement queries are scoped to the authenticated customer',()=>
  const calls=[];const q=new Proxy({}, {get:(_,name)=>(...args)=>{calls.push([name,...args]);return q;}});const data=dataLayer({db:{from:(table)=>{calls.push(['from',table]);return q;}}});
  data.customerOrders('owner@example.com',{q:'OLD_001',from:'2026-09-01',to:'2026-09-28',status:'DELIVERED'});
  assert(calls.some(c=>c[0]==='eq'&&c[1]==='customer_email'&&c[2]==='owner@example.com'));assert(calls.some(c=>c[0]==='ilike'&&c[2]==='%OLD\\_001%'));assert(calls.some(c=>c[0]==='lt'&&c[2]==='2026-09-28T18:30:00.000Z'));
- calls.length=0;data.customerStatement('user-id',{type:'DEBIT'});assert(calls.some(c=>c[0]==='eq'&&c[1]==='user_id'&&c[2]==='user-id'));
+ assert(calls.some(c=>c[0]==='eq'&&c[1]==='sales_channel'&&c[2]==='BUSINESS'));
+ calls.length=0;data.customerStatement('user-id',{type:'DEBIT'});assert(calls.some(c=>c[0]==='eq'&&c[1]==='user_id'&&c[2]==='user-id'));assert(!calls.some(c=>c[1]==='sales_channel'),'Wallet statement spans both channels');
 });
 const oid='11111111-1111-4111-8111-111111111111';
 function exportRoute({owner=true,status='DELIVERED'}={}){
@@ -82,5 +83,47 @@ test('Bulk product links require KYB for both slug and canonical rendering',asyn
   let checks=0;const reads=[];const query={select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'bulk-product',is_bulk_order:true}})};
   const page=load(file,pageMocks(file,{'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;throw Error('KYB required')}},'@/lib/supabase/server':{createClient:async()=>({from:table=>{reads.push(table);return query}})}}));
   await assert.rejects(page.renderProductPage({slug:'bulk-product',searchParams:Promise.resolve({}),canonicalRequest}),/KYB required/);assert.equal(checks,1);assert.deepEqual(reads,['products']);
+ }
+});
+
+test('Retail order history is scoped to retail and the customer email',async()=>{
+ const calls=[];const query=new Proxy({}, {get:(_,name)=>name==='then'?resolve=>resolve({data:[],error:null}):(...args)=>{calls.push([name,...args]);return query;}});
+ const data=load('lib/customer-account-data.ts',{'server-only':{},'next/navigation':{},'@/lib/supabase/server':{},'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>query})}});
+ await data.getCustomerOrders('BUYER@EXAMPLE.COM');
+ assert(calls.some(c=>c[0]==='eq'&&c[1]==='customer_email'&&c[2]==='buyer@example.com'));
+ assert(calls.some(c=>c[0]==='eq'&&c[1]==='sales_channel'&&c[2]==='RETAIL'));
+});
+test('Receipt and invoice route old owned links to their correct portal; other customers get no redirect or content',async()=>{
+ for(const file of ['app/account/orders/OrderReceipt.tsx','app/account/orders/OrderInvoice.tsx'])for(const channel of ['RETAIL','BUSINESS'])for(const owner of [true,false]){
+  let scoped=false;
+  const db={from:table=>{const q=new Proxy({}, {get:(_,name)=>name==='then'?resolve=>resolve({data:table==='orders'?(owner?{id:'order-id',sales_channel:channel,status:'DELIVERED'}:null):[],error:null}):(...args)=>{if(table==='orders'&&name==='eq'&&args[0]==='customer_email'&&args[1]==='buyer@example.com')scoped=true;return q;}});return q;}};
+  const fn=load(file,pageMocks(file,{
+   'next/navigation':{redirect:href=>{throw Error('REDIRECT:'+href)},notFound:()=>{throw Error('NOT_FOUND')}},
+   'i18n-iso-countries':{default:{registerLocale(){}}},'i18n-iso-countries/langs/en.json':{default:{}},
+   '@/lib/customer-account-data':{requireCustomer:async()=>({user:{id:'u1',email:'buyer@example.com'},displayName:'Buyer'})},
+   '@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'u1',email:'buyer@example.com'}}})}})},
+   '@/lib/supabase/admin':{createAdminClient:()=>db},
+  })).default;
+  const expected=channel==='BUSINESS'?'/account/portal/orders/order-id':'/account/orders/order-id';
+  await assert.rejects(fn({params:Promise.resolve({id:'order-id'}),searchParams:Promise.resolve({itemId:'item-id'}),portal:channel==='RETAIL'}),e=>owner?e.message==='REDIRECT:'+expected+(file.includes('Invoice')?'/invoice?itemId=item-id':''):e.message==='NOT_FOUND');
+  assert(scoped);
+ }
+});
+
+test('Wallet gateway returns stay in the originating portal without crediting funds',async()=>{
+ for(const gateway of ['pally','freekassa'])for(const outcome of ['success','fail'])for(const business of [true,false]){
+  const token='fixture-only',orderId='11111111-1111-4111-8111-111111111111';
+  const form=new FormData();form.set('InvId',orderId);form.set('MERCHANT_ORDER_ID',orderId);form.set('OutSum','25');
+  form.set('SignatureValue',require('node:crypto').createHash('md5').update(`25:${orderId}:${token}`).digest('hex'));
+  const query={select(){return this},eq(){return this},async maybeSingle(){return {data:{id:orderId,return_to_business:business}}}};
+  const file=`app/api/${gateway}/${outcome}/route.ts`;
+  const handler=load(file,pageMocks(file,{
+   'node:crypto':require('node:crypto'),
+   'next/server':{NextResponse:{redirect:(url,status)=>({url:String(url),status})}},
+   '@/lib/pally':{getPallyApiToken:()=>token},
+   '@/lib/supabase/admin':{createAdminClient:()=>({from:table=>{assert.equal(table,'wallet_topup_requests');return query;}})},
+  }));
+  const result=await handler.POST({url:'https://test.invalid/return',formData:async()=>form});
+  assert.equal(result.status,303);assert(new URL(result.url).pathname.startsWith(business?'/account/portal/wallet':'/account/wallet'));
  }
 });

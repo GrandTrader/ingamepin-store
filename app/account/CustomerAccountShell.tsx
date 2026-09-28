@@ -1,3 +1,6 @@
+"use client";
+import { usePathname } from "next/navigation";
+import { isBusinessPortalPath } from "@/lib/portal-navigation";
 import type { ReactNode } from "react";
 
 import CustomerAccountNav from "./CustomerAccountNav";
@@ -9,6 +12,8 @@ export default function CustomerAccountShell({
   displayName: string;
   children: ReactNode;
 }) {
+  const business = isBusinessPortalPath(usePathname());
+  if (business) return <section className="min-w-0">{children}</section>;
   const initials = displayName
     .split(/\s+/)
     .slice(0, 2)

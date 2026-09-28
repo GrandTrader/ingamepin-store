@@ -14,7 +14,7 @@ const shared=load('app/account/portal/Shared.tsx',{'next/link':link,'./Portal.mo
 const layout=load('app/account/portal/layout.tsx',{'next/link':link,'@/lib/business-portal-data':data,'@/lib/business-portal':helpers,'../actions':{customerLogout:'/logout'},'./PortalNav':nav,'./Portal.module.css':style}).default;
 function html(markup,script=''){return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}h1,h2,p{margin:0}a{color:inherit}button,input,select{font:inherit}'+css+'</style></head><body>'+markup+script+'</body></html>'}
 (async()=>{
- for(const [file,name] of [['app/account/portal/page.tsx','orders'],['app/account/portal/statement/page.tsx','statement']]){const page=load(file,{'next/link':link,'@/lib/business-portal-data':data,'@/lib/business-portal':helpers,'./Shared':shared,'../Shared':shared,'./Portal.module.css':style,'../Portal.module.css':style}).default;fs.writeFileSync(path.join(out,name+'.html'),html(renderToStaticMarkup(await layout({children:await page({searchParams:Promise.resolve({})})}))));}
+ for(const [file,name] of [['app/account/portal/page.tsx','orders'],['app/account/portal/statement/page.tsx','statement'],['app/account/portal/settings/page.tsx','settings']]){const page=load(file,{'next/link':link,'@/lib/business-portal-data':data,'@/lib/business-portal':helpers,'./Shared':shared,'../Shared':shared,'./Portal.module.css':style,'../Portal.module.css':style}).default;fs.writeFileSync(path.join(out,name+'.html'),html(renderToStaticMarkup(await layout({children:await page({searchParams:Promise.resolve({})})}))));}
  fs.writeFileSync(path.join(out,'new.html'),html(renderToStaticMarkup(await layout({children:React.createElement('div',{id:'app'})})),'<script src="/bundle.js"></script>'));
  for(const [src,dest] of [['lib/business-portal.ts','helpers.js'],['lib/cart-stock.ts','stock.js'],['app/account/portal/new/ProductTable.tsx','ProductTable.js'],['app/account/portal/new/PortalCheckout.tsx','PortalCheckout.js'],['app/account/portal/new/Catalogue.tsx','Catalogue.js'],['components/RangePurchaseForm.tsx','RangePurchase.js'],['lib/product-range.ts','range-logic.js']])fs.writeFileSync(path.join(out,dest),ts.transpileModule(fs.readFileSync(src,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText);
  fs.writeFileSync(path.join(out,'styles.js'),'module.exports={__esModule:true,default:'+JSON.stringify(classes)+'};');
@@ -31,6 +31,14 @@ function html(markup,script=''){return '<!doctype html><html><head><meta charset
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),base='http://127.0.0.1:'+server.address().port;const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/api/products/quantity-limits',async route=>{const {items}=route.request().postDataJSON();await route.fulfill({json:{limits:items.map(i=>({...i,availableQuantity:100,minimumQuantity:1,maximumQuantity:null}))}});});
 
+ await page.goto(base+'/settings.html');
+ assert.equal(await page.locator('.settingsCard').count(),5);
+ assert.equal(await page.locator('.settingsCard a:not([href^="/account/portal/"])').count(),0);
+ await page.screenshot({path:path.join(out,'standalone-settings-desktop.png'),fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Settings have no mobile horizontal overflow');
+ await page.screenshot({path:path.join(out,'standalone-settings-mobile.png'),fullPage:true});
+ await page.setViewportSize({width:1440,height:1000});
  let requests=0;page.on('request',()=>requests++);
  await page.goto(base+'/new.html');await page.getByRole('button',{name:'Add',exact:true}).first().waitFor();
  await page.getByLabel('Quantity for Apple Gift Card 50 USD',{exact:true}).fill('10');

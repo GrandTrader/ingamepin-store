@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ScopedAccountLink";
 import CustomerAccountShell from "../CustomerAccountShell";
 import { requireCustomer, formatCustomerDate } from "@/lib/customer-account-data";
 import { businessApplication } from "@/lib/business-verification-data";

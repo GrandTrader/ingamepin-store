@@ -21,13 +21,13 @@ async function redirectToSuccess(request: NextRequest, orderId: string) {
 
     const result = await admin
       .from("wallet_topup_requests")
-      .select("id")
+      .select("id,return_to_business")
       .eq("id", orderId)
       .eq("payment_method", "FREEKASSA")
       .maybeSingle();
     if (result.data) {
       return NextResponse.redirect(
-        new URL(`/account/wallet/topup-return?requestId=${encodeURIComponent(orderId)}`, request.url),
+        new URL(`${result.data.return_to_business ? "/account/portal/wallet" : "/account/wallet"}/topup-return?requestId=${encodeURIComponent(orderId)}`, request.url),
         303,
       );
     }

@@ -25,10 +25,12 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as {
+      portal?: unknown;
       amount?: unknown;
       gateway?: unknown;
       network?: unknown;
     };
+    const walletBase = body.portal === true ? "/account/portal/wallet" : "/account/wallet";
     const amount = Number(body.amount);
     const gateway = String(body.gateway ?? "").trim().toUpperCase();
     const network = String(body.network ?? "")
@@ -150,8 +152,8 @@ export async function POST(request: NextRequest) {
             },
           ],
           buyer: { buyerEmail: user.email },
-          returnUrl: `${siteUrl}/account/wallet/topup-return?requestId=${encodeURIComponent(requestId)}`,
-          cancelUrl: `${siteUrl}/account/wallet`,
+          returnUrl: `${siteUrl}${walletBase}/topup-return?requestId=${encodeURIComponent(requestId)}`,
+          cancelUrl: `${siteUrl}${walletBase}`,
           orderExpireTime: Date.now() + 30 * 60 * 1000,
           passThroughInfo: `wallet:${requestId}`,
           webhookUrl: `${siteUrl}/api/binance-pay/webhook`,
@@ -202,7 +204,7 @@ export async function POST(request: NextRequest) {
       });
       gatewayOrderId = invoice.invoiceId;
       gatewayPaymentId = invoice.amount;
-      checkoutUrl = `${siteUrl}/account/wallet/usdt/${requestId}`;
+      checkoutUrl = `${siteUrl}${walletBase}/usdt/${requestId}`;
     }
 
     if (!checkoutUrl || !gatewayOrderId) {
@@ -212,6 +214,7 @@ export async function POST(request: NextRequest) {
     const update = await admin
       .from("wallet_topup_requests")
       .update({
+        return_to_business: body.portal === true,
         gateway_order_id: gatewayOrderId,
         payment_reference: gatewayPaymentId ?? reference,
       })

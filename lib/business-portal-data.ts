@@ -20,7 +20,7 @@ export async function businessSummary() {
   const orders: SpendOrder[] = [], refunds: SpendRefund[] = [];
   const walletPromise = db.from("customer_wallets").select("balance,currency").eq("user_id", user.id).maybeSingle();
   for (let from = 0; ; from += 500) {
-    const result = await db.from("orders").select("id,subtotal,discount,currency,status,paid_at").eq("customer_email", email).gte("paid_at", month.start).lt("paid_at", month.end).in("status", ["PAID","PROCESSING","DELIVERED"]).order("id").range(from, from + 499);
+    const result = await db.from("orders").select("id,subtotal,discount,currency,status,paid_at").eq("customer_email", email).eq("sales_channel","BUSINESS").gte("paid_at", month.start).lt("paid_at", month.end).in("status", ["PAID","PROCESSING","DELIVERED"]).order("id").range(from, from + 499);
     if (result.error) throw Error("Unable to load monthly purchases.");
     orders.push(...result.data);
     if (result.data.length < 500) break;
@@ -40,7 +40,7 @@ export async function businessSummary() {
 export type PortalFilters = { page?: string; q?: string; from?: string; to?: string; status?: string; type?: string };
 export const ORDER_SELECT = "id,order_number,total,currency,status,created_at,order_items(id,product_name,option_name,quantity)";
 export function customerOrders(email: string, filters: PortalFilters) {
-  let query = createAdminClient().from("orders").select(ORDER_SELECT, { count: "exact" }).eq("customer_email", email);
+  let query = createAdminClient().from("orders").select(ORDER_SELECT, { count: "exact" }).eq("customer_email", email).eq("sales_channel","BUSINESS");
   const q = filters.q?.trim().slice(0,100);
   if(q) query = query.ilike("order_number", "%" + q.replace(/[\\%_]/g, "\\$&") + "%");
   if (["DELIVERED","PAID","PROCESSING","PENDING_PAYMENT","PAYMENT_REVIEW","CANCELLED","REFUNDED"].includes(filters.status ?? "")) query = query.eq("status",filters.status!);
