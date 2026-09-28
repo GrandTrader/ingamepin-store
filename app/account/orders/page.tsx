@@ -12,9 +12,9 @@ export default async function CustomerOrdersPage({ searchParams }: CustomerOrder
   const { error, orderId, orderNumber, page, status } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) {
+  if (!user?.email || !user.email_confirmed_at) {
     if (orderId) redirect(orderNumber ? `/track-order?orderNumber=${encodeURIComponent(orderNumber)}` : "/track-order");
-    redirect("/account?error=Please sign in to continue.");
+    redirect("/account?error=Please sign in with a verified email.");
   }
   if (orderId) {
     const orders = await getCustomerOrders(user.email);

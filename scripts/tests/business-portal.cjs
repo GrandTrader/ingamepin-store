@@ -100,8 +100,8 @@ test('Receipt and invoice route old owned links to their correct portal; other c
   const fn=load(file,pageMocks(file,{
    'next/navigation':{redirect:href=>{throw Error('REDIRECT:'+href)},notFound:()=>{throw Error('NOT_FOUND')}},
    'i18n-iso-countries':{default:{registerLocale(){}}},'i18n-iso-countries/langs/en.json':{default:{}},
-   '@/lib/customer-account-data':{requireCustomer:async()=>({user:{id:'u1',email:'buyer@example.com'},displayName:'Buyer'})},
-   '@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'u1',email:'buyer@example.com'}}})}})},
+   '@/lib/customer-account-data':{requireCustomer:async()=>({user:{id:'u1',email:'buyer@example.com',email_confirmed_at:'2026-09-29'},displayName:'Buyer'})},
+   '@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'u1',email:'buyer@example.com',email_confirmed_at:'2026-09-29'}}})}})},
    '@/lib/supabase/admin':{createAdminClient:()=>db},
   })).default;
   const expected=channel==='BUSINESS'?'/account/portal/orders/order-id':'/account/orders/order-id';

@@ -26,7 +26,7 @@ export async function saveCustomerInvoice(
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user?.email) return { error: "Please sign in to generate this invoice." };
+  if (!user?.email || !user.email_confirmed_at) return { error: "Please sign in with a verified email to generate this invoice." };
 
   const admin = createAdminClient();
   const orderResult = await admin

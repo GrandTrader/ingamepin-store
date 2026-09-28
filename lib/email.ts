@@ -138,7 +138,7 @@ export async function sendEmail({
 
 const SUPPORT_EMAIL = "support@ingamepin.com";
 
-function sendOrderEmail(
+async function sendOrderEmail(
   input: Omit<
     SendEmailInput,
     "from" | "replyTo" | "smtpUser" | "smtpPassword"

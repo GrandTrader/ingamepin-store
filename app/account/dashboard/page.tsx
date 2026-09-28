@@ -61,7 +61,7 @@ export default async function CustomerDashboardPage({ searchParams }: {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user?.email) redirect("/account?error=Please sign in to continue.");
+  if (!user?.email || !user.email_confirmed_at) redirect("/account?error=Please sign in with a verified email.");
 
   const admin = createAdminClient();
   const orderTabs = [

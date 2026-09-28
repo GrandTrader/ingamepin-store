@@ -65,8 +65,8 @@ test("forged product names cannot bypass the order check for a restricted denomi
  "@/lib/paypalych-product-policy":policy,
  "@/lib/supabase/admin":{createAdminClient:()=>db},
  "@/lib/supabase/server":{createClient:async()=>({auth:{getUser:async()=>({data:{user:null}})}})},
- "@/lib/email":{},"@/lib/manual-fulfillment":{},"@/lib/cart-stock":{},"@/lib/product-stock":{},"@/lib/definiteplay-fulfillment":{},"@/lib/telegram-order-notification":{},"@/lib/payment-gateway-commissions":{}
+ "@/lib/portal-order-notifications":{},"@/lib/portal-checkout":{},"@/lib/product-range-data":{},"@/lib/product-range":{},"@/lib/regional-purchase-limit":{},"@/lib/email":{},"@/lib/manual-fulfillment":{},"@/lib/cart-stock":{},"@/lib/product-stock":{},"@/lib/definiteplay-fulfillment":{},"@/lib/telegram-order-notification":{},"@/lib/payment-gateway-commissions":{}
  });
- const result=await route.POST({json:async()=>({paymentMethod:"pally",customer:{email:"test@example.com"},items:[{productOptionId:"opt",name:"Apple",quantity:1}]}),headers:{get:()=>null}});
+ const result=await route.POST({json:async()=>({paymentMethod:"pally",customer:{email:"test@example.com"},items:[{productOptionId:"opt",name:"Apple",quantity:1}]}),nextUrl:{pathname:"/api/orders"},headers:{get:()=>null}});
  assert.equal(result.status,400);assert.match(result.body.error,/Paypalych is unavailable/);assert.equal(mutations,0);
 });

@@ -33,7 +33,8 @@ test('order lookup requires literal email match before fetching delivered codes'
  const {POST}=load('app/api/orders/lookup/route.ts',{
   'next/server':{NextResponse:{json:(body,options)=>({body,status:options?.status??200})}},
   '@/lib/supabase/admin':{createAdminClient:()=>({from:(table)=>table==='orders'?query:{select(){return this},eq(){return this},order:async()=>({data:[]})}})},
-  '@/lib/delivered-codes':{getAllDeliveredCodes:async()=>{codeReads++;return []}}
+  '@/lib/delivered-codes':{getAllDeliveredCodes:async()=>{codeReads++;return []}},
+  '@/lib/delivery-receipts':{getAuthorizedDeliveryReceipts:async()=>new Map()}
  });
  for(const email of ['%@%.com','owner%test@example.com','owner_test@wrong.com','ownerXtest@example.com']) {
    assert.equal((await POST({json:async()=>({email,orderNumber:'IGP-TEST-0001'})})).status,404);

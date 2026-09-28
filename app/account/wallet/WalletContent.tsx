@@ -41,7 +41,7 @@ export default async function CustomerWalletPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/account?error=Please sign in to continue.");
+  if (!user?.email || !user.email_confirmed_at) redirect("/account?error=Please sign in with a verified email.");
 
   await expireStaleWalletTopups(user.id);
 

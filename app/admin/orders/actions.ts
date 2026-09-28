@@ -174,8 +174,8 @@ async function finalizeOrderWhenAllCodesSent(orderId: string) {
     const refundedQuantity = (refunded.data ?? []).reduce((sum, row) => sum + row.quantity, 0);
     if ((count.count ?? 0) + refundedQuantity !== item.quantity) return { completed: false, error: null };
   }
-  const update = await admin.from("orders").update({ status: "DELIVERED", delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", orderId).in("status", ["PAID", "PROCESSING"]);
-  return { completed: !update.error, error: update.error?.message ?? null };
+  const update = await admin.from("orders").update({ status: "DELIVERED", delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", orderId).in("status", ["PAID", "PROCESSING"]).select("id").maybeSingle();
+  return { completed: !update.error && Boolean(update.data), error: update.error?.message ?? null };
 }
 
 export async function finalizeManualOrderFromCodes(formData: FormData) {

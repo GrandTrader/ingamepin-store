@@ -82,7 +82,7 @@ test("admin can inspect receipts while other order items remain pending", async 
   assert.equal((await getAuthorizedDeliveryReceipts(db,orderId,"PROCESSING","admin")).size,1);
 });
 test("receipt reads occur only after existing order authorization checks", () => {
-  for (const [file, guard] of [["app/account/orders/[id]/page.tsx","if (orderResult.error || !orderResult.data)"],["app/api/orders/lookup/route.ts","if (!order || order.customer_email"],["app/api/orders/delivery/route.ts","!hashesMatch("]]) {
+  for (const [file, guard] of [["app/account/orders/OrderReceipt.tsx","if (orderResult.error || !orderResult.data)"],["app/api/orders/lookup/route.ts","if (!order || order.customer_email"],["app/api/orders/delivery/route.ts","!hashesMatch("]]) {
     const source=fs.readFileSync(file,"utf8");
     assert.ok(source.indexOf(guard)>0,file); assert.ok(source.indexOf("await getAuthorizedDeliveryReceipts")>source.indexOf(guard),file);
   }
