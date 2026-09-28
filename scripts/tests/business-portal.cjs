@@ -127,3 +127,23 @@ test('Wallet gateway returns stay in the originating portal without crediting fu
   assert.equal(result.status,303);assert(new URL(result.url).pathname.startsWith(business?'/account/portal/wallet':'/account/wallet'));
  }
 });
+
+test('Verified business customers can use the retail dashboard; signed-out customers still sign in',async()=>{
+ const file='app/account/dashboard/page.tsx';
+ for(const signedIn of [true,false]){
+  const calls=[];
+  const db={from:table=>{const q=new Proxy({}, {get:(_,name)=>name==='then'?resolve=>resolve({data:table==='customer_wallets'?{balance:71,currency:'USD'}:[],count:0,error:null}):(...args)=>{calls.push([table,name,...args]);return q;}});return q;}};
+  const page=load(file,pageMocks(file,{
+   'react/jsx-runtime':require('react/jsx-runtime'),
+   './Dashboard.module.css':{default:{}},
+   'next/navigation':{redirect:path=>{throw Error('REDIRECT:'+path)}},
+   '@/lib/business-verification-data':{businessApplication:async()=>({status:'APPROVED'})},
+   '@/lib/supabase/server':{createClient:async()=>({...db,auth:{getUser:async()=>({data:{user:signedIn?{id:'u1',email:'buyer@example.com',email_confirmed_at:'2026-09-01',user_metadata:{}}:null}})}})},
+   '@/lib/supabase/admin':{createAdminClient:()=>db},
+  })).default;
+  if(!signedIn){await assert.rejects(page({searchParams:Promise.resolve({})}),/REDIRECT:\/account\?error=/);continue;}
+  const result=await page({searchParams:Promise.resolve({})});assert.equal(result.type,'main');
+  assert(calls.some(c=>c[0]==='orders'&&c[1]==='eq'&&c[2]==='sales_channel'&&c[3]==='RETAIL'));
+  assert(calls.some(c=>c[0]==='customer_wallets'&&c[1]==='eq'&&c[2]==='user_id'&&c[3]==='u1'));
+ }
+});
