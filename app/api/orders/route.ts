@@ -297,8 +297,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const supplierProducts = await supplierProductIds(productIds);
-      const ranges=await productRanges(productIds);
+      // Only preview reads overlap. Confirmation retains its existing validation and recovery sequence.
+      const [supplierProducts, ranges] = portal?.action === "quote"
+        ? await Promise.all([supplierProductIds(productIds), productRanges(productIds)])
+        : [await supplierProductIds(productIds), await productRanges(productIds)];
       for(const submitted of submittedItems){const range=ranges.ranges.find(r=>r.option_id===submitted.productOptionId);if(range){try{rangePrice(range,Number(submitted.customValue));if(range.delivery_mode!=="MANUAL")throw Error("Supplier range delivery is not connected.");}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Invalid range denomination."},{status:400});}}}
       const stockCounts = new Map<string, number>();
       for (const item of submittedItems) {

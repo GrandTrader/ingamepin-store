@@ -103,10 +103,24 @@ function html(markup,script=''){return '<!doctype html><html><head><meta charset
  await page.screenshot({path:path.join(out,'compact-range-desktop.png'),fullPage:true});
  await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Compact row must scroll inside its table on mobile');
  await page.screenshot({path:path.join(out,'compact-range-mobile.png'),fullPage:true});
- const requestsToCheckout=[];let confirmations=0;
- await page.route('**/api/account/portal/orders',async route=>{const body=route.request().postDataJSON();requestsToCheckout.push(body);const result={items:body.items.map(i=>({productName:'Apple Gift Card',optionName:i.customValue+' USD',quantity:i.quantity,unitPrice:i.customValue*.95,lineTotal:i.customValue*.95*i.quantity})),subtotal:76,discount:1.52,fee:0,total:74.48,currency:'USD',walletBalance:100,balanceAfter:25.52};if(body.action==='confirm'){confirmations++;if(confirmations===1){await route.abort();return;}Object.assign(result,{orderId:'paid-order',orderNumber:'IPB2B20260928123456',status:'PROCESSING',replayed:true});}await route.fulfill({json:{result}});});
+ const requestsToCheckout=[];let confirmations=0,quoteChecks=0,stalledQuote;
+ await page.clock.install();
+ await page.route('**/api/account/portal/orders',async route=>{const body=route.request().postDataJSON();requestsToCheckout.push(body);if(body.action==='quote'&&++quoteChecks===1){stalledQuote=route;return;}const result={items:body.items.map(i=>({productName:'Apple Gift Card',optionName:i.customValue+' USD',quantity:i.quantity,unitPrice:i.customValue*.95,lineTotal:i.customValue*.95*i.quantity})),subtotal:76,discount:1.52,fee:0,total:74.48,currency:'USD',walletBalance:100,balanceAfter:25.52};if(body.action==='confirm'){confirmations++;if(confirmations===1){await route.abort();return;}Object.assign(result,{orderId:'paid-order',orderNumber:'IPB2B20260928123456',status:'PROCESSING',replayed:true});}await route.fulfill({json:{result}});});
  await page.evaluate(()=>localStorage.setItem('shoppingCart',JSON.stringify([{id:'retail-item'}])));
- await page.getByRole('button',{name:'Proceed →',exact:true}).click();await page.getByRole('button',{name:'Confirm & pay from wallet',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Proceed →',exact:true}).click();
+ await page.getByRole('button',{name:/Checking order/}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Edit order',exact:true}).isEnabled(),true,'Read-only review can be exited');
+ await page.waitForRequest(()=>false,{timeout:50}).catch(()=>{});
+ assert(stalledQuote,'Quote request started');
+ await page.clock.fastForward(20001);
+ await page.getByRole('alert').filter({hasText:'no payment was submitted'}).waitFor();
+ assert.equal(confirmations,0,'A stalled review never submits payment');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('business-order-confirm:range-fixture')),null,'Quote timeout does not create a payment attempt');
+ assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('business-order-draft:range-fixture')).length),2,'Draft survives a stalled review');
+ await stalledQuote.abort();
+ await page.getByRole('button',{name:'Retry order check',exact:true}).click();
+ await page.getByLabel('Your order reference (optional)').waitFor();
+ assert.equal(quoteChecks,2,'Retry requests one fresh quote');
  assert.equal(await page.locator('a[href="/cart"],a[href="/checkout"]').count(),0,'Confirmation stays inside the portal');
  assert.equal(confirmations,0,'Review must not purchase');
  await page.getByLabel('Your order reference (optional)').fill('MY-REF');
@@ -120,6 +134,6 @@ function html(markup,script=''){return '<!doctype html><html><head><meta charset
  assert.equal(await page.evaluate(()=>localStorage.getItem('business-order-draft:range-fixture')),null);
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('shoppingCart'))),[{id:'retail-item'}]);
  assert.equal(errors.length,0,errors.join('\n'));
- console.log('PASS: compact range rows, live discounted prices, multiple denominations, merge/remove, invalid bounds/steps, quantity controls, wallet-only portal confirmation, exact retry after reload and untouched retail cart.');
+ console.log('PASS: stalled quote timeout/retry without payment or lost draft, compact range rows, live discounted prices, multiple denominations, merge/remove, invalid bounds/steps, quantity controls, wallet-only portal confirmation, exact retry after reload and untouched retail cart.');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

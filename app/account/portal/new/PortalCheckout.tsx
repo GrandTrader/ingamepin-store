@@ -11,16 +11,19 @@ export default function PortalCheckout({userId,items,onBack,onComplete}:{userId:
  const router=useRouter(),key="business-order-confirm:"+userId,lock=useRef(false);
  const [quote,setQuote]=useState<PortalQuote|null>(null),[receipt,setReceipt]=useState<PortalQuote|null>(null),[reference,setReference]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(true),[pending,setPending]=useState<Attempt|null>(null);
  const requestId=useRef("");
- useEffect(()=>{let active=true;const controller=new AbortController();
+ const [reviewAttempt,setReviewAttempt]=useState(0);
+ useEffect(()=>{let active=true;const controller=new AbortController();let timeout:ReturnType<typeof setTimeout>|undefined;
   async function preview(){try{
    const saved=localStorage.getItem(key);
    if(saved){const attempt=JSON.parse(saved) as Attempt;if(!attempt.requestId||!attempt.quote||!Array.isArray(attempt.items))throw Error("Unable to restore this confirmation. Check order history before placing another order.");if(active){setPending(attempt);setReference(attempt.reference);setQuote(attempt.quote);requestId.current=attempt.requestId;}return;}
    requestId.current=crypto.randomUUID();
+   // Only the read-only quote can time out. Submitted payments keep their existing recovery flow.
+   timeout=setTimeout(()=>{if(active){active=false;controller.abort();setError("The order check is taking longer than expected. Your draft is saved and no payment was submitted. Try checking again.");setBusy(false);}},20000);
    const response=await fetch("/api/account/portal/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"quote",paymentMethod:"wallet",requestId:requestId.current,items}),signal:controller.signal});const data=await response.json();
    if(!response.ok||!data.result)throw Error(data.error??"Unable to review this order.");if(active)setQuote(data.result);
-  }catch(e){if(active)setError(e instanceof Error?e.message:"Unable to review this order.");}finally{if(active)setBusy(false);}}
-  void preview();return()=>{active=false;controller.abort();};
- },[key,items]);
+  }catch(e){if(active)setError(e instanceof Error?e.message:"Unable to review this order.");}finally{clearTimeout(timeout);if(active)setBusy(false);}}
+  void preview();return()=>{active=false;clearTimeout(timeout);controller.abort();};
+ },[key,items,reviewAttempt]);
  async function confirm(){
   if(lock.current||!quote)return;lock.current=true;setBusy(true);setError("");
   const attempt=pending??{requestId:requestId.current,items,reference:reference.trim(),expectedTotal:Number(quote.total),quote};
@@ -41,6 +44,6 @@ export default function PortalCheckout({userId,items,onBack,onComplete}:{userId:
   <p className={s.helper}>Confirmation deducts the total from your wallet and places the order. Delivery follows each product’s delivery time.</p></>}
   {pending&&<p className={s.notice}>A confirmation was submitted. Retry it here to retrieve the result without creating another order.</p>}
   {error&&<p role="alert" className={`${s.notice} ${s.error}`}>{error}</p>}
-  <div className={s.draftTotal}><div className={s.actions}><Link className={s.button} href="/account/portal">Order history</Link><button className={s.button} disabled={busy||!!pending} onClick={onBack}>Edit order</button></div><button className={s.primary} disabled={busy||!quote||(Number(quote.balanceAfter)<0&&!pending)} onClick={confirm}>{busy?"Confirming…":pending?"Retry confirmation":"Confirm & pay from wallet"}</button></div>
+  <div className={s.draftTotal}><div className={s.actions}><Link className={s.button} href="/account/portal">Order history</Link><button className={s.button} disabled={(busy&&!!quote)||!!pending} onClick={onBack}>Edit order</button></div>{!busy&&!quote&&<button className={s.primary} onClick={()=>{setError("");setBusy(true);setReviewAttempt(n=>n+1);}}>Retry order check</button>}<button className={s.primary} disabled={busy||!quote||(Number(quote.balanceAfter)<0&&!pending)} onClick={confirm}>{busy?(quote?"Confirming...":"Checking order..."):pending?"Retry confirmation":"Confirm & pay from wallet"}</button></div>
  </section>;
 }
