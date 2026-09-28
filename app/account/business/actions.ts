@@ -11,7 +11,7 @@ export async function submitBusinessApplication(form:FormData) {
   const db=createAdminClient(); const paths:string[]=[];let saveAttempted=false;
   try {
     const details=parseBusinessDetails(form);
-    const files=await Promise.all(Object.keys(businessDocumentLabels).map(async key=>({key,file:await readBusinessFile(form.get(key))})));
+    const files=await Promise.all(Object.entries(businessDocumentLabels).map(async ([key,label])=>{try{return {key,file:await readBusinessFile(form.get(key))};}catch(error){throw Error(`${label}: ${error instanceof Error?error.message:"Upload a valid document."}`);}}));
     const existing=await db.from("business_kyb").select("status,revision").eq("user_id",user.id).maybeSingle();
     if(existing.error) return {error:"Business verification is not available yet. Contact support."};
     if(existing.data && !["REJECTED","REVOKED"].includes(existing.data.status)) return {error:"Your application is already submitted. Contact support to change it."};
@@ -28,7 +28,7 @@ export async function submitBusinessApplication(form:FormData) {
     if(saved.error) throw Error(saved.error.code==="P0001"?saved.error.message:"Unable to submit the application. Refresh and try again.");
   } catch(error) { if(paths.length&&!saveAttempted)await db.storage.from(BUSINESS_BUCKET).remove(paths);return {error:error instanceof Error?error.message:"Unable to apply."}; }
   revalidatePath("/account/business");revalidatePath("/admin/business-verification");
-  return {success:"Application submitted. An administrator will review your business documents."};
+  return {success:"Application submitted. An administrator will review your personal and business documents."};
 }
 
 export async function submitBusinessDeposit(form:FormData) {

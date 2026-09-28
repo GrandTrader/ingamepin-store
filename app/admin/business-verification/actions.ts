@@ -2,13 +2,23 @@
 import { revalidatePath } from "next/cache";
 import { requireBusinessAdmin } from "@/lib/business-verification-data";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { bankFields } from "@/lib/business-verification";
-function refresh() { for(const path of ["/account/business","/account/wallet","/account/dashboard","/admin/business-verification","/admin/business-verification/deposits"])revalidatePath(path); }
+import { bankFields, businessDocumentLabels, safeBusinessPath } from "@/lib/business-verification";
+function refresh() { for(const path of ["/account/business","/account/wallet","/account/dashboard","/account/portal","/admin/business-verification","/admin/business-verification/deposits"])revalidatePath(path); }
 export async function reviewBusinessApplication(form:FormData) {
   const user=await requireBusinessAdmin();
   const status=String(form.get("status")??"");
-  if(status==="APPROVED"&&form.get("checked")!=="yes")return {error:"Confirm that you reviewed the business details, ownership and documents."};
-  const r=await createAdminClient().rpc("review_business_kyb",{p_user:String(form.get("user_id")??""),p_admin:user.id,p_revision:Number(form.get("revision")),p_status:status,p_note:String(form.get("note")??"").trim()});
+  if(status==="APPROVED"&&form.get("checked")!=="yes")return {error:"Confirm that you reviewed the representative’s KYC and all business KYB documents."};
+  const db=createAdminClient();
+  if(status==="APPROVED") {
+    const id=String(form.get("user_id")??"");
+    const current=await db.from("business_kyb").select("documents,revision").eq("user_id",id).maybeSingle();
+    if(current.error||!current.data)return {error:"Unable to load the application for review."};
+    if(current.data.revision!==Number(form.get("revision")))return {error:"The application has changed. Refresh before reviewing it."};
+    const application=current.data;
+    const missing=Object.entries(businessDocumentLabels).filter(([key])=>typeof application.documents?.[key]!=="string"||!safeBusinessPath(application.documents[key],id)).map(([,label])=>label);
+    if(missing.length)return {error:`Required documents missing: ${missing.join(", ")}. Request corrections so the customer can submit KYC and KYB documents.`};
+  }
+  const r=await db.rpc("review_business_kyb",{p_user:String(form.get("user_id")??""),p_admin:user.id,p_revision:Number(form.get("revision")),p_status:status,p_note:String(form.get("note")??"").trim()});
   if(r.error)return {error:r.error.code==="P0001"?r.error.message:"Unable to save the review."};
   refresh();return {success:"Business verification updated."};
 }

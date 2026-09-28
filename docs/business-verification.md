@@ -32,3 +32,16 @@ Apply `supabase/migrations/20260928_140000_business_kyb.sql` to the website's Su
 Deploy the isolated release after the SQL succeeds. Leave bank transfers disabled until SBI confirms the routing details. No live customer applications, purchases or wallet credits are created by the tests.
 
 Validation: `scripts/tests/business-verification-db.cjs` (PGlite), `scripts/tests/business-verification.cjs`, scoped ESLint and production Webpack build.
+
+
+## KYC and KYB form update
+
+New applications collect five private files: representative photo ID and personal address proof (KYC), plus business registration/tax certificate, registered address proof and ownership declaration (KYB). Each is PDF/JPG/PNG, maximum 1 MB. Required identity document type and representative role are stored with the application; no separate ID number is collected.
+
+The customer form has searchable country suggestions, a phone country-code selector with server-side number validation, address lines 1/2, city, state/province and PIN/postal code. India requires a six-digit PIN; international applicants can indicate an address without a postal code. The server derives the combined address and normalized international phone rather than trusting legacy flat fields.
+
+Purchasing purpose now offers Resale to customers, Business use/rewards/gifting, or both. Internal values remain compatible with existing purchase gates. The computed monthly Retailer/Reseller tier is independent of that selection.
+
+Admin review groups personal KYC and business KYB separately, labels missing legacy documents, and requires all five document paths and the current revision before approving through the review action. Existing approved applications are not automatically revoked. Reject/request corrections on an older pending application so the applicant can provide the new documents.
+
+The existing service-only submission RPC and JSON document fields support the additional files; no new database migration is needed. KYC files use the existing private bucket and owner/admin-MFA download controls. Tests cover validation, submission, private access, incomplete/stale approval rejection, and temporary-database persistence of KYC keys. Browser tests use sample files and do not upload them to Supabase.
