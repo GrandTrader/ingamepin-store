@@ -105,8 +105,18 @@ begin
  end if;
  fn:='public.fulfill_instant_items(uuid)'::regprocedure;src:=pg_get_functiondef(fn);
  if position('RANGE_MANUAL' in src)=0 then
-  if position('delivery_type = ''MANUAL''' in src)=0 then raise exception 'Unrecognised instant fulfillment function.'; end if;
-  src:=replace(src,'delivery_type = ''MANUAL''','(delivery_type = ''MANUAL'' or v_item.fulfillment_mode = ''RANGE_MANUAL'')');execute src;
+  -- Support both the original delivery loop and the seller-aware, retry-safe loop.
+  -- Change only their manual-item branch; preserve stock allocation and permissions.
+  if src ~* $pattern$if\s+item\.delivery_type\s*=\s*'MANUAL'\s+then$pattern$ then
+   src:=regexp_replace(src,$pattern$if\s+item\.delivery_type\s*=\s*'MANUAL'\s+then$pattern$,
+    $patch$IF (item.delivery_type='MANUAL' OR item.fulfillment_mode='RANGE_MANUAL') THEN$patch$,'i');
+  elsif src ~* $pattern$where\s+id\s*=\s*v_item\.product_id\s+and\s+delivery_type\s*=\s*'MANUAL'$pattern$ then
+   src:=regexp_replace(src,$pattern$where\s+id\s*=\s*v_item\.product_id\s+and\s+delivery_type\s*=\s*'MANUAL'$pattern$,
+    $patch$where id = v_item.product_id and (delivery_type = 'MANUAL' or v_item.fulfillment_mode = 'RANGE_MANUAL')$patch$,'i');
+  else
+   raise exception 'Unrecognised instant fulfillment function; range update not applied.';
+  end if;
+  execute src;
  end if;
  fn:='public.deliver_manual_codes_batch(uuid,uuid,uuid,text[])'::regprocedure;src:=pg_get_functiondef(fn);
  if position('RANGE_MANUAL' in src)=0 then

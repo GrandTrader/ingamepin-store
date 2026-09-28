@@ -11,7 +11,7 @@ Manual ranges support Add to cart and Buy now on product pages and directly in t
 Automatic supplier range delivery is NOT implemented or activated. The admin can save a disabled supplier configuration, but both the save RPC and checkout block activation until the supplier’s variable-denomination contract is verified and the worker adapter is implemented. Existing Definite Play API orders only contain SKU and quantity, and GiftPort purchasing is not activated. Await the user’s supplier selection and variable-value API documentation; never invent an amount parameter or fall back to a fixed SKU. No automatic fallback after an uncertain supplier purchase is permitted.
 
 Validation:
-- product-range-db.cjs: isolated PostgreSQL price/bounds/steps, manual delivery payment gate, INR/USD, enabled/disabled, supplier separation, migration reapplication and admin permissions.
+- product-range-db.cjs: isolated PostgreSQL price/bounds/steps, manual delivery payment gate, INR/USD, enabled/disabled, supplier separation, migration reapplication and admin permissions. Covers both original and seller-aware instant delivery functions, reserved seller stock, retry safety, preserved permissions, and rollback for unknown function definitions.
 - product-range-ui.cjs: browser cart/Buy now payloads, exact price rounding, invalid denomination and quantity.
 - Existing portal access tests, supplier quantity checks and browser filter stability pass.
 - Isolated production build and type check pass.
