@@ -25,5 +25,5 @@ export default async function NewBusinessOrder({searchParams}:{searchParams:Prom
   ]);
   if(categories.error||discounts.error)throw Error("Unable to load the business catalogue. Please try again.");
   const ranges=await productRanges(products.map(p=>p.id));
-  return <><div className={s.titleLine}><h2>New order</h2><Link className={s.button} href="/cart">Open cart ↗</Link></div><Catalogue ranges={ranges.ranges.filter(r=>r.enabled)} userId={user.id} products={products} categories={categories.data} discounts={Object.fromEntries(discounts.data.map(d=>[d.product_id,Number(d.discount_percent)]))} initialFilters={filters}/></>;
+  return <><div className={s.titleLine}><h2>New order</h2><Link className={s.button} href="/account/portal">Order history</Link></div><Catalogue ranges={ranges.ranges.filter(r=>r.enabled)} userId={user.id} products={products} categories={categories.data} discounts={Object.fromEntries(discounts.data.map(d=>[d.product_id,Number(d.discount_percent)]))} initialFilters={filters}/></>;
 }

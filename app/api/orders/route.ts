@@ -1,3 +1,5 @@
+import {notifyPortalOrder} from "@/lib/portal-order-notifications";
+import {portalCheckoutInput,type PortalCheckoutInput} from "@/lib/portal-checkout";
 import { productRanges } from "@/lib/product-range-data";
 import { rangePrice } from "@/lib/product-range";
 import { regionalFaceValue, exceedsRegionalLimit } from "@/lib/regional-purchase-limit";
@@ -26,6 +28,7 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 type OrderRequest = {
+  action?:unknown;requestId?:unknown;reference?:unknown;expectedTotal?:unknown;
   customer?: {
     fullName?: unknown;
     email?: unknown;
@@ -91,7 +94,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as OrderRequest;
-    const customer = body.customer ?? {};
+    const isPortal=request.nextUrl.pathname==="/api/account/portal/orders";
+    let portal:PortalCheckoutInput|null=null;
+    if(isPortal){try{portal=portalCheckoutInput(body);body.items=portal.items;}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Invalid portal order."},{status:400});}}
+    let customer = body.customer ?? {};
     const requestedPaymentMethod = String(
       body.paymentMethod ?? "",
     )
@@ -136,6 +142,10 @@ export async function POST(request: NextRequest) {
       data: { user: signedInUser },
     } = await sessionClient.auth.getUser();
 
+    if(isPortal){
+      if(!signedInUser?.email||!signedInUser.email_confirmed_at)return NextResponse.json({error:"Sign in with a verified email."},{status:401});
+      customer={email:signedInUser.email,fullName:signedInUser.user_metadata?.name??signedInUser.user_metadata?.full_name,orderNote:portal!.reference};
+    }
     if (!Array.isArray(body.items)) {
       return NextResponse.json(
         { error: "Your cart is invalid." },
@@ -177,6 +187,15 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+    const portalRpc=async(action:string)=>admin.rpc("portal_wallet_checkout",{p_user:signedInUser!.id,p_request:portal!.requestId,p_action:action,p_items:portal!.items,p_reference:portal!.reference,p_expected:portal!.expectedTotal,p_ip:(request.headers.get("cf-connecting-ip")??request.headers.get("x-forwarded-for")?.split(",")[0]??"").trim()||null});
+    if(portal){
+      // Recover a committed confirmation before stock checks: its codes may already be sold.
+      const replay=await portalRpc("recover");
+      if(replay.error)return NextResponse.json({error:replay.error.code==="PGRST202"?"The B2B wallet checkout database update must be installed first.":replay.error.message},{status:replay.error.code==="PGRST202"?400:replay.error.code==="P0001"?409:503});
+      if(replay.data)return NextResponse.json({result:replay.data});
+      const approval=await admin.from("business_kyb").select("status").eq("user_id",signedInUser!.id).maybeSingle();
+      if(approval.error||approval.data?.status!=="APPROVED")return NextResponse.json({error:"Approved business verification is required."},{status:403});
+    }
     const customerEmailForLimit = String(customer.email ?? "").trim().toLowerCase();
     const submittedCustomerName = String(customer.fullName ?? "").trim();
     const accountCustomerName = String(
@@ -369,6 +388,13 @@ export async function POST(request: NextRequest) {
         }
         const limit = Number(rule.weekly_limit); if (exceedsRegionalLimit(previousValue, currentValue, limit)) return NextResponse.json({ error: rule.notification_message || "Weekly purchase limit reached. Please try again after your limit resets.", weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
       }
+    }
+    if(portal){
+      const checkout=await portalRpc(portal.action);
+      if(checkout.error)return NextResponse.json({error:checkout.error.message},{status:/^(P0001|22|23|42501)/.test(checkout.error.code??"")?409:503});
+      // Payment and delivery state are committed together. Notification failure cannot turn success into a retryable payment failure.
+      if(checkout.data?.orderId&&!checkout.data?.replayed){try{await notifyPortalOrder(checkout.data);}catch(error){console.error("Portal order notification failed",error);}}
+      return NextResponse.json({result:checkout.data},{headers:{"Cache-Control":"no-store"}});
     }
     const orderResult = await admin.rpc("create_business_checked_order", {
       p_user: signedInUser?.id ?? null,
