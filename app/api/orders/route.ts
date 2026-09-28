@@ -365,7 +365,8 @@ export async function POST(request: NextRequest) {
         const limit = Number(rule.weekly_limit); if (exceedsRegionalLimit(previousValue, currentValue, limit)) return NextResponse.json({ error: rule.notification_message || "Weekly purchase limit reached. Please try again after your limit resets.", weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
       }
     }
-    const orderResult = await admin.rpc("create_store_order", {
+    const orderResult = await admin.rpc("create_business_checked_order", {
+      p_user: signedInUser?.id ?? null,
       p_customer_name: customerName.length >= 2 ? customerName : "Customer",
       p_customer_email: String(customer.email ?? ""),
       p_customer_phone: "",

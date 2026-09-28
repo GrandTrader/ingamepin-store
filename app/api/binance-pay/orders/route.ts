@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type OrderRequest = {
   customer?: {
@@ -52,9 +53,11 @@ export async function POST(
 
     const supabase = await createClient();
 
-    const orderResult = await supabase.rpc(
-      "create_store_order",
+    const { data: { user } } = await supabase.auth.getUser();
+    const orderResult = await createAdminClient().rpc(
+      "create_business_checked_order",
       {
+        p_user: user?.id ?? null,
         p_customer_name:
           body.customer.fullName ?? "",
 

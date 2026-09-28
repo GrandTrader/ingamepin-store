@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       return bulkApiNoStore({ error: "A product option or quantity is invalid." }, { status: 400 });
     }
 
+    if (!auth.principal.clientId) return bulkApiNoStore({ error: "Use a customer API key linked to a KYB-approved business account." }, { status: 403 });
     const admin = createAdminClient();
     const requestHash = createHash("sha256").update(JSON.stringify({ name, email, note, items: normalizedItems })).digest("hex");
     let existingQuery = admin.from("bulk_api_requests").select("request_hash, order_id, response_body, status").eq("idempotency_key", idempotencyKey);
@@ -73,7 +74,8 @@ export async function POST(request: NextRequest) {
       return bulkApiNoStore({ error: "Only active manual Bulk Delivery products are allowed." }, { status: 403 });
     }
 
-    const orderResult = await admin.rpc("create_store_order", {
+    const orderResult = await admin.rpc("create_business_checked_order", {
+      p_bulk_client: auth.principal.clientId,
       p_customer_name: name,
       p_customer_email: email,
       p_customer_phone: "",

@@ -1,0 +1,13 @@
+"use client";
+import { useState } from "react";
+import BusinessActionForm from "@/components/BusinessActionForm";
+import { reviewBusinessDeposit } from "../actions";
+export default function DepositReview({id,amount}:{id:string;amount:number}) {
+  const [status,setStatus]=useState(""),[currency,setCurrency]=useState("INR"),[received,setReceived]=useState(""),[rate,setRate]=useState("");
+  const credit=Number(received)/(currency==="USD"?1:Number(rate));
+  const input="mt-2 w-full rounded-xl border p-3 font-normal";
+  return <BusinessActionForm action={reviewBusinessDeposit} button="Save deposit decision"><input name="id" type="hidden" value={id}/><label className="block text-sm font-bold">Decision<select name="status" value={status} onChange={e=>setStatus(e.target.value)} required className={input}><option value="" disabled>Select decision</option><option value="CREDITED">Confirm bank receipt and credit wallet</option><option value="REJECTED">Reject</option></select></label>
+    {status==="CREDITED"&&<><label className="block text-sm font-bold">Unique bank transaction reference<input name="bank_reference" required minLength={6} maxLength={160} className={input}/></label><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Currency actually received<select name="currency" value={currency} onChange={e=>setCurrency(e.target.value)} className={input}><option>INR</option><option>USD</option></select></label><label className="text-sm font-bold">Net amount received at the bank<input name="received" type="number" min="0.01" step="0.01" required value={received} onChange={e=>setReceived(e.target.value)} className={input}/></label></div>{currency==="INR"&&<label className="block text-sm font-bold">INR per USD used to calculate wallet credit<input name="rate" type="number" min="0.000001" step="0.000001" required value={rate} onChange={e=>setRate(e.target.value)} className={input}/></label>}<p className="rounded-xl bg-blue-50 p-3 font-bold">Wallet credit: {Number.isFinite(credit)&&credit>0?`USD ${credit.toFixed(2)}`:"Enter bank receipt details"}</p>{Number.isFinite(credit)&&credit>amount&&<p className="text-red-700">Credit cannot exceed the declared USD deposit.</p>}<label className="flex gap-2 text-sm"><input type="checkbox" name="confirmed" value="yes" required/>I checked the settled funds in SBI, matched the sender and reference, and verified the USD wallet credit shown above. A customer receipt alone is not payment confirmation.</label></>}
+    <label className="block text-sm font-bold">Review note (visible to customer)<textarea name="note" required minLength={3} maxLength={1000} rows={2} className={input}/></label>
+  </BusinessActionForm>;
+}

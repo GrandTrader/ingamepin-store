@@ -36,6 +36,7 @@ const links = [
   { label: "Affiliates", href: "/admin/affiliates", icon: "AF" },
   { label: "Affiliate Applications", href: "/admin/affiliates/promoters", icon: "AA" },
   { label: "Customers", href: "/admin/customers", icon: "CU" },
+  { label: "Business verification", href: "/admin/business-verification", icon: "KYB" },
   { label: "Reviews", href: "/admin/reviews", icon: "RV" },
   { label: "Live Chat", href: "/admin/live-chat", icon: "CH" },
   { label: "Bulk API", href: "/admin/bulk-api", icon: "API" },
@@ -78,6 +79,7 @@ const menuGroups = [
     "icon": "CU",
     "paths": [
       "/admin/customers",
+      "/admin/business-verification",
 
 
       "/admin/live-chat",

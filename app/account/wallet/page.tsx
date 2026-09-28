@@ -113,6 +113,7 @@ export default async function CustomerWalletPage({
               </p>
             )}
 
+            <p className="mb-3 text-sm"><Link href="/account/business" className="font-bold text-blue-700 underline">Business KYB and USD bank deposits</Link></p>
             {walletEnabled ? (
               <WalletTopupForm
                 gateways={gateways}
