@@ -1,3 +1,5 @@
+import { productRanges } from "@/lib/product-range-data";
+import { rangePrice } from "@/lib/product-range";
 import { regionalFaceValue, exceedsRegionalLimit } from "@/lib/regional-purchase-limit";
 import { getPaypalychRestrictions } from "@/lib/paypalych-product-policy-server";
 import { PAYPALYCH_BLOCK_MESSAGE } from "@/lib/paypalych-product-policy";
@@ -274,6 +276,8 @@ export async function POST(request: NextRequest) {
       }
 
       const supplierProducts = await supplierProductIds(productIds);
+      const ranges=await productRanges(productIds);
+      for(const submitted of submittedItems){const range=ranges.ranges.find(r=>r.option_id===submitted.productOptionId);if(range){try{rangePrice(range,Number(submitted.customValue));if(range.delivery_mode!=="MANUAL")throw Error("Supplier range delivery is not connected.");}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Invalid range denomination."},{status:400});}}}
       const stockCounts = new Map<string, number>();
       for (const item of submittedItems) {
         const option = options.find((entry) => entry.id === item.productOptionId);
@@ -298,7 +302,8 @@ export async function POST(request: NextRequest) {
         }
         if (!product) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
         if (!stockCounts.has(option.id)) {
-          if (supplierProducts.has(product.id)) {
+          if (ranges.ranges.some(r=>r.option_id===option.id&&r.enabled&&r.delivery_mode==="MANUAL")) stockCounts.set(option.id,2147483647);
+          else if (supplierProducts.has(product.id)) {
             stockCounts.set(option.id, await supplierAvailableQuantity(option.id));
           } else if (isUnlimitedStock(product.stock_quantity)) stockCounts.set(option.id, 2147483647);
           else {

@@ -64,7 +64,7 @@ test("admin activation requires authorization and healthy worker before any data
 });
 
 test("cart quantity check uses fresh supplier availability and preserves owned inventory",async()=>{
- let supplier=true,available=7,ownedQueries=0;
+ let supplier=true,available=7,ownedQueries=0,ranges=[];
  const product={id:"p",status:"ACTIVE",stock_quantity:99,minimum_quantity:1,maximum_quantity:10};
  const option={id:"o",product_id:"p",is_active:true,is_in_stock:true};
  const client={from(table){
@@ -75,6 +75,7 @@ test("cart quantity check uses fresh supplier availability and preserves owned i
   return chain;
  }};
  const api=load("app/api/products/quantity-limits/route.ts",{
+  "@/lib/product-range-data":{productRanges:async()=>({ready:true,ranges})},
   "next/server":{NextResponse:{json:(body,options)=>({body,...options})}},
   "@/lib/product-stock":{UNLIMITED_STOCK_QUANTITY:2147483647},
   "@/lib/supabase/admin":{createAdminClient:()=>client},
@@ -88,4 +89,8 @@ test("cart quantity check uses fresh supplier availability and preserves owned i
  supplier=false;
  assert.equal((await api.POST(request)).body.limits[0].availableQuantity,3);
  assert.equal(ownedQueries,1);
+ ranges=[{option_id:"o",enabled:true,delivery_mode:"MANUAL"}];supplier=true;
+ assert.equal((await api.POST(request)).body.limits[0].availableQuantity,null);
+ assert.equal(ownedQueries,1);
+ option.is_active=false;assert.equal((await api.POST(request)).body.limits[0].availableQuantity,0);
 });

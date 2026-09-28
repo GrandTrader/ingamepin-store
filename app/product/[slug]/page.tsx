@@ -1,3 +1,5 @@
+import RangePurchaseForm from "@/components/RangePurchaseForm";
+import { productRanges } from "@/lib/product-range-data";
 import { portalCustomer } from "@/lib/business-portal-data";
 import { hasInstantDelivery } from "@/lib/product-delivery";
 ﻿import Link from "next/link";
@@ -202,6 +204,8 @@ export async function renderProductPage({
     permanentRedirect(`${canonicalUrl}${referral}`);
   }
 
+  const rangeData=await productRanges([product.id]);
+  const range=rangeData.ranges.find(r=>r.enabled);
   const admin = createAdminClient();
   const [optionResult, customerFieldResult, reviewResult, digiSellerReviewResult, salesResult, customerDiscounts, affiliateSettingsResult] = await Promise.all([
     supabase
@@ -548,7 +552,8 @@ export async function renderProductPage({
               />
             </h2>
 
-            <ProductPurchaseForm
+            {range && <RangePurchaseForm range={range} product={product} fields={customerFields} affiliatePercent={affiliateCommissionPercent} discountPercent={customerDiscounts.get(product.id)??0}/>}
+            {(!range||options.some(option=>option.id!==range.option_id)) && <ProductPurchaseForm
               product={{
                 id: product.id,
                 slug: product.slug,
@@ -592,7 +597,7 @@ export async function renderProductPage({
                 fieldType: field.field_type,
                 isRequired: field.is_required,
               }))}
-              options={options.map((option) => ({
+              options={options.filter(option=>option.id!==range?.option_id).map((option) => ({
                 id: option.id,
                 optionName: option.option_name,
                 platform: option.platform,
@@ -607,7 +612,7 @@ export async function renderProductPage({
                 maximumQuantity: option.maximum_quantity,
                 isInStock: option.is_in_stock !== false,
               }))}
-            />
+            />}
           </aside>
         </div>
       </div>

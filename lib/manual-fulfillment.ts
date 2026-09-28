@@ -6,7 +6,7 @@ export async function prepareOrderForManualFulfillment(
   const admin = createAdminClient();
   const itemResult = await admin
     .from("order_items")
-    .select("id, products!inner(delivery_type)")
+    .select("id, fulfillment_mode, products!inner(delivery_type)")
     .eq("order_id", orderId);
 
   if (itemResult.error) {
@@ -28,7 +28,7 @@ export async function prepareOrderForManualFulfillment(
       const product = Array.isArray(item.products)
         ? item.products[0]
         : item.products;
-      return product?.delivery_type === "MANUAL" && !supplierIds.has(item.id);
+      return (product?.delivery_type === "MANUAL" || item.fulfillment_mode === "RANGE_MANUAL") && !supplierIds.has(item.id);
     })
     .map((item) => item.id);
 

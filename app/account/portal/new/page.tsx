@@ -1,3 +1,4 @@
+import { productRanges } from "@/lib/product-range-data";
 import Link from "next/link";
 import { portalCustomer } from "@/lib/business-portal-data";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,5 +24,6 @@ export default async function NewBusinessOrder({searchParams}:{searchParams:Prom
     searchParams,
   ]);
   if(categories.error||discounts.error)throw Error("Unable to load the business catalogue. Please try again.");
-  return <><div className={s.titleLine}><h2>New order</h2><Link className={s.button} href="/cart">Open cart ↗</Link></div><Catalogue userId={user.id} products={products} categories={categories.data} discounts={Object.fromEntries(discounts.data.map(d=>[d.product_id,Number(d.discount_percent)]))} initialFilters={filters}/></>;
+  const ranges=await productRanges(products.map(p=>p.id));
+  return <><div className={s.titleLine}><h2>New order</h2><Link className={s.button} href="/cart">Open cart ↗</Link></div><Catalogue ranges={ranges.ranges.filter(r=>r.enabled)} userId={user.id} products={products} categories={categories.data} discounts={Object.fromEntries(discounts.data.map(d=>[d.product_id,Number(d.discount_percent)]))} initialFilters={filters}/></>;
 }

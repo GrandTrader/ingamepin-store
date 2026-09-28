@@ -295,8 +295,8 @@ export async function sendManualOrderItem(formData: FormData) {
   if (!orderId || !itemId) return { error: "Order item is invalid.", success: "" };
   if (new Set(codes).size !== codes.length) return { error: "Duplicate delivery codes are not allowed.", success: "" };
   const admin = createAdminClient();
-  const itemResult = await admin.from("order_items").select("id, order_id, product_id, product_option_id, product_name, option_name, denomination, quantity, fulfillment_mode, products!inner(delivery_type, is_bulk_order)").eq("id", itemId).eq("order_id", orderId).eq("products.delivery_type", "MANUAL").maybeSingle();
-  const item = itemResult.data; if (!item || item.fulfillment_mode === "PLAYER_ID_TOPUP") return { error: "This denomination cannot be sent as codes.", success: "" };
+  const itemResult = await admin.from("order_items").select("id, order_id, product_id, product_option_id, product_name, option_name, denomination, quantity, fulfillment_mode, products!inner(delivery_type, is_bulk_order)").eq("id", itemId).eq("order_id", orderId).maybeSingle();
+  const item = itemResult.data; const itemProduct=item&&(Array.isArray(item.products)?item.products[0]:item.products); if (!item || (itemProduct?.delivery_type!=="MANUAL"&&item.fulfillment_mode!=="RANGE_MANUAL") || item.fulfillment_mode === "PLAYER_ID_TOPUP") return { error: "This denomination cannot be sent as codes.", success: "" };
   if (codes.length < 1) return { error: "Enter at least one delivery code.", success: "" };
   const delivery = await admin.rpc("deliver_manual_codes_batch", {
     p_order_id: orderId,

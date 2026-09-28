@@ -284,7 +284,7 @@ export default async function OrderReceipt({
   const deliveryReceipts = await getAuthorizedDeliveryReceipts(admin, order.id, order.status, "admin");
 
   const manualItems = items.filter(
-    (item) => getDeliveryType(item.products) === "MANUAL",
+    (item) => getDeliveryType(item.products) === "MANUAL" || item.fulfillment_mode === "RANGE_MANUAL",
   );
   const manualCodeItems = manualItems.filter(
     (item) => item.fulfillment_mode !== "PLAYER_ID_TOPUP" || Boolean(item.service_delivered_at),
