@@ -1,4 +1,4 @@
-# Product sales channels — local, pending SQL
+# Product sales channels — SQL installed, local ready
 
 Admin Products now has category, region, and Bulk/Retail type filters plus independent Business portal and Retail site switches. Type filtering uses the existing is_bulk_order setting; channel switches control where each product can be offered, independently of type. Products must also be Active to be offered.
 
@@ -13,3 +13,5 @@ Permission fix: function-level SET of a custom parameter fails for a non-superus
 Tests: scripts/tests/admin-product-channels.cjs, scripts/tests/admin-product-channels-ui.cjs, scripts/tests/portal-wallet-db.cjs, scripts/tests/portal-checkout-api.cjs. UI fixture CSS is read from the isolated release build by default; CHANNEL_CSS_DIR overrides it. PGLITE_PATH may be needed for database tests.
 
 V2 repair: use 20260928_231000_product_sales_channels_fix.sql as a standalone complete retry. It removes any stored function-level app.order_sales_channel SET from pg_get_functiondef before replacing the function, including when the runtime patch is already present. Restricted-role tests cover this retained-setting case, fresh install and repeated repair. Actual remote cause has not been inspected; a new filename also avoids reusing the earlier SQL editor query.
+
+Activation verified after the user reported Success: the connected database returned 37 products with valid retail_enabled/business_enabled flags, all true by default. A null-input portal RPC reached its expected Invalid portal request validation without the parameter-permission error, before any order writes. Local admin route responds with the expected unauthenticated redirect. Full isolated production build, including sitemap prerender and TypeScript, now passes. No production deployment or real purchase performed.
