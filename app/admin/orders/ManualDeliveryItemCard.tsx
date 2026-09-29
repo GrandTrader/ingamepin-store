@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { DELIVERY_RECEIPT_MAX_BYTES } from "@/lib/delivery-receipt-file";
 import { useRouter } from "next/navigation";
-import { completeManualOrder, sendManualOrderItem } from "./actions";
+import { completeManualOrder } from "./actions";
 
 export default function ManualDeliveryItemCard({ orderId, item }: { orderId: string; item: { id: string; product_name: string; option_name: string | null; quantity: number; delivered_count?: number; is_bulk_order?: boolean; service_only?: boolean } }) {
   const [method, setMethod] = useState(item.service_only ? "service" : "codes");
@@ -17,7 +17,15 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
   }, null);
   const [result, sendCodes, isSending] = useActionState(async (_state: {error: string; success: string}, formData: FormData) => {
     try {
-      const saved = await sendManualOrderItem(formData);
+      // Stable URL: an open delivery form remains usable across new deployments.
+      const response = await fetch("/api/admin/orders/delivery", {
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({orderId: formData.get("order_id"), itemId: formData.get("item_id"), codes: formData.get("codes")}),
+      });
+      const saved = await response.json() as {error: string; success: string};
+      if (!response.ok) return {error: saved.error || "Could not confirm the upload. Your codes are kept; retry the same codes.", success: ""};
+      if (typeof saved.success !== "string" || !saved.success) throw new Error("Missing upload confirmation");
       if (saved.success) {
         setCodes("");
         router.refresh();
