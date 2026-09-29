@@ -1,5 +1,6 @@
 "use client";
 
+import { formatFaceValue } from "@/lib/face-value";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -16,6 +17,7 @@ type CartItem = {
   image?: string;
   editionName?: string;
   denomination?: number | string;
+  denominationCurrency?: string;
   customValue?: number;
   price: number;
   quantity: number;
@@ -44,6 +46,7 @@ type RawCartItem = {
   image?: string;
   editionName?: string;
   denomination?: number | string;
+  denominationCurrency?: string;
   amount?: number | string;
   customValue?: number | string;
   price?: number | string;
@@ -122,6 +125,7 @@ function normalizeCartItem(
     image: item.image,
     editionName: item.editionName,
     denomination: item.denomination ?? item.amount,
+    denominationCurrency: item.denominationCurrency,
     customValue,
     price: unitPrice,
     quantity,
@@ -186,6 +190,7 @@ type PaymentRestrictions = {
 };
 
 type QuantityLimit = {
+  denominationCurrency?: string;
   productId: string;
   productOptionId: string | null;
   minimumQuantity: number;
@@ -401,6 +406,7 @@ export default function CheckoutPage() {
             const maximum = limit.maximumQuantity ?? Number.MAX_SAFE_INTEGER;
             return {
               ...item,
+              denominationCurrency: limit.denominationCurrency ?? item.denominationCurrency,
               minQuantity: limit.minimumQuantity,
               maxQuantity: limit.maximumQuantity ?? undefined,
               quantity: Math.min(maximum, Math.max(limit.minimumQuantity, item.quantity)),
@@ -690,6 +696,7 @@ export default function CheckoutPage() {
               item.categorySlug || item.slug || "",
             productName: item.name || item.title || "Product",
             amount: Number(item.denomination || 0),
+            denominationCurrency: item.denominationCurrency,
             customValue: item.customValue,
             quantity: item.quantity,
             email: item.email || "",
@@ -1714,7 +1721,7 @@ export default function CheckoutPage() {
 
                     {item.denomination && (
                       <p className="mt-1 text-xs text-slate-400">
-                        Value: ₹{item.denomination}
+                        Denomination: {item.denomination} {item.denominationCurrency ?? ""}
                       </p>
                     )}
 
@@ -1806,6 +1813,7 @@ export default function CheckoutPage() {
                       </div>
 
                       <div className="text-right">
+                        <p className="mb-2 text-xs">Face value: <strong>{formatFaceValue([item])}</strong></p>
                         <p className="text-xs text-slate-500">
                           Item total
                         </p>
@@ -1873,6 +1881,7 @@ export default function CheckoutPage() {
 
             <div className="my-5 border-t border-white/10" />
 
+            <div className="mb-3 flex justify-between gap-3 text-sm"><span>Face value</span><strong className="text-right">{formatFaceValue(cartItems)}</strong></div>
             <div className="flex items-end justify-between">
               <div>
                 <p className="font-bold">Total Amount</p>

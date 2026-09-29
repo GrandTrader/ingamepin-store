@@ -1,3 +1,4 @@
+import { formatFaceValue } from "@/lib/face-value";
 import RefreshOrderButton from "../portal/orders/RefreshOrderButton";
 import RefundRequestForm from "./RefundRequestForm";
 import OrderRefundHistory from "@/components/OrderRefundHistory";
@@ -37,6 +38,8 @@ type OrderItem = {
   product_name: string;
   option_name: string | null;
   denomination: number | null;
+  custom_value: number | null;
+  product_options: { denomination_currency: string | null } | { denomination_currency: string | null }[] | null;
   platform: string | null;
   fulfillment_mode: string | null;
   service_delivered_at: string | null;
@@ -80,7 +83,7 @@ export default async function CustomerOrderReceiptPage({
     admin
       .from("order_items")
       .select(
-        "id, product_name, option_name, denomination, platform, fulfillment_mode, service_delivered_at, quantity, unit_price, total_price",
+        "id, product_name, option_name, denomination, custom_value, product_options(denomination_currency), platform, fulfillment_mode, service_delivered_at, quantity, unit_price, total_price",
       )
       .eq("order_id", id)
       .order("created_at"),
@@ -200,6 +203,7 @@ export default async function CustomerOrderReceiptPage({
 
       <div className={styles.orderSummary}>
         <dl className={styles.summaryLines}>
+          <SummaryCard label="Face value" value={formatFaceValue(items)} />
           <SummaryCard label="Order total" value={formatCustomerMoney(order.total, order.currency)} />
           <SummaryCard label="Payment method" value={formatPaymentMethod(payment?.method)} />
           <SummaryCard label="Payment status" value={payment?.status?.replaceAll("_", " ") ?? "PENDING"} />
@@ -255,9 +259,7 @@ export default async function CustomerOrderReceiptPage({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">
-                <p className="text-sm font-bold text-slate-900 sm:text-base sm:font-black">
-                  {formatCustomerMoney(item.total_price, order.currency)}
-                </p>
+                <div className="text-right"><p className="mb-1 text-xs text-slate-500">Face value: <strong>{formatFaceValue([item])}</strong></p><p className="text-sm font-bold text-slate-900 sm:text-base sm:font-black">Total: {formatCustomerMoney(item.total_price, order.currency)}</p></div>
                 {itemDelivered && order.status === "DELIVERED" && (
                   <Link
                     href={`${portal ? "/account/portal/orders" : "/account/orders"}/${order.id}/invoice?itemId=${encodeURIComponent(item.id)}`}

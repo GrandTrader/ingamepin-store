@@ -1,3 +1,4 @@
+import { formatFaceValue } from "@/lib/face-value";
 import OrderRefundPermission from "@/app/admin/refund-requests/OrderRefundPermission";
 import OrderRefundHistory from "@/components/OrderRefundHistory";
 import RefundReviewForm from "@/app/admin/refund-requests/RefundReviewForm";
@@ -43,6 +44,8 @@ type OrderItem = {
   product_name: string;
   option_name: string | null;
   denomination: number | null;
+  custom_value: number | null;
+  product_options: { denomination_currency: string | null } | { denomination_currency: string | null }[] | null;
   platform: string | null;
   fulfillment_mode: string | null;
   service_delivered_at: string | null;
@@ -172,6 +175,8 @@ export default async function OrderReceipt({
             product_name,
             option_name,
             denomination,
+            custom_value,
+            product_options(denomination_currency),
             platform,
             fulfillment_mode,
             service_delivered_at,
@@ -365,6 +370,7 @@ export default async function OrderReceipt({
               </p>
             </div>
             <div className="rounded-2xl bg-slate-100 p-5">
+              <p className="mb-2 text-sm text-slate-500">Face value: <strong>{formatFaceValue(items)}</strong></p>
               <p className="text-sm text-slate-500">Order total</p>
               <p className="mt-2 text-xl font-black">
                 {formatMoney(order.total, order.currency)}
@@ -524,6 +530,7 @@ export default async function OrderReceipt({
                     <th className="px-2 py-2">Quantity</th>
                     <th className="px-2 py-2">Delivery status</th>
                     <th className="px-2 py-2">Unit price</th>
+                    <th className="px-2 py-2 text-right">Face value</th>
                     <th className="px-2 py-2 text-right">Total</th>
                   </tr>
                 </thead>
@@ -577,6 +584,7 @@ export default async function OrderReceipt({
                         <span className="mb-0.5 block text-xs text-slate-500 md:hidden">Unit price</span>
                         {formatMoney(item.unit_price, order.currency)}
                       </td>
+                      <td className="block min-w-0 md:table-cell md:px-2 md:py-2.5 md:text-right md:align-top"><span className="mb-0.5 block text-xs text-slate-500 md:hidden">Face value</span>{formatFaceValue([item])}</td>
                       <td className="col-span-2 block min-w-0 border-t border-slate-200 pt-2 text-right font-bold md:table-cell md:border-0 md:px-2 md:py-2.5 md:align-top">
                         <span className="float-left text-xs font-normal text-slate-500 md:hidden">Total</span>
                         {formatMoney(item.total_price, order.currency)}
@@ -597,6 +605,7 @@ export default async function OrderReceipt({
                 <span className="text-slate-500">Discount</span>
                 <strong>{formatMoney(order.discount, order.currency)}</strong>
               </div>
+              <div className="flex justify-between gap-3 py-1 text-sm"><span className="text-slate-500">Face value</span><strong className="text-right">{formatFaceValue(items)}</strong></div>
               <div className="mt-2 flex justify-between gap-5 border-t border-slate-200 pt-4 text-lg">
                 <span className="font-black">Total paid</span>
                 <strong>{formatMoney(order.total, order.currency)}</strong>

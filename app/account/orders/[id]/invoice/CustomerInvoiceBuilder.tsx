@@ -1,5 +1,6 @@
 "use client";
 
+import { formatFaceValue } from "@/lib/face-value";
 import Link from "@/components/ScopedAccountLink";
 import { useState } from "react";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
@@ -11,6 +12,8 @@ type InvoiceItem = {
   optionName: string;
   platform: string | null;
   quantity: number;
+  denomination: number | null;
+  denominationCurrency: string | null;
   unitPrice: number;
   totalPrice: number;
 };
@@ -439,6 +442,7 @@ function CustomerInvoiceDocument({
                   <th className="px-3 py-3">Product / denomination</th>
                   <th className="px-3 py-3 text-center">Qty</th>
                   <th className="px-3 py-3 text-right">Rate</th>
+                  <th className="px-3 py-3 text-right">Face value</th>
                   <th className="px-3 py-3 text-right">Amount</th>
                 </tr>
               </thead>
@@ -456,6 +460,7 @@ function CustomerInvoiceDocument({
                     <td className="px-3 py-3 text-right">
                       {formatMoney(item.unitPrice, order.currency)}
                     </td>
+                    <td className="px-3 py-3 text-right">{formatFaceValue([item])}</td>
                     <td className="px-3 py-3 text-right font-black">
                       {formatMoney(item.totalPrice, order.currency)}
                     </td>
@@ -476,6 +481,7 @@ function CustomerInvoiceDocument({
                 <strong>-{formatMoney(order.discount, order.currency)}</strong>
               </div>
             )}
+            <div className="flex justify-between gap-4 py-1 text-sm text-slate-600"><span>Face value</span><strong className="text-right">{formatFaceValue(order.items)}</strong></div>
             <div className="mt-3 flex justify-between gap-4 border-t border-blue-200 pt-3 text-xl font-black">
               <span>Total</span>
               <span className="text-blue-700">

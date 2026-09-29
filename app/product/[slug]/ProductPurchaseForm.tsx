@@ -1,5 +1,6 @@
 "use client";
 
+import { formatFaceValue } from "@/lib/face-value";
 import { FormEvent, useMemo, useRef, useState } from "react";
 import { validateCartStock } from "@/lib/cart-stock";
 import Link from "next/link";
@@ -14,6 +15,7 @@ type ProductOption = {
   optionName: string;
   platform: string | null;
   denomination: number | null;
+  denominationCurrency?: string | null;
   sellingPrice: number;
   stockQuantity: number;
   isCustomValue: boolean;
@@ -86,6 +88,7 @@ type StoredCartItem = {
   productName: string;
   editionName: string;
   denomination: number | string;
+  denominationCurrency: string;
   amount: number;
   customValue?: number;
   fulfillmentMode?: FulfillmentMode;
@@ -459,6 +462,7 @@ export default function ProductPurchaseForm({
         valueMode === "CUSTOM"
           ? parsedCustomValue
           : selectedOption.denomination ?? 0,
+      denominationCurrency: selectedOption.denominationCurrency ?? product.currency,
       customValue: selectedCustomValue,
       fulfillmentMode: selectedFulfillmentMode,
       playerId: normalizedPlayerId,
@@ -904,6 +908,7 @@ export default function ProductPurchaseForm({
           </div>
         )}
 
+        <div className="mt-2 flex justify-between gap-3 text-sm"><span>Face value</span><strong className="text-right">{formatFaceValue([{denomination: valueMode === "CUSTOM" ? parsedCustomValue : selectedOption?.denomination, denominationCurrency: selectedOption?.denominationCurrency ?? product.currency, quantity}])}</strong></div>
         <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2">
           <span className="font-bold">{t("total")}</span>
           <span className="text-xl font-black text-cyan-400">

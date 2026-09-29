@@ -1,3 +1,4 @@
+import { faceDenomination } from "@/lib/face-value";
 import { deliveredUnits } from "@/lib/delivery-progress";
 import { notFound, redirect } from "next/navigation";
 import countries from "i18n-iso-countries";
@@ -23,6 +24,8 @@ type OrderItem = {
   product_name: string;
   option_name: string | null;
   denomination: number | string | null;
+  custom_value: number | null;
+  product_options: { denomination_currency: string | null } | { denomination_currency: string | null }[] | null;
   platform: string | null;
   fulfillment_mode: string | null;
   service_delivered_at: string | null;
@@ -69,6 +72,8 @@ export default async function CustomerInvoicePage({
             product_name,
             option_name,
             denomination,
+            custom_value,
+            product_options(denomination_currency),
             platform,
             fulfillment_mode,
             service_delivered_at,
@@ -206,6 +211,8 @@ export default async function CustomerInvoicePage({
               ? String(item.denomination)
               : "Standard option"),
           platform: item.platform,
+          denomination: faceDenomination(item)?.amount ?? null,
+          denominationCurrency: faceDenomination(item)?.currency ?? null,
           quantity: item.quantity,
           unitPrice: Number(item.unit_price),
           totalPrice: Number(item.total_price),

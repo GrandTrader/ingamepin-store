@@ -39,12 +39,12 @@ export async function POST(request: NextRequest) {
     const [productsResult, optionsResult] = await Promise.all([
       admin
         .from("products")
-        .select("id, minimum_quantity, maximum_quantity, is_bulk_order, stock_quantity, status")
+        .select("id, currency, minimum_quantity, maximum_quantity, is_bulk_order, stock_quantity, status")
         .in("id", productIds),
       optionIds.length
         ? admin
             .from("product_options")
-            .select("id, product_id, minimum_quantity, maximum_quantity, is_active, is_in_stock")
+            .select("id, product_id, denomination_currency, minimum_quantity, maximum_quantity, is_active, is_in_stock")
             .in("id", optionIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
       }
       return {
         availableQuantity,
+        denominationCurrency: rangeData.ranges.find(range => range.option_id === option?.id)?.currency ?? option?.denomination_currency ?? product.currency,
         productId: item.productId,
         productOptionId: item.productOptionId,
         minimumQuantity,

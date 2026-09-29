@@ -1,5 +1,6 @@
 "use client";
 
+import { formatFaceValue } from "@/lib/face-value";
 import { validateCartStock } from "@/lib/cart-stock";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,6 +13,9 @@ type CartItem = {
   categorySlug: string;
   productName: string;
   amount: number;
+  denomination?: number | string;
+  denominationCurrency?: string;
+  customValue?: number;
   quantity: number;
   email?: string;
   customerInformation?: Array<{ fieldId: string; label: string; value: string }>;
@@ -23,6 +27,7 @@ type CartItem = {
 };
 
 type QuantityLimit = {
+  denominationCurrency?: string;
   productId: string;
   productOptionId: string | null;
   minimumQuantity: number;
@@ -117,7 +122,7 @@ export default function CartPage() {
           if (!limit) return item;
           const maximum = limit.maximumQuantity ?? Number.MAX_SAFE_INTEGER;
           const quantity = Math.min(maximum, Math.max(limit.minimumQuantity, item.quantity));
-          return { ...item, minQuantity: limit.minimumQuantity,
+          return { ...item, denominationCurrency: limit.denominationCurrency ?? item.denominationCurrency, minQuantity: limit.minimumQuantity,
             maxQuantity: limit.maximumQuantity ?? undefined,
             quantity, totalPrice: item.unitPrice * quantity };
         });
@@ -479,6 +484,7 @@ export default function CartPage() {
                         </div>
 
                         <div className="text-right">
+                          <p className="mb-2 text-sm">Face value: <strong>{formatFaceValue([item])}</strong></p>
                           <p className="text-xs text-slate-500">
                             Product total
                           </p>
@@ -537,6 +543,7 @@ export default function CartPage() {
                     <span className="font-bold">-${discountAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
+                <div className="mb-3 flex justify-between gap-3 text-sm"><span>Face value</span><strong className="text-right">{formatFaceValue(cartItems)}</strong></div>
                 <div className="flex items-center justify-between">
                   <span className="font-bold">
                     Total amount

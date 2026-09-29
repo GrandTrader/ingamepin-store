@@ -1,11 +1,12 @@
 "use client";
+import { formatFaceValue, quoteFaceItem, type FaceValueDraft } from "@/lib/face-value";
 import Link from "next/link";
 import {useEffect,useRef,useState} from "react";
 import {useRouter} from "next/navigation";
 import {usd} from "@/lib/business-portal";
 import type {PortalQuote,PortalCheckoutInput} from "@/lib/portal-checkout";
 import s from "../Portal.module.css";
-type Item={productOptionId:string;quantity:number;customValue?:number};
+type Item=FaceValueDraft & {productOptionId:string;quantity:number;customValue?:number};
 type Attempt={requestId:string;items:Item[];reference:string;expectedTotal:number;quote:PortalQuote};
 export default function PortalCheckout({userId,items,onBack,onComplete}:{userId:string;items:Item[];onBack:()=>void;onComplete:()=>void}){
  const router=useRouter(),key="business-order-confirm:"+userId,lock=useRef(false);
@@ -36,10 +37,11 @@ export default function PortalCheckout({userId,items,onBack,onComplete}:{userId:
    setReceipt(data.result);localStorage.removeItem(key);onComplete();router.refresh();
   }catch(e){setError(e instanceof Error?e.message:"Connection interrupted. Retry this same confirmation to check its status.");}finally{lock.current=false;setBusy(false);}
  }
+ const faceItems=quote?.items.map(item=>quoteFaceItem(item,pending?.items??items))??[];
  if(receipt)return <section className={s.card}><h2 className={s.sectionTitle}>Order confirmed</h2><p>Order {receipt.orderNumber} · {receipt.status}</p><p className={s.notice}>{usd(receipt.total)} paid from your iNgamePIN wallet. Balance after payment: {usd(receipt.balanceAfter)}.</p><div className={s.actions}><Link className={s.primary} href="/account/portal">Order history</Link><Link className={s.button} href={`/account/portal/orders/${receipt.orderId}`}>View order</Link></div></section>;
  return <section className={s.card} aria-label="Confirm B2B order"><div className={s.titleLine}><h2>Confirm order</h2><span className={s.badge}>iNgamePIN wallet only</span></div>
   {busy&&!quote&&<p role="status">Checking prices, stock and wallet balance…</p>}
-  {quote&&<><label className={s.reference}>Your order reference (optional)<input maxLength={160} value={reference} disabled={busy||!!pending} onChange={e=>setReference(e.target.value)}/></label><div className={s.tableWrap}><table className={s.table}><thead><tr><th>Product</th><th>Card value</th><th>Unit price</th><th>Quantity</th><th>Line total</th></tr></thead><tbody>{quote.items.map((i,index)=><tr key={index}><td>{i.productName}</td><td>{i.optionName}</td><td>{usd(i.unitPrice)}</td><td>{i.quantity}</td><td className={s.money}>{usd(i.lineTotal)}</td></tr>)}</tbody></table></div><div className={s.checkoutSummary}><p>Wallet payment fee <strong>{usd(quote.fee)}</strong></p><p>Total <strong>{usd(quote.total)}</strong></p><p>Wallet balance <strong>{usd(quote.walletBalance)}</strong></p><p>Balance after payment <strong>{usd(quote.balanceAfter)}</strong></p></div>
+  {quote&&<><label className={s.reference}>Your order reference (optional)<input maxLength={160} value={reference} disabled={busy||!!pending} onChange={e=>setReference(e.target.value)}/></label><div className={s.tableWrap}><table className={s.table}><thead><tr><th>Product</th><th>Card value</th><th>Unit price</th><th>Quantity</th><th>Face value</th><th>Line total</th></tr></thead><tbody>{quote.items.map((i,index)=><tr key={index}><td>{i.productName}</td><td>{i.optionName}</td><td>{usd(i.unitPrice)}</td><td>{i.quantity}</td><td>{formatFaceValue([faceItems[index]])}</td><td className={s.money}>{usd(i.lineTotal)}</td></tr>)}</tbody></table></div><div className={s.checkoutSummary}><p>Wallet payment fee <strong>{usd(quote.fee)}</strong></p><p>Face value <strong>{formatFaceValue(faceItems)}</strong></p><p>Total <strong>{usd(quote.total)}</strong></p><p>Wallet balance <strong>{usd(quote.walletBalance)}</strong></p><p>Balance after payment <strong>{usd(quote.balanceAfter)}</strong></p></div>
   {Number(quote.balanceAfter)<0&&<p className={`${s.notice} ${s.error}`}>Insufficient wallet balance. <Link href="/account/portal/wallet">Add funds to your wallet</Link> before confirming.</p>}
   <p className={s.helper}>Confirmation deducts the total from your wallet and places the order. Delivery follows each product’s delivery time.</p></>}
   {pending&&<p className={s.notice}>A confirmation was submitted. Retry it here to retrieve the result without creating another order.</p>}

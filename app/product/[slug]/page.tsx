@@ -90,6 +90,7 @@ type ProductOptionRow = {
   option_name: string;
   platform: string | null;
   denomination: number | string | null;
+  denomination_currency: string | null;
   selling_price: number | string;
   stock_quantity: number;
   is_custom_value: boolean;
@@ -216,6 +217,7 @@ export async function renderProductPage({
         option_name,
         platform,
         denomination,
+        denomination_currency,
         selling_price,
         stock_quantity,
         is_custom_value
@@ -605,6 +607,7 @@ export async function renderProductPage({
                   option.denomination === null
                     ? null
                     : Number(option.denomination),
+                denominationCurrency: option.denomination_currency ?? product.currency,
                 sellingPrice: Number(option.selling_price),
                 stockQuantity: option.stock_quantity,
                 isCustomValue: option.is_custom_value,
