@@ -4,12 +4,10 @@ import { requireCustomer, formatCustomerDate } from "@/lib/customer-account-data
 import { businessApplication } from "@/lib/business-verification-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bankFields, type BusinessDeposit } from "@/lib/business-verification";
-import BusinessActionForm from "@/components/BusinessActionForm";
-import { submitBusinessDeposit } from "./actions";
+import BankInvoicePanel from "./invoices/BankInvoicePanel";
 import BusinessVerificationForm from "./BusinessVerificationForm";
 export const dynamic="force-dynamic";
-const input="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-normal";
-export default async function BusinessPage({searchParams}:{searchParams:Promise<{page?:string}>}) {
+export default async function BusinessPage({searchParams}:{searchParams:Promise<{page?:string;invoice_page?:string}>}) {
   const {user,displayName}=await requireCustomer();const app=await businessApplication(user.id);
   const params=await searchParams;const page=Math.max(1,Math.min(10000,Number.parseInt(params.page??"1")||1));
   const db=createAdminClient();
@@ -28,8 +26,8 @@ export default async function BusinessPage({searchParams}:{searchParams:Promise<
       {!settings.data?.enabled?<p>USD bank transfers are not available yet. You can use the existing <Link href="/account/wallet" className="text-blue-700 underline">wallet payment methods</Link>.</p>:<>
         <p className="text-sm">Send the payment using these instructions. Your wallet is credited after admin confirms the bank receipt. Bank deductions and currency conversion may reduce the USD amount credited.</p>
         <dl className="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm">{bankFields.map(([key,label])=><div key={key}><dt className="font-bold">{label}</dt><dd className="whitespace-pre-wrap break-words">{String(settings.data?.instructions?.[key]??"")}</dd></div>)}</dl>
-        <p className="text-sm">Use your registered business name as the sender and your InGamePIN account email as the payment reference. For a bank-requested invoice or purpose details, contact support before sending.</p>
-        <BusinessActionForm action={submitBusinessDeposit} button="Submit bank transfer for review"><label className="block text-sm font-bold">Amount sent in USD<input name="amount" type="number" min="10" max="50000" step="0.01" required className={input}/></label><label className="block text-sm font-bold">Sender / business name<input name="sender" required minLength={2} maxLength={160} defaultValue={app.details.legal_name} className={input}/></label><label className="block text-sm font-bold">Transfer reference<input name="reference" required minLength={3} maxLength={160} className={input}/></label><label className="block text-sm font-bold">Bank transfer receipt (PDF / JPG / PNG, up to 1 MB)<input type="file" name="receipt" required accept="application/pdf,image/jpeg,image/png" className={input}/></label></BusinessActionForm>
+        <p className="text-sm">Use your registered business account as the sender and the generated invoice number as your payment reference. If your bank needs additional purpose details, contact support before sending.</p>
+        <BankInvoicePanel userId={user.id} page={Math.max(1,Math.min(10000,Number.parseInt(params.invoice_page??"1")||1))}/>
       </>}
     </section>}
     {!!rows.length&&<section className="space-y-3"><h2 className="text-xl font-black">Bank deposit history</h2>{rows.slice(0,10).map(r=><article key={r.id} className="rounded-xl border bg-white p-4 text-sm"><p className="font-bold">USD {Number(r.amount_usd).toFixed(2)} — {r.status}</p><p>{formatCustomerDate(r.created_at)} · {r.customer_reference}</p>{r.credited_usd!=null&&<p>Wallet credited: USD {Number(r.credited_usd).toFixed(2)}</p>}{r.note&&<p className="mt-2 whitespace-pre-wrap">{r.note}</p>}</article>)}<div className="flex gap-5">{page>1&&<Link href={`?page=${page-1}`}>Previous</Link>}{rows.length>10&&<Link href={`?page=${page+1}`}>Next</Link>}</div></section>}
