@@ -1466,16 +1466,16 @@ export default function CheckoutPage() {
                 <div className="flex items-center gap-3">
                   <Image
                     src="/payment-methods/sbp.jpg"
-                    alt="СБП / SBP"
+                    alt="SBP - Faster Payments System"
                     width={44}
                     height={44}
                     className="h-11 w-11 shrink-0 rounded-lg bg-white object-contain"
                   />
 
                   <div>
-                    <p className="font-bold">СБП / SBP</p>
+                    <p className="font-bold">SBP - Faster Payments System</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      SBP - Faster Payments System
+                      Pay securely via Pally
                     </p>
                   </div>
                 </div>

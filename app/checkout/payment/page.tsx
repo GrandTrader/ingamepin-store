@@ -149,7 +149,7 @@ export default function PaymentPage() {
           {order.paymentMethod?.toLowerCase() === "nowpayments"
             ? "NOWPayments"
             : order.paymentMethod?.toLowerCase() === "pally"
-              ? "СБП / SBP"
+              ? "SBP - Faster Payments System"
               : order.paymentMethod?.toLowerCase() === "freekassa"
                 ? "FreeKassa"
                 : "Binance Pay"}
@@ -159,7 +159,7 @@ export default function PaymentPage() {
           {order.paymentMethod?.toLowerCase() === "nowpayments"
             ? "NOWPayments"
             : order.paymentMethod?.toLowerCase() === "pally"
-              ? "СБП / SBP"
+              ? "SBP - Faster Payments System"
               : order.paymentMethod?.toLowerCase() === "freekassa"
                 ? "FreeKassa"
                 : "Binance"}
@@ -197,7 +197,7 @@ export default function PaymentPage() {
             : order.paymentMethod?.toLowerCase() === "nowpayments"
               ? "Continue to NOWPayments"
               : order.paymentMethod?.toLowerCase() === "pally"
-                ? "Continue to СБП / SBP"
+                ? "Continue to SBP - Faster Payments System"
                 : order.paymentMethod?.toLowerCase() === "freekassa"
                   ? "Continue to FreeKassa"
                   : "Continue to Binance Pay"}

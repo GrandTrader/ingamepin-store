@@ -48,8 +48,8 @@ export function getWalletPaymentGateways(): WalletGateway[] {
     },
     {
       id: "PALLY",
-      name: "СБП / SBP",
-      description: "SBP - Faster Payments System",
+      name: "SBP - Faster Payments System",
+      description: "Pay securely via Pally",
       icon: "P",
       enabled:
         configured("PALLY_SHOP_ID") &&

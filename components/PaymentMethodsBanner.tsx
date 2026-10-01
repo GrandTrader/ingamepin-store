@@ -13,7 +13,7 @@ const paymentMethods = [
     image: "/icon.svg",
   },
   {
-    name: "СБП / SBP",
+    name: "SBP - Faster Payments System",
     image: "/payment-methods/sbp.jpg",
   },
   {
