@@ -2,6 +2,7 @@
 
 import { formatFaceValue } from "@/lib/face-value";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
@@ -207,7 +208,7 @@ const PAYMENT_METHOD_IDS: Record<string, string> = {
   manual_upi: "UPI",
 };
 
-const PAYMENT_METHOD_ORDER = ["wallet", "manual_upi", "binance", "usdt", "pally", "freekassa", "upi"];
+const PAYMENT_METHOD_ORDER = ["wallet", "pally", "manual_upi", "binance", "usdt", "freekassa", "upi"];
 
 const initialForm: CheckoutForm = {
   email: "",
@@ -1445,7 +1446,42 @@ export default function CheckoutPage() {
               </label>
 
               <label
-                style={{ order: currency === "INR" ? -1 : undefined }}
+                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                  paymentMethod === "pally"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } ${!paymentAllowed("pally") ? "hidden" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="pally"
+                  checked={paymentMethod === "pally"}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-3">
+                  <Image
+                    src="/payment-methods/sbp.jpg"
+                    alt="СБП / SBP"
+                    width={44}
+                    height={44}
+                    className="h-11 w-11 shrink-0 rounded-lg bg-white object-contain"
+                  />
+
+                  <div>
+                    <p className="font-bold">СБП / SBP</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      SBP - Faster Payments System
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <label
                 className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
                   paymentMethod === "manual_upi"
                     ? "border-cyan-400 bg-cyan-400/5"
@@ -1567,36 +1603,6 @@ export default function CheckoutPage() {
                 </div>
               </label>
               <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
-                  paymentMethod === "pally"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } ${!paymentAllowed("pally") ? "hidden" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="pally"
-                  checked={paymentMethod === "pally"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500 text-sm font-black text-white">
-                    P
-                  </span>
-
-                  <div>
-                    <p className="font-bold">Pally Payment</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Faster Payments System or USDT
-                    </p>
-                  </div>
-                </div>
-              </label>              <label
                 className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
                   paymentMethod === "freekassa"
                     ? "border-cyan-400 bg-cyan-400/5"

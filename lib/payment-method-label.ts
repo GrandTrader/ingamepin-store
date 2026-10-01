@@ -3,7 +3,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   USDT_DIRECT: "Direct USDT",
   BINANCE_PAY: "Binance Pay",
   FREEKASSA: "FreeKassa",
-  PALLY: "Pally Payment",
+  PALLY: "СБП / SBP",
   WALLET: "InGamePin Wallet",
 };
 

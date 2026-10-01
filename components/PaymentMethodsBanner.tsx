@@ -13,6 +13,10 @@ const paymentMethods = [
     image: "/icon.svg",
   },
   {
+    name: "СБП / SBP",
+    image: "/payment-methods/sbp.jpg",
+  },
+  {
     name: "Binance Pay",
     image: "/payment-methods/binance-pay.svg",
   },
@@ -27,14 +31,6 @@ const paymentMethods = [
   {
     name: "USDT Solana",
     image: "/payment-methods/usdt-solana.svg",
-  },
-  {
-    name: "PayPalych",
-    image: "/payment-methods/paypalych.png",
-  },
-  {
-    name: "Faster Payment System",
-    image: "/payment-methods/faster-payment-system.png",
   },
   {
     name: "FreeKassa",

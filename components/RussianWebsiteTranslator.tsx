@@ -10,6 +10,8 @@ import {
 } from "./StorePreferences";
 
 const russianText: Record<string, string> = {
+  "SBP - Faster Payments System": "Система быстрых платежей",
+  "Continue to СБП / SBP": "Перейти к оплате через СБП",
   "Return to dashboard": "Вернуться в личный кабинет",
   "← Return to dashboard": "← Вернуться в личный кабинет",
   "Available balance": "Доступный баланс",
