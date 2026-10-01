@@ -58,6 +58,52 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(server.load_snapshot()["items"][0]["sku"],"APPLE-10")
         self.assertIsNotNone(server.load_snapshot()["error"])
 
+
+    def test_duplicate_codes_do_not_block_unrelated_stock(self):
+        rows = [ROW, {**ROW, "sku": "DUPLICATE", "deliverymethod": ""},
+                {**ROW, "sku": "DUPLICATE", "deliverymethod": "Code"}]
+        with patch.object(server, "authenticate"), patch.object(server, "supplier_request",
+                side_effect=[json.dumps(rows), '{"Balances":{"Available Balance":{"USD":"100"}}}']):
+            self.assertTrue(server.sync_catalogue(force=True))
+        snapshot = server.load_snapshot()
+        self.assertEqual([item["sku"] for item in snapshot["items"]], ["APPLE-10"])
+        self.assertEqual(snapshot["excludedDuplicateSkus"], ["DUPLICATE"])
+        self.assertFalse(snapshot["stale"])
+        self.assertIsNone(snapshot["error"])
+        from fulfillment import stock_rows
+        self.assertEqual(stock_rows(snapshot), [{"sku": "APPLE-10", "cost": "1.25", "currency": "USD", "quantity": 5}])
+
+    def test_identical_duplicates_are_not_counted_twice(self):
+        items, duplicates = server.normalize_catalogue([ROW, ROW])
+        self.assertEqual(items, [])
+        self.assertEqual(duplicates, ["APPLE-10"])
+
+    def test_conflicting_duplicates_are_excluded_regardless_of_row_order(self):
+        other = {**ROW, "sku": "OTHER"}
+        for rows in ([ROW, {**ROW, "price": "9.99"}, ROW, other],
+                     [other, ROW, {**ROW, "QtyInStock": "999"}, ROW]):
+            items, duplicates = server.normalize_catalogue(rows)
+            self.assertEqual([item["sku"] for item in items], ["OTHER"])
+            self.assertEqual(duplicates, ["APPLE-10"])
+
+    def test_all_duplicated_products_yield_fresh_unavailable_stock(self):
+        with patch.object(server, "authenticate"), patch.object(server, "supplier_request",
+                side_effect=[json.dumps([ROW, ROW]), '{"Balances":{"Available Balance":{"USD":"100"}}}']):
+            self.assertTrue(server.sync_catalogue(force=True))
+        self.assertEqual(server.load_snapshot()["items"], [])
+        self.assertFalse(server.load_snapshot()["stale"])
+
+    def test_resolved_duplicate_is_available_on_the_next_snapshot(self):
+        with server.database() as db:
+            db.execute("INSERT OR REPLACE INTO snapshot VALUES(1,?,?)",
+                (json.dumps({"items": [], "balances": None, "excludedDuplicateSkus": ["APPLE-10"]}), time.time()))
+        with patch.object(server, "authenticate"), patch.object(server, "supplier_request",
+                side_effect=[json.dumps([ROW]), '{"Balances":{"Available Balance":{"USD":"100"}}}']):
+            self.assertTrue(server.sync_catalogue(force=True))
+        snapshot = server.load_snapshot()
+        self.assertEqual(snapshot["excludedDuplicateSkus"], [])
+        self.assertEqual(snapshot["items"][0]["sku"], "APPLE-10")
+
     def test_successful_refresh_and_throttle(self):
         with patch.object(server,"authenticate"), patch.object(server,"supplier_request",side_effect=[json.dumps([ROW]),'{"Balances":{"Balance":{"USD":"100"}}}']) as request:
             self.assertTrue(server.sync_catalogue())

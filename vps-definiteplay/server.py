@@ -129,6 +129,25 @@ def normalize_item(row):
     }
 
 
+def normalize_catalogue(rows):
+    """Quarantine duplicate codes without rejecting unrelated supplier stock.
+
+    Even identical duplicates stay unavailable: purchase preflight requires one
+    unambiguous supplier row. Never add duplicate quantities or choose a price.
+    """
+    items = {}
+    duplicates = set()
+    for row in rows:
+        item = normalize_item(row)
+        sku = item["sku"]
+        if sku in items or sku in duplicates:
+            duplicates.add(sku)
+            items.pop(sku, None)
+        else:
+            items[sku] = item
+    return list(items.values()), sorted(duplicates)
+
+
 def sync_catalogue(force=False):
     global SESSION_UNTIL
     if not SYNC_LOCK.acquire(blocking=False):
@@ -144,13 +163,11 @@ def sync_catalogue(force=False):
         raw = json.loads(supplier_request("fetchstocklist_v2.php", "GET"))
         if not isinstance(raw, list) or not raw:
             raise ValueError("Supplier catalogue is empty or invalid")
-        items = [normalize_item(row) for row in raw]
-        if len({item["sku"] for item in items}) != len(items):
-            raise ValueError("Duplicate supplier product codes")
+        items, duplicate_skus = normalize_catalogue(raw)
         balances = json.loads(supplier_request("balances.php", "POST"))
         if not isinstance(balances, dict) or not isinstance(balances.get("Balances"), dict):
             raise ValueError("Invalid supplier balances")
-        snapshot = {"items": items, "balances": balances}
+        snapshot = {"items": items, "balances": balances, "excludedDuplicateSkus": duplicate_skus}
         with DB_LOCK, database() as db:
             db.execute("INSERT OR REPLACE INTO snapshot VALUES(1,?,?)", (json.dumps(snapshot), time.time()))
             db.execute("UPDATE sync_status SET error=NULL WHERE id=1")

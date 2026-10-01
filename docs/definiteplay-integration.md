@@ -10,6 +10,7 @@ Admin-only catalogue browsing, supplier balances, draft product import with mark
 - Catalogue refresh: every five minutes; manual refresh minimum 30 seconds.
 - Data older than 15 minutes cannot be used to create links.
 - Failed sync retains the last complete snapshot and displays an error.
+- Repeated supplier SKUs are quarantined individually, including identical duplicates; their quantities are never added together. Valid unrelated SKUs continue refreshing. The status endpoint lists these codes in excludedDuplicateSkus. Purchase preflight still requires exactly one supplier row. A code returns automatically after the upstream duplication is resolved.
 - Supplier price currency and gift-card face-value currency remain separate.
 - Available balance in another currency is displayed as reported, never relabelled USD or converted using an inferred exchange rate.
 
