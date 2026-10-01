@@ -10,6 +10,11 @@ import {
 } from "./StorePreferences";
 
 const russianText: Record<string, string> = {
+  "Manual USDT": "USDT вручную",
+  "USDT payment": "Оплата USDT",
+  "7 networks · Submit transaction hash": "7 сетей · Укажите хеш транзакции",
+  "Scan QR · Submit 12-digit UPI reference": "Сканируйте QR · Укажите 12-значный номер UPI",
+  "Cards, SBP and local payments": "Карты, СБП и местные способы оплаты",
   "SBP - Faster Payments System": "СБП",
   "Pay securely via Pally": "Безопасная оплата через Pally",
   "Continue to SBP - Faster Payments System": "Перейти к оплате через СБП",

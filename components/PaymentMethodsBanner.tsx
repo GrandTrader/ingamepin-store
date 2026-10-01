@@ -18,23 +18,23 @@ const paymentMethods = [
   },
   {
     name: "Binance Pay",
-    image: "/payment-methods/binance-pay.svg",
+    image: "/payment-methods/binance-pay.png",
   },
   {
     name: "USDT TRC20",
-    image: "/payment-methods/usdt-trc20.svg",
+    image: "/payment-methods/usdt.png",
   },
   {
     name: "USDT BEP20",
-    image: "/payment-methods/usdt-bep20.svg",
+    image: "/payment-methods/usdt.png",
   },
   {
     name: "USDT Solana",
-    image: "/payment-methods/usdt-solana.svg",
+    image: "/payment-methods/usdt.png",
   },
   {
     name: "FreeKassa",
-    image: "/payment-methods/freekassa.png",
+    image: "/payment-methods/freekassa-logo.png",
   },
 ] as const;
 

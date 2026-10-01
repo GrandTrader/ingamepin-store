@@ -1387,9 +1387,9 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
+            <div className="mt-4 grid grid-cols-1 items-start gap-2 sm:grid-cols-2">
               <label
-                className={`col-span-2 rounded-xl border p-3 transition sm:p-4 ${
+                className={`rounded-xl border p-2.5 transition sm:col-span-2 sm:p-3 ${
                   paymentMethod === "wallet"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950"
@@ -1416,14 +1416,14 @@ export default function CheckoutPage() {
                 />
 
                 <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400/10 text-xl font-black text-cyan-400">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-xl font-black text-cyan-400">
                       $
                     </span>
 
                     <div>
-                      <p className="font-bold">InGamePin Wallet</p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="text-sm font-bold leading-snug">InGamePin Wallet</p>
+                      <p className="mt-0.5 text-xs leading-snug text-slate-500">
                         {wallet.loading
                           ? "Checking wallet balance..."
                           : wallet.authenticated
@@ -1447,7 +1447,7 @@ export default function CheckoutPage() {
               </label>
 
               <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "pally"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
@@ -1464,18 +1464,18 @@ export default function CheckoutPage() {
                   className="sr-only"
                 />
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <Image
                     src="/payment-methods/sbp.jpg"
                     alt="SBP - Faster Payments System"
-                    width={44}
-                    height={44}
-                    className="h-11 w-11 shrink-0 rounded-lg bg-white object-contain"
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain"
                   />
 
                   <div>
-                    <p className="font-bold">SBP - Faster Payments System</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="text-sm font-bold leading-snug">SBP - Faster Payments System</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
                       Pay securely via Pally
                     </p>
                   </div>
@@ -1483,7 +1483,7 @@ export default function CheckoutPage() {
               </label>
 
               <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "manual_upi"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
@@ -1497,17 +1497,17 @@ export default function CheckoutPage() {
                   onChange={(event) => setPaymentMethod(event.target.value)}
                   className="sr-only"
                 />
-                <div className="flex items-center gap-3">
-                  <Image src="/payment-methods/upi.jpeg" alt="UPI" width={48} height={28} className="h-7 w-12 shrink-0 rounded object-contain" />
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600 object-contain" />
                   <div>
-                    <p className="font-bold">Manual UPI</p>
-                    <p className="mt-1 text-xs text-slate-500">Scan IOB QR and submit the 12-digit UPI reference</p>
+                    <p className="text-sm font-bold leading-snug">Manual UPI</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">Scan QR · Submit 12-digit UPI reference</p>
                   </div>
                 </div>
               </label>
 
               <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "upi"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
@@ -1524,25 +1524,20 @@ export default function CheckoutPage() {
                   className="sr-only"
                 />
 
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">📱</span>
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/usdt.png" alt="USDT" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
 
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-bold">Manual Crypto</p>
-                      <span className="rounded bg-emerald-500 px-2 py-0.5 text-[10px] font-black text-white">
-                        USDT · 7 networks
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Pay to our wallet and submit the transaction hash
+                    <p className="text-sm font-bold leading-snug">Manual USDT</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      7 networks · Submit transaction hash
                     </p>
                   </div>
                 </div>
               </label>
 
               <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "binance"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
@@ -1559,14 +1554,12 @@ export default function CheckoutPage() {
                   className="sr-only"
                 />
 
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-yellow-400 text-sm font-black text-slate-950">
-                    B
-                  </span>
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/binance-pay.png" alt="Binance Pay" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
 
                   <div>
-                    <p className="font-bold">Binance Pay</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="text-sm font-bold leading-snug">Binance Pay</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
                       Pay securely with Binance
                     </p>
                   </div>
@@ -1574,7 +1567,7 @@ export default function CheckoutPage() {
               </label>
 
               <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "usdt"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
@@ -1591,20 +1584,19 @@ export default function CheckoutPage() {
                   className="sr-only"
                 />
 
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500 text-sm font-black text-white">
-                    T</span>
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/usdt.png" alt="USDT" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
 
                   <div>
-                    <p className="font-bold">Direct USDT</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Pay with USDT on TRC20, BEP20, or Solana
+                    <p className="text-sm font-bold leading-snug">Direct USDT</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      TRC20, BEP20 or Solana
                     </p>
                   </div>
                 </div>
               </label>
               <label
-                className={`cursor-pointer rounded-xl border p-3 transition sm:p-4 ${
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "freekassa"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
@@ -1621,15 +1613,13 @@ export default function CheckoutPage() {
                   className="sr-only"
                 />
 
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500 text-sm font-black text-white">
-                    F
-                  </span>
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/freekassa-logo.png" alt="FreeKassa" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
 
                   <div>
-                    <p className="font-bold">FreeKassa</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Cards, SBP and supported payment methods
+                    <p className="text-sm font-bold leading-snug">FreeKassa</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      Cards, SBP and local payments
                     </p>
                   </div>
                 </div>
