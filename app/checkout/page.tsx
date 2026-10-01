@@ -1498,9 +1498,11 @@ export default function CheckoutPage() {
                   className="sr-only"
                 />
                 <div className="flex items-center gap-2.5">
-                  <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600 object-contain" />
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600">
+                    <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 max-w-none scale-150 object-contain" />
+                  </span>
                   <div>
-                    <p className="text-sm font-bold leading-snug">Manual UPI</p>
+                    <p className="text-sm font-bold leading-snug">UPI</p>
                     <p className="mt-0.5 text-xs leading-snug text-slate-500">Scan QR · Submit 12-digit UPI reference</p>
                   </div>
                 </div>

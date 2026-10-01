@@ -136,7 +136,7 @@ export default function ManualUsdtPage() {
     <main className="min-h-screen bg-slate-950 px-4 py-5 text-white sm:py-7">
       <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-6">
         <div className="text-center">
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">{isManualUpi ? "Manual UPI" : "Manual USDT"}</p>
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">{isManualUpi ? "UPI" : "Manual USDT"}</p>
           <h1 className="mt-1 text-2xl font-black">{isManualUpi ? "Pay using UPI" : "USDT payment"}</h1>
           <p className="mt-1 text-sm text-slate-400">{isManualUpi ? "Scan the IOB QR and pay the exact amount." : "Send the full amount in USDT using one selected network."}</p>
         </div>
