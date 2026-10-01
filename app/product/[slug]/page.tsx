@@ -16,6 +16,7 @@ import { isUnlimitedStock } from "@/lib/product-stock";
 import { getProductUrl } from "@/lib/product-url";
 import ProductDetailsTabs from "@/components/ProductDetailsTabs";
 import LocalizedProductImage from "@/components/LocalizedProductImage";
+import ProductRegionBadge from "@/components/ProductRegionBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -438,6 +439,8 @@ export async function renderProductPage({
                     russian={hasInstantDelivery(product) ? "Мгновенная доставка" : "Цифровая доставка"}
                   />
                 </span>
+
+              <ProductRegionBadge region={product.region} />
 
               <LocalizedProductImage
                 imageUrl={product.image_url}
