@@ -1,5 +1,6 @@
 "use client";
 
+import { useCheckoutPaymentCurrency } from "@/components/useCheckoutPaymentCurrency";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import UsdtQrCode from "@/components/UsdtQrCode";
@@ -37,6 +38,7 @@ function formatTime(seconds: number) {
 export default function DirectUsdtPaymentPage() {
   const router = useRouter();
   const [order, setOrder] = useState<PendingOrder | null>(null);
+  useCheckoutPaymentCurrency(order?.paymentMethod);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

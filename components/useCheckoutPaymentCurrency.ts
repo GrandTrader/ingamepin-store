@@ -12,6 +12,10 @@ export function getCheckoutPaymentCurrency(method: string | null | undefined) {
     case "pally":
     case "freekassa":
       return "RUB";
+    case "upi":
+    case "usdt":
+    case "binance":
+      return "USD";
     default:
       return null;
   }
