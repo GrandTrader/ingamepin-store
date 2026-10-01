@@ -8,6 +8,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ProductPurchaseForm from "./ProductPurchaseForm";
+import styles from "./ProductPage.module.css";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import LocalizedProductText from "@/components/LocalizedProductText";
 import ProductViewTracker from "@/components/ProductViewTracker";
@@ -400,7 +401,7 @@ export async function renderProductPage({
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-3 py-5 text-white sm:px-5 sm:py-10">
+    <main className={styles.page}>
       <ProductViewTracker productId={product.id} />
       {affiliateCode && (
         <AffiliateReferralTracker
@@ -408,7 +409,7 @@ export async function renderProductPage({
           productId={product.id}
         />
       )}
-      <div className="mx-auto max-w-6xl">
+      <div className={styles.container}>
         <nav className="flex flex-nowrap items-center gap-1.5 overflow-hidden text-xs text-slate-400 sm:flex-wrap sm:gap-2 sm:text-sm">
           <Link href="/" className="transition hover:text-cyan-400">
             Home
@@ -429,18 +430,38 @@ export async function renderProductPage({
           </span>
         </nav>
 
-        <div className="mt-4 grid gap-4 sm:mt-8 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
-          <div className="contents">
-            <div className="relative order-1 aspect-square self-start overflow-hidden rounded-2xl border border-white/10 bg-slate-900 sm:rounded-3xl lg:col-start-1 lg:row-start-1">
-              <span className={`absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider shadow-2xl sm:bottom-6 sm:left-6 sm:text-sm ${hasInstantDelivery(product) ? "border border-emerald-200 bg-emerald-400 text-slate-950" : product.is_bulk_order ? "border border-amber-200 bg-amber-300 text-slate-950" : "border border-white/20 bg-slate-950/90 text-white"}`}>
-                  <span aria-hidden="true">◆</span>
+        <section className={`${styles.panel} ${styles.compact}`} aria-label="Product and purchase options">
+          <header className={styles.heading}>
+            <div className={styles.identity}>
+              <p className={styles.category}>
+                {category.name}
+              </p>
+
+              <h1 className={styles.title}>
+                <LocalizedProductText
+                  english={product.name}
+                  russian={product.name_ru}
+                />
+              </h1>
+
+            </div>
+              <div className={styles.badges}>
+                <ProductRegionBadge region={product.region} placement="inline" />
+                <span className={styles.badge}>
+                  {hasInstantDelivery(product) && <span aria-hidden="true" className="mr-1">⚡</span>}
                   <LocalizedProductText
                     english={hasInstantDelivery(product) ? "Instant Delivery" : "Digital Delivery"}
                     russian={hasInstantDelivery(product) ? "Мгновенная доставка" : "Цифровая доставка"}
                   />
                 </span>
+                <span className={styles.badge}>
+                  <LocalizedProductText english={`${soldCount} Sold`} russian={`Продано: ${soldCount}`} />
+                </span>
+              </div>
 
-              <ProductRegionBadge region={product.region} />
+          </header>
+          <div className={styles.media}>
+            <div className={styles.artwork}>
 
               <LocalizedProductImage
                 imageUrl={product.image_url}
@@ -455,108 +476,19 @@ export async function renderProductPage({
                 }
               />
             </div>
-
-            <div className="order-3 rounded-2xl border border-white/10 bg-slate-900 p-5 sm:rounded-3xl sm:p-8 lg:col-start-1 lg:row-start-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-cyan-400 sm:text-sm">
-                {category.name}
-              </p>
-
-              <h1 className="mt-2 text-2xl font-black sm:mt-3 sm:text-4xl">
-                <LocalizedProductText
-                  english={product.name}
-                  russian={product.name_ru}
-                />
-              </h1>
-
-              <div className="mt-4 flex flex-wrap gap-2 text-xs sm:mt-5 sm:gap-3 sm:text-sm">
-                <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
-                  <LocalizedProductText english="Region" russian="Регион" />:{" "}
-                  {product.region}
-                </span>
-                <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
-                  <LocalizedProductText
-                    english={hasInstantDelivery(product) ? "Instant Delivery" : "Digital Delivery"}
-                    russian={hasInstantDelivery(product) ? "Мгновенная доставка" : "Цифровая доставка"}
-                  />
-                </span>
-                <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5">
-                  <LocalizedProductText english={`${soldCount} Sold`} russian={`Продано: ${soldCount}`} />
-                </span>
-              </div>
-
-              {!hasInstantDelivery(product) && !product.is_bulk_order && (
-                <div className="mt-3 rounded-xl border border-cyan-300 bg-cyan-50 px-3 py-2 sm:mt-4 sm:py-3">
-                  <div className="flex items-start gap-2">
-                    <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-cyan-400 font-black text-slate-950">◆</span>
-                    <span>
-                      <span className="block text-xs font-bold text-cyan-950 sm:text-sm">
-                        <LocalizedProductText english="Digital delivery information" russian="Информация о цифровой доставке" />
-                      </span>
-                      <span className="mt-0.5 block whitespace-pre-line text-xs font-normal leading-4 sm:text-sm sm:leading-5 text-slate-800">
-                        {product.delivery_instructions || (
-                          <LocalizedProductText
-                            english="Digital delivery is completed by the admin after successful payment confirmation."
-                            russian="Цифровая доставка выполняется администратором после успешного подтверждения оплаты."
-                          />
-                        )}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {product.is_bulk_order && !hasInstantDelivery(product) && (
-                  <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 sm:mt-4 sm:py-3">
-                    <div className="flex items-start gap-2">
-                      <span
-                        aria-hidden="true"
-                        className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-amber-300 font-black text-slate-950"
-                      >
-                        ◆
-                      </span>
-                      <span>
-                        <span className="block text-xs font-bold text-amber-950 sm:text-sm">
-                          <LocalizedProductText
-                            english="Digital delivery information"
-                            russian="Информация о цифровой доставке"
-                          />
-                        </span>
-                        <span className="mt-0.5 block whitespace-pre-line text-xs font-normal leading-4 sm:text-sm sm:leading-5 text-slate-800">
-                          {product.bulk_delivery_instructions || "Digital Delivery Time: 1-15 Working Days"}
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-              <ProductDetailsTabs
-                description={
-                  product.description ??
-                  "Product details and delivery information will be provided with your order."
-                }
-                descriptionRu={product.description_ru}
-                deliveryInstructions={product.delivery_instructions}
-                reviews={allProductReviews}
-                positiveCount={positiveReviewCount}
-                negativeCount={negativeReviewCount}
-              />
-            </div>
-          </div>
-
-          <aside className="order-2 h-fit rounded-2xl border border-white/10 bg-slate-900 p-5 sm:rounded-3xl sm:p-8 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-            <p className="text-xs font-bold text-cyan-400 sm:text-sm">
+            <p className={styles.delivery}>
+              <span aria-hidden="true">◆</span>
               <LocalizedProductText
-                english="Secure checkout"
-                russian="Безопасное оформление"
+                english={hasInstantDelivery(product) ? "Instant delivery after payment confirmation" : "Digital delivery after payment confirmation"}
+                russian={hasInstantDelivery(product) ? "Мгновенная доставка после подтверждения оплаты" : "Цифровая доставка после подтверждения оплаты"}
               />
             </p>
-            <h2 className="mt-1 text-xl font-black sm:mt-2 sm:text-2xl">
-              <LocalizedProductText
-                english="Choose your product option"
-                russian="Выберите вариант товара"
-              />
-            </h2>
-
+            <div className={styles.assurance}>
+              <span><LocalizedProductText english="Secure checkout" russian="Безопасное оформление" /></span>
+              <span><LocalizedProductText english="Digital products" russian="Цифровые товары" /></span>
+            </div>
+          </div>
+          <aside className={styles.purchase} aria-label="Purchase options">
             {range && <RangePurchaseForm range={range} product={product} fields={customerFields} affiliatePercent={affiliateCommissionPercent} discountPercent={customerDiscounts.get(product.id)??0}/>}
             {(!range||options.some(option=>option.id!==range.option_id)) && <ProductPurchaseForm
               product={{
@@ -620,7 +552,66 @@ export async function renderProductPage({
               }))}
             />}
           </aside>
-        </div>
+        </section>
+        <section className={styles.details} aria-label="Product information and reviews">
+
+              {!hasInstantDelivery(product) && !product.is_bulk_order && (
+                <div className="mt-3 rounded-xl border border-cyan-300 bg-cyan-50 px-3 py-2 sm:mt-4 sm:py-3">
+                  <div className="flex items-start gap-2">
+                    <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-cyan-400 font-black text-slate-950">◆</span>
+                    <span>
+                      <span className="block text-xs font-bold text-cyan-950 sm:text-sm">
+                        <LocalizedProductText english="Digital delivery information" russian="Информация о цифровой доставке" />
+                      </span>
+                      <span className="mt-0.5 block whitespace-pre-line text-xs font-normal leading-4 sm:text-sm sm:leading-5 text-slate-800">
+                        {product.delivery_instructions || (
+                          <LocalizedProductText
+                            english="Digital delivery is completed by the admin after successful payment confirmation."
+                            russian="Цифровая доставка выполняется администратором после успешного подтверждения оплаты."
+                          />
+                        )}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {product.is_bulk_order && !hasInstantDelivery(product) && (
+                  <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 sm:mt-4 sm:py-3">
+                    <div className="flex items-start gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-amber-300 font-black text-slate-950"
+                      >
+                        ◆
+                      </span>
+                      <span>
+                        <span className="block text-xs font-bold text-amber-950 sm:text-sm">
+                          <LocalizedProductText
+                            english="Digital delivery information"
+                            russian="Информация о цифровой доставке"
+                          />
+                        </span>
+                        <span className="mt-0.5 block whitespace-pre-line text-xs font-normal leading-4 sm:text-sm sm:leading-5 text-slate-800">
+                          {product.bulk_delivery_instructions || "Digital Delivery Time: 1-15 Working Days"}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+              <ProductDetailsTabs
+                description={
+                  product.description ??
+                  "Product details and delivery information will be provided with your order."
+                }
+                descriptionRu={product.description_ru}
+                deliveryInstructions={product.delivery_instructions}
+                reviews={allProductReviews}
+                positiveCount={positiveReviewCount}
+                negativeCount={negativeReviewCount}
+              />
+        </section>
       </div>
     </main>
   );

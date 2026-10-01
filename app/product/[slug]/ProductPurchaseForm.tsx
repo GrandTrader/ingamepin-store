@@ -558,7 +558,8 @@ export default function ProductPurchaseForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-5 sm:mt-8">
+    <form onSubmit={handleSubmit} className="product-purchase-form mt-5 sm:mt-8">
+      <div className="product-configuration">
       {product.customerDiscountPercent > 0 && (
         <div
           className="customer-discount-notice mb-5 rounded-xl border p-4 text-sm font-black"
@@ -647,9 +648,9 @@ export default function ProductPurchaseForm({
         )}
 
       {valueMode === "FIXED" && (
-        <section className="mt-3 sm:mt-5">
+        <section className="product-denominations mt-3 sm:mt-5">
           <h2 className="text-sm font-bold sm:text-base">{t("selectProductOption")}</h2>
-          <div className="mt-2 grid grid-cols-2 gap-1.5 sm:gap-2">
+          <div className="product-denomination-grid mt-2 grid grid-cols-2 gap-1.5 sm:gap-2">
             {fixedOptions.map((option) => {
               const isSelected = selectedOptionId === option.id;
               const isUnavailable =
@@ -808,7 +809,9 @@ export default function ProductPurchaseForm({
         </section>
       )}
 
-      <section className="mt-5 sm:mt-7">
+      </div>
+      <div className="product-order-controls">
+      <section className="product-quantity-section mt-5 sm:mt-7">
         <p className="text-sm font-bold">{t("quantity")}</p>
         <div className="mt-3 flex items-center gap-3">
           <button
@@ -881,7 +884,7 @@ export default function ProductPurchaseForm({
         </p>
       </section>
 
-      <section className="mt-3 rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 sm:mt-4 sm:p-3">
+      <section className="product-price-summary mt-3 rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 sm:mt-4 sm:p-3">
         <div className="flex justify-between gap-3 text-xs text-slate-400">
           <span>{t("selectedOption")}</span>
           <span className="text-right font-bold text-white">
@@ -936,7 +939,7 @@ export default function ProductPurchaseForm({
         </Link>
       )}
 
-      <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
+      <div className="product-purchase-actions mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
         <button
           type="button"
           onClick={addToCart}
@@ -963,6 +966,7 @@ export default function ProductPurchaseForm({
           {message}
         </p>
       )}
+      </div>
     </form>
   );
 }

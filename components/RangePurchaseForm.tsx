@@ -1,5 +1,4 @@
 "use client";
-import { formatFaceValue } from "@/lib/face-value";
 import {useRef,useState} from "react";
 import {useStorePreferences} from "@/components/StorePreferences";
 import {useRouter} from "next/navigation";
@@ -10,13 +9,14 @@ type RangeProduct={id:string;name:string;slug:string;image_url?:string|null;mini
 export default function RangePurchaseForm({range,product,discountPercent=0,affiliatePercent=0,fields=[]}:{fields?:Field[];affiliatePercent?:number;range:ProductRange;product:RangeProduct;discountPercent?:number}){
  const [answers,setAnswers]=useState<Record<string,string>>({});
  const router=useRouter(),lock=useRef(false);
- const [value,setValue]=useState(String(range.minimum)),[quantity,setQuantity]=useState(String(Math.max(1,product.minimum_quantity))),[error,setError]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
+ const [value,setValue]=useState(""),[quantity,setQuantity]=useState(String(Math.max(1,product.minimum_quantity))),[error,setError]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
  const markedPrice=(price:number)=>Math.round((price+Math.round(price*Math.max(0,affiliatePercent))/100)*100)/100;
- let price=0;try{price=markedPrice(rangePrice(range,Number(value)));}catch{}
+ let price:number|null=null;try{if(value.trim())price=markedPrice(rangePrice(range,Number(value)));}catch{}
  const {formatPrice:money}=useStorePreferences();
  async function purchase(buyNow:boolean){
   if(lock.current)return;lock.current=true;setBusy(true);setError("");setMessage("");
   try{
+   if(!value.trim())throw Error(`Enter a denomination from ${range.minimum} to ${range.maximum} ${range.currency}.`);
    const amount=Number(value),count=Number(quantity),unitPrice=markedPrice(rangePrice(range,amount));
    if(!Number.isSafeInteger(count)||count<Math.max(1,product.minimum_quantity)||(!product.is_bulk_order&&product.maximum_quantity!==null&&count>product.maximum_quantity))throw Error("Enter a quantity within this product’s purchase limits.");
    if(fields.length&&count>30)throw Error("Use up to 30 codes per order when delivery details are required.");
@@ -30,15 +30,14 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
  }
  if(!range.enabled)return null;
  return <section className="my-4 rounded-xl border border-cyan-200 bg-white p-4 text-slate-900" aria-label={`Range purchase for ${product.name}`}>
-  <h3 className="font-bold">{product.name} — choose your denomination</h3>
-  <p className="mt-1 text-sm text-slate-600">{range.minimum}–{range.maximum} {range.currency} per code · increments of {range.step}</p>
-  <div className="mt-3 flex flex-wrap items-end gap-3">
-   <label className="text-sm">Denomination ({range.currency})<input className="mt-1 block w-40 rounded border border-slate-300 px-3 py-2" aria-label={`Denomination for ${product.name}`} type="number" min={range.minimum} max={range.maximum} step={range.step} value={value} onChange={e=>{setValue(e.target.value);setError("");}}/></label>
+  <div className="flex flex-wrap items-end gap-3">
+   <label className="text-sm">Denomination ({range.currency})<input className="mt-1 block w-40 rounded border border-slate-300 px-3 py-2" aria-label={`Denomination for ${product.name}`} type="number" inputMode="decimal" placeholder={`${range.minimum}–${range.maximum}`} title={`Allowed range: ${range.minimum}–${range.maximum} ${range.currency}; increments of ${range.step}`} min={range.minimum} max={range.maximum} step={range.step} value={value} onChange={e=>{setValue(e.target.value);setError("");}}/></label>
    <label className="text-sm">Quantity<input className="mt-1 block w-24 rounded border border-slate-300 px-3 py-2" aria-label={`Range quantity for ${product.name}`} type="number" min={Math.max(1,product.minimum_quantity)} max={product.is_bulk_order?undefined:product.maximum_quantity??undefined} step="1" value={quantity} onChange={e=>setQuantity(e.target.value)}/></label>
-   <div className="text-sm"><strong>{money(price*(1-discountPercent/100))} / code</strong><p>Face value: {formatFaceValue([{denomination: value, denominationCurrency: range.currency, quantity: Number(quantity)}])}</p><p>Total: {money(price*(1-discountPercent/100)*(Number(quantity)||0))}</p></div>
+   <div className="text-sm" aria-live="polite"><strong>{price===null?"—":money(price*(1-discountPercent/100))} / code</strong><p>Total: {price===null?"—":money(price*(1-discountPercent/100)*(Number(quantity)||0))}</p></div>
    <button type="button" disabled={busy} className="rounded-lg border border-blue-600 px-4 py-2 font-bold text-blue-600 disabled:opacity-50" onClick={()=>purchase(false)}>Add to cart</button>
    <button type="button" disabled={busy} className="rounded-lg bg-blue-600 px-4 py-2 font-bold text-white disabled:opacity-50" onClick={()=>purchase(true)}>Buy now</button>
   </div>
+  {range.step>1&&<p className="mt-2 text-xs text-slate-500">Increments of {range.step} {range.currency}</p>}
   {fields.length>0&&Array.from({length:Math.min(30,Math.max(1,Number(quantity)||1))},(_,index)=><div key={index} className="mt-3 grid gap-2"><p className="font-bold">Code {index+1} details</p>{fields.map(field=><label key={field.id} className="text-sm">{field.label}{field.is_required?" *":""}<input className="mt-1 block w-full rounded border px-3 py-2" maxLength={500} placeholder={field.placeholder??""} value={answers[`${index}:${field.id}`]??""} onChange={e=>setAnswers({...answers,[`${index}:${field.id}`]:e.target.value})}/></label>)}</div>)}
   {range.delivery_mode==="MANUAL"&&<p className="mt-2 text-xs text-slate-500">Codes are delivered by our team after payment.</p>}
   {error&&<p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}{message&&<p role="status" className="mt-2 text-sm text-green-700">{message}</p>}
