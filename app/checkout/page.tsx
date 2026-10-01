@@ -1,6 +1,7 @@
 "use client";
 
 import { formatFaceValue } from "@/lib/face-value";
+import { useCheckoutPaymentCurrency } from "@/components/useCheckoutPaymentCurrency";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -238,6 +239,7 @@ export default function CheckoutPage() {
   >("cart");
   const [form, setForm] = useState<CheckoutForm>(initialForm);
   const [paymentMethod, setPaymentMethod] = useState("binance");
+  useCheckoutPaymentCurrency(paymentMethod);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -465,7 +467,6 @@ export default function CheckoutPage() {
             : PAYMENT_METHOD_ORDER;
 
           if (
-            currency !== "INR" &&
             next.allowedPaymentMethods.includes(PAYMENT_METHOD_IDS[current])
           ) return current;
 
@@ -1497,7 +1498,7 @@ export default function CheckoutPage() {
                   className="sr-only"
                 />
                 <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-lg font-black text-white">₹</span>
+                  <Image src="/payment-methods/upi.jpeg" alt="UPI" width={48} height={28} className="h-7 w-12 shrink-0 rounded object-contain" />
                   <div>
                     <p className="font-bold">Manual UPI</p>
                     <p className="mt-1 text-xs text-slate-500">Scan IOB QR and submit the 12-digit UPI reference</p>

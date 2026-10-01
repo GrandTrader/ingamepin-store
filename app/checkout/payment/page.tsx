@@ -1,5 +1,6 @@
 "use client";
 
+import { useCheckoutPaymentCurrency } from "@/components/useCheckoutPaymentCurrency";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useStorePreferences } from "@/components/StorePreferences";
@@ -15,6 +16,7 @@ type PendingOrder = {
 export default function PaymentPage() {
   const { formatPrice } = useStorePreferences();
   const [order, setOrder] = useState<PendingOrder | null>(null);
+  useCheckoutPaymentCurrency(order?.paymentMethod);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");

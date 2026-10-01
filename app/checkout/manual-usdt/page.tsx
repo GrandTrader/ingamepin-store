@@ -1,5 +1,6 @@
 "use client";
 
+import { useCheckoutPaymentCurrency } from "@/components/useCheckoutPaymentCurrency";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { FormEvent, useEffect, useState } from "react";
@@ -19,6 +20,7 @@ type PendingOrder = {
 export default function ManualUsdtPage() {
   const { formatPrice } = useStorePreferences();
   const [order, setOrder] = useState<PendingOrder | null>(null);
+  useCheckoutPaymentCurrency(order?.paymentMethod);
   const [qrCode, setQrCode] = useState("");
   const [transactionHash, setTransactionHash] = useState("");
   const [message, setMessage] = useState("");
