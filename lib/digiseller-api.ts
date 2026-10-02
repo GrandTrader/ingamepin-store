@@ -180,7 +180,7 @@ export async function getDigiSellerPurchaseSelection(invoiceId: number) {
   const { token } = await getDigiSellerToken();
   const response = await fetch(
     `https://api.digiseller.com/api/purchase/info/${invoiceId}?token=${encodeURIComponent(token)}`,
-    { headers: { Accept: "application/json" }, cache: "no-store" },
+    { headers: { Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(8000) },
   );
   const result = await response.json().catch(() => null) as {
     retval?: number;
@@ -188,6 +188,11 @@ export async function getDigiSellerPurchaseSelection(invoiceId: number) {
     content?: {
       item_id?: number;
       invoice_state?: number;
+      cnt_goods?: number | string | null;
+      amount?: number | string;
+      amount_usd?: number | string;
+      currency_type?: string;
+      profit?: number | string | null;
       options?: Array<{ id?: number; user_data?: string | number; user_data_id?: number }>;
     };
   } | null;
@@ -197,6 +202,11 @@ export async function getDigiSellerPurchaseSelection(invoiceId: number) {
   return {
     productId: Number(result.content.item_id),
     invoiceState: Number(result.content.invoice_state),
+    quantity: result.content.cnt_goods == null ? 1 : Number(result.content.cnt_goods),
+    amount: Number(result.content.amount),
+    amountUsd: Number(result.content.amount_usd),
+    currency: result.content.currency_type ?? "",
+    profit: result.content.profit == null || result.content.profit === "" ? null : Number(result.content.profit),
     options: result.content.options ?? [],
   };
 }

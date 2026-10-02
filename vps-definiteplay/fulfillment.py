@@ -136,6 +136,26 @@ class Database:
             raise RuntimeError("Supplier database operation failed") from None
 
 
+class DigiSellerDatabase:
+    """Reuse the worker with an isolated, invoice-keyed delivery queue."""
+    def __init__(self, database):
+        self.database = database
+
+    def rpc(self, name, payload):
+        names = {
+            "claim_definiteplay_job": "claim_digiseller_supplier_job",
+            "mark_definiteplay_submitted": "mark_digiseller_supplier_submitted",
+            "update_definiteplay_job": "update_digiseller_supplier_job",
+            "complete_definiteplay_job": "complete_digiseller_supplier_job",
+        }
+        if name not in names:
+            raise RuntimeError("Unsupported DigiSeller worker operation")
+        payload = dict(payload)
+        if "p_item_id" in payload:
+            payload["p_invoice_id"] = payload.pop("p_item_id")
+        return self.database.rpc(names[name], payload)
+
+
 class Worker:
     def __init__(self, bridge, db):
         self.bridge = bridge
@@ -200,12 +220,15 @@ class Worker:
 
     def run(self):
         last_sync = 0
+        digiseller = Worker(self.bridge, DigiSellerDatabase(self.db)) if os.environ.get("DIGISELLER_FULFILLMENT_ENABLED") == "true" else None
         while True:
             try:
                 if time.monotonic() - last_sync > 30:
                     self.sync_stock()
                     last_sync = time.monotonic()
                 self.step()
+                if digiseller:
+                    digiseller.step()
                 self.bridge.FULFILLMENT_ERROR = None
                 self.bridge.FULFILLMENT_HEARTBEAT = time.time()
             except Exception:
