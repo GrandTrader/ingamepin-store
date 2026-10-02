@@ -47,7 +47,9 @@ async function setEnabled(id: number, enabled: boolean) {
 async function writeSnapshot(snapshot: PriceSnapshot, deadline: number) {
   await request(`/api/product/edit/base/${snapshot.id}`,{price:{price:snapshot.base,currency:snapshot.currency}});
   for (const p of snapshot.parameters) {
-    for (const v of p.variants) {
+    // Moving a variant shifts neighbouring positions. Apply the desired order
+    // from first to last so later writes cannot displace an earlier position.
+    for (const v of [...p.variants].sort((a,b)=>a.order-b.order)) {
       if (Date.now() > deadline) throw new Error("The price update took too long. Please retry.");
       await request(`/api/products/options/${p.id}/variants/${v.variant_id}`,{
         name:v.name,type:v.type,rate:v.rate,default:v.is_default,visible:v.visible,order:v.order,
@@ -56,10 +58,24 @@ async function writeSnapshot(snapshot: PriceSnapshot, deadline: number) {
   }
 }
 
-function matchesPrices(actual: PriceSnapshot, expected: PriceSnapshot) {
-  const parameters=(s:PriceSnapshot)=>s.parameters.map(p=>({id:p.id,type:p.type,required:p.required,variants:p.variants.map(v=>({variant_id:v.variant_id,name:v.name.map(n=>({locale:n.locale,value:n.value})).sort((a,b)=>a.locale.localeCompare(b.locale)),type:v.type,rate:v.rate,is_default:v.is_default,visible:v.visible,order:v.order})).sort((a,b)=>a.variant_id-b.variant_id)})).sort((a,b)=>a.id-b.id);
-  return actual.currency === expected.currency && cents(actual.base) === cents(expected.base)
-    && JSON.stringify(parameters(actual)) === JSON.stringify(parameters(expected));
+function verificationDifference(actual: PriceSnapshot|undefined, expected: PriceSnapshot):string|null {
+  if (!actual) return `Product ${expected.id}: missing response`;
+  if (actual.currency!==expected.currency || cents(actual.base)!==cents(expected.base)) return `Product ${expected.id}: base price`;
+  if (actual.parameters.length!==expected.parameters.length) return `Product ${expected.id}: parameter count`;
+  const names=(v:PriceVariant)=>JSON.stringify(v.name.map(n=>({locale:n.locale,value:n.value})).sort((a,b)=>a.locale.localeCompare(b.locale)));
+  for (const p of expected.parameters) {
+    const live=actual.parameters.find(v=>v.id===p.id);
+    if (!live || live.type!==p.type || live.required!==p.required || live.variants.length!==p.variants.length) return `Parameter ${p.id}: settings or variant count`;
+    for (const v of p.variants) {
+      const got=live.variants.find(row=>row.variant_id===v.variant_id);
+      if (!got) return `Variant ${v.variant_id}: missing`;
+      for (const field of ['type','rate','is_default','visible','order'] as const) {
+        if (got[field]!==v[field]) return `Variant ${v.variant_id}: ${field}`;
+      }
+      if (names(got)!==names(v)) return `Variant ${v.variant_id}: name`;
+    }
+  }
+  return null;
 }
 
 function modifier(price:number,base:number) {
@@ -78,12 +94,19 @@ export async function writePriceSnapshots(snapshots: PriceSnapshot[], options?: 
     snapshots=snapshots.map(s=>({...s,parameters:s.parameters.map(p=>{
       const live=current.find(c=>c.id===s.id);
       const extras=live?.parameters.find(q=>q.id===p.id)?.variants.filter(v=>!p.variants.some(old=>old.variant_id===v.variant_id))??[];
-      return {...p,variants:[...p.variants,...extras.map(v=>({...v,...modifier(variantPrice(live!.base,v),s.base),visible:false,is_default:false}))]};
+      const lastOrder=Math.max(0,...p.variants.map(v=>v.order));
+      return {...p,variants:[...p.variants,...extras.map((v,i)=>({...v,...modifier(variantPrice(live!.base,v),s.base),visible:false,is_default:false,order:lastOrder+i+1}))]};
     })}));
   }
   for (const s of snapshots) await writeSnapshot(s,deadline);
-  const verified = await readPriceSnapshots(snapshots.map(s => s.id));
-  if (snapshots.some(s => !verified.some(v => v.id === s.id && matchesPrices(v,s)))) throw new Error("DigiSeller price verification failed.");
+  let difference:string|null=null;
+  for (const delay of [0,500,1500]) {
+    if (delay) await new Promise(resolve=>setTimeout(resolve,delay));
+    const verified=await readPriceSnapshots(snapshots.map(s=>s.id));
+    difference=snapshots.map(s=>verificationDifference(verified.find(v=>v.id===s.id),s)).find(Boolean)??null;
+    if (!difference) break;
+  }
+  if (difference) throw new Error(`DigiSeller verification failed (${difference}).`);
   await options?.beforeEnable?.();
   for (const s of snapshots) if (s.enabled) await setEnabled(s.id,true);
 }
@@ -93,7 +116,9 @@ export function targetPriceSnapshots(plan: PricePlan): PriceSnapshot[] {
     const row = group.rows.find(r => r.variantId === v.variant_id);
     if (!row) {
       if (v.visible && plan.mode!=='denominations') throw new Error("A DigiSeller denomination is not matched.");
-      return {...v,...modifier(variantPrice(group.before.base,v),group.base),visible:false,is_default:false};
+      const hidden=p.variants.filter(old=>!group.rows.some(r=>r.variantId===old.variant_id)).sort((a,b)=>a.order-b.order);
+      return {...v,...modifier(variantPrice(group.before.base,v),group.base),visible:false,is_default:false,
+        order:plan.mode==='denominations'?group.rows.length+hidden.findIndex(old=>old.variant_id===v.variant_id)+1:v.order};
     }
     if (plan.mode==='denominations') {
       const oldDefault=p.variants.find(old=>old.is_default&&group.rows.some(r=>r.variantId===old.variant_id));

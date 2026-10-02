@@ -22,7 +22,7 @@ async function planFor(productId: string, percent: string, mode: 'prices'|'denom
   let query = admin.from('product_options').select('id,option_name,selling_price,is_active,digiseller_product_id,digiseller_option_id,digiseller_variant_id')
     .eq('product_id',productId).eq('is_custom_value',false);
   if (mode === 'prices') query = query.eq('is_active',true);
-  const result = await query.order('id');
+  const result = await query.order('sort_order').order('id');
   if (result.error) throw new Error("Unable to read this product's denominations.");
   const options = (result.data ?? []).filter(o=>mode==='prices'||o.is_active).map(o => ({id:o.id,name:o.option_name,price:Number(o.selling_price),productId:o.digiseller_product_id === null ? null : Number(o.digiseller_product_id),optionId:o.digiseller_option_id === null ? null : Number(o.digiseller_option_id),variantId:o.digiseller_variant_id === null ? null : Number(o.digiseller_variant_id)}));
   const ids = [...new Set((result.data ?? []).map(o=>o.digiseller_product_id).filter(id=>id!==null).map(Number))].sort((a,b)=>a-b);

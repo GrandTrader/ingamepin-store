@@ -26,11 +26,11 @@ function load(file,imports={}){const exports={};const code=ts.transpileModule(fs
  const revived=structuredClone(before);revived.parameters[0].variants[1].visible=false;
  const revivePlan=pricing.buildDenominationPlan([options[0],{...options[1],productId:null,optionId:null,variantId:null}],revived,'0');
  assert.equal(revivePlan.rows[1].change,'Show');assert.equal(revivePlan.rows[1].variantId,11);
- let remote=structuredClone(before),writes=[],failVariant=false,failCreate=false;
+ let remote=structuredClone(before),writes=[],failVariant=false,failCreate=false,reorder=false,staleReads=0,ignorePrice=false;
  const oldFetch=global.fetch;
  global.fetch=async(url,init)=>{
   const route=new URL(url).pathname;
-  if(route==='/api/products/list')return Response.json([{id:100,id_seller:9,base_price:remote.base,base_currency:'WMZ'}]);
+  if(route==='/api/products/list')return Response.json([{id:100,id_seller:9,base_price:staleReads-->0?remote.base+1:remote.base,base_currency:'WMZ'}]);
   if(route==='/api/products/options/list/100')return Response.json({retval:0,content:[{id:20}]});
   if(route==='/api/products/options/20')return Response.json({retval:0,content:remote.parameters[0]});
   const body=JSON.parse(init.body);writes.push({route,body});
@@ -44,7 +44,9 @@ function load(file,imports={}){const exports={};const code=ts.transpileModule(fs
     return Response.json({retval:0,content:{variants:[id]}});
   }else if(route.startsWith('/api/products/options/20/variants/')){
     assert.equal(remote.enabled,false);if(failVariant)throw Error('simulated connection failure');
-    const v=remote.parameters[0].variants.find(v=>v.variant_id===Number(route.split('/').pop()));Object.assign(v,{...body,is_default:body.default});delete v.default;
+    const v=remote.parameters[0].variants.find(v=>v.variant_id===Number(route.split('/').pop()));
+    if(reorder){const ordered=remote.parameters[0].variants.slice().sort((a,b)=>a.order-b.order).filter(row=>row!==v);ordered.splice(body.order-1,0,v);ordered.forEach((row,i)=>{row.order=i+1;});}
+    Object.assign(v,{...body,rate:ignorePrice?v.rate:body.rate,is_default:body.default});delete v.default;
   }else throw Error(route);
   return Response.json({retval:0});
  };
@@ -71,6 +73,15 @@ function load(file,imports={}){const exports={};const code=ts.transpileModule(fs
  failCreate=false;await api.writePriceSnapshots([before],{restore:true});assert.equal(remote.enabled,true);assert.equal(remote.parameters[0].variants[2].visible,false,'uncertain creation hidden during recovery');
  const retry=pricing.buildDenominationPlan(changedOptions,remote,'5');assert.equal(retry.rows[1].variantId,12,'retry reuses recovered variant instead of creating a duplicate');
  await assert.rejects(()=>api.writeDenominationPlan(retry,async()=>{throw Error('mapping save failed');}));assert.equal(remote.enabled,false,'mapping failure cannot reopen sales');
+ remote=structuredClone(before);staleReads=1;await api.writePriceSnapshots(targets);assert.equal(remote.enabled,true,'verification retries stale readback');
+ remote=structuredClone(before);ignorePrice=true;await assert.rejects(()=>api.writePriceSnapshots(targets),/rate/);assert.equal(remote.enabled,false,'real mismatch still prevents enabling sales');ignorePrice=false;
+ remote=structuredClone(before);reorder=true;
+ remote.parameters[0].variants.push({...structuredClone(variants[1]),variant_id:12,order:3});
+ const reordered=structuredClone(remote);reordered.parameters[0].variants.forEach((v,i)=>{v.order=[3,2,1][i];});
+ await api.writePriceSnapshots([reordered]);assert.equal(remote.enabled,true);assert.deepEqual(remote.parameters,reordered.parameters,'write in desired order avoids position shifts');
+ const hiddenPlan=pricing.buildDenominationPlan([options[1],options[0]],remote,'0');
+ const hiddenTarget=api.targetPriceSnapshots(hiddenPlan)[0];assert.deepEqual(hiddenTarget.parameters[0].variants.map(v=>v.order),[2,1,3],'retired variants go after active variants without colliding');
+ await api.writePriceSnapshots([hiddenTarget]);assert.equal(remote.enabled,true);
  global.fetch=oldFetch;
  const {PGlite}=require(path.join(process.env.TEMP,'igp-dp-postgres-test/node_modules/@electric-sql/pglite'));
  const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role;create table public.products(id uuid primary key);');

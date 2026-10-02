@@ -5,7 +5,7 @@ function load(file,imports){const exports={};new Function('require','exports',ts
  const option={id:'a',is_active:true,option_name:'2 USD',selling_price:2.3,digiseller_product_id:100,digiseller_option_id:null,digiseller_variant_id:null};
  const snapshot={id:100,base:2.3,currency:'USD',enabled:true,parameters:[]};
  let authorized=true,shared=0,writes=0,locks=0,finishes=[],failWrite=false,failFinish=false,allOptions=[option],mappingWrites=[],mappingConflict=false,restoreOptions;
- const db={from(table){let update;const q={update(value){update=value;return q},select(){return q},eq(){return q},is(){return q},in(){return q},neq(){return q},order:async()=>({data:allOptions}),then(resolve){if(update){mappingWrites.push(update);resolve({data:mappingConflict?[]:[{id:'a'}]});}else resolve({count:shared})},single:async()=>({data:{recovery_snapshot:[snapshot]}})};return q;},rpc:async(name,args)=>{
+ const db={from(table){let update,ordered=false;const q={update(value){update=value;return q},select(){return q},eq(){return q},is(){return q},in(){return q},neq(){return q},order(){ordered=true;return q},then(resolve){if(update){mappingWrites.push(update);resolve({data:mappingConflict?[]:[{id:'a'}]});}else resolve(ordered?{data:allOptions}:{count:shared})},single:async()=>({data:{recovery_snapshot:[snapshot]}})};return q;},rpc:async(name,args)=>{
    if(name==='begin_digiseller_price_sync'){locks++;return {data:'lock-token'};}
    finishes.push(args);return failFinish?{error:{message:'connection lost'}}:{data:null};
  }};
