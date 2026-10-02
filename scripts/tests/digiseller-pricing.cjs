@@ -15,7 +15,18 @@ function load(file,imports={}){const exports={};const code=ts.transpileModule(fs
  assert.throws(()=>pricing.buildPricePlan([options[0],{...options[1],variantId:10}],[before],'5'));
  assert.throws(()=>pricing.buildPricePlan(options,[{...before,currency:'RUB'}],'5'));
  assert.throws(()=>pricing.buildPricePlan(options,[{...before,parameters:[...before.parameters,{id:21,type:'checkbox',required:false,variants:[]}]}],'5'));
- let remote=structuredClone(before),writes=[],failVariant=false;
+ const changedOptions=[{...options[0],name:'Two USD'},{id:'c',name:'10 USD',price:11.5,productId:null,optionId:null,variantId:null}];
+ const denominationPlan=pricing.buildDenominationPlan(changedOptions,before,'5');
+ assert.deepEqual(denominationPlan.rows.map(r=>r.change),['Rename','Add','Hide']);
+ assert.equal(denominationPlan.rows[0].variantId,10,'renames retain IDs');
+ assert.throws(()=>pricing.buildDenominationPlan([options[0],{...options[1],name:'2 USD'}],before,'5'));
+ assert.throws(()=>pricing.buildDenominationPlan([{...options[0],variantId:999}],before,'5'));
+ assert.throws(()=>pricing.buildDenominationPlan([{...options[0],productId:999}],before,'5'));
+ assert.throws(()=>pricing.buildDenominationPlan(options,{...before,parameters:[]},'5'));
+ const revived=structuredClone(before);revived.parameters[0].variants[1].visible=false;
+ const revivePlan=pricing.buildDenominationPlan([options[0],{...options[1],productId:null,optionId:null,variantId:null}],revived,'0');
+ assert.equal(revivePlan.rows[1].change,'Show');assert.equal(revivePlan.rows[1].variantId,11);
+ let remote=structuredClone(before),writes=[],failVariant=false,failCreate=false;
  const oldFetch=global.fetch;
  global.fetch=async(url,init)=>{
   const route=new URL(url).pathname;
@@ -26,6 +37,11 @@ function load(file,imports={}){const exports={};const code=ts.transpileModule(fs
   if(route==='/api/product/edit/base/100'){
     if(body.enabled!==undefined)remote.enabled=body.enabled;
     if(body.price){assert.equal(remote.enabled,false,'sales paused while changing prices');remote.base=body.price.price;}
+  }else if(route==='/api/products/options/20/variants'){
+    assert.equal(remote.enabled,false);const id=Math.max(...remote.parameters[0].variants.map(v=>v.variant_id))+1;
+    const value=body.variants[0];remote.parameters[0].variants.push({...value,variant_id:id,is_default:value.default,visible:true});delete remote.parameters[0].variants.at(-1).default;
+    if(failCreate)throw Error('create succeeded but response timed out');
+    return Response.json({retval:0,content:{variants:[id]}});
   }else if(route.startsWith('/api/products/options/20/variants/')){
     assert.equal(remote.enabled,false);if(failVariant)throw Error('simulated connection failure');
     const v=remote.parameters[0].variants.find(v=>v.variant_id===Number(route.split('/').pop()));Object.assign(v,{...body,is_default:body.default});delete v.default;
@@ -39,6 +55,22 @@ function load(file,imports={}){const exports={};const code=ts.transpileModule(fs
  failVariant=true;await assert.rejects(()=>api.writePriceSnapshots([before]));assert.equal(remote.enabled,false,'failed write leaves sales paused');
  failVariant=false;await api.writePriceSnapshots([before]);assert.deepEqual(remote,before,'restore retains names, IDs, visibility and original prices');
  await api.writePriceSnapshots([{...before,enabled:false}]);assert.equal(remote.enabled,false,'originally hidden stays hidden');
+ remote=structuredClone(before);let mapped;
+ await api.writeDenominationPlan(denominationPlan,async rows=>{assert.equal(remote.enabled,false,'mapping saved before sales resume');mapped=rows;});
+ assert.equal(remote.enabled,true);assert.equal(remote.parameters[0].variants.length,3);
+ assert.equal(remote.parameters[0].variants.find(v=>v.variant_id===10).name[0].value,'Two USD');
+ assert.equal(remote.parameters[0].variants.find(v=>v.variant_id===11).visible,false);
+ assert.equal(mapped[1].variantId,12);
+ const savedOptions=changedOptions.map(o=>{const r=mapped.find(r=>r.id===o.id);return {...o,productId:r.productId,optionId:r.optionId,variantId:r.variantId};});
+ const repeat=pricing.buildDenominationPlan(savedOptions,remote,'5');assert(!repeat.rows.some(r=>r.change==='Add'));
+ assert.equal(pricing.buildPricePlan(savedOptions,[remote],'5').rows.length,2,'price sync accepts retired hidden variants');
+ const count=remote.parameters[0].variants.length;await api.writeDenominationPlan(repeat,async()=>{});assert.equal(remote.parameters[0].variants.length,count);
+ await api.writePriceSnapshots([before],{restore:true});assert.equal(remote.parameters[0].variants.length,3);assert.equal(remote.parameters[0].variants[2].visible,false);assert.equal(remote.parameters[0].variants[1].visible,true);
+ remote=structuredClone(before);failCreate=true;
+ await assert.rejects(()=>api.writeDenominationPlan(denominationPlan,async()=>{throw Error('should not map');}));assert.equal(remote.enabled,false);
+ failCreate=false;await api.writePriceSnapshots([before],{restore:true});assert.equal(remote.enabled,true);assert.equal(remote.parameters[0].variants[2].visible,false,'uncertain creation hidden during recovery');
+ const retry=pricing.buildDenominationPlan(changedOptions,remote,'5');assert.equal(retry.rows[1].variantId,12,'retry reuses recovered variant instead of creating a duplicate');
+ await assert.rejects(()=>api.writeDenominationPlan(retry,async()=>{throw Error('mapping save failed');}));assert.equal(remote.enabled,false,'mapping failure cannot reopen sales');
  global.fetch=oldFetch;
  const {PGlite}=require(path.join(process.env.TEMP,'igp-dp-postgres-test/node_modules/@electric-sql/pglite'));
  const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role;create table public.products(id uuid primary key);');

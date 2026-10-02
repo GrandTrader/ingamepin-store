@@ -4,8 +4,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildPricePlan, type PricePlan, type PriceSnapshot } from "@/lib/digiseller-pricing";
-import { readPriceSnapshots, targetPriceSnapshots, writePriceSnapshots } from "@/lib/digiseller-price-api";
+import { buildPricePlan, buildDenominationPlan, type PricePlan, type PriceSnapshot, type PriceRow } from "@/lib/digiseller-pricing";
+import { readPriceSnapshots, targetPriceSnapshots, writePriceSnapshots, writeDenominationPlan } from "@/lib/digiseller-price-api";
 
 async function requireAdmin() {
   const session = await createClient();
@@ -16,18 +16,39 @@ async function requireAdmin() {
   return user.id;
 }
 
-async function planFor(productId: string, percent: string) {
+async function planFor(productId: string, percent: string, mode: 'prices'|'denominations' = 'prices') {
+  if (mode !== 'prices' && mode !== 'denominations') throw new Error('Choose a valid sync type.');
   const admin = createAdminClient();
-  const result = await admin.from('product_options').select('id,option_name,selling_price,digiseller_product_id,digiseller_option_id,digiseller_variant_id')
-    .eq('product_id',productId).eq('is_active',true).eq('is_custom_value',false).order('id');
+  let query = admin.from('product_options').select('id,option_name,selling_price,is_active,digiseller_product_id,digiseller_option_id,digiseller_variant_id')
+    .eq('product_id',productId).eq('is_custom_value',false);
+  if (mode === 'prices') query = query.eq('is_active',true);
+  const result = await query.order('id');
   if (result.error) throw new Error("Unable to read this product's denominations.");
-  const options = (result.data ?? []).map(o => ({id:o.id,name:o.option_name,price:Number(o.selling_price),productId:o.digiseller_product_id === null ? null : Number(o.digiseller_product_id),optionId:o.digiseller_option_id === null ? null : Number(o.digiseller_option_id),variantId:o.digiseller_variant_id === null ? null : Number(o.digiseller_variant_id)}));
-  const ids = [...new Set(options.map(o => o.productId).filter((id): id is number => id !== null))].sort((a,b)=>a-b);
-  if (!ids.length || options.some(o => o.productId === null)) throw new Error("Connect every active denomination to DigiSeller first.");
+  const options = (result.data ?? []).filter(o=>mode==='prices'||o.is_active).map(o => ({id:o.id,name:o.option_name,price:Number(o.selling_price),productId:o.digiseller_product_id === null ? null : Number(o.digiseller_product_id),optionId:o.digiseller_option_id === null ? null : Number(o.digiseller_option_id),variantId:o.digiseller_variant_id === null ? null : Number(o.digiseller_variant_id)}));
+  const ids = [...new Set((result.data ?? []).map(o=>o.digiseller_product_id).filter(id=>id!==null).map(Number))].sort((a,b)=>a-b);
+  if (!ids.length || (mode==='prices' && options.some(o => o.productId === null))) throw new Error("Connect the product to DigiSeller first. Use denomination sync to add unmatched denominations.");
+  if (mode==='denominations' && ids.length!==1) throw new Error('Denomination sync requires one connected DigiSeller listing for this product.');
   if (ids.length > 5) throw new Error("This tool supports up to five connected DigiSeller listings per website product.");
   const shared = await admin.from('product_options').select('id',{head:true,count:'exact'}).in('digiseller_product_id',ids).neq('product_id',productId);
   if (shared.error || shared.count) throw new Error("A DigiSeller listing is shared with another website product. Give each website product its own listing before updating prices.");
-  return buildPricePlan(options,await readPriceSnapshots(ids),percent);
+  const snapshots=await readPriceSnapshots(ids);
+  return mode==='denominations' ? buildDenominationPlan(options,snapshots[0],percent) : buildPricePlan(options,snapshots,percent);
+}
+
+async function saveDenominationMappings(productId:string, plan:PricePlan, rows:PriceRow[]) {
+  const admin=createAdminClient();
+  for (const row of rows) {
+    const original=plan.websiteOptions?.find(o=>o.id===row.id);
+    if (!original || row.variantId===null) throw new Error('Missing denomination mapping.');
+    // Check the saved denomination has not changed while remote writes ran.
+    let query=admin.from('product_options').update({digiseller_product_id:row.productId,digiseller_option_id:row.optionId,digiseller_variant_id:row.variantId})
+      .eq('id',row.id).eq('product_id',productId).eq('is_active',true).eq('is_custom_value',false).eq('option_name',original.name).eq('selling_price',original.price);
+    for (const [field,value] of [['digiseller_product_id',original.productId],['digiseller_option_id',original.optionId],['digiseller_variant_id',original.variantId]] as const) {
+      query=value===null?query.is(field,null):query.eq(field,value);
+    }
+    const saved=await query.select('id');
+    if (saved.error || saved.data?.length!==1) throw new Error('A website denomination changed during sync. Preview again after recovery.');
+  }
 }
 
 function sign(plan: PricePlan, productId: string, adminId: string, expires: number) {
@@ -36,10 +57,10 @@ function sign(plan: PricePlan, productId: string, adminId: string, expires: numb
   return createHmac('sha256',key).update(JSON.stringify({plan,productId,adminId,expires})).digest('hex');
 }
 
-export async function previewDigiSellerPrices(productId: string, percent: string) {
+export async function previewDigiSellerPrices(productId: string, percent: string, mode:'prices'|'denominations'='prices') {
   const userId=await requireAdmin();
   try {
-    const plan=await planFor(productId,percent);
+    const plan=await planFor(productId,percent,mode);
     const expires=Date.now()+10*60*1000;
     return {rows:plan.rows,approval:`${expires}.${sign(plan,productId,userId,expires)}`,error:null};
   } catch (error) {
@@ -47,7 +68,7 @@ export async function previewDigiSellerPrices(productId: string, percent: string
   }
 }
 
-export async function applyDigiSellerPrices(productId: string, percent: string, approval: string) {
+export async function applyDigiSellerPrices(productId: string, percent: string, approval: string, mode:'prices'|'denominations'='prices') {
   const userId=await requireAdmin();
   const admin=createAdminClient();
   let token: string | null=null;
@@ -58,7 +79,7 @@ export async function applyDigiSellerPrices(productId: string, percent: string, 
     const [expiry,signature]=approval.split('.');
     const expires=Number(expiry);
     if (!Number.isSafeInteger(expires) || expires<Date.now() || expires>Date.now()+10*60*1000 || !/^[a-f0-9]{64}$/.test(signature ?? '')) throw new Error("Preview the prices again before applying them.");
-    plan=await planFor(productId,percent);
+    plan=await planFor(productId,percent,mode);
     if (!timingSafeEqual(Buffer.from(signature,'hex'),Buffer.from(sign(plan,productId,userId,expires),'hex'))) throw new Error("Prices or denomination matches changed. Preview again before applying.");
     const lock=await admin.rpc('begin_digiseller_price_sync',{p_product_id:productId,p_snapshot:plan.products.map(p=>p.before)});
     if (lock.error || !lock.data) throw new Error(lock.error?.message || 'Unable to start the price update.');
@@ -66,7 +87,10 @@ export async function applyDigiSellerPrices(productId: string, percent: string, 
     const current=await readPriceSnapshots(plan.products.map(p=>p.before.id));
     if (JSON.stringify(current)!==JSON.stringify(plan.products.map(p=>p.before))) throw new Error("DigiSeller prices changed. Preview again before applying.");
     started=true;
-    await writePriceSnapshots(targetPriceSnapshots(plan));
+    if (plan.mode==='denominations') {
+      const approvedPlan=plan;
+      await writeDenominationPlan(plan,rows=>saveDenominationMappings(productId,approvedPlan,rows));
+    } else await writePriceSnapshots(targetPriceSnapshots(plan));
     pricesWritten=true;
     const finish=await admin.rpc('finish_digiseller_price_sync',{p_product_id:productId,p_token:token,p_percent:plan.percent,p_success:true,p_restored:false});
     if (finish.error) throw new Error('Could not save the completed price update.');
@@ -82,7 +106,7 @@ export async function applyDigiSellerPrices(productId: string, percent: string, 
     let restored=!started;
     if (token && plan) {
       if (started) {
-        try { await writePriceSnapshots(plan.products.map(p=>p.before)); restored=true; } catch { restored=false; }
+        try { await writePriceSnapshots(plan.products.map(p=>p.before),{restore:true}); restored=true; } catch { restored=false; }
       }
       const finished=await admin.rpc('finish_digiseller_price_sync',{p_product_id:productId,p_token:token,p_percent:0,p_success:false,p_restored:restored,p_error:restored ? 'Update failed; previous prices retained.' : 'Restore previous prices before another update.'});
       if (finished.error) restored=false;
@@ -102,7 +126,7 @@ export async function restoreDigiSellerPrices(productId: string) {
   try {
     const saved=await admin.from('digiseller_price_settings').select('recovery_snapshot').eq('product_id',productId).single();
     if (saved.error || !Array.isArray(saved.data?.recovery_snapshot)) throw new Error('Unable to read the previous prices.');
-    await writePriceSnapshots(saved.data.recovery_snapshot as PriceSnapshot[]);
+    await writePriceSnapshots(saved.data.recovery_snapshot as PriceSnapshot[],{restore:true});
     success=true;
   } catch { success=false; }
   const finish=await admin.rpc('finish_digiseller_price_sync',{p_product_id:productId,p_token:lock.data,p_percent:0,p_success:false,p_restored:success,p_error:success ? null : 'Previous prices still need restoring.'});
