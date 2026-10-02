@@ -9,6 +9,7 @@ const tabs = [
   ["product-options", "Product options"],
   ["discounted-customers", "Discounted customers"],
   ["stock", "Stock"],
+  ["digiseller", "DigiSeller"],
   ["supplier", "Supplier"],
   ["customer-information", "Customer information"],
   ["sold-products", "Sold products"],

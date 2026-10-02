@@ -16,7 +16,7 @@ async function requireAdmin() {
 }
 
 export async function saveDigiSellerMapping(productId: string, formData: FormData) {
-  const path = `/admin/products/${productId}/edit/stock`;
+  const path = `/admin/products/${productId}/edit/digiseller`;
   await requireAdmin();
 
   const admin = createAdminClient();
@@ -64,7 +64,7 @@ export async function saveDigiSellerMapping(productId: string, formData: FormDat
 }
 
 export async function createDigiSellerProduct(productId: string, formData: FormData) {
-  const path = `/admin/products/${productId}/edit/stock`;
+  const path = `/admin/products/${productId}/edit/digiseller`;
   await requireAdmin();
   let createdProductId: number;
   try {

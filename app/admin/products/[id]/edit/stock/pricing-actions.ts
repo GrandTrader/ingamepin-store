@@ -94,13 +94,13 @@ export async function applyDigiSellerPrices(productId: string, percent: string, 
     pricesWritten=true;
     const finish=await admin.rpc('finish_digiseller_price_sync',{p_product_id:productId,p_token:token,p_percent:plan.percent,p_success:true,p_restored:false});
     if (finish.error) throw new Error('Could not save the completed price update.');
-    revalidatePath(`/admin/products/${productId}/edit/stock`);
+    revalidatePath(`/admin/products/${productId}/edit/digiseller`);
     return {success:true,message:`Updated ${plan.rows.length} denominations on DigiSeller.`,needsRecovery:false};
   } catch (error) {
     // A timed-out finish RPC may already have committed. Do not undo verified
     // live prices after that point; the saved backup allows explicit recovery.
     if (pricesWritten) {
-      revalidatePath(`/admin/products/${productId}/edit/stock`);
+      revalidatePath(`/admin/products/${productId}/edit/digiseller`);
       return {success:false,message:'DigiSeller prices were updated and verified, but saving the sync status could not be confirmed. Refresh this page to check the saved status before another update.',needsRecovery:true};
     }
     let restored=!started;
@@ -111,7 +111,7 @@ export async function applyDigiSellerPrices(productId: string, percent: string, 
       const finished=await admin.rpc('finish_digiseller_price_sync',{p_product_id:productId,p_token:token,p_percent:0,p_success:false,p_restored:restored,p_error:restored ? 'Update failed; previous prices retained.' : 'Restore previous prices before another update.'});
       if (finished.error) restored=false;
     }
-    revalidatePath(`/admin/products/${productId}/edit/stock`);
+    revalidatePath(`/admin/products/${productId}/edit/digiseller`);
     const message=error instanceof Error ? error.message : 'Unable to update DigiSeller prices.';
     return {success:false,message:token ? (restored ? `${message} Previous prices have been retained.` : 'The update could not finish. Use Restore previous prices before another update. Affected listings may be paused.') : message,needsRecovery:!!token && !restored};
   }
@@ -131,6 +131,6 @@ export async function restoreDigiSellerPrices(productId: string) {
   } catch { success=false; }
   const finish=await admin.rpc('finish_digiseller_price_sync',{p_product_id:productId,p_token:lock.data,p_percent:0,p_success:false,p_restored:success,p_error:success ? null : 'Previous prices still need restoring.'});
   if (finish.error) success=false;
-  revalidatePath(`/admin/products/${productId}/edit/stock`);
+  revalidatePath(`/admin/products/${productId}/edit/digiseller`);
   return {success,message:success ? 'Previous DigiSeller prices restored.' : 'Unable to restore all prices. Please retry; affected listings may be paused.',needsRecovery:!success};
 }
