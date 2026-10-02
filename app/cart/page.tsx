@@ -3,6 +3,8 @@
 import { formatFaceValue } from "@/lib/face-value";
 import { validateCartStock } from "@/lib/cart-stock";
 import Link from "next/link";
+import LocalizedProductImage from "@/components/LocalizedProductImage";
+import styles from "./Cart.module.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -12,6 +14,7 @@ type CartItem = {
   productOptionId?: string;
   categorySlug: string;
   productName: string;
+  image?: string | null;
   amount: number;
   denomination?: number | string;
   denominationCurrency?: string;
@@ -357,13 +360,18 @@ export default function CartPage() {
                 >
                   <div className="flex gap-3 sm:gap-5">
                     <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-3xl sm:h-24 sm:w-24 sm:rounded-2xl sm:text-4xl">
-                      🎮
+                      <LocalizedProductImage
+                        imageUrl={item.image ?? null}
+                        alt={item.productName}
+                        className="h-full w-full rounded-[inherit] object-contain p-1"
+                        fallback={<span aria-label={item.productName}>{item.productName.charAt(0).toUpperCase()}</span>}
+                      />
                     </div>
 
                     <div className="flex-1">
                       <div className="flex justify-between gap-2 sm:gap-4">
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-widest text-cyan-400">
+                          <p className={`${styles.productLabel} text-xs font-bold uppercase tracking-widest`}>
                             Digital Product
                           </p>
 
@@ -388,7 +396,7 @@ export default function CartPage() {
                             </p>
                           ))}
                           {item.productId && Number(customerDiscounts[item.productId] ?? 0) > 0 && (
-                            <p className="mt-2 inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-300">
+                            <p className={styles.discountBadge}>
                               Your {customerDiscounts[item.productId]}% discount
                             </p>
                           )}
@@ -424,7 +432,7 @@ export default function CartPage() {
                                 item.quantity <= (item.minQuantity ?? 1)
                               }
                               aria-label="Decrease quantity"
-                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-slate-950 text-xl font-bold transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+                              className={styles.quantityButton}
                             >
                               −
                             </button>
@@ -470,7 +478,7 @@ export default function CartPage() {
                                   item.maxQuantity
                               }
                               aria-label="Increase quantity"
-                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-slate-950 text-xl font-bold transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+                              className={styles.quantityButton}
                             >
                               +
                             </button>
@@ -530,7 +538,7 @@ export default function CartPage() {
                 <div className="flex items-center justify-between text-sm text-slate-400">
                   <span>Delivery</span>
 
-                  <span className="font-bold text-emerald-400">
+                  <span className={`${styles.positiveText} font-bold`}>
                     Email Delivery
                   </span>
                 </div>
@@ -538,7 +546,7 @@ export default function CartPage() {
 
               <div className="mt-6 border-t border-white/10 pt-6">
                 {discountAmount > 0 && (
-                  <div className="mb-4 flex items-center justify-between text-sm text-emerald-300">
+                  <div className={`${styles.positiveText} mb-4 flex items-center justify-between gap-3 text-sm`}>
                     <span>Your product discounts</span>
                     <span className="font-bold">-${discountAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>

@@ -1,2 +1,36 @@
 .discount { display:flex; justify-content:space-between; gap:8px; margin-top:4px; font-size:11px; font-weight:600; color:#047857; }
 :global(html[data-store-theme="dark"]) .discount { color:#6ee7b7; }
+
+.message {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.message.success {
+  color: #065f46;
+  -webkit-text-fill-color: #065f46;
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+.message.error {
+  color: #991b1b;
+  -webkit-text-fill-color: #991b1b;
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+:global(html[data-store-theme="dark"]) .message.success {
+  color: #a7f3d0;
+  -webkit-text-fill-color: #a7f3d0;
+  background: #064e3b;
+  border-color: #34d399;
+}
+:global(html[data-store-theme="dark"]) .message.error {
+  color: #fecaca;
+  -webkit-text-fill-color: #fecaca;
+  background: #450a0a;
+  border-color: #f87171;
+}

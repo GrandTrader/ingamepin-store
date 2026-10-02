@@ -1,11 +1,13 @@
 "use client";
 import {useRef,useState} from "react";
+import styles from "./RangePurchaseForm.module.css";
+import LocalizedProductImage from "@/components/LocalizedProductImage";
 import {useStorePreferences} from "@/components/StorePreferences";
 import {useRouter} from "next/navigation";
 import {rangePrice,type ProductRange} from "@/lib/product-range";
 import {validateCartStock} from "@/lib/cart-stock";
 type Field={id:string;label:string;field_type:string;is_required:boolean;placeholder?:string|null};
-type RangeProduct={id:string;name:string;slug:string;image_url?:string|null;minimum_quantity:number;maximum_quantity:number|null;is_bulk_order:boolean};
+type RangeProduct={id:string;name:string;slug:string;image_url?:string|null;image_url_ru?:string|null;name_ru?:string|null;minimum_quantity:number;maximum_quantity:number|null;is_bulk_order:boolean};
 export default function RangePurchaseForm({range,product,discountPercent=0,affiliatePercent=0,fields=[]}:{fields?:Field[];affiliatePercent?:number;range:ProductRange;product:RangeProduct;discountPercent?:number}){
  const [answers,setAnswers]=useState<Record<string,string>>({});
  const router=useRouter(),lock=useRef(false);
@@ -29,17 +31,18 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
   }catch(e){setError(e instanceof Error?e.message:"Unable to add this denomination.");}finally{lock.current=false;setBusy(false);}
  }
  if(!range.enabled)return null;
- return <section className="my-4 rounded-xl border border-cyan-200 bg-white p-4 text-slate-900" aria-label={`Range purchase for ${product.name}`}>
-  <div className="flex flex-wrap items-end gap-3">
-   <label className="text-sm">Denomination ({range.currency})<input className="mt-1 block w-40 rounded border border-slate-300 px-3 py-2" aria-label={`Denomination for ${product.name}`} type="number" inputMode="decimal" placeholder={`${range.minimum}–${range.maximum}`} title={`Allowed range: ${range.minimum}–${range.maximum} ${range.currency}; increments of ${range.step}`} min={range.minimum} max={range.maximum} step={range.step} value={value} onChange={e=>{setValue(e.target.value);setError("");}}/></label>
-   <label className="text-sm">Quantity<input className="mt-1 block w-24 rounded border border-slate-300 px-3 py-2" aria-label={`Range quantity for ${product.name}`} type="number" min={Math.max(1,product.minimum_quantity)} max={product.is_bulk_order?undefined:product.maximum_quantity??undefined} step="1" value={quantity} onChange={e=>setQuantity(e.target.value)}/></label>
-   <div className="text-sm" aria-live="polite"><strong>{price===null?"—":money(price*(1-discountPercent/100))} / code</strong><p>Total: {price===null?"—":money(price*(1-discountPercent/100)*(Number(quantity)||0))}</p></div>
-   <button type="button" disabled={busy} className="rounded-lg border border-blue-600 px-4 py-2 font-bold text-blue-600 disabled:opacity-50" onClick={()=>purchase(false)}>Add to cart</button>
-   <button type="button" disabled={busy} className="rounded-lg bg-blue-600 px-4 py-2 font-bold text-white disabled:opacity-50" onClick={()=>purchase(true)}>Buy now</button>
+ return <section className={styles.form} aria-label={`Range purchase for ${product.name}`}>
+  <div className={styles.controls}>
+   <LocalizedProductImage imageUrl={product.image_url??null} imageUrlRu={product.image_url_ru} alt={product.name} altRu={product.name_ru} className={styles.productIcon} fallback={<span className={styles.productIconFallback} aria-hidden="true">{product.name.charAt(0).toUpperCase()}</span>}/>
+   <label className={styles.label}>Denomination ({range.currency})<input className={styles.denomination} aria-label={`Denomination for ${product.name}`} type="number" inputMode="decimal" placeholder={`${range.minimum}–${range.maximum}`} title={`Allowed range: ${range.minimum}–${range.maximum} ${range.currency}; increments of ${range.step}`} min={range.minimum} max={range.maximum} step={range.step} value={value} onChange={e=>{setValue(e.target.value);setError("");}}/></label>
+   <label className={styles.label}>Quantity<input className={styles.quantity} aria-label={`Range quantity for ${product.name}`} type="number" min={Math.max(1,product.minimum_quantity)} max={product.is_bulk_order?undefined:product.maximum_quantity??undefined} step="1" value={quantity} onChange={e=>setQuantity(e.target.value)}/></label>
+   <div className={styles.price} aria-live="polite"><strong>{price===null?"—":money(price*(1-discountPercent/100))} / code</strong><p>Total: {price===null?"—":money(price*(1-discountPercent/100)*(Number(quantity)||0))}</p></div>
+   <button type="button" disabled={busy} className={styles.addButton} onClick={()=>purchase(false)}>Add to cart</button>
+   <button type="button" disabled={busy} className={styles.buyButton} onClick={()=>purchase(true)}>Buy now</button>
   </div>
-  {range.step>1&&<p className="mt-2 text-xs text-slate-500">Increments of {range.step} {range.currency}</p>}
-  {fields.length>0&&Array.from({length:Math.min(30,Math.max(1,Number(quantity)||1))},(_,index)=><div key={index} className="mt-3 grid gap-2"><p className="font-bold">Code {index+1} details</p>{fields.map(field=><label key={field.id} className="text-sm">{field.label}{field.is_required?" *":""}<input className="mt-1 block w-full rounded border px-3 py-2" maxLength={500} placeholder={field.placeholder??""} value={answers[`${index}:${field.id}`]??""} onChange={e=>setAnswers({...answers,[`${index}:${field.id}`]:e.target.value})}/></label>)}</div>)}
-  {range.delivery_mode==="MANUAL"&&<p className="mt-2 text-xs text-slate-500">Codes are delivered by our team after payment.</p>}
-  {error&&<p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}{message&&<p role="status" className="mt-2 text-sm text-green-700">{message}</p>}
+  {range.step>1&&<p className={styles.hint}>Increments of {range.step} {range.currency}</p>}
+  {fields.length>0&&Array.from({length:Math.min(30,Math.max(1,Number(quantity)||1))},(_,index)=><div key={index} className="mt-3 grid gap-2"><p className="font-bold">Code {index+1} details</p>{fields.map(field=><label key={field.id} className={styles.label}>{field.label}{field.is_required?" *":""}<input className={styles.detailInput} maxLength={500} placeholder={field.placeholder??""} value={answers[`${index}:${field.id}`]??""} onChange={e=>setAnswers({...answers,[`${index}:${field.id}`]:e.target.value})}/></label>)}</div>)}
+  {range.delivery_mode==="MANUAL"&&<p className={styles.hint}>Codes are delivered by our team after payment.</p>}
+  {error&&<p role="alert" className={styles.error}>{error}</p>}{message&&<p role="status" className={styles.success}>{message}</p>}
  </section>;
 }

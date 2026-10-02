@@ -1,0 +1,40 @@
+.discountBadge {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px solid #6ee7b7;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #065f46;
+  -webkit-text-fill-color: #065f46;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+.positiveText { color: #047857; -webkit-text-fill-color: #047857; }
+.quantityButton {
+  display: flex;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.quantityButton:not(:disabled):hover { background: #e2e8f0; border-color: #0891b2; }
+.quantityButton:disabled { background: #eef2f7; border-color: #cbd5e1; color: #475569; -webkit-text-fill-color: #475569; opacity: 1 !important; cursor: not-allowed; }
+:global(html[data-store-theme="dark"]) .discountBadge { background: #064e3b; color: #a7f3d0; -webkit-text-fill-color: #a7f3d0; border-color: #34d399; }
+:global(html[data-store-theme="dark"]) .positiveText { color: #6ee7b7; -webkit-text-fill-color: #6ee7b7; }
+:global(html[data-store-theme="dark"]) .quantityButton { background: #142033; color: #edf3fc; -webkit-text-fill-color: #edf3fc; border-color: #64748b; }
+:global(html[data-store-theme="dark"]) .quantityButton:not(:disabled):hover { background: #1e3a50; border-color: #22d3ee; }
+:global(html[data-store-theme="dark"]) .quantityButton:disabled { background: #1b2a40; color: #a5b5ca; -webkit-text-fill-color: #a5b5ca; border-color: #475569; }
+
+.productLabel { color: #155e75; -webkit-text-fill-color: #155e75; }
+:global(html[data-store-theme="dark"]) .productLabel { color: #67e8f9; -webkit-text-fill-color: #67e8f9; }
