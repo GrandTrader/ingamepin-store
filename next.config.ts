@@ -31,8 +31,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingIncludes: {
-    "/admin/products": ["./node_modules/flag-icons/flags/4x3/*.svg"],
-    "/admin/products/**": ["./node_modules/flag-icons/flags/4x3/*.svg"],
+    "/admin/products": ["./node_modules/flag-icons/flags/4x3/*.svg", "./lib/assets/fonts/*"],
+    "/admin/products/**": ["./node_modules/flag-icons/flags/4x3/*.svg", "./lib/assets/fonts/*"],
   },
   reactStrictMode: true,
   experimental: {
