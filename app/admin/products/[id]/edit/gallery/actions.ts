@@ -38,11 +38,13 @@ export async function saveProductGallery(productId: string, formData: FormData) 
   if (result.error) redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
   let syncedCount = 0;
   if (imageUrl) {
+    const productRegion = await createAdminClient().from("products").select("region").eq("id", productId).single();
+    if (productRegion.error) redirect(`${path}?error=${encodeURIComponent("Gallery saved, but unable to load the product region for DigiSeller.")}`);
     const mappings = await createAdminClient().from("product_options").select("digiseller_product_id").eq("product_id", productId).not("digiseller_product_id", "is", null);
     if (mappings.error) redirect(`${path}?error=${encodeURIComponent(mappings.error.message)}`);
     const productIds = [...new Set((mappings.data ?? []).map((row) => Number(row.digiseller_product_id)).filter((id) => Number.isSafeInteger(id) && id > 0))];
     try {
-      for (const digisellerProductId of productIds) await uploadDigiSellerProductImage(digisellerProductId, imageUrl);
+      for (const digisellerProductId of productIds) await uploadDigiSellerProductImage(digisellerProductId, imageUrl, productRegion.data.region);
       syncedCount = productIds.length;
     } catch (error) {
       redirect(`${path}?error=${encodeURIComponent(`Gallery saved, but DigiSeller sync failed: ${error instanceof Error ? error.message : "Upload failed"}`)}`);
@@ -62,7 +64,7 @@ export async function syncProductGalleryToDigiSeller(productId: string) {
   if (!access.data) redirect("/admin/login?error=Access denied");
   const admin = createAdminClient();
   const [product, mappings] = await Promise.all([
-    admin.from("products").select("image_url").eq("id", productId).single(),
+    admin.from("products").select("image_url, region").eq("id", productId).single(),
     admin.from("product_options").select("digiseller_product_id").eq("product_id", productId).not("digiseller_product_id", "is", null),
   ]);
   if (product.error || !product.data?.image_url) redirect(`${path}?error=${encodeURIComponent("Save a main product image first.")}`);
@@ -70,7 +72,7 @@ export async function syncProductGalleryToDigiSeller(productId: string) {
   const productIds = [...new Set((mappings.data ?? []).map((row) => Number(row.digiseller_product_id)).filter((id) => Number.isSafeInteger(id) && id > 0))];
   if (!productIds.length) redirect(`${path}?error=${encodeURIComponent("Connect this product to DigiSeller in the Stock tab first.")}`);
   try {
-    await Promise.all(productIds.map((digisellerProductId) => uploadDigiSellerProductImage(digisellerProductId, product.data.image_url)));
+    await Promise.all(productIds.map((digisellerProductId) => uploadDigiSellerProductImage(digisellerProductId, product.data.image_url, product.data.region)));
   } catch (error) {
     redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Unable to sync the image to DigiSeller.")}`);
   }

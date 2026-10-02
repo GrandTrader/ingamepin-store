@@ -60,28 +60,28 @@ export async function syncAllProductImagesToDigiSeller() {
 
   const admin = createAdminClient();
   const [products, mappings] = await Promise.all([
-    admin.from("products").select("id, image_url").not("image_url", "is", null),
+    admin.from("products").select("id, image_url, region").not("image_url", "is", null),
     admin.from("product_options").select("product_id, digiseller_product_id").not("digiseller_product_id", "is", null),
   ]);
   if (products.error) redirect(`${path}?error=${encodeURIComponent(products.error.message)}`);
   if (mappings.error) redirect(`${path}?error=${encodeURIComponent(mappings.error.message)}`);
 
-  const images = new Map((products.data ?? []).map((product) => [product.id, product.image_url]));
-  const targets = new Map<number, string>();
+  const images = new Map((products.data ?? []).map((product) => [product.id, { imageUrl: product.image_url, region: product.region }]));
+  const targets = new Map<number, { imageUrl: string; region: string | null }>();
   for (const mapping of mappings.data ?? []) {
     const digisellerProductId = Number(mapping.digiseller_product_id);
-    const imageUrl = images.get(mapping.product_id);
-    if (Number.isSafeInteger(digisellerProductId) && digisellerProductId > 0 && imageUrl) {
-      targets.set(digisellerProductId, imageUrl);
+    const image = images.get(mapping.product_id);
+    if (Number.isSafeInteger(digisellerProductId) && digisellerProductId > 0 && image?.imageUrl) {
+      targets.set(digisellerProductId, { imageUrl: image.imageUrl, region: image.region });
     }
   }
   if (!targets.size) redirect(`${path}?error=${encodeURIComponent("No connected DigiSeller products with images were found.")}`);
 
   let synced = 0;
   const failures: string[] = [];
-  for (const [digisellerProductId, imageUrl] of targets) {
+  for (const [digisellerProductId, image] of targets) {
     try {
-      await uploadDigiSellerProductImage(digisellerProductId, imageUrl);
+      await uploadDigiSellerProductImage(digisellerProductId, image.imageUrl, image.region);
       synced += 1;
     } catch (error) {
       failures.push(`${digisellerProductId}: ${error instanceof Error ? error.message : "Upload failed"}`);

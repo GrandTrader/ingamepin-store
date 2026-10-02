@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
-import sharp from "sharp";
+import { renderDigiSellerImage } from "./digiseller-image";
 
 type DigiSellerLoginResponse = {
   retval?: number;
@@ -346,7 +346,7 @@ export async function updateDigiSellerProductName(productId: number, name: strin
   });
 }
 
-export async function uploadDigiSellerProductImage(productId: number, imageUrl: string) {
+export async function uploadDigiSellerProductImage(productId: number, imageUrl: string, region?: string | null) {
   const { token } = await getDigiSellerToken();
   const source = await fetch(imageUrl, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
   if (!source.ok) throw new Error(`Unable to download the website image (${source.status}).`);
@@ -354,11 +354,7 @@ export async function uploadDigiSellerProductImage(productId: number, imageUrl: 
   if (!contentType.startsWith("image/")) throw new Error("The saved product URL does not return an image.");
   const bytes = await source.arrayBuffer();
   if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024) throw new Error("The product image must be between 1 byte and 10 MB.");
-  const jpeg = await sharp(Buffer.from(bytes))
-    .rotate()
-    .flatten({ background: "#ffffff" })
-    .jpeg({ quality: 90, chromaSubsampling: "4:4:4" })
-    .toBuffer();
+  const jpeg = await renderDigiSellerImage(Buffer.from(bytes), region);
   if (jpeg.byteLength > 10 * 1024 * 1024) throw new Error("The converted product image is larger than 10 MB.");
   const form = new FormData();
   form.append("file", new Blob([jpeg], { type: "image/jpeg" }), `product-${productId}.jpg`);
