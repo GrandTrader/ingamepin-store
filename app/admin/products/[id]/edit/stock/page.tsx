@@ -13,6 +13,7 @@ import DigiSellerConnection from "./DigiSellerConnection";
 import { supplierProductIds } from "@/lib/definiteplay-fulfillment";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export default async function ProductStockPage({ params, searchParams }: {
   params: Promise<{ id: string }>;

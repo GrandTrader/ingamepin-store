@@ -1,0 +1,56 @@
+const fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),assert=require('node:assert/strict');
+function load(file,imports={}){const exports={};const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new Function('require','exports',code)(name=>name in imports?imports[name]:require(name),exports);return exports;}
+(async()=>{
+ const pricing=load('lib/digiseller-pricing.ts');
+ const variants=[{variant_id:10,name:[{locale:'en-US',value:'2 USD'}],type:'priceplus',rate:0,is_default:true,visible:true,order:1},{variant_id:11,name:[{locale:'en-US',value:'5 USD'}],type:'priceplus',rate:3,is_default:false,visible:true,order:2}];
+ const before={id:100,base:2,currency:'USD',enabled:true,parameters:[{id:20,type:'radio',required:true,variants}]};
+ const options=[{id:'a',name:'2 USD',price:2.3,productId:100,optionId:20,variantId:10},{id:'b',name:'5 USD',price:5.75,productId:100,optionId:20,variantId:11}];
+ const plan=pricing.buildPricePlan(options,[before],'+5');assert.equal(plan.rows[0].next,2.42);assert.equal(plan.rows[1].next,6.04);
+ assert.equal(pricing.buildPricePlan(options,[before],'-2').rows[0].next,2.25);
+ assert.equal(pricing.adjustedPrice(10,5),10.5);assert.equal(pricing.adjustedPrice(10,-2),9.8);assert.equal(pricing.adjustedPrice(1,0.5),1.01);
+ for(const value of ['NaN','Infinity','','-100','1001','1.001','1e2'])assert.throws(()=>pricing.parsePriceAdjustment(value));
+ assert.throws(()=>pricing.adjustedPrice(.01,-99));
+ assert.throws(()=>pricing.buildPricePlan([{...options[0],productId:null}],[before],'5'));
+ assert.throws(()=>pricing.buildPricePlan([options[0]],[before],'5'));
+ assert.throws(()=>pricing.buildPricePlan([options[0],{...options[1],variantId:10}],[before],'5'));
+ assert.throws(()=>pricing.buildPricePlan(options,[{...before,currency:'RUB'}],'5'));
+ assert.throws(()=>pricing.buildPricePlan(options,[{...before,parameters:[...before.parameters,{id:21,type:'checkbox',required:false,variants:[]}]}],'5'));
+ let remote=structuredClone(before),writes=[],failVariant=false;
+ const oldFetch=global.fetch;
+ global.fetch=async(url,init)=>{
+  const route=new URL(url).pathname;
+  if(route==='/api/products/list')return Response.json([{id:100,id_seller:9,base_price:remote.base,base_currency:'WMZ'}]);
+  if(route==='/api/products/options/list/100')return Response.json({retval:0,content:[{id:20}]});
+  if(route==='/api/products/options/20')return Response.json({retval:0,content:remote.parameters[0]});
+  const body=JSON.parse(init.body);writes.push({route,body});
+  if(route==='/api/product/edit/base/100'){
+    if(body.enabled!==undefined)remote.enabled=body.enabled;
+    if(body.price){assert.equal(remote.enabled,false,'sales paused while changing prices');remote.base=body.price.price;}
+  }else if(route.startsWith('/api/products/options/20/variants/')){
+    assert.equal(remote.enabled,false);if(failVariant)throw Error('simulated connection failure');
+    const v=remote.parameters[0].variants.find(v=>v.variant_id===Number(route.split('/').pop()));Object.assign(v,{...body,is_default:body.default});delete v.default;
+  }else throw Error(route);
+  return Response.json({retval:0});
+ };
+ const api=load('lib/digiseller-price-api.ts',{'server-only':{},'./digiseller-pricing':pricing,'./digiseller-api':{getDigiSellerToken:async()=>({token:'test',sellerId:9}),listDigiSellerProducts:async()=>[{id:100,visible:remote.enabled}]}});
+ const targets=api.targetPriceSnapshots(plan);assert.equal(targets[0].base,2.42);assert.equal(targets[0].parameters[0].variants[1].rate,3.62);
+ await api.writePriceSnapshots(targets);assert.equal(remote.enabled,true);assert.equal(remote.base,2.42);assert.deepEqual(remote.parameters,targets[0].parameters);
+ const second=pricing.buildPricePlan(options,[remote],'5');assert.deepEqual(second.rows.map(r=>r.next),plan.rows.map(r=>r.next),'sync does not compound adjustment');
+ failVariant=true;await assert.rejects(()=>api.writePriceSnapshots([before]));assert.equal(remote.enabled,false,'failed write leaves sales paused');
+ failVariant=false;await api.writePriceSnapshots([before]);assert.deepEqual(remote,before,'restore retains names, IDs, visibility and original prices');
+ await api.writePriceSnapshots([{...before,enabled:false}]);assert.equal(remote.enabled,false,'originally hidden stays hidden');
+ global.fetch=oldFetch;
+ const {PGlite}=require(path.join(process.env.TEMP,'igp-dp-postgres-test/node_modules/@electric-sql/pglite'));
+ const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role;create table public.products(id uuid primary key);');
+ await db.exec(fs.readFileSync('supabase/migrations/20261003_030000_digiseller_price_settings.sql','utf8'));
+ const id='00000000-0000-4000-8000-000000000001';await db.query('insert into products values($1)',[id]);
+ const begin=async(recover=false)=>(await db.query('select begin_digiseller_price_sync($1,$2,$3) token',[id,JSON.stringify([before]),recover])).rows[0].token;
+ const token=await begin();await assert.rejects(()=>begin());await assert.rejects(()=>begin(true));
+ await assert.rejects(()=>db.query('select finish_digiseller_price_sync($1,$2,5,true,false)',[id,'00000000-0000-4000-8000-000000000002']));
+ await db.query('select finish_digiseller_price_sync($1,$2,5,true,false)',[id,token]);let row=(await db.query('select * from digiseller_price_settings')).rows[0];assert.equal(Number(row.adjustment_percent),5);assert.equal(row.recovery_snapshot,null);assert(row.last_synced_at);
+ const token2=await begin();await db.query("select finish_digiseller_price_sync($1,$2,0,false,false,'restore needed')",[id,token2]);await assert.rejects(()=>begin());
+ const recovery=await begin(true);await db.query('select finish_digiseller_price_sync($1,$2,0,false,true)',[id,recovery]);row=(await db.query('select * from digiseller_price_settings')).rows[0];assert.equal(row.recovery_snapshot,null);assert.equal(Number(row.adjustment_percent),5);
+ await begin();await db.exec("update digiseller_price_settings set started_at=now()-interval '16 minutes'");await assert.rejects(()=>begin());await begin(true);
+ await db.exec('set role anon');await assert.rejects(()=>db.query('select * from digiseller_price_settings'));await assert.rejects(()=>begin());await db.close();
+ console.log('PASS: markup/reduction, exact cents, invalid mappings, no compounding, paused sync, readback, rollback, hidden listings, database locks/recovery and access control. No live prices changed.');
+})().catch(e=>{console.error(e);process.exitCode=1});
