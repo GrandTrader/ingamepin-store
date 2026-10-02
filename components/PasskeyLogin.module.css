@@ -1,0 +1,57 @@
+/* Keep passkey colors independent of global utility-class theme overrides. */
+.button {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #0891b2;
+  border-radius: 12px;
+  background-color: #ecfeff;
+  color: #164e63;
+  -webkit-text-fill-color: currentColor;
+  padding: 12px 20px;
+  font-weight: 800;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: background-color 150ms, border-color 150ms;
+}
+
+.button:not(:disabled):hover {
+  background-color: #cffafe;
+  border-color: #0e7490;
+}
+
+.button:focus-visible {
+  outline: 3px solid #0891b2;
+  outline-offset: 3px;
+}
+
+/* Busy text stays legible instead of fading with the global disabled rule. */
+.button:disabled {
+  cursor: wait;
+  opacity: 1 !important;
+}
+
+.error {
+  margin-top: 12px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background-color: #fef2f2;
+  color: #991b1b;
+  padding: 12px;
+  font-size: 14px;
+}
+
+:global(html[data-store-theme="dark"]) .button {
+  background-color: #083344;
+  border-color: #22d3ee;
+  color: #cffafe;
+}
+
+:global(html[data-store-theme="dark"]) .button:not(:disabled):hover {
+  background-color: #164e63;
+}
+
+:global(html[data-store-theme="dark"]) .error {
+  background-color: #450a0a;
+  border-color: #f87171;
+  color: #fecaca;
+}

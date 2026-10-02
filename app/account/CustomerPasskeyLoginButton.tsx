@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import styles from "@/components/PasskeyLogin.module.css";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -55,11 +56,12 @@ export default function CustomerPasskeyLoginButton() {
         type="button"
         disabled={busy}
         onClick={signInWithPasskey}
-        className="w-full rounded-xl border border-cyan-500 px-5 py-3 font-black text-cyan-700 transition hover:bg-cyan-50 disabled:opacity-60"
+        className={styles.button}
+        aria-busy={busy}
       >
         {busy ? "Checking passkey..." : "Sign in with Passkey"}
       </button>
-      {message && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{message}</p>}
+      {message && <p role="alert" className={styles.error}>{message}</p>}
     </div>
   );
 }
