@@ -21,6 +21,6 @@ export function regionalFaceValue(items: FaceValueItem[], currency: string): num
 }
 
 export function exceedsRegionalLimit(previous: number, current: number, limit: number): boolean {
-  if (![previous, current, limit].every(Number.isFinite) || previous < 0 || current < 0 || limit <= 0) throw new Error("Invalid weekly purchase limit.");
+  if (![previous, current, limit].every(Number.isFinite) || previous < 0 || current < 0 || limit <= 0) throw new Error("Invalid purchase limit.");
   return Math.round(previous * 1000) + Math.round(current * 1000) > Math.round(limit * 1000);
 }

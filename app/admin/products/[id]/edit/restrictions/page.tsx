@@ -1,3 +1,4 @@
+import { purchaseResetPeriods, purchaseLimitMessage } from "@/lib/purchase-restriction";
 import { restrictionCurrencies } from "@/lib/purchase-restriction-currencies";
 import { hasInstantDelivery } from "@/lib/product-delivery";
 import ProductSettingsActions from "@/components/ProductSettingsActions";
@@ -11,7 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 import AdminSidebar from "../../../../AdminSidebar";
-import { saveProductRestriction } from "./actions";
+import { saveProductRestriction, exemptCustomerFromPurchaseRestriction, restoreCustomerPurchaseRestriction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
   if (!access.data) redirect("/admin/login?error=Access denied");
 
   const admin = createAdminClient();
-  const [productResult, restrictionResult, optionsResult] = await Promise.all([
+  const [productResult, restrictionResult, optionsResult, exemptionsResult] = await Promise.all([
     admin
       .from("products")
       .select("id, name, slug, delivery_type, stock_source, is_bulk_order, minimum_quantity, maximum_quantity, allowed_payment_methods, allowed_usdt_networks")
@@ -60,12 +61,21 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
       .eq("product_id", id)
       .eq("is_active", true)
       .order("sort_order"),
+    admin.from("product_purchase_restriction_exemptions").select("user_id").eq("product_id", id).order("created_at"),
   ]);
 
   if (productResult.error) throw new Error(`Unable to load product restrictions: ${productResult.error.message}`);
   if (!productResult.data) notFound();
   if (restrictionResult.error) throw new Error(`Unable to load purchase restriction: ${restrictionResult.error.message}`);
   if (optionsResult.error) throw new Error(`Unable to load product options: ${optionsResult.error.message}`);
+
+  const migrationPending = exemptionsResult.error?.code === "PGRST205" || exemptionsResult.error?.code === "42P01";
+  if (exemptionsResult.error && !migrationPending) throw new Error("Unable to load customer exemptions. Please retry.");
+  const exemptions = await Promise.all((exemptionsResult.data ?? []).map(async exemption => {
+    const customer = await admin.auth.admin.getUserById(exemption.user_id);
+    if (customer.error) throw new Error("Unable to load exempt customer details.");
+    return { userId: exemption.user_id, email: customer.data.user?.email ?? "Email unavailable" };
+  }));
 
   const product = productResult.data;
   const paypalychBlocked = Boolean(await getProductPaypalychRestriction(id));
@@ -90,6 +100,7 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
           {messages.success && <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">{messages.success}</p>}
           {messages.error && <p className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{messages.error}</p>}
 
+          {migrationPending && <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Database setup is pending. Apply the purchase restriction migration to enable daily/monthly periods and customer exemptions. Existing limits continue to work.</p>}
           <form action={saveProductRestriction} className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <input type="hidden" name="id" value={id} />
 
@@ -138,13 +149,13 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
 
             {(hasInstantDelivery(product) || rule?.is_enabled) ? (
               <section className="mt-7 border-t border-slate-200 pt-6">
-                <label className="flex items-center gap-3 font-black"><input type="checkbox" name="is_enabled" defaultChecked={rule?.is_enabled ?? false} className="h-5 w-5 accent-blue-600" />Weekly purchase restriction ON</label><p className="mt-2 text-sm text-slate-500">Counts gift-card face value only for denominations in the selected currency. For example, a 500 USD limit allows 500 USD of USA cards per customer for this product. Selling prices and exchange rates are not used.</p>
+                <label className="flex items-center gap-3 font-black"><input type="checkbox" name="is_enabled" defaultChecked={rule?.is_enabled ?? false} className="h-5 w-5 accent-blue-600" />Purchase restriction ON</label><p className="mt-2 text-sm text-slate-500">Counts gift-card face value only for denominations in the selected currency. For example, a 500 USD limit allows 500 USD of USA cards per customer for this product. Selling prices and exchange rates are not used.</p>
                 <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                  <label className="font-bold">Weekly purchase limit<input name="weekly_limit" type="number" min="1" step="1" defaultValue={rule?.weekly_limit ?? 25000} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+                  <label className="font-bold">Purchase limit<input name="weekly_limit" type="number" min="1" step="1" defaultValue={rule?.weekly_limit ?? 25000} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
                   <label className="font-bold">Limit currency<select name="limit_currency" defaultValue={rule?.limit_currency ?? optionsResult.data?.find(option => option.is_active)?.denomination_currency ?? "INR"} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">{restrictionCurrencies.map(currency => <option key={currency.code} value={currency.code}>{currency.code} — {currency.name}</option>)}</select></label>
                   <label className="font-bold">Identify customer by<select name="identity_mode" defaultValue={rule?.identity_mode ?? "ACCOUNT_EMAIL_IP"} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"><option value="ACCOUNT_EMAIL_IP">User account + email + IP address</option><option value="ACCOUNT_EMAIL">User account + email</option><option value="IP">IP address only</option></select></label>
-                  <label className="font-bold">Reset period<select name="reset_mode" defaultValue={rule?.reset_mode ?? "ROLLING_7_DAYS"} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"><option value="ROLLING_7_DAYS">Every 7 days</option><option value="CALENDAR_WEEK">Calendar week</option></select></label>
-                  <label className="font-bold sm:col-span-2">Customer notification<textarea name="notification_message" rows={3} defaultValue={rule?.notification_message || "Weekly purchase limit reached. Please try again after your limit resets."} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+                  <label className="font-bold">Reset period<select name="reset_mode" defaultValue={rule?.reset_mode ?? "ROLLING_7_DAYS"} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">{purchaseResetPeriods.map(period => <option key={period.value} value={period.value} disabled={migrationPending && period.value !== "ROLLING_7_DAYS"}>{period.label}</option>)}{rule?.reset_mode === "CALENDAR_WEEK" && <option value="CALENDAR_WEEK">Calendar week (existing setting)</option>}</select></label>
+                  <label className="font-bold sm:col-span-2">Customer notification<textarea name="notification_message" rows={3} maxLength={500} defaultValue={rule?.notification_message === "Weekly purchase limit reached. Please try again after your limit resets." ? purchaseLimitMessage : rule?.notification_message || purchaseLimitMessage} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
                 </div>
               </section>
             ) : (
@@ -159,6 +170,28 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
 
             <div className="mt-6 flex justify-end"><button className="admin-save-action rounded-xl px-6 py-3 font-black transition">Save restrictions</button></div>
           </form>
+
+          <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="text-xl font-black">Customer exemptions</h2>
+            <p className="mt-2 text-sm text-slate-500">Remove this product&apos;s purchase limit for a registered customer. The customer must sign in to use the exemption. Quantity limits and accepted payment methods still apply.</p>
+            <form action={exemptCustomerFromPurchaseRestriction} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <input type="hidden" name="product_id" value={id} />
+              <label className="min-w-0 flex-1 text-sm font-bold">Registered customer email
+                <input name="customer_email" type="email" disabled={migrationPending} required maxLength={254} placeholder="customer@example.com" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-normal" />
+              </label>
+              <button disabled={migrationPending} className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white disabled:opacity-50">Remove restriction for customer</button>
+            </form>
+            <ul className="mt-5 divide-y divide-slate-200">
+              {exemptions.map(customer => <li key={customer.userId} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div className="min-w-0"><p className="break-all font-bold">{customer.email}</p><p className="text-sm text-emerald-700">Purchase limit does not apply</p></div>
+                <form action={restoreCustomerPurchaseRestriction}>
+                  <input type="hidden" name="product_id" value={id} /><input type="hidden" name="user_id" value={customer.userId} />
+                  <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold">Restore restriction</button>
+                </form>
+              </li>)}
+            </ul>
+            {!exemptions.length && <p className="mt-3 text-sm text-slate-500">No customers are exempt from this product&apos;s purchase limit.</p>}
+          </section>
 
           <DenominationQuantityEditor
             productId={id}

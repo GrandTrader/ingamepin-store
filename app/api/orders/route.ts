@@ -1,3 +1,5 @@
+import { purchaseLimitSince, purchaseLimitMessage } from "@/lib/purchase-restriction";
+import { exemptPurchaseProducts } from "@/lib/purchase-restriction-exemptions";
 import {notifyPortalOrder} from "@/lib/portal-order-notifications";
 import {portalCheckoutInput,type PortalCheckoutInput} from "@/lib/portal-checkout";
 import { productRanges } from "@/lib/product-range-data";
@@ -354,7 +356,14 @@ export async function POST(request: NextRequest) {
       }
       const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("product_id, weekly_limit, limit_currency, identity_mode, reset_mode, notification_message").in("product_id", productIds).eq("is_enabled", true) : { data: [], error: null };
       if (restrictionsResult.error) return NextResponse.json({ error: "Unable to verify purchase limits. Please retry." }, { status: 503 });
+      let exemptProducts: Set<string>;
+      try {
+        exemptProducts = await exemptPurchaseProducts(admin, signedInUser?.id, (restrictionsResult.data ?? []).map(rule => rule.product_id));
+      } catch {
+        return NextResponse.json({ error: "Unable to verify customer purchase restrictions. Please retry." }, { status: 503 });
+      }
       for (const rule of restrictionsResult.data ?? []) {
+        if (exemptProducts.has(rule.product_id)) continue;
         let currentValue: number;
         try {
           currentValue = regionalFaceValue(submittedItems.flatMap(item => {
@@ -368,7 +377,7 @@ export async function POST(request: NextRequest) {
         }
         if (currentValue === 0) continue;
         if (rule.identity_mode !== "ACCOUNT_EMAIL" && !customerIp) return NextResponse.json({ error: "Unable to verify the purchase limit. Please retry." }, { status: 503 });
-        const since = new Date(); if (rule.reset_mode === "CALENDAR_WEEK") { const day = (since.getUTCDay() + 6) % 7; since.setUTCDate(since.getUTCDate() - day); since.setUTCHours(0, 0, 0, 0); } else since.setUTCDate(since.getUTCDate() - 7);
+        const since = purchaseLimitSince(rule.reset_mode);
         const orderIds = new Set<string>();
         const identityQueries = [];
         if (rule.identity_mode !== "IP") identityQueries.push(admin.from("orders").select("id").eq("customer_email", customerEmailForLimit).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
@@ -391,7 +400,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to verify purchase history." }, { status: 409 });
           }
         }
-        const limit = Number(rule.weekly_limit); if (exceedsRegionalLimit(previousValue, currentValue, limit)) return NextResponse.json({ error: rule.notification_message || "Weekly purchase limit reached. Please try again after your limit resets.", weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
+        const limit = Number(rule.weekly_limit); if (exceedsRegionalLimit(previousValue, currentValue, limit)) return NextResponse.json({ error: rule.notification_message || purchaseLimitMessage, weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
       }
     }
     if(portal){
