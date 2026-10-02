@@ -1,3 +1,4 @@
+import { PASSWORD_RULES } from "@/lib/password-expiry";
 ﻿import { cookies } from "next/headers";
 import Link from "next/link";
 
@@ -156,12 +157,15 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
                 label="Password"
                 name="password"
                 autoComplete="new-password"
+                minLength={12}
               />
               <PasswordInput
                 label="Confirm password"
                 name="confirm_password"
                 autoComplete="new-password"
+                minLength={12}
               />
+              <p className="text-sm text-slate-600 sm:col-span-2">{PASSWORD_RULES}</p>
               <RegistrationTurnstile />
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-600 sm:col-span-2">
                 <input

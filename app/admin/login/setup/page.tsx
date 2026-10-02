@@ -2,7 +2,7 @@ import { getAdminMfaState } from "@/lib/admin-assurance";
 import { redirect } from "next/navigation";
 
 import AdminMfaSetup from "./AdminMfaSetup";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 

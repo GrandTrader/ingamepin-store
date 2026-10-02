@@ -1,3 +1,4 @@
+import { getPasswordExpiry, isPasswordRecoveryPath } from "@/lib/password-expiry";
 import { hasRequiredAdminAssurance } from "@/lib/admin-assurance";
 import {
   createServerClient,
@@ -49,6 +50,21 @@ export async function proxy(request: NextRequest) {
       redirectResponse.cookies.set(name, value, options);
     });
     return redirectResponse;
+  }
+
+  if (user && !isPasswordRecoveryPath(pathname)) {
+    try {
+      const expiry = await getPasswordExpiry(supabase);
+      if (expiry.required) {
+        const blocked = pathname.startsWith("/api/")
+          ? NextResponse.json({ error: "Your password has expired. Update it to continue.", code: "PASSWORD_EXPIRED", redirect: "/account/renew-password" }, { status: 403, headers: { "Cache-Control": "no-store" } })
+          : NextResponse.redirect(new URL("/account/renew-password", request.url), 303);
+        refreshedCookies.forEach(({ name, value, options }) => blocked.cookies.set(name, value, options));
+        return blocked;
+      }
+    } catch {
+      return NextResponse.json({ error: "Unable to verify account security. Please try again." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
   }
 
   if (isAdminPage && !isAdminLoginPage) {

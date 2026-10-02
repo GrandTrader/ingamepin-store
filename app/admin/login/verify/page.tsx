@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import MfaVerificationForm from "./MfaVerificationForm";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/auth-server";
 
 export const dynamic = "force-dynamic";
 

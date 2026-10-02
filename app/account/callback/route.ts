@@ -4,7 +4,7 @@ import {
   getCountryCode,
   recordCustomerLogin,
 } from "@/lib/customer-login-activity";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/auth-server";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");

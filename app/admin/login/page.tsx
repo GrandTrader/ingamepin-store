@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { adminLogin } from "../actions";
 import AdminPasskeyLoginButton from "./AdminPasskeyLoginButton";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/auth-server";
 import AuthSubmitButton from "@/components/AuthSubmitButton";
 import PasswordInput from "@/components/PasswordInput";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";

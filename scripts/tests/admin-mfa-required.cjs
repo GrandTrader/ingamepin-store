@@ -32,7 +32,7 @@ test('admin MFA requires a verified factor and AAL2; stale tokens and service fa
 test('password login routes administrators to enrollment, verification or dashboard',async()=>{
   for(const [config,target] of [[{},'/admin/login/setup'],[{factors:verified},'/admin/login/verify'],[{factors:verified,level:'aal2'},'/admin'],[{admin:false},'/admin/login?error='],[{error:{message:'offline'}},'/admin/login?error=']]) {
     const session=client(config);
-    const {adminLogin}=load('app/admin/actions.ts',{'@/lib/admin-assurance':helpers,'next/navigation':redirects,'@/lib/auth-error-message':{},'@/lib/email':{},'@/lib/supabase/server':{createClient:async()=>session}});
+    const {adminLogin}=load('app/admin/actions.ts',{'@/lib/admin-assurance':helpers,'next/navigation':redirects,'@/lib/auth-error-message':{},'@/lib/email':{},'@/lib/supabase/server':{createClient:async()=>session},'@/lib/supabase/auth-server':{createClient:async()=>session}});
     const form=new FormData();form.set('email','admin@example.test');form.set('password','fixture');form.set('captcha_token','fixture');
     await assert.rejects(adminLogin(form),e=>e.message.startsWith('REDIRECT '+target));
   }
@@ -40,7 +40,7 @@ test('password login routes administrators to enrollment, verification or dashbo
 
 function page(file, session) {
   const source=fs.readFileSync(file,'utf8');const mocks=Object.fromEntries([...source.matchAll(/from\s+"([^"]+)"/g)].map(m=>[m[1],{}]));
-  return load(file,{...mocks,'react/jsx-runtime':render,'next/navigation':redirects,'@/lib/admin-assurance':helpers,'@/lib/supabase/server':{createClient:async()=>session}}).default;
+  return load(file,{...mocks,'react/jsx-runtime':render,'next/navigation':redirects,'@/lib/admin-assurance':helpers,'@/lib/supabase/server':{createClient:async()=>session},'@/lib/supabase/auth-server':{createClient:async()=>session}}).default;
 }
 test('login and verify pages route missing factors to setup even with a stale AAL2 token',async()=>{
   for(const file of ['app/admin/login/page.tsx','app/admin/login/verify/page.tsx']) {
@@ -67,7 +67,7 @@ test('legacy disable action cannot remove any factor',async()=>{
 test('proxy blocks unenrolled admin pages and APIs but preserves customer and setup access',async()=>{
   const next={next:()=>({kind:'next',cookies:{set(){}}}),redirect:url=>({kind:'redirect',url,cookies:{set(){}}}),json:(body,opts)=>({kind:'json',status:opts.status,body})};
   for(const [path,config,kind,status] of [['/admin',{},'redirect'],['/api/admin/invoices',{},'json',403],['/api/admin/invoices',{user:false},'json',401],['/admin/login/setup',{},'next'],['/account',{},'next'],['/admin',{level:'aal2',factors:verified},'next'],['/admin',{level:'aal2'},'redirect']]) {
-    const session=client(config);const {proxy}=load('proxy.ts',{'@/lib/admin-assurance':helpers,'@supabase/ssr':{createServerClient:()=>session},'next/server':{NextResponse:next}},{process:{env:{NEXT_PUBLIC_SUPABASE_URL:'https://fixture.test',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture'}}});
+    const session=client(config);const {proxy}=load('proxy.ts',{'@/lib/admin-assurance':helpers,'@/lib/password-expiry':{getPasswordExpiry:async()=>({required:false}),isPasswordRecoveryPath:()=>false},'@supabase/ssr':{createServerClient:()=>session},'next/server':{NextResponse:next}},{process:{env:{NEXT_PUBLIC_SUPABASE_URL:'https://fixture.test',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture'}}});
     const result=await proxy({headers:{},cookies:{getAll:()=>[],set(){}},nextUrl:{pathname:path,clone:()=>new URL('https://fixture.test'+path)}});
     assert.equal(result.kind,kind,path);if(status)assert.equal(result.status,status);
   }

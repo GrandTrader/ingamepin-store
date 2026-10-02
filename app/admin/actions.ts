@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getAuthErrorMessage } from "@/lib/auth-error-message";
 import { sendEmail } from "@/lib/email";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAuthClient } from "@/lib/supabase/auth-server";
 
 export async function adminLogin(
   formData: FormData
@@ -27,7 +28,7 @@ export async function adminLogin(
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createAuthClient();
 
   const loginResult =
     await supabase.auth.signInWithPassword({

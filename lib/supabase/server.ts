@@ -1,44 +1,19 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { createClient as createAuthClient } from "./auth-server";
+import { getPasswordExpiry } from "@/lib/password-expiry";
 
+// Guard server actions too: a caller can submit an action from another page.
+// Authentication/recovery flows explicitly use auth-server instead.
 export async function createClient() {
-  const cookieStore = await cookies();
-
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-  const supabasePublishableKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabasePublishableKey) {
-    throw new Error(
-      "Supabase URL or publishable key is missing."
-    );
-  }
-
-  return createServerClient(
-    supabaseUrl,
-    supabasePublishableKey,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(
-              ({ name, value, options }) => {
-                cookieStore.set(name, value, options);
-              }
-            );
-          } catch {
-            // Cookies cannot be changed from every
-            // Server Component. Authentication middleware
-            // will handle session refresh later.
-          }
-        },
-      },
+  const client = await createAuthClient();
+  const getUser = client.auth.getUser.bind(client.auth);
+  client.auth.getUser = async (...args: Parameters<typeof getUser>) => {
+    const result = await getUser(...args);
+    if (!result.error && result.data.user) {
+      const expiry = await getPasswordExpiry(client);
+      if (expiry.required) redirect("/account/renew-password");
     }
-  );
+    return result;
+  };
+  return client;
 }

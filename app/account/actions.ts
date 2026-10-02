@@ -1,6 +1,9 @@
 "use server";
 
+import { requirePasswordMfa } from "@/lib/password-mfa";
+
 import { cookies, headers } from "next/headers";
+import { isStrongPassword, PASSWORD_RULES } from "@/lib/password-expiry";
 import { redirect } from "next/navigation";
 
 import {
@@ -10,7 +13,7 @@ import {
 import { getAuthErrorMessage } from "@/lib/auth-error-message";
 import { countryCallingCodes } from "@/lib/countryCallingCodes";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/auth-server";
 
 const PENDING_SIGNUP_COOKIE = "ingamepin_pending_signup";
 const PENDING_SIGNUP_MAX_AGE = 15 * 60;
@@ -123,11 +126,11 @@ export async function customerRegister(formData: FormData) {
     accountRedirect("/account/register", "error", "Enter your full name.");
   }
 
-  if (!email || password.length < 8) {
+  if (!email || !isStrongPassword(password)) {
     accountRedirect(
       "/account/register",
       "error",
-      "Use a valid email and a password with at least 8 characters.",
+      PASSWORD_RULES,
     );
   }
 
@@ -363,11 +366,11 @@ export async function updateCustomerPassword(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirm_password") ?? "");
 
-  if (password.length < 8) {
+  if (!isStrongPassword(password)) {
     accountRedirect(
       "/account/reset-password",
       "error",
-      "Password must contain at least 8 characters.",
+      PASSWORD_RULES,
     );
   }
 
@@ -389,6 +392,7 @@ export async function updateCustomerPassword(formData: FormData) {
     );
   }
 
+  await requirePasswordMfa(supabase, "reset");
   const result = await supabase.auth.updateUser({ password });
 
   if (result.error) {
