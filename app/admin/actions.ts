@@ -1,6 +1,6 @@
 "use server";
 
-import { hasRequiredAdminAssurance } from "@/lib/admin-assurance";
+import { getAdminMfaState, hasRequiredAdminAssurance } from "@/lib/admin-assurance";
 import { redirect } from "next/navigation";
 import { getAuthErrorMessage } from "@/lib/auth-error-message";
 import { sendEmail } from "@/lib/email";
@@ -62,35 +62,12 @@ export async function adminLogin(
     );
   }
 
-  const [assuranceResult, factorsResult] =
-    await Promise.all([
-      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-      supabase.auth.mfa.listFactors(),
-    ]);
-
-  if (assuranceResult.error || factorsResult.error) {
+  const mfaState = await getAdminMfaState(supabase);
+  if (mfaState === "error") {
     await supabase.auth.signOut();
-
-    redirect(
-      `/admin/login?error=${encodeURIComponent(
-        "Unable to verify administrator security settings"
-      )}`
-    );
+    redirect("/admin/login?error=Unable%20to%20verify%20administrator%20security%20settings");
   }
-
-  if (assuranceResult.data.currentLevel === "aal2") {
-    redirect("/admin");
-  }
-
-  const hasVerifiedFactor = factorsResult.data.totp.some(
-    (factor) => factor.status === "verified"
-  );
-
-  redirect(
-    hasVerifiedFactor
-      ? "/admin/login/verify"
-      : "/admin"
-  );
+  redirect(mfaState === "ready" ? "/admin" : mfaState === "setup" ? "/admin/login/setup" : "/admin/login/verify");
 }
 
 export async function adminLogout() {

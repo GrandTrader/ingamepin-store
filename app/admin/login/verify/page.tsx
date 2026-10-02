@@ -1,3 +1,4 @@
+import { getAdminMfaState } from "@/lib/admin-assurance";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -36,28 +37,10 @@ export default async function AdminMfaVerifyPage({
     redirect("/admin/login?error=Access denied");
   }
 
-  const [assuranceResult, factorsResult] =
-    await Promise.all([
-      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-      supabase.auth.mfa.listFactors(),
-    ]);
-
-  if (
-    !assuranceResult.error &&
-    assuranceResult.data.currentLevel === "aal2"
-  ) {
-    redirect("/admin");
-  }
-
-  const hasVerifiedFactor =
-    !factorsResult.error &&
-    factorsResult.data.totp.some(
-      (factor) => factor.status === "verified"
-    );
-
-  if (!hasVerifiedFactor) {
-    redirect("/admin/login/setup");
-  }
+  const mfaState = await getAdminMfaState(supabase);
+  if (mfaState === "error") throw new Error("Unable to verify administrator security settings. Please try again.");
+  if (mfaState === "ready") redirect("/admin");
+  if (mfaState === "setup") redirect("/admin/login/setup");
 
   return (
     <main className="flex min-h-[75vh] items-center justify-center bg-slate-950 px-5 py-12 text-white">

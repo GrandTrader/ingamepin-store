@@ -15,8 +15,8 @@ const session = (level, factors=[], error=null) => ({auth:{mfa:{
   listFactors:async()=>({data:{all:factors},error})
 }}});
 test('two-factor enforcement permits only appropriate assurance and fails closed',async()=>{
-  assert.equal(await hasRequiredAdminAssurance(session('aal1')),true);
-  assert.equal(await hasRequiredAdminAssurance(session('aal1',[{status:'unverified'}])),true);
+  assert.equal(await hasRequiredAdminAssurance(session('aal1')),false);
+  assert.equal(await hasRequiredAdminAssurance(session('aal1',[{status:'unverified'}])),false);
   assert.equal(await hasRequiredAdminAssurance(session('aal1',[{status:'verified'}])),false);
   assert.equal(await hasRequiredAdminAssurance(session('aal2',[{status:'verified'}])),true);
   assert.equal(await hasRequiredAdminAssurance(session('aal2',[],{message:'offline'})),false);

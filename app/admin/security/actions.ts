@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/admin-session";
@@ -34,42 +33,6 @@ export async function disableAdminMfa() {
     redirect("/admin/login?error=Access denied");
   }
 
-  const assuranceResult =
-    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-
-  if (
-    assuranceResult.error ||
-    assuranceResult.data.currentLevel !== "aal2"
-  ) {
-    redirect("/admin/login/verify");
-  }
-
-  const factorsResult = await supabase.auth.mfa.listFactors();
-
-  if (factorsResult.error) {
-    securityRedirect(
-      "error",
-      "Unable to load authenticator settings."
-    );
-  }
-
-  for (const factor of factorsResult.data.totp) {
-    const removalResult = await supabase.auth.mfa.unenroll({
-      factorId: factor.id,
-    });
-
-    if (removalResult.error) {
-      securityRedirect(
-        "error",
-        "Unable to turn off two-step verification."
-      );
-    }
-  }
-
-  await supabase.auth.refreshSession();
-  revalidatePath("/admin/security");
-  securityRedirect(
-    "success",
-    "Two-step verification turned off."
-  );
+  // Keep old form submissions safe as well as removing the disable control.
+  securityRedirect("error", "Two-step verification is required for administrator accounts and cannot be turned off.");
 }

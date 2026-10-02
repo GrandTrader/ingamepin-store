@@ -20,7 +20,7 @@ test('SMTP outage remains a notification failure for both recipients',async()=>{
 });
 test('administrator verification uses enrolled factors and denies service errors or missing second factor',async()=>{
  const {hasRequiredAdminAssurance}=load('lib/admin-assurance.ts');
- for(const fixture of [{level:'aal1',factors:[{status:'verified'}],deny:true},{level:'aal2',factors:[],error:{message:'unavailable'},deny:true},{level:'aal2',factors:[{status:'verified'}],deny:false},{level:'aal1',factors:[],deny:false}]) {
+ for(const fixture of [{level:'aal1',factors:[{status:'verified'}],deny:true},{level:'aal2',factors:[],error:{message:'unavailable'},deny:true},{level:'aal2',factors:[{status:'verified'}],deny:false},{level:'aal1',factors:[],deny:true}]) {
   const session={auth:{getUser:async()=>({data:{user:{id:'admin'}}}),mfa:{getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:fixture.level,nextLevel:'aal1'}}),listFactors:async()=>({data:{all:fixture.factors},error:fixture.error})}},from:()=>({select(){return this},eq(){return this},maybeSingle:async()=>({data:{user_id:'admin'}})})};
   const mod=load('lib/seller-access.ts',{'server-only':{},'next/navigation':{redirect:url=>{throw Error(url)}},'@/lib/supabase/server':{createClient:async()=>session},'@/lib/admin-assurance':{hasRequiredAdminAssurance}});
   if(fixture.deny) await assert.rejects(mod.requireSellerAdministrator(),/admin\/login\/verify/);else assert.equal((await mod.requireSellerAdministrator()).id,'admin');

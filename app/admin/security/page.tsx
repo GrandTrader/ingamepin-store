@@ -2,9 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import AdminSidebar from "../AdminSidebar";
-import DisableMfaButton from "./DisableMfaButton";
 import PasskeyManager from "./PasskeyManager";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/admin-session";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +45,7 @@ export default async function AdminSecurityPage({
     );
   }
 
-  const enabled = factorsResult.data.totp.length > 0;
+  const enabled = factorsResult.data.all.some((factor) => factor.status === "verified");
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -61,7 +60,7 @@ export default async function AdminSecurityPage({
             Security
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            Control Google Authenticator verification for {user.email}.
+            Two-step verification is required for {user.email}.
           </p>
 
           {error && (
@@ -90,18 +89,18 @@ export default async function AdminSecurityPage({
                         : "bg-slate-200 text-slate-600"
                     }`}
                   >
-                    {enabled ? "ON" : "OFF"}
+                    {enabled ? "REQUIRED" : "SETUP REQUIRED"}
                   </span>
                 </div>
                 <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500">
                   {enabled
                     ? "Admin login requires a current 6-digit code from Google Authenticator."
-                    : "Admin login currently requires only the password and security check."}
+                    : "Connect an authenticator before accessing the administrator panel."}
                 </p>
               </div>
 
               {enabled ? (
-                <DisableMfaButton />
+                <span className="text-sm font-bold text-emerald-700">Always required</span>
               ) : (
                 <Link
                   href="/admin/login/setup"
@@ -118,7 +117,7 @@ export default async function AdminSecurityPage({
               Passkey login
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Sign in using your fingerprint, face, device PIN, or security key. Google Authenticator remains the second verification step while it is enabled.
+              Sign in using your fingerprint, face, device PIN, or security key. An authenticator code is still required to access the administrator panel.
             </p>
 
             <PasskeyManager />

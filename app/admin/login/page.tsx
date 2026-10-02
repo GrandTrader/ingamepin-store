@@ -1,3 +1,4 @@
+import { getAdminMfaState } from "@/lib/admin-assurance";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -32,30 +33,9 @@ export default async function AdminLoginPage({
       .maybeSingle();
 
     if (adminResult.data) {
-      const [assuranceResult, factorsResult] =
-        await Promise.all([
-          supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-          supabase.auth.mfa.listFactors(),
-        ]);
-
-      if (
-        !assuranceResult.error &&
-        assuranceResult.data.currentLevel === "aal2"
-      ) {
-        redirect("/admin");
-      }
-
-      const hasVerifiedFactor =
-        !factorsResult.error &&
-        factorsResult.data.totp.some(
-          (factor) => factor.status === "verified"
-        );
-
-      redirect(
-        hasVerifiedFactor
-          ? "/admin/login/verify"
-          : "/admin"
-      );
+      const mfaState = await getAdminMfaState(supabase);
+      if (mfaState === "error") throw new Error("Unable to verify administrator security settings. Please try again.");
+      redirect(mfaState === "ready" ? "/admin" : mfaState === "setup" ? "/admin/login/setup" : "/admin/login/verify");
     }
   }
 

@@ -1,3 +1,4 @@
+import { getAdminMfaState } from "@/lib/admin-assurance";
 import { redirect } from "next/navigation";
 
 import AdminMfaSetup from "./AdminMfaSetup";
@@ -27,23 +28,16 @@ export default async function AdminMfaSetupPage() {
     redirect("/admin/login?error=Access denied");
   }
 
-  const factorsResult = await supabase.auth.mfa.listFactors();
-
-  if (factorsResult.error) {
-    throw new Error(
-      `Unable to check authenticator status: ${factorsResult.error.message}`
-    );
-  }
-
-  const hasVerifiedFactor = factorsResult.data.totp.some(
-    (factor) => factor.status === "verified"
-  );
+  const mfaState = await getAdminMfaState(supabase);
+  if (mfaState === "error") throw new Error("Unable to verify administrator security settings. Please try again.");
+  if (mfaState === "ready") redirect("/admin");
+  if (mfaState === "verify") redirect("/admin/login/verify");
 
   return (
     <main className="flex min-h-[75vh] items-center justify-center bg-slate-950 px-5 py-12 text-white">
       <AdminMfaSetup
         adminEmail={user.email ?? "Administrator"}
-        hasVerifiedFactor={hasVerifiedFactor}
+        hasVerifiedFactor={false}
       />
     </main>
   );
