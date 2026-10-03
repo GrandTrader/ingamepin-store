@@ -5,8 +5,31 @@ import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/admin-session";
+import { parseAffiliateProductChanges } from "@/lib/affiliate-product-settings";
 
 const supportedNetworks = ["TRC20", "BEP20", "SOLANA"] as const;
+
+export async function saveDisplayedAffiliateProducts(input: unknown): Promise<{ ok: boolean; message: string }> {
+  await requireAdministrator();
+  let changes;
+  try {
+    changes = parseAffiliateProductChanges(input);
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Invalid product settings." };
+  }
+  const result = await createAdminClient().rpc("save_displayed_affiliate_products", { p_changes: changes });
+  if (result.error) {
+    console.error("Bulk affiliate product settings:", result.error.message);
+    return { ok: false, message: "Unable to confirm the save. Please refresh to check the displayed products and try again." };
+  }
+  revalidatePath("/admin/affiliates");
+  revalidatePath("/account/affiliate");
+  revalidatePath("/admin/products/[id]/edit/affiliate", "page");
+  revalidatePath("/product/[slug]", "page");
+  revalidatePath("/category/[slug]/[categoryPublicId]/subcategory/[productPublicId]", "page");
+  revalidatePath("/");
+  return { ok: true, message: `Saved changes to ${changes.length} displayed products.` };
+}
 
 async function requireAdministrator() {
   const supabase = await createClient();
