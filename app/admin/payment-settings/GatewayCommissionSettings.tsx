@@ -57,8 +57,8 @@ const gateways: Array<{
   },
   {
     id: "PALLY",
-    name: "Pally Payment",
-    description: "Pally payment links",
+    name: "PayPalych Payment",
+    description: "PayPalych payment links",
     icon: "P",
     color: "bg-blue-100 text-blue-700",
     enabledByDefault: true,
