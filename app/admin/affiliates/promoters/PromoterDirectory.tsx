@@ -40,27 +40,27 @@ export default async function PromoterDirectory({ view, searchParams }: {
       <div className="mx-auto flex min-h-screen max-w-[1700px] flex-col lg:flex-row">
         <AdminSidebar />
 
-        <main className="min-w-0 flex-1 p-5 sm:p-8">
-          <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <main className="min-w-0 flex-1 p-3 sm:p-5">
+          <header className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
                 Affiliate program
               </p>
-              <h1 className="mt-2 text-3xl font-black">{title}</h1>
-              <p className="mt-2 text-sm text-slate-500">
+              <h1 className="mt-1 text-2xl font-black">{title}</h1>
+              <p className="mt-1 text-sm text-slate-500">
                 {approved ? "Find approved promoters by email and manage their status and commission." : "Review applications and manage pending, rejected, or suspended promoters."}
               </p>
             </div>
 
             <Link
               href="/admin/affiliates"
-              className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold"
+              className="inline-flex min-h-[44px]! shrink-0 items-center self-start rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold"
             >
               ← Affiliate Settings
             </Link>
           </header>
 
-          <nav aria-label="Promoter directory" className="mt-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+          <nav aria-label="Promoter directory" className="mt-4 flex flex-wrap gap-2 border-b border-slate-200 pb-2">
             {(["applications", "approved"] as const).map(tab => <Link key={tab} href={promoterDirectoryPath(tab)} aria-current={view === tab ? "page" : undefined} className={`rounded-lg px-4 py-3 text-sm font-bold ${view === tab ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`}>{tab === "approved" ? "Approved Promoters" : "Affiliate Applications"}</Link>)}
           </nav>
 
