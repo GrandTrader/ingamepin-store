@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { setAffiliateProductCommission } from "./actions";
+import { recordAffiliateLinkCopy } from "./link-actions";
 
 type AffiliateProductLinkProps = {
   affiliateCode: string;
@@ -25,15 +26,31 @@ export default function AffiliateProductLink({
   )}`;
   const [link, setLink] = useState(`https://www.ingamepin.com${path}`);
   const [copied, setCopied] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("");
 
   useEffect(() => {
     setLink(`${window.location.origin}${path}`);
   }, [path]);
 
   async function copyLink() {
-    await navigator.clipboard.writeText(link);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    setCopying(true);
+    setCopyStatus("");
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopyStatus("Unable to copy automatically. Select and copy the link above.");
+      setCopying(false);
+      return;
+    }
+    try {
+      const result = await recordAffiliateLinkCopy(productId);
+      if (!result.recorded) setCopyStatus("Link copied. Copy history could not be saved.");
+    } catch {
+      setCopyStatus("Link copied. Copy history could not be saved.");
+    } finally { setCopying(false); }
   }
 
   return (
@@ -57,11 +74,14 @@ export default function AffiliateProductLink({
         <button
           type="button"
           onClick={copyLink}
+          disabled={copying}
           className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-black text-slate-950 transition hover:bg-cyan-400"
         >
           {copied ? "Copied" : "Copy link"}
         </button>
       </div>
+
+      {copyStatus && <p role="status" className="mt-2 text-xs text-slate-600">{copyStatus}</p>}
 
       <form
         action={setAffiliateProductCommission}

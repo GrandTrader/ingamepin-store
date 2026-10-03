@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import { filterPromotersByEmail, type AffiliatePromoter, type PromoterView } from "@/lib/affiliate-promoters";
 import { savePromoterSettings } from "./actions";
@@ -48,6 +49,7 @@ export default function PromoterList({ accounts, view, initialSearch = "" }: { a
                         </span>
                       </div>
                       <p className="mt-0.5 break-all text-sm text-slate-700">{account.email || "Email unavailable"}</p>
+                      <Link href={`/admin/affiliates/promoters/${account.id}`} className="inline-flex min-h-[44px]! items-center text-sm font-bold text-blue-700 hover:underline">View profile & activity →</Link>
                       <p className="mt-1 break-words text-xs text-slate-500">
                         {account.country_code} · {account.promotion_channel.replaceAll("_", " ")} · {new Date(account.created_at).toLocaleDateString("en-IN")}
                       </p>
