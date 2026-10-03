@@ -35,6 +35,7 @@ const links = [
   { label: "Customer Discounts", href: "/admin/customer-discounts", icon: "CD" },
   { label: "Affiliates", href: "/admin/affiliates", icon: "AF" },
   { label: "Affiliate Applications", href: "/admin/affiliates/promoters", icon: "AA" },
+  { label: "Approved Promoters", href: "/admin/affiliates/approved", icon: "AP" },
   { label: "Customers", href: "/admin/customers", icon: "CU" },
   { label: "Business verification", href: "/admin/business-verification", icon: "KYB" },
   { label: "Reviews", href: "/admin/reviews", icon: "RV" },
@@ -101,7 +102,8 @@ const menuGroups = [
       "/admin/homepage-slider",
       "/admin/customer-discounts",
       "/admin/affiliates",
-      "/admin/affiliates/promoters"
+      "/admin/affiliates/promoters",
+      "/admin/affiliates/approved"
     ]
   },
   {

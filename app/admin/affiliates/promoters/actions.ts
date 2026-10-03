@@ -6,13 +6,9 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/admin-session";
 
-const allowedStatuses = ["PENDING", "APPROVED", "REJECTED", "SUSPENDED"] as const;
+import { promoterDirectoryPath } from "@/lib/affiliate-promoters";
 
-function promoterRedirect(kind: "success" | "error", message: string): never {
-  redirect(
-    `/admin/affiliates/promoters?${kind}=${encodeURIComponent(message)}`,
-  );
-}
+const allowedStatuses = ["PENDING", "APPROVED", "REJECTED", "SUSPENDED"] as const;
 
 async function requireAdministrator() {
   const supabase = await createClient();
@@ -39,6 +35,14 @@ async function requireAdministrator() {
 
 export async function savePromoterSettings(formData: FormData) {
   const administrator = await requireAdministrator();
+  const returnPath = promoterDirectoryPath(formData.get("return_view"));
+  const search = String(formData.get("search") ?? "").trim().slice(0, 254);
+  function promoterRedirect(kind: "success" | "error", message: string): never {
+    const params = new URLSearchParams({ [kind]: message });
+    if (search) params.set("q", search);
+    redirect(`${returnPath}?${params.toString()}`);
+  }
+
   const affiliateId = String(formData.get("affiliate_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim().toUpperCase();
   const overrideValue = String(
@@ -91,5 +95,7 @@ export async function savePromoterSettings(formData: FormData) {
   }
 
   revalidatePath("/admin/affiliates/promoters");
+  revalidatePath("/admin/affiliates/approved");
+  revalidatePath("/account/affiliate");
   promoterRedirect("success", "Promoter settings saved successfully.");
 }
