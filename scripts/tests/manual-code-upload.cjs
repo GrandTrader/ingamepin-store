@@ -21,3 +21,13 @@ test('Saved batch retry uses the same atomic RPC and sends no duplicate notifica
  const result=await saveManualDeliveryCodes(form,'real-admin');assert.match(result.success,/already saved/);assert.equal(sent,0);assert.equal(deferred.length,0);assert.equal(calls[0].name,'deliver_manual_codes_batch');assert.equal(calls[0].args.p_codes.length,100);assert.equal(calls[0].args.p_admin_user_id,'real-admin');
  form.set('codes','DUPLICATE\nDUPLICATE');assert.match((await saveManualDeliveryCodes(form,'real-admin')).error,/Duplicate/);assert.equal(calls.length,1);
 });
+
+test('Partial save returns remaining quantity before a slow email finishes',async()=>{
+ const deferred=[];let notified=0,finishEmail;
+ const email=new Promise(resolve=>{finishEmail=resolve;});
+ const db={from(table){return {select(){return this},eq(){return this},maybeSingle:async()=>({data:{id,quantity:1000,product_name:'Test',products:{delivery_type:'MANUAL'}}}),single:async()=>({data:{order_number:'TEST',customer_email:'test@example.invalid',currency:'USD',total:1,status:'PROCESSING'}})}},rpc:async()=>({data:{codes:['NEW-CODE'],skipped:0,remaining:999}})};
+ const {saveManualDeliveryCodes}=load('lib/manual-code-delivery.ts',{'server-only':{},'next/server':{after:fn=>deferred.push(fn)},'next/cache':{revalidatePath(){}},'@/lib/supabase/admin':{createAdminClient:()=>db},'@/lib/email':{sendOrderStatusEmails:async(data)=>{notified++;assert.deepEqual(data.deliveredItems[0].codes,['NEW-CODE']);await email;return [];}}});
+ const form=new FormData();form.set('order_id',id);form.set('item_id',id);form.set('codes','NEW-CODE');
+ const result=await saveManualDeliveryCodes(form,'real-admin');assert.equal(result.remaining,999);assert.match(result.success,/1 new code/);assert.equal(notified,0);assert.equal(deferred.length,1);
+ const background=deferred[0]();await new Promise(resolve=>setImmediate(resolve));assert.equal(notified,1);finishEmail();await background;
+});

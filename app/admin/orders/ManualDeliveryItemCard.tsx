@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { DELIVERY_RECEIPT_MAX_BYTES } from "@/lib/delivery-receipt-file";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,8 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
   const [method, setMethod] = useState(item.service_only ? "service" : "codes");
   const [codes, setCodes] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [reviewPage, setReviewPage] = useState(0);
+  const [savedRemaining, setSavedRemaining] = useState<number | null>(null);
   const router = useRouter();
   const [, confirmService, isCompleting] = useActionState(async (_state: null, formData: FormData) => {
     await completeManualOrder(formData);
@@ -23,10 +25,11 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({orderId: formData.get("order_id"), itemId: formData.get("item_id"), codes: formData.get("codes")}),
       });
-      const saved = await response.json() as {error: string; success: string};
+      const saved = await response.json() as {error: string; success: string; remaining?: number};
       if (!response.ok) return {error: saved.error || "Could not confirm the upload. Your codes are kept; retry the same codes.", success: ""};
       if (typeof saved.success !== "string" || !saved.success) throw new Error("Missing upload confirmation");
       if (saved.success) {
+        if (typeof saved.remaining === "number" && Number.isInteger(saved.remaining) && saved.remaining >= 0) setSavedRemaining(saved.remaining);
         setCodes("");
         router.refresh();
       }
@@ -38,13 +41,22 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
     }
   }, { error: "", success: "" });
   const deliveredCount = Math.max(0, Number(item.delivered_count ?? 0));
-  const remainingQuantity = Math.max(0, item.quantity - deliveredCount);
-  const enteredCodes = codes.split(/\r?\n/).map((code) => code.trim()).filter(Boolean);
+  const remainingQuantity = Math.min(Math.max(0, item.quantity - deliveredCount), savedRemaining ?? Infinity);
+  const { enteredCodes, duplicateCount } = useMemo(() => {
+    const enteredCodes = codes.split(/\r?\n/).map((code) => code.trim()).filter(Boolean);
+    return { enteredCodes, duplicateCount: enteredCodes.length - new Set(enteredCodes).size };
+  }, [codes]);
   const enteredCodeCount = enteredCodes.length;
   const invalidCodeCount =
     enteredCodeCount < 1 ||
     enteredCodeCount > remainingQuantity ||
-    (!item.is_bulk_order && enteredCodeCount !== remainingQuantity);
+    duplicateCount > 0;
+  const reviewPageSize = 100;
+  const reviewPageCount = Math.max(1, Math.ceil(enteredCodeCount / reviewPageSize));
+  function openReview() {
+    setReviewPage(0);
+    setShowConfirmation(true);
+  }
   function loadCsv(file?: File) {
     if (!file) return;
     const reader = new FileReader();
@@ -67,21 +79,21 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
     </label>
     {method === "codes" ? <>
     <p className="mt-1 text-xs text-slate-500">
-      {item.is_bulk_order
-        ? `${remainingQuantity} of ${item.quantity} code(s) remaining. Upload no more than the remaining quantity.`
-        : `Enter exactly ${remainingQuantity} remaining code${remainingQuantity === 1 ? "" : "s"}, one per line.`}
+      {remainingQuantity > 0
+        ? `${remainingQuantity} code(s) remaining. Send any batch from 1 to ${remainingQuantity}, one code per line.`
+        : "All codes have been delivered or refunded for this item."}
     </p>
     <form
       id={`send-${item.id}`}
       action={sendCodes}
       onSubmit={(event) => {
-        if (isSending) {
+        if (isSending || invalidCodeCount) {
           event.preventDefault();
           return;
         }
         if (!showConfirmation) {
           event.preventDefault();
-          setShowConfirmation(true);
+          openReview();
         }
       }}
       className="mt-3 grid gap-2"
@@ -93,7 +105,10 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
     <p className={`mt-2 text-xs font-bold ${enteredCodeCount > remainingQuantity ? "text-red-600" : "text-slate-500"}`}>
       Entered: {enteredCodeCount} / Remaining: {remainingQuantity}
     </p>
-    <button type="button" onClick={() => setShowConfirmation(true)} disabled={invalidCodeCount || isSending} className="mt-2 w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300">Review codes before sending</button>
+    {duplicateCount > 0 && <p role="alert" className="mt-1 text-xs font-bold text-red-700">Remove {duplicateCount} duplicate code(s) before sending.</p>}
+    {enteredCodeCount > remainingQuantity && <p role="alert" className="mt-1 text-xs font-bold text-red-700">This batch exceeds the {remainingQuantity} remaining code(s).</p>}
+    {!invalidCodeCount && <p className="mt-1 text-xs text-slate-600">Send {enteredCodeCount} now · {remainingQuantity - enteredCodeCount} remaining after this batch.</p>}
+    <button type="button" onClick={openReview} disabled={invalidCodeCount || isSending} className="mt-2 w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600">Review codes before sending</button>
     </> : (
     <form
       action={confirmService}
@@ -110,18 +125,23 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
       <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby={`confirm-codes-${item.id}`}>
         <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-2xl">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h2 id={`confirm-codes-${item.id}`} className="text-xl font-black text-slate-900">Confirm all delivery codes</h2>
-            <p className="mt-1 text-sm text-slate-600">Check every code below. Nothing is sent until you click Confirm and send.</p>
+            <h2 id={`confirm-codes-${item.id}`} className="text-xl font-black text-slate-900">Review delivery batch</h2>
+            <p className="mt-1 text-sm text-slate-600">Send {enteredCodeCount} code(s) now. {remainingQuantity - enteredCodeCount} will remain for later. Nothing is sent until you confirm.</p>
             <p className="mt-2 font-bold text-blue-700">{item.product_name}{item.option_name ? ` · ${item.option_name}` : ""} · {enteredCodeCount} code{enteredCodeCount === 1 ? "" : "s"}</p>
           </div>
           <ol className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
-            {enteredCodes.map((code, index) => (
+            {enteredCodes.slice(reviewPage * reviewPageSize, (reviewPage + 1) * reviewPageSize).map((code, index) => (
               <li key={`${code}-${index}`} className="grid grid-cols-[3rem_1fr] gap-3 border-b border-slate-100 py-2 text-sm last:border-0">
-                <span className="text-right font-bold text-slate-400">{index + 1}.</span>
+                <span className="text-right font-bold text-slate-400">{reviewPage * reviewPageSize + index + 1}.</span>
                 <span className="break-all font-mono text-slate-900">{code}</span>
               </li>
             ))}
           </ol>
+          {reviewPageCount > 1 && <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-2 text-sm text-slate-700">
+            <button type="button" disabled={reviewPage === 0 || isSending} onClick={() => setReviewPage(page => page - 1)} className="rounded-lg border px-3 py-2 disabled:opacity-50">Previous codes</button>
+            <span>Page {reviewPage + 1} of {reviewPageCount}</span>
+            <button type="button" disabled={reviewPage + 1 === reviewPageCount || isSending} onClick={() => setReviewPage(page => page + 1)} className="rounded-lg border px-3 py-2 disabled:opacity-50">Next codes</button>
+          </div>}
           <div className="grid grid-cols-2 gap-3 border-t border-slate-200 bg-slate-50 p-4">
             <button type="button" disabled={isSending} onClick={() => setShowConfirmation(false)} className="rounded-xl border border-slate-300 px-4 py-3 font-black text-slate-700">Back and edit</button>
             <button form={`send-${item.id}`} type="submit" disabled={isSending || invalidCodeCount} className="rounded-xl bg-emerald-600 px-4 py-3 font-black text-white hover:bg-emerald-500">{isSending ? "Saving codes... Please wait" : "Confirm and send"}</button>

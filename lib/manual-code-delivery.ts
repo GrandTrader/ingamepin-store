@@ -42,6 +42,7 @@ export async function saveManualDeliveryCodes(formData: FormData, administratorI
   revalidatePath(`/admin/orders/${orderId}/receipt`);
   return {
     error: "",
+    remaining: typeof delivery.data?.remaining === "number" ? delivery.data.remaining : undefined,
     success: codesToDeliver.length === 0
       ? `All ${skippedCodeCount} code(s) were already saved. Nothing was delivered twice.`
       : `${codesToDeliver.length} new code(s) saved. Customer email is being sent separately.${skippedCodeCount > 0 ? ` ${skippedCodeCount} previously delivered code(s) were skipped.` : ""}`,
