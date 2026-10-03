@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useStorePreferences } from "./StorePreferences";
-import PaymentMethodsBanner from "./PaymentMethodsBanner";
+import PaymentMethodsBanner, { paymentMethods } from "./PaymentMethodsBanner";
 import ThemeModeSwitch from "./ThemeModeSwitch";
 
 type FooterCategory = {
@@ -51,9 +51,9 @@ export default function Footer() {
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {["InGamePin Wallet", "Binance Pay", "USDT TRC20", "USDT BEP20", "USDT Solana", "SBP - Faster Payments System"].map((method) => (
-                <span key={method} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300">
-                  {method}
+              {paymentMethods.map((method) => (
+                <span key={method.name} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300">
+                  {method.name === "SBP" ? "SBP Faster Payment System" : method.name}
                 </span>
               ))}
             </div>
@@ -280,12 +280,12 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {["InGamePin Wallet", "Binance Pay", "USDT TRC20", "USDT BEP20", "USDT Solana", "SBP - Faster Payments System"].map((method) => (
+            {paymentMethods.map((method) => (
               <span
-                key={method}
+                key={method.name}
                 className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300"
               >
-                {method}
+                {method.name === "SBP" ? "SBP Faster Payment System" : method.name}
               </span>
             ))}
           </div>

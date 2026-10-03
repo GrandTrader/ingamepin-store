@@ -7,34 +7,30 @@ type PaymentMethodsBannerProps = {
   variant?: "checkout" | "footer";
 };
 
-const paymentMethods = [
+export const paymentMethods = [
   {
-    name: "Wallet",
-    image: "/icon.svg",
+    name: "USDT",
+    description: "TRC20 · BEP20 · Solana",
+    image: "/payment-methods/usdt.png",
+    width: 48,
   },
   {
-    name: "SBP - Faster Payments System",
+    name: "SBP",
+    description: "Faster Payment System",
     image: "/payment-methods/sbp.jpg",
+    width: 48,
   },
   {
     name: "Binance Pay",
+    description: "Pay with Binance",
     image: "/payment-methods/binance-pay.png",
+    width: 48,
   },
   {
-    name: "USDT TRC20",
-    image: "/payment-methods/usdt.png",
-  },
-  {
-    name: "USDT BEP20",
-    image: "/payment-methods/usdt.png",
-  },
-  {
-    name: "USDT Solana",
-    image: "/payment-methods/usdt.png",
-  },
-  {
-    name: "FreeKassa",
-    image: "/payment-methods/freekassa-logo.png",
+    name: "UPI",
+    description: "Scan and pay",
+    image: "/payment-methods/upi.jpeg",
+    width: 90,
   },
 ] as const;
 
@@ -48,56 +44,44 @@ export default function PaymentMethodsBanner({
     <section
       aria-label="Accepted payment methods"
       className={`rounded-2xl border border-white/10 bg-slate-950/80 ${
-        isFooter ? "p-4 sm:p-5" : "p-3.5 sm:p-4"
+        isFooter ? "px-3 py-3.5 sm:p-4" : "p-3"
       } ${className}`}
     >
-      <div
-        className={
-          isFooter
-            ? "grid gap-4 lg:grid-cols-[minmax(170px,0.7fr)_minmax(0,2.3fr)] lg:items-center"
-            : "space-y-3"
-        }
-      >
-        <div className="flex items-center gap-3">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/10 text-base text-cyan-300">
             {"\u2713"}
           </span>
 
           <div>
-            <h2 className="text-sm font-black text-white sm:text-base">
+            <h2 className="text-base font-bold text-white sm:text-lg">
               Accepted payment methods
             </h2>
             <p className="mt-0.5 text-[11px] text-slate-400 sm:text-xs">
-              Secure payments <span aria-hidden="true">{"\u2022"}</span>{" "}
-              Automatic verification
+              Choose your preferred way to pay
             </p>
           </div>
         </div>
 
-        <div
-          className={
-            isFooter
-              ? "grid grid-cols-2 gap-2 sm:grid-cols-4"
-              : "grid grid-cols-2 gap-2 sm:grid-cols-4"
-          }
-        >
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {paymentMethods.map((method) => (
             <div
               key={method.name}
-              title={method.name}
-              className="flex min-h-10 min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-2.5 py-2 text-[11px] font-bold text-slate-200 shadow-sm sm:text-xs"
+              className="flex min-h-[112px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-2 py-2.5 text-center text-slate-200"
             >
               <Image
                 src={method.image}
                 alt=""
                 aria-hidden="true"
-                width={24}
-                height={24}
-                className="h-6 w-6 shrink-0 rounded-md object-contain"
+                width={method.width}
+                height={48}
+                className="h-[48px] shrink-0 rounded-lg object-contain"
+                style={{ width: method.width }}
               />
-              <span className="min-w-0 leading-tight">
-                {method.name}
-              </span>
+              <div className="min-w-0">
+                <span className="block text-[15px] font-bold leading-snug">{method.name}</span>
+                <span className="mt-0.5 block text-[11px] leading-normal text-slate-400">{method.description}</span>
+              </div>
             </div>
           ))}
         </div>
