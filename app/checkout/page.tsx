@@ -1868,6 +1868,14 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
+              {paymentFee > 0 && (
+                <div className="flex justify-between text-slate-400">
+                  <span>Payment gateway fee</span>
+                  <span className="font-bold text-white">
+                    {formatPrice(paymentFee)}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="my-5 border-t border-white/10" />
@@ -1877,7 +1885,7 @@ export default function CheckoutPage() {
               <div>
                 <p className="font-bold">Total Amount</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Includes applicable taxes and payment fees
+                  Inclusive of applicable taxes
                 </p>
               </div>
 
