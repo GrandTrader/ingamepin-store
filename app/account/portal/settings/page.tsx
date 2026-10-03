@@ -2,6 +2,8 @@ import Link from "@/components/NavigationLink";
 import { portalCustomer } from "@/lib/business-portal-data";
 import s from "../Portal.module.css";
 const links = [
+  ["API documentation", "Connect your website to the InGamePin ordering API.", "/account/portal/api-docs", "Open docs", "‹›"],
+  ["API access", "Manage API keys, allowed IPs and ordering permissions.", "/account/portal/api-access", "Manage", "⚿"],
   ["Profile", "Manage your account name, email and phone number.", "/account/portal/profile", "Manage", "◎"],
   ["Account security", "Manage passkeys for your account.", "/account/portal/security", "Manage", "◇"],
   ["Business verification", "View your approved business details and bank deposits.", "/account/portal/business", "View", "✓"],

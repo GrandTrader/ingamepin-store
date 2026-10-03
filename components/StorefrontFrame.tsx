@@ -19,7 +19,9 @@ function BusinessFrame({children}:{children:ReactNode}) {
 export default function StorefrontFrame({ children, header, footer, extras }: {
   children: ReactNode; header: ReactNode; footer: ReactNode; extras: ReactNode;
 }) {
-  const business = isBusinessPortalPath(usePathname());
+  const pathname = usePathname();
+  const business = isBusinessPortalPath(pathname);
   if (business) return <BusinessFrame>{children}</BusinessFrame>;
+  if (pathname === "/account") return <main className="flex min-h-dvh flex-1 flex-col justify-center bg-slate-100">{children}</main>;
   return <>{header}<main className="flex flex-1 flex-col">{children}</main>{footer}{extras}</>;
 }

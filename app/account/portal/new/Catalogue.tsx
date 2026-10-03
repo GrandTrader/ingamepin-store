@@ -57,11 +57,11 @@ export default function Catalogue({userId,products,categories,discounts,initialF
   const visible=useMemo(()=>matching.slice((page-1)*20,page*20),[matching,page]);
   return <div ref={container} className={s.catalogueStable} style={{minHeight:minimumHeight||undefined}}>
     <ProductTable userId={userId} products={visible} ranges={ranges} stockProducts={products} discounts={discounts} filters={<>
-      <div className={s.filterGroup}>
+      <div className={`${s.filterGroup} ${s.catalogueTabs}`}>
         <button type="button" className={s.filterChoice} aria-pressed={filters.popular!=="yes"} onClick={()=>change({popular:""})}>All products</button>
         <button type="button" className={s.filterChoice} aria-pressed={filters.popular==="yes"} onClick={()=>change({popular:"yes"})}>Popular products</button>
       </div>
-      <section className={s.card} style={{marginBottom:16}}>
+      <section className={`${s.card} ${s.catalogueFilters}`} style={{marginBottom:16}}>
         <p className={s.eyebrow}>Region</p>
         <div className={`${s.filterGroup} ${s.regionChoices}`}>
           <button type="button" className={s.filterChoice} aria-pressed={!filters.region} onClick={()=>change({region:""})}>All regions</button>
