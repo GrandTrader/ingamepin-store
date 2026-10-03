@@ -398,18 +398,45 @@ export function StorePreferencesProvider({
         });
     }
 
-    fetch("/api/store-settings")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((result: { usdRubRate?: number; usdInrRate?: number } | null) => {
-        const rubRate = Number(result?.usdRubRate);
-        const inrRate = Number(result?.usdInrRate);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let loading = false;
+
+    async function refreshRates() {
+      if (loading || document.visibilityState === "hidden") return;
+      loading = true;
+      try {
+        const response = await fetch("/api/store-settings", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const result = await response.json() as { usdRubRate?: number; usdInrRate?: number };
+        if (controller.signal.aborted) return;
+        const rubRate = Number(result.usdRubRate);
+        const inrRate = Number(result.usdInrRate);
         if (Number.isFinite(rubRate) && rubRate > 0) setUsdRubRate(rubRate);
         if (Number.isFinite(inrRate) && inrRate > 0) setUsdInrRate(inrRate);
-      })
-      .catch(() => {
-        // Keep the safe default when the public setting is temporarily unavailable.
-      });
-  }, []);
+      } catch {
+        // Preserve the last loaded rates during a temporary network failure.
+      } finally {
+        loading = false;
+      }
+    }
+
+    void refreshRates();
+    const interval = window.setInterval(refreshRates, 30_000);
+    window.addEventListener("focus", refreshRates);
+    document.addEventListener("visibilitychange", refreshRates);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshRates);
+      document.removeEventListener("visibilitychange", refreshRates);
+    };
+  }, [currency]);
 
   useEffect(() => {
     document.documentElement.lang = language;
