@@ -26,6 +26,7 @@ const russianText: Record<string, string> = {
   "End session": "Завершить сеанс",
   "Check order": "Проверить заказ",
   "Find an order number": "Найти по номеру заказа",
+  "Loading purchases...": "Загрузка покупок...",
   "Loading purchase...": "Загрузка покупки...",
   "No purchases found for this email.": "Покупки для этого email не найдены.",
   "View your purchases and copy delivered codes. Guests verify their purchase email once; signed-in customers can continue directly.": "Просматривайте покупки и копируйте полученные коды. Гостям нужно подтвердить email; покупателям, вошедшим в аккаунт, дополнительное подтверждение не требуется.",

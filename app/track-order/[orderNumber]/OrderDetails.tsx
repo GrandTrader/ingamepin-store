@@ -110,10 +110,10 @@ export default function OrderDetails({ orderNumber, returnPage }: { orderNumber:
 
   return (
     <main className="track-order-page min-h-screen bg-slate-950 px-4 py-6 sm:py-8 text-white">
-      <div className="mx-auto max-w-4xl">
-        <Link href={returnPage > 1 ? `/track-order?page=${returnPage}` : "/track-order"} prefetch={false} className="inline-flex min-h-11 items-center text-sm font-bold text-cyan-400">← Back to orders</Link>
+      <div className="mx-auto max-w-5xl">
+        <Link href={returnPage > 1 ? `/track-order?page=${returnPage}` : "/track-order"} prefetch={false} scroll={false} className="track-order-primary-action inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-bold">← Back to orders</Link>
         <h1 className="mt-3 text-2xl font-black sm:text-3xl">Order details</h1>
-        {isLoading && <p role="status" className="mt-5 rounded-2xl border border-white/10 bg-slate-900 p-5 text-sm">Loading purchase...</p>}
+        {isLoading && <p role="status" className="mt-5 min-h-[540px] rounded-2xl border border-white/10 bg-slate-900 p-5 text-sm">Loading purchase...</p>}
         {error && <div className="mt-5 rounded-2xl border border-red-400/20 bg-red-400/10 p-5"><p role="alert" className="text-sm text-red-300">{error}</p><button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 min-h-11 rounded-lg border px-4 text-sm font-bold">Try again</button></div>}
 
         {order && (
