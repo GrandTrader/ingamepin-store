@@ -6,7 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import PaymentMethodsBanner from "../../components/PaymentMethodsBanner";
+import styles from "./Checkout.module.css";
+import LocalizedProductImage from "@/components/LocalizedProductImage";
 import { useStorePreferences } from "../../components/StorePreferences";
 
 type CartItem = {
@@ -1014,75 +1015,192 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      {/* Checkout header */}
-      <section className="border-b border-white/10 bg-slate-900">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-3 sm:px-5 sm:py-5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-400">
-              Secure Checkout
-            </p>
+    <main className={styles.page}>
+      <header className={styles.heading}>
+        <div><p className={styles.eyebrow}>Checkout</p><h1>Your next top-up starts here.</h1><p>Review your order and choose how to pay.</p></div>
+        <Link href="/cart" className={styles.backLink}>← Back to cart</Link>
+      </header>
+      <form id="checkout-form" onSubmit={handleSubmit} className={styles.form}>
+        <section className={`${styles.panel} ${styles.orderHero}`} aria-label="Your order">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-black">
+                Your order
+              </h2>
 
-            <h1 className="mt-1 text-2xl font-black">
-              Complete Your Order
-            </h1>
-          </div>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/cart"
+                  className="text-sm font-semibold text-cyan-400 hover:text-cyan-300"
+                >
+                  Edit Cart
+                </Link>
 
-          <div className="hidden items-center gap-2 text-sm text-slate-400 sm:flex">
-            <span>🔒</span>
-            <span>Secure order processing</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Checkout steps */}
-      <section className="border-b border-white/10">
-        <div className="mx-auto max-w-7xl px-3 py-3 sm:px-5 sm:py-4">
-          <div className="flex items-center gap-3 overflow-x-auto text-sm">
-            <div className="flex shrink-0 items-center gap-2 font-semibold text-cyan-400">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-400 text-xs font-black text-slate-950">
-                1
-              </span>
-              Details
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-400/20"
+                >
+                  Clear Cart
+                </button>
+              </div>
             </div>
 
-            <div className="h-px min-w-8 flex-1 bg-white/10" />
 
-            <div className="flex shrink-0 items-center gap-2 text-slate-500">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-xs">
-                2
-              </span>
-              Payment
+          <div className={styles.heroLayout}>
+            <div className={styles.orderItems}>
+              {cartItems.map((item) => (
+            <div
+                  key={item.id}
+                  className={styles.orderItem}
+                >
+                  <div className="flex h-20 w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-950">
+                    <LocalizedProductImage
+                      imageUrl={item.image ?? null}
+                      alt={item.name || item.title || "Product"}
+                      className="h-full w-full object-contain object-center"
+                      fallback={<span className="text-2xl font-bold">{(item.name || item.title || "P").charAt(0)}</span>}
+                    />
+                  </div>
+
+                  <div className={styles.orderItemDetails}>
+                    <div className={styles.orderItemInfo}>
+                    <h3 className="line-clamp-2 text-sm font-bold">
+                      {item.name || item.title}
+                    </h3>
+
+                    {item.editionName && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        Edition: {item.editionName}
+                      </p>
+                    )}
+
+                    {item.denomination && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        Denomination: {item.denomination} {item.denominationCurrency ?? ""}
+                      </p>
+                    )}
+
+                    {item.productId &&
+                      form.email.trim().toLowerCase() === customerDiscounts.email?.toLowerCase() &&
+                      Number(customerDiscounts.discounts[item.productId] ?? 0) > 0 && (
+                      <p className="mt-2 inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-300">
+                        {customerDiscounts.discounts[item.productId]}% customer discount
+                      </p>
+                    )}
+
+                    </div>
+                    <div className={styles.orderItemControls}>
+                      <div className={styles.orderQuantity}>
+                        <p className="mb-1.5 text-xs text-slate-500">
+                          Quantity
+                        </p>
+
+                        <div className="inline-flex items-center overflow-hidden rounded-lg border border-white/10 bg-slate-950">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateQuantity(
+                                item.id,
+                                Number(item.quantity || 1) - 1
+                              )
+                            }
+                            disabled={
+                              Number(item.quantity || 1) <=
+                              (item.minQuantity ?? 1)
+                            }
+                            aria-label={`Reduce quantity of ${
+                              item.name || item.title || "product"
+                            }`}
+                            className="flex h-9 w-9 items-center justify-center text-lg font-bold text-slate-300 transition hover:bg-white/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-30"
+                          >
+                            −
+                          </button>
+
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={item.minQuantity ?? 1}
+                            max={
+                              item.isBulkOrder || item.maxQuantity === undefined
+                                ? undefined
+                                : item.maxQuantity
+                            }
+                            step={1}
+                            value={item.quantity || 1}
+                            onFocus={(event) => event.currentTarget.select()}
+                            onChange={(event) => {
+                              const requested = event.currentTarget.valueAsNumber;
+                              if (Number.isSafeInteger(requested)) {
+                                updateQuantity(item.id, requested);
+                              }
+                            }}
+                            aria-label={`Enter quantity of ${item.name || item.title || "product"}`}
+                            className="h-9 w-16 border-x border-white/10 bg-slate-950 px-2 text-center text-sm font-black text-white outline-none focus:bg-slate-900"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateQuantity(
+                                item.id,
+                                Number(item.quantity || 1) + 1
+                              )
+                            }
+                            disabled={
+                              !item.isBulkOrder &&
+                              item.maxQuantity !== undefined &&
+                              Number(item.quantity || 1) >=
+                                item.maxQuantity
+                            }
+                            aria-label={`Increase quantity of ${
+                              item.name || item.title || "product"
+                            }`}
+                            className="flex h-9 w-9 items-center justify-center text-lg font-bold text-slate-300 transition hover:bg-white/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-30"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {!item.isBulkOrder && item.maxQuantity !== undefined && (
+                          <p className={`${styles.quantityLimit} text-[10px] text-slate-600`}>
+                            {`Limit: ${item.minQuantity ?? 1}–${item.maxQuantity}`}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className={styles.orderPricing}>
+                        <p className="text-xs text-slate-500">
+                          Item total
+                        </p>
+
+                        <p className="mt-1 font-bold">
+                          {formatPrice(
+                            Number(item.price) *
+                              Number(item.quantity || 1)
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="h-px min-w-8 flex-1 bg-white/10" />
 
-            <div className="flex shrink-0 items-center gap-2 text-slate-500">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-xs">
-                3
-              </span>
-              Confirmation
-            </div>
+            <div className={styles.heroTotal}><span>Total due</span><strong>{formatPrice(totalAmount)}</strong><small>Includes applicable taxes and payment fees</small></div>
           </div>
-        </div>
-      </section>
-
-      <form
-        id="checkout-form"
-        onSubmit={handleSubmit}
-        className="mx-auto grid max-w-7xl gap-4 px-3 py-5 sm:gap-7 sm:px-5 sm:py-8 lg:grid-cols-[minmax(0,1fr)_420px]"
-      >
-        {/* Customer information */}
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-white/10 bg-slate-900 p-4 sm:p-7">
+        </section>
+        <div className={styles.columns}>
+          <div className={styles.details}>
+          <section className={styles.panel}>
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-xl">
-                👤
+                1
               </span>
 
               <div>
                 <h2 className="text-xl font-black">
-                  Contact Information
+                  Delivery details
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-400">
@@ -1119,7 +1237,7 @@ export default function CheckoutPage() {
 
           {/* Shipping address */}
           {requiresShipping && (
-            <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-7">
+            <section className={styles.panel}>
               <div className="flex items-center gap-3">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-xl">
                   🚚
@@ -1323,7 +1441,7 @@ export default function CheckoutPage() {
           )}
 
           {/* Delivery method */}
-          <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-7">
+          <section className={`${styles.panel} ${styles.delivery}`}>
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-xl">
                 📦
@@ -1369,467 +1487,8 @@ export default function CheckoutPage() {
             </div>
           </section>
 
-          {/* Payment method */}
-          <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-7">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-xl">
-                💳
-              </span>
 
-              <div>
-                <h2 className="text-xl font-black">
-                  Payment Method
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-400">
-                  Select how you want to pay.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 items-start gap-2 sm:grid-cols-2">
-              <label
-                className={`rounded-xl border p-2.5 transition sm:col-span-2 sm:p-3 ${
-                  paymentMethod === "wallet"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950"
-                } ${
-                  !wallet.authenticated || wallet.balance < totalAmount
-                    ? "cursor-not-allowed opacity-60"
-                    : "cursor-pointer hover:border-white/20"
-                } ${!paymentAllowed("wallet") ? "hidden" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="wallet"
-                  checked={paymentMethod === "wallet"}
-                  disabled={
-                    wallet.loading ||
-                    !wallet.authenticated ||
-                    wallet.balance < totalAmount
-                  }
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-xl font-black text-cyan-400">
-                      $
-                    </span>
-
-                    <div>
-                      <p className="text-sm font-bold leading-snug">InGamePin Wallet</p>
-                      <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                        {wallet.loading
-                          ? "Checking wallet balance..."
-                          : wallet.authenticated
-                            ? wallet.balance >= totalAmount
-                              ? "Instant secure payment"
-                              : "Insufficient wallet balance"
-                            : "Sign in to use your wallet"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-xs text-slate-500">Balance</p>
-                    <p className="mt-1 font-black text-cyan-400">
-                      {wallet.authenticated
-                        ? formatPrice(wallet.balance)
-                        : "—"}
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "pally"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } ${!paymentAllowed("pally") ? "hidden" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="pally"
-                  checked={paymentMethod === "pally"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-2.5">
-                  <Image
-                    src="/payment-methods/sbp.jpg"
-                    alt="SBP - Faster Payments System"
-                    width={40}
-                    height={40}
-                    className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain"
-                  />
-
-                  <div>
-                    <p className="text-sm font-bold leading-snug">SBP - Faster Payments System</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                      Pay securely via Pally
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "manual_upi"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } ${!paymentAllowed("manual_upi") ? "hidden" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="manual_upi"
-                  checked={paymentMethod === "manual_upi"}
-                  onChange={(event) => setPaymentMethod(event.target.value)}
-                  className="sr-only"
-                />
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600">
-                    <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 max-w-none scale-150 object-contain" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-bold leading-snug">UPI</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">Scan QR · Submit 12-digit UPI reference</p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "upi"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } ${!paymentAllowed("upi") ? "hidden" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="upi"
-                  checked={paymentMethod === "upi"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-2.5">
-                  <Image src="/payment-methods/usdt.png" alt="USDT" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
-
-                  <div>
-                    <p className="text-sm font-bold leading-snug">Manual USDT</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                      7 networks · Submit transaction hash
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "binance"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } ${!paymentAllowed("binance") ? "hidden" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="binance"
-                  checked={paymentMethod === "binance"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-2.5">
-                  <Image src="/payment-methods/binance-pay.png" alt="Binance Pay" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
-
-                  <div>
-                    <p className="text-sm font-bold leading-snug">Binance Pay</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                      Pay securely with Binance
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "usdt"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } ${!paymentAllowed("usdt") ? "hidden" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="usdt"
-                  checked={paymentMethod === "usdt"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-2.5">
-                  <Image src="/payment-methods/usdt.png" alt="USDT" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
-
-                  <div>
-                    <p className="text-sm font-bold leading-snug">Direct USDT</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                      TRC20, BEP20 or Solana
-                    </p>
-                  </div>
-                </div>
-              </label>
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "freekassa"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } ${!paymentAllowed("freekassa") ? "hidden" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="freekassa"
-                  checked={paymentMethod === "freekassa"}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-2.5">
-                  <Image src="/payment-methods/freekassa-logo.png" alt="FreeKassa" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
-
-                  <div>
-                    <p className="text-sm font-bold leading-snug">FreeKassa</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                      Cards, SBP and local payments
-                    </p>
-                  </div>
-                </div>
-              </label>
-            </div>
-
-            {!paymentRestrictions.loading && paymentRestrictions.allowedPaymentMethods.length === 0 && (
-              <p className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">
-                No common payment method is available for the products in this cart.
-              </p>
-            )}
-
-            <PaymentMethodsBanner className="mt-4 sm:mt-5" />
-          </section>
-
-          {/* Order note */}
-          <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-7">
-            <label
-              htmlFor="orderNote"
-              className="block text-lg font-black"
-            >
-              Order Note
-            </label>
-
-            <p className="mt-1 text-sm text-slate-400">
-              Add optional delivery instructions.
-            </p>
-
-            <textarea
-              id="orderNote"
-              value={form.orderNote}
-              onChange={(event) =>
-                updateField("orderNote", event.target.value)
-              }
-              rows={3}
-              placeholder="Example: Please call before delivery"
-              className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-slate-950 px-4 py-3.5 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/10"
-            />
-          </section>
-        </div>
-
-        {/* Order summary */}
-        <aside>
-          <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 sm:p-5 lg:sticky lg:top-24">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-black">
-                Order Summary
-              </h2>
-
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/cart"
-                  className="text-sm font-semibold text-cyan-400 hover:text-cyan-300"
-                >
-                  Edit Cart
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={clearCart}
-                  className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-400/20"
-                >
-                  Clear Cart
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-5 max-h-80 space-y-4 overflow-y-auto pr-1">
-              {cartItems.map((item) => (
-            <div
-                  key={item.id}
-                  className="flex gap-4 border-b border-white/10 pb-4"
-                >
-                  <div className="flex h-20 w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-950">
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt={item.name || item.title || "Product"}
-                        className="h-full w-full object-cover object-center"
-                      />
-                    ) : (
-                      <span className="text-3xl">🎮</span>
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <h3 className="line-clamp-2 text-sm font-bold">
-                      {item.name || item.title}
-                    </h3>
-
-                    {item.editionName && (
-                      <p className="mt-1 text-xs text-slate-400">
-                        Edition: {item.editionName}
-                      </p>
-                    )}
-
-                    {item.denomination && (
-                      <p className="mt-1 text-xs text-slate-400">
-                        Denomination: {item.denomination} {item.denominationCurrency ?? ""}
-                      </p>
-                    )}
-
-                    {item.productId &&
-                      form.email.trim().toLowerCase() === customerDiscounts.email?.toLowerCase() &&
-                      Number(customerDiscounts.discounts[item.productId] ?? 0) > 0 && (
-                      <p className="mt-2 inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-300">
-                        {customerDiscounts.discounts[item.productId]}% customer discount
-                      </p>
-                    )}
-
-                    <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-                      <div>
-                        <p className="mb-1.5 text-xs text-slate-500">
-                          Quantity
-                        </p>
-
-                        <div className="inline-flex items-center overflow-hidden rounded-lg border border-white/10 bg-slate-950">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateQuantity(
-                                item.id,
-                                Number(item.quantity || 1) - 1
-                              )
-                            }
-                            disabled={
-                              Number(item.quantity || 1) <=
-                              (item.minQuantity ?? 1)
-                            }
-                            aria-label={`Reduce quantity of ${
-                              item.name || item.title || "product"
-                            }`}
-                            className="flex h-9 w-9 items-center justify-center text-lg font-bold text-slate-300 transition hover:bg-white/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-30"
-                          >
-                            −
-                          </button>
-
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            min={item.minQuantity ?? 1}
-                            max={
-                              item.isBulkOrder || item.maxQuantity === undefined
-                                ? undefined
-                                : item.maxQuantity
-                            }
-                            step={1}
-                            value={item.quantity || 1}
-                            onFocus={(event) => event.currentTarget.select()}
-                            onChange={(event) => {
-                              const requested = event.currentTarget.valueAsNumber;
-                              if (Number.isSafeInteger(requested)) {
-                                updateQuantity(item.id, requested);
-                              }
-                            }}
-                            aria-label={`Enter quantity of ${item.name || item.title || "product"}`}
-                            className="h-9 w-16 border-x border-white/10 bg-slate-950 px-2 text-center text-sm font-black text-white outline-none focus:bg-slate-900"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateQuantity(
-                                item.id,
-                                Number(item.quantity || 1) + 1
-                              )
-                            }
-                            disabled={
-                              !item.isBulkOrder &&
-                              item.maxQuantity !== undefined &&
-                              Number(item.quantity || 1) >=
-                                item.maxQuantity
-                            }
-                            aria-label={`Increase quantity of ${
-                              item.name || item.title || "product"
-                            }`}
-                            className="flex h-9 w-9 items-center justify-center text-lg font-bold text-slate-300 transition hover:bg-white/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-30"
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <p className="mt-1.5 text-[10px] text-slate-600">
-                          {item.isBulkOrder || item.maxQuantity === undefined
-                            ? "No quantity limit"
-                            : `Limit: ${item.minQuantity ?? 1}–${item.maxQuantity}`}
-                        </p>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="mb-2 text-xs">Face value: <strong>{formatFaceValue([item])}</strong></p>
-                        <p className="text-xs text-slate-500">
-                          Item total
-                        </p>
-
-                        <p className="mt-1 font-bold">
-                          {formatPrice(
-                            Number(item.price) *
-                              Number(item.quantity || 1)
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
+            <section className={`${styles.panel} ${styles.breakdown}`} aria-label="Price breakdown"><h2>Price breakdown</h2>
             <div className="mt-5 space-y-3 text-sm">
               <div className="flex justify-between text-slate-400">
                 <span>Subtotal</span>
@@ -1894,6 +1553,305 @@ export default function CheckoutPage() {
               </p>
             </div>
 
+            </section>
+          {/* Order note */}
+          <details className={`${styles.panel} ${styles.note}`}>
+            <summary>Add an order note <span>(optional)</span></summary>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Add optional delivery instructions.
+            </p>
+
+            <textarea
+              id="orderNote"
+              value={form.orderNote}
+              onChange={(event) =>
+                updateField("orderNote", event.target.value)
+              }
+              rows={3}
+              placeholder="Add any delivery instructions"
+              className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-slate-950 px-4 py-3.5 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/10"
+            />
+          </details>
+          </div>
+          {/* Payment method */}
+          <section className={`${styles.panel} ${styles.payment}`}>
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-xl">
+                2
+              </span>
+
+              <div>
+                <h2 className="text-xl font-black">
+                  Choose how to pay
+                </h2>
+
+                <p role="status" className="mt-1 text-sm text-slate-400">
+                  {paymentRestrictions.loading ? "Checking payment availability…" : "Select how you want to pay."}
+                </p>
+              </div>
+            </div>
+
+            <div className={styles.paymentGrid} aria-busy={paymentRestrictions.loading}>
+              <label
+                className={`rounded-xl border p-2.5 transition sm:col-span-2 sm:p-3 ${
+                  paymentMethod === "wallet"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950"
+                } ${
+                  !wallet.authenticated || wallet.balance < totalAmount
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-pointer hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="wallet"
+                  checked={!paymentRestrictions.loading && paymentAllowed("wallet") && paymentMethod === "wallet"}
+                  disabled={
+                    paymentRestrictions.loading || !paymentAllowed("wallet") ||
+                    wallet.loading ||
+                    !wallet.authenticated ||
+                    wallet.balance < totalAmount
+                  }
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-xl font-black text-cyan-400">
+                      $
+                    </span>
+
+                    <div>
+                      <p className="text-sm font-bold leading-snug">InGamePin Wallet</p>
+                      <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                        {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("wallet") ? "Unavailable for this order" : wallet.loading
+                          ? "Checking wallet balance..."
+                          : wallet.authenticated
+                            ? wallet.balance >= totalAmount
+                              ? "Instant secure payment"
+                              : "Insufficient wallet balance"
+                            : "Sign in to use your wallet"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Balance</p>
+                    <p className="mt-1 font-black text-cyan-400">
+                      {wallet.authenticated
+                        ? formatPrice(wallet.balance)
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "pally"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="pally"
+                  checked={!paymentRestrictions.loading && paymentAllowed("pally") && paymentMethod === "pally"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("pally")}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-2.5">
+                  <Image
+                    src="/payment-methods/sbp.jpg"
+                    alt="SBP - Faster Payments System"
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain"
+                  />
+
+                  <div>
+                    <p className="text-sm font-bold leading-snug">SBP - Faster Payments System</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("pally") ? "Unavailable for this order" : "Pay securely via Pally"}
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "manual_upi"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="manual_upi"
+                  checked={!paymentRestrictions.loading && paymentAllowed("manual_upi") && paymentMethod === "manual_upi"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("manual_upi")}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                  className="sr-only"
+                />
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600">
+                    <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 max-w-none scale-150 object-contain" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold leading-snug">UPI</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">{paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("manual_upi") ? "Unavailable for this order" : "Scan QR · Submit 12-digit UPI reference"}</p>
+                  </div>
+                </div>
+              </label>
+
+              <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "upi"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="upi"
+                  checked={!paymentRestrictions.loading && paymentAllowed("upi") && paymentMethod === "upi"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("upi")}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/usdt.png" alt="USDT" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
+
+                  <div>
+                    <p className="text-sm font-bold leading-snug">Manual USDT</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("upi") ? "Unavailable for this order" : "Pay to our wallet and submit the transaction reference"}
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "binance"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="binance"
+                  checked={!paymentRestrictions.loading && paymentAllowed("binance") && paymentMethod === "binance"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("binance")}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/binance-pay.png" alt="Binance Pay" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
+
+                  <div>
+                    <p className="text-sm font-bold leading-snug">Binance Pay</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("binance") ? "Unavailable for this order" : "Pay securely with Binance"}
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "usdt"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="usdt"
+                  checked={!paymentRestrictions.loading && paymentAllowed("usdt") && paymentMethod === "usdt"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("usdt")}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/usdt.png" alt="USDT" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
+
+                  <div>
+                    <p className="text-sm font-bold leading-snug">Direct USDT</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("usdt") ? "Unavailable for this order" : "TRC20, BEP20 or Solana"}
+                    </p>
+                  </div>
+                </div>
+              </label>
+              <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "freekassa"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="freekassa"
+                  checked={!paymentRestrictions.loading && paymentAllowed("freekassa") && paymentMethod === "freekassa"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("freekassa")}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/freekassa-logo.png" alt="FreeKassa" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
+
+                  <div>
+                    <p className="text-sm font-bold leading-snug">FreeKassa</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("freekassa") ? "Unavailable for this order" : "Cards, SBP and local payments"}
+                    </p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            {!paymentRestrictions.loading && paymentRestrictions.allowedPaymentMethods.length === 0 && (
+              <p className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">
+                No common payment method is available for the products in this cart.
+              </p>
+            )}
+
+
+          </section>
+
+        </div>
+        <section className={`${styles.panel} ${styles.confirmation}`} aria-label="Confirm your order">
+          <div className={styles.consents}>
             <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl bg-slate-950 p-4">
               <input
                 type="checkbox"
@@ -1923,9 +1881,11 @@ export default function CheckoutPage() {
               </span>
             </label>}
 
+          </div>
+          <div className={styles.submitArea}>
             {message && (
               <p
-                aria-live="polite"
+                role="alert"
                 className="mt-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300"
               >
                 {message}
@@ -1934,7 +1894,7 @@ export default function CheckoutPage() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || paymentRestrictions.loading || !paymentAllowed(paymentMethod)}
               className="mt-5 w-full rounded-xl bg-cyan-400 px-5 py-4 text-base font-black text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
@@ -1949,21 +1909,8 @@ export default function CheckoutPage() {
               <span>Your information is securely processed</span>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-2">
-              <div className="rounded-lg bg-slate-950 px-2 py-3 text-center text-xs text-slate-400">
-                Secure
-              </div>
-
-              <div className="rounded-lg bg-slate-950 px-2 py-3 text-center text-xs text-slate-400">
-                Genuine
-              </div>
-
-              <div className="rounded-lg bg-slate-950 px-2 py-3 text-center text-xs text-slate-400">
-                Support
-              </div>
-            </div>
           </div>
-        </aside>
+        </section>
       </form>
     </main>
   );
