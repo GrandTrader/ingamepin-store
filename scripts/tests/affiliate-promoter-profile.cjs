@@ -1,6 +1,13 @@
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict'), ts = require('typescript');
 function load(file, mocks = {}) { const exports = {}; vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:name=>name==='server-only'?{}:name in mocks?mocks[name]:require(name),console,Date,Map,Set}); return exports; }
 const limit = load('lib/affiliate-commission.ts');
+const urls = load('lib/product-url.ts');
+const publicProduct = {public_id:874868382,categories:{slug:'minecraft',public_id:584976958},slug:'definiteplay-private-supplier'};
+assert.equal(urls.getAffiliateProductPath(publicProduct,'IGP-B934B7C728'),'/category/minecraft/584976958/subcategory/874868382?ref=IGP-B934B7C728');
+assert.equal(urls.getAffiliateProductPath({...publicProduct,categories:[publicProduct.categories]},'IGP-B934B7C728'),urls.getAffiliateProductPath(publicProduct,'IGP-B934B7C728'));
+assert.equal(urls.getAffiliateProductPath({...publicProduct,categories:null},'test'),null,'Never fall back to supplier slugs');
+assert.equal(urls.getAffiliateProductPath({...publicProduct,public_id:'private-supplier'},'test'),null);
+assert.ok(urls.getAffiliateProductPath(publicProduct,'ref&other=value').endsWith('?ref=ref%26other%3Dvalue'));
 const report = load('lib/affiliate-promoter-report.ts', {'./affiliate-commission':limit});
 const states = ['PENDING','AVAILABLE','HELD','REQUESTED','PAID','REJECTED','CANCELLED'];
 const commissions = states.map((status,index)=>({id:'c'+index,order_item_id:'i'+index,commission_amount:'0.10',status}));
@@ -17,6 +24,7 @@ for(const args of [[product,false,'APPROVED',null],[product,true,'SUSPENDED',nul
  let adminCalls=0;
  const profile=load('lib/admin-affiliate-profile.ts',{
   'next/navigation':{redirect:()=>{throw Error('redirect');},notFound:()=>{throw Error('notFound');}},
+  '@/lib/product-url':urls,
   '@/lib/supabase/admin-session':{createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'ordinary-user'}}})},from:()=>({select(){return this},eq(){return this},maybeSingle:async()=>({data:null,error:null})})})},
   '@/lib/supabase/admin':{createAdminClient:()=>{adminCalls++;throw Error('Forbidden');}}
  });

@@ -296,13 +296,12 @@ export default async function CustomerAffiliatePage({
                 const category = Array.isArray(product.categories)
                   ? product.categories[0]
                   : product.categories;
-                const productPath = category
-                  ? getProductUrl({
-                      categorySlug: category.slug,
-                      categoryPublicId: category.public_id,
-                      productPublicId: product.public_id,
-                    })
-                  : `/product/${encodeURIComponent(product.slug)}`;
+                if (!category) return null;
+                const productPath = getProductUrl({
+                  categorySlug: category.slug,
+                  categoryPublicId: category.public_id,
+                  productPublicId: product.public_id,
+                });
 
                 return (
                   <AffiliateProductLink

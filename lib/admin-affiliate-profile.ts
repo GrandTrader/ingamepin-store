@@ -2,6 +2,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAffiliateProductPath } from "@/lib/product-url";
 import type { GeneratedLink, ReportClick, ReportCommission, ReportOrder, ReportPayout, ReportProduct, ReportRate } from "./affiliate-promoter-report";
 
 // Fetch every page so totals do not silently stop at the database's row limit.
@@ -34,7 +35,7 @@ export async function loadAffiliateProfile(id: string) {
     allRows<ReportOrder>((a,b) => db.from("orders").select("id,order_number,status,currency,created_at,order_items(id,product_id,product_name,option_name,quantity,total_price,affiliate_commission_percent)").eq("affiliate_id", id).order("created_at", {ascending:false}).order("id").range(a,b)),
     allRows<ReportClick>((a,b) => db.from("affiliate_clicks").select("id,product_id,created_at").eq("affiliate_id", id).order("id").range(a,b)),
     allRows<ReportRate>((a,b) => db.from("affiliate_product_rates").select("product_id,commission_percent").eq("affiliate_id", id).order("id").range(a,b)),
-    allRows<ReportProduct>((a,b) => db.from("products").select("id,name,slug,status,retail_enabled,affiliate_enabled,affiliate_commission_percent").order("id").range(a,b)),
+    allRows<Omit<ReportProduct,"public_path"> & Parameters<typeof getAffiliateProductPath>[0]>((a,b) => db.from("products").select("id,name,public_id,categories(slug,public_id),status,retail_enabled,affiliate_enabled,affiliate_commission_percent").order("id").range(a,b)),
     allRows<ReportPayout>((a,b) => db.from("affiliate_payout_requests").select("id,amount,fee_amount,net_amount,status,network,wallet_address,transaction_id,created_at,paid_at").eq("affiliate_id", id).order("created_at", {ascending:false}).order("id").range(a,b)),
     db.from("affiliate_generated_links").select("product_id", {count:"exact",head:true}).eq("affiliate_id", id),
   ]);
@@ -42,5 +43,6 @@ export async function loadAffiliateProfile(id: string) {
   const trackingReady = !tracking.error;
   if (tracking.error && !["PGRST205", "42P01"].includes(tracking.error.code)) throw Error("Unable to load generated link history.");
   const generated = trackingReady ? await allRows<GeneratedLink>((a,b) => db.from("affiliate_generated_links").select("product_id,created_at,last_copied_at").eq("affiliate_id", id).order("product_id").range(a,b)) : [];
-  return { account: {...account, email: identity.data.user?.email ?? ""}, programEnabled: settings.data?.program_enabled === true, commissions, orders, clicks, rates, products, payouts, generated, trackingReady };
+  const publicProducts: ReportProduct[] = products.map(({public_id,categories,...product}) => ({...product,public_path:getAffiliateProductPath({public_id,categories},account.affiliate_code)}));
+  return { account: {...account, email: identity.data.user?.email ?? ""}, programEnabled: settings.data?.program_enabled === true, commissions, orders, clicks, rates, products:publicProducts, payouts, generated, trackingReady };
 }
