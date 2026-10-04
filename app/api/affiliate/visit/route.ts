@@ -34,6 +34,10 @@ export async function POST(request: NextRequest) {
     const landingPath = cleanText(body.landingPath, 1000);
     const referrerUrl = cleanText(body.referrerUrl, 1000) || null;
 
+    if (landingPath.startsWith("/product/")) {
+      return NextResponse.json({tracked:false,error:"This affiliate link has expired. Copy a new link from your affiliate account."}, {status:410,headers:{"Cache-Control":"no-store"}});
+    }
+
     if (
       !affiliateCode ||
       !productId ||

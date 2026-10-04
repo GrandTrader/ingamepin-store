@@ -5,8 +5,16 @@ import {
   type CookieOptions,
 } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import { isExpiredAffiliateLink } from "@/lib/affiliate-link-expiry";
 
 export async function proxy(request: NextRequest) {
+  if (isExpiredAffiliateLink(request.nextUrl.pathname, request.nextUrl.searchParams)) {
+    const expired = NextResponse.redirect(new URL("/affiliate-link-expired", request.url), 307);
+    expired.headers.set("Cache-Control", "private, no-store");
+    expired.cookies.set("igp_affiliate_click", "", {path:"/",maxAge:0});
+    expired.cookies.set("igp_affiliate_code", "", {path:"/",maxAge:0});
+    return expired;
+  }
   let response = NextResponse.next({ request: { headers: request.headers } });
   let refreshedCookies: Array<{
     name: string;

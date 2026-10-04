@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import AffiliateLinkUpdateNotice from "@/components/AffiliateLinkUpdateNotice";
 import { useState } from "react";
 import type { loadAffiliateProfile } from "@/lib/admin-affiliate-profile";
 import { promoterLinkStatus, promoterSales, summarizePromoter } from "@/lib/affiliate-promoter-report";
@@ -59,6 +60,7 @@ export default function PromoterProfile({data}: {data:Data}) {
     <p className="text-xs text-slate-500">All-time recorded earnings. Total earned excludes held, rejected and cancelled commissions. Paid commission is before payout fees. Visits follow existing duplicate-visit filtering. Dates are IST.</p>
     <nav aria-label="Promoter reports" className="mt-4 flex flex-wrap gap-2">{tabs.map(label => <button key={label} onClick={() => {setTab(label);setPage(0);setSearch("");setStatus("all");}} aria-pressed={tab===label} className={`min-h-[44px]! rounded-lg px-3 py-2 text-sm font-bold ${tab===label?"bg-blue-600 text-white":"bg-slate-100 text-slate-700"}`}>{label}</button>)}</nav>
     <div className="my-3 flex flex-wrap gap-2"><input aria-label="Search promoter activity" className={`${field} flex-1`} placeholder={tab==="Orders & earnings"?"Search product or order…":"Search…"} value={search} onChange={e=>{setSearch(e.target.value);setPage(0);}}/>{tab!=="Products sold" && <select aria-label="Filter activity status" className={field} value={status} onChange={e=>{setStatus(e.target.value);setPage(0);}}><option value="all">All statuses</option>{states.map(value=><option key={value} value={value}>{value === "generated" ? "Copied by promoter" : value === "visited" ? "Has tracked visits" : value}</option>)}</select>}<button className={field} onClick={()=>{setSearch("");setStatus("all");setPage(0);}}>Reset</button></div>
+    {tab === "Affiliate links" && <AffiliateLinkUpdateNotice/>}
     {tab === "Affiliate links" && <p className="mb-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-900">{data.trackingReady ? "Copied dates are recorded from the tracking update onward. Older links may have visits without a recorded copy." : "Copy history needs the link-tracking database update. Existing visits and link eligibility are available now."} Active means eligible for commission under current settings; stock is checked at checkout. Links shown here use the promoter’s referral code.</p>}
     {copyMessage && tab==="Affiliate links" && <p role="status" className="mb-2 text-sm">{copyMessage}</p>}
     <p className="mb-2 text-xs text-slate-500" role="status">{count} results</p>

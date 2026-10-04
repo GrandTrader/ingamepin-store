@@ -1,3 +1,4 @@
+import AffiliateLinkUpdateNotice from "@/components/AffiliateLinkUpdateNotice";
 import countries from "i18n-iso-countries";
 import englishCountries from "i18n-iso-countries/langs/en.json";
 import Link from "next/link";
@@ -208,6 +209,8 @@ export default async function CustomerAffiliatePage({
           {error}
         </div>
       )}
+
+      {approvedAccount && <AffiliateLinkUpdateNotice/>}
 
       {account && (
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
