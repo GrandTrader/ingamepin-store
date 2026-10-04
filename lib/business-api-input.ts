@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { trustedClientIp } from "@/lib/trusted-client-ip";
 
 export function normalizeApiIp(value: string) {
   const ip = value.trim();
@@ -13,14 +14,7 @@ export function apiAllowedIps(value: string) {
 }
 
 export function businessApiIp(headers: Headers) {
-  // Vercel supplies this header at its edge. Never trust client-supplied CF/XFF headers.
-  if (process.env.VERCEL === "1") {
-    const value = headers.get("x-vercel-forwarded-for");
-    return value ? normalizeApiIp(value) : null;
-  }
-  // Local preview is not a publicly supported API deployment.
-  if (process.env.NODE_ENV === "development") return "127.0.0.1";
-  return null;
+  return trustedClientIp(headers);
 }
 
 export function apiPage(value: string | null) {

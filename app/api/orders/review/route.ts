@@ -2,7 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { ownsPurchase, purchaseIdentity } from "@/lib/purchase-access";
+import { privateJson, requestLimit, sameOrigin } from "@/lib/request-security";
 
 export const runtime = "nodejs";
 
@@ -22,11 +23,13 @@ function tokenMatches(token: string, storedHash: string) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return privateJson({ error: "Invalid request origin." }, 403);
   try {
+    const blocked = await requestLimit(request, "purchase-review", 15, 60);
+    if (blocked) return blocked;
     const body = (await request.json()) as ReviewRequest;
     const orderId = String(body.orderId ?? "").trim();
     const orderNumber = String(body.orderNumber ?? "").trim().toUpperCase();
-    const email = String(body.email ?? "").trim().toLowerCase();
     const accessToken = String(body.accessToken ?? "").trim();
     const sentiment = String(body.sentiment ?? "").trim().toUpperCase();
     const comment = String(body.comment ?? "").trim();
@@ -43,19 +46,17 @@ export async function POST(request: NextRequest) {
 
     if (orderResult.error || !order || order.status !== "DELIVERED") return NextResponse.json({ error: "Only completed purchases can be reviewed." }, { status: 403 });
 
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const identity = await purchaseIdentity();
     const ownerEmail = order.customer_email.trim().toLowerCase();
-    const signedInOwner = Boolean(user && (user.id === order.customer_id || user.email?.trim().toLowerCase() === ownerEmail));
-    const guestOwner = email.length >= 5 && email === ownerEmail;
-    const tokenOwner = Boolean(accessToken.length >= 40 && order.access_token_hash && tokenMatches(accessToken, order.access_token_hash));
+    const verifiedOwner = ownsPurchase(identity, order);
+    const tokenOwner = Boolean(accessToken.length >= 40 && accessToken.length <= 128 && order.access_token_hash && tokenMatches(accessToken, order.access_token_hash));
 
-    if (!signedInOwner && !guestOwner && !tokenOwner) return NextResponse.json({ error: "Order verification failed." }, { status: 403 });
+    if (!verifiedOwner && !tokenOwner) return privateJson({ error: "Verify your email before reviewing this purchase." }, 403);
 
     const reviewResult = await admin.rpc("submit_verified_order_review", {
       p_order_id: order.id,
       p_customer_id:
-        signedInOwner && user && order.customer_id === user.id ? user.id : null,
+        verifiedOwner && identity?.userId && identity.userId === order.customer_id ? identity.userId : null,
       p_customer_email: ownerEmail,
       p_sentiment: sentiment,
       p_comment: comment || null,

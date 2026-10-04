@@ -94,10 +94,10 @@ export async function POST(request: NextRequest, context: Context) {
     if (!body || typeof body!=="object" || Array.isArray(body)) throw Error("Invalid body");
   } catch { return businessApiJson({error:"Send a valid JSON object."},400); }
   const forwarded = new NextRequest(new URL("/api/account/portal/orders",request.url),{
-    method:"POST",headers:{"Content-Type":"application/json","cf-connecting-ip":auth.principal.ip},
+    method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({action:quote?"quote":"confirm",paymentMethod:"wallet",requestId,reference:body.reference,expectedTotal:body.expectedTotal,items:body.items}),
   });
-  const response = await handleOrder(forwarded,auth.principal.user);
+  const response = await handleOrder(forwarded,auth.principal.user,auth.principal.ip);
   response.headers.set("Cache-Control","private, no-store");
   response.headers.set("Idempotency-Key",requestId);
   return response;

@@ -1,4 +1,7 @@
 import "server-only";
+import { saveCheckoutConsent } from "@/lib/checkout-consent";
+import { trustedClientIp } from "@/lib/trusted-client-ip";
+import { requestLimit, sameOrigin, privateJson } from "@/lib/request-security";
 import type { User } from "@supabase/supabase-js";
 import { purchaseLimitSince, purchaseLimitMessage } from "@/lib/purchase-restriction";
 import { exemptPurchaseProducts } from "@/lib/purchase-restriction-exemptions";
@@ -100,8 +103,14 @@ export async function POST(request: NextRequest) {
 }
 
 // API principals are supplied only by the server-side business API authenticator.
-export async function handleOrder(request: NextRequest, apiUser?: User) {
+export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: string) {
   try {
+    if (!apiUser) {
+      if (!sameOrigin(request)) return privateJson({ error: "Invalid request origin." }, 403);
+      const blocked = await requestLimit(request, "checkout", 60, 300);
+      if (blocked) return blocked;
+    }
+    const customerIp = apiUser ? apiIp ?? null : trustedClientIp(request.headers);
     const body = (await request.json()) as OrderRequest;
     const isPortal=!!apiUser||request.nextUrl.pathname==="/api/account/portal/orders";
     let portal:PortalCheckoutInput|null=null;
@@ -193,7 +202,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User) {
     }
 
     const admin = createAdminClient();
-    const portalRpc=async(action:string)=>admin.rpc("portal_wallet_checkout",{p_user:signedInUser!.id,p_request:portal!.requestId,p_action:action,p_items:portal!.items,p_reference:portal!.reference,p_expected:portal!.expectedTotal,p_ip:(request.headers.get("cf-connecting-ip")??request.headers.get("x-forwarded-for")?.split(",")[0]??"").trim()||null});
+    const portalRpc=async(action:string)=>admin.rpc("portal_wallet_checkout",{p_user:signedInUser!.id,p_request:portal!.requestId,p_action:action,p_items:portal!.items,p_reference:portal!.reference,p_expected:portal!.expectedTotal,p_ip:customerIp});
     if(portal){
       // Recover a committed confirmation before stock checks: its codes may already be sold.
       const replay=await portalRpc("recover");
@@ -216,50 +225,6 @@ export async function handleOrder(request: NextRequest, apiUser?: User) {
       "Customer"
     ).slice(0, 120);
 
-    if (signedInUser && customer.marketingConsent === true) {
-      const marketingMetadataResult = await admin.auth.admin.updateUserById(
-        signedInUser.id,
-        {
-          user_metadata: {
-            ...signedInUser.user_metadata,
-            marketing_email_consent: true,
-            marketing_email_consented_at: new Date().toISOString(),
-          },
-        },
-      );
-
-      if (marketingMetadataResult.error) {
-        console.error(
-          "Unable to save checkout marketing consent:",
-          marketingMetadataResult.error.message,
-        );
-      }
-    }
-
-    if (customer.marketingConsent === true && customerEmailForLimit) {
-      const consentResult = await admin
-        .from("marketing_email_subscriptions")
-        .upsert(
-          {
-            email: customerEmailForLimit,
-            user_id: signedInUser?.id ?? null,
-            subscribed: true,
-            consent_source: "checkout",
-            consented_at: new Date().toISOString(),
-            unsubscribed_at: null,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "email" },
-        );
-
-      if (consentResult.error) {
-        console.error(
-          "Unable to save checkout marketing subscription:",
-          consentResult.error.message,
-        );
-      }
-    }
-    const customerIp = (request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
     const submittedItems = body.items as Array<{ productId?: string; productOptionId?: string; quantity?: number; customValue?: number }>;
     if (submittedItems.some(item => !Number.isSafeInteger(Number(item.quantity ?? 1)) || Number(item.quantity ?? 1) < 1)) {
       return NextResponse.json({ error: "The cart quantity is invalid." }, { status: 400 });
@@ -884,6 +849,8 @@ export async function handleOrder(request: NextRequest, apiUser?: User) {
     if (isWalletPayment && walletPaymentResult) {
       await notifyPaidOrderInTelegram(orderResult.data.id);
     }
+
+    await saveCheckoutConsent(signedInUser ?? null, customerEmailForLimit, customer.marketingConsent);
 
     return NextResponse.json({
       order: {

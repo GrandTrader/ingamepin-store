@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('typescript');
 const {NextRequest,NextResponse}=require('next/server');
 function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,{exports,require:n=>n==='server-only'?{}:n in mocks?mocks[n]:require(n),process,URL,Headers,Request,Response,Date,console});return exports;}
-const inputs=load('lib/business-api-input.ts');
+const inputs=load('lib/business-api-input.ts',{'@/lib/trusted-client-ip':load('lib/trusted-client-ip.ts')});
 assert.deepEqual([...inputs.apiAllowedIps('203.0.113.10, 203.0.113.10\n2001:0db8::1')],['203.0.113.10','2001:db8::1']);
 for(const bad of ['','0.0.0.0/0','127.0.0.1/8','example.com','1.2.3.4:80'])assert.throws(()=>inputs.apiAllowedIps(bad));
 const env={VERCEL:process.env.VERCEL,NODE_ENV:process.env.NODE_ENV};
@@ -27,7 +27,7 @@ const headers={Authorization:'Bearer igp_b2b_'+'a'.repeat(43)};
   '@/lib/business-api-auth':{businessApiJson:auth.businessApiJson,authorizeBusinessApi:async(req,ordering)=>{requiredPermission=ordering;return {error:null,principal:{user,ip:'203.0.113.10'}};}},
   '@/lib/business-api-input':inputs,'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>builder})},
   '@/lib/delivered-codes':{getAllDeliveredCodes:async()=>{readCodes++;return[];}},'@/lib/product-range-data':{},
-  '@/lib/order-request-handler':{handleOrder:async(request,principal)=>{forwarded={body:await request.json(),principal,headers:request.headers};return NextResponse.json({result:{total:10}});}},
+  '@/lib/order-request-handler':{handleOrder:async(request,principal,ip)=>{forwarded={body:await request.json(),principal,ip,headers:request.headers};return NextResponse.json({result:{total:10}});}},
   '@/app/api/products/quantity-limits/route':{},
  });
  const context=path=>({params:Promise.resolve({path})});
@@ -35,7 +35,7 @@ const headers={Authorization:'Bearer igp_b2b_'+'a'.repeat(43)};
  const request=(key,body)=>new NextRequest('http://test/api/v1/business/orders',{method:'POST',headers:{...headers,...(key?{'Idempotency-Key':key}:{}),'cf-connecting-ip':'bad','Content-Type':'application/json'},body:JSON.stringify(body)});
  assert.equal((await route.POST(request(null,{}),context(['orders']))).status,400);
  const body={items:[{productOptionId:id,quantity:2}],reference:'MY-ORDER',expectedTotal:10,customer:{email:'victim@example.invalid'},paymentMethod:'binance',action:'quote'};
- const response=await route.POST(request(id,body),context(['orders']));assert.equal(response.status,200);assert.equal(requiredPermission,true);assert.equal(forwarded.principal.id,user.id);assert.equal(forwarded.body.action,'confirm');assert.equal(forwarded.body.paymentMethod,'wallet');assert.equal(forwarded.body.customer,undefined);assert.equal(forwarded.body.requestId,id);assert.equal(forwarded.headers.get('cf-connecting-ip'),'203.0.113.10');assert.equal(forwarded.headers.get('authorization'),null);assert.equal(response.headers.get('Cache-Control'),'private, no-store');
+ const response=await route.POST(request(id,body),context(['orders']));assert.equal(response.status,200);assert.equal(requiredPermission,true);assert.equal(forwarded.principal.id,user.id);assert.equal(forwarded.body.action,'confirm');assert.equal(forwarded.body.paymentMethod,'wallet');assert.equal(forwarded.body.customer,undefined);assert.equal(forwarded.body.requestId,id);assert.equal(forwarded.headers.get('cf-connecting-ip'),null);assert.equal(forwarded.ip,'203.0.113.10');assert.equal(forwarded.headers.get('authorization'),null);assert.equal(response.headers.get('Cache-Control'),'private, no-store');
  await route.POST(request(null,body),context(['orders','quote']));assert.equal(requiredPermission,false);assert.equal(forwarded.body.action,'quote');
  let result=await route.GET(new NextRequest('http://test/api/v1/business/orders/'+id+'/codes'),context(['orders',id,'codes']));assert.equal(result.status,404);assert(filters.some(([k,v])=>k==='customer_id'&&v===user.id));assert(filters.some(([k,v])=>k==='sales_channel'&&v==='BUSINESS'));assert.equal(readCodes,0);
  returnedOrder={id,status:'REFUNDED',order_items:[{id:'item'}]};result=await route.GET(new NextRequest('http://test/api/v1/business/orders/'+id+'/codes'),context(['orders',id,'codes']));assert.equal(result.status,409);assert.equal(readCodes,0);

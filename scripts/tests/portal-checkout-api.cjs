@@ -10,8 +10,9 @@ let user=null,approval='PENDING',rpcResult={data:null,error:null},calls=[];
 const chain={select(){return this;},eq(){return this;},async maybeSingle(){return {data:{status:approval},error:null};}};
 const admin={from(table){assert.equal(table,'business_kyb');return chain;},async rpc(name,args){calls.push({name,args});return rpcResult;}};
 const mocks={'@/lib/portal-checkout':parser,'@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user}})}})},'@/lib/supabase/admin':{createAdminClient:()=>admin},'next/server':{NextResponse:{json:(body,options={})=>({status:options.status??200,body})}}};
-for(const match of fs.readFileSync('app/api/orders/route.ts','utf8').matchAll(/from ["'](@\/[^"']+)["']/g))mocks[match[1]]??={};
-const {POST}=load('app/api/orders/route.ts',mocks);
+for(const match of fs.readFileSync('lib/order-request-handler.ts','utf8').matchAll(/from ["'](@\/[^"']+)["']/g))mocks[match[1]]??={};
+Object.assign(mocks,{'server-only':{},'@/lib/request-security':{sameOrigin:()=>true,requestLimit:async()=>null,privateJson:(body,status=200)=>({body,status})},'@/lib/trusted-client-ip':{trustedClientIp:()=> '203.0.113.10'},'@/lib/checkout-consent':{saveCheckoutConsent:async()=>{}},'@/lib/purchase-restriction-exemptions':{exemptPurchaseProducts:async()=>new Set()}});
+const {POST}=load('lib/order-request-handler.ts',mocks);
 const request=body=>({json:async()=>structuredClone(body),nextUrl:{pathname:'/api/account/portal/orders'},headers:new Headers()});
 (async()=>{
  assert.equal((await POST(request({...base,paymentMethod:'pally'}))).status,400);assert.equal(calls.length,0);

@@ -6,8 +6,15 @@ import {
 } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { isExpiredAffiliateLink } from "@/lib/affiliate-link-expiry";
+import { contentSecurityPolicy } from "@/lib/content-security-policy";
+import { randomBytes } from "node:crypto";
 
 export async function proxy(request: NextRequest) {
+  const nonce = randomBytes(18).toString("base64");
+  const policy = contentSecurityPolicy(nonce, process.env.NODE_ENV === "development");
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", policy);
   if (isExpiredAffiliateLink(request.nextUrl.pathname, request.nextUrl.searchParams)) {
     const expired = NextResponse.redirect(new URL("/affiliate-link-expired", request.url), 307);
     expired.headers.set("Cache-Control", "private, no-store");
@@ -15,7 +22,8 @@ export async function proxy(request: NextRequest) {
     expired.cookies.set("igp_affiliate_code", "", {path:"/",maxAge:0});
     return expired;
   }
-  let response = NextResponse.next({ request: { headers: request.headers } });
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", policy);
   let refreshedCookies: Array<{
     name: string;
     value: string;
@@ -32,7 +40,12 @@ export async function proxy(request: NextRequest) {
       setAll(cookiesToSet) {
         refreshedCookies = cookiesToSet;
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request: { headers: request.headers } });
+        // Preserve refreshed authentication cookies in the forwarded request as well.
+        const refreshedCookieHeader = request.headers.get("cookie");
+        if (refreshedCookieHeader) requestHeaders.set("cookie", refreshedCookieHeader);
+        else requestHeaders.delete("cookie");
+        response = NextResponse.next({ request: { headers: requestHeaders } });
+        response.headers.set("Content-Security-Policy", policy);
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },

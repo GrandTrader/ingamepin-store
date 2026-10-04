@@ -6,6 +6,8 @@ import {
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllDeliveredCodes } from "@/lib/delivered-codes";
+import { ownsPurchase, purchaseIdentity } from "@/lib/purchase-access";
+import { privateJson, requestLimit } from "@/lib/request-security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +36,10 @@ export async function POST(
   request: NextRequest,
 ) {
   try {
+    const identity = await purchaseIdentity();
+    if (!identity) return privateJson({ error: "Verify your email to view your purchases.", verificationRequired: true }, 401);
+    const blocked = await requestLimit(request, "purchase-read", 120, 60);
+    if (blocked) return blocked;
     const body =
       (await request.json()) as LookupRequest;
 
@@ -43,18 +49,9 @@ export async function POST(
       .trim()
       .toUpperCase();
 
-    const email = String(
-      body.email ?? "",
-    )
-      .trim()
-      .toLowerCase();
-
     if (
       orderNumber.length < 8 ||
-      orderNumber.length > 100 ||
-      email.length < 5 ||
-      email.length > 254 ||
-      !email.includes("@")
+      orderNumber.length > 100
     ) {
       return lookupDenied();
     }
@@ -68,6 +65,7 @@ export async function POST(
           id,
           order_number,
           customer_email,
+          customer_id,
           status,
           total,
           currency,
@@ -85,7 +83,7 @@ export async function POST(
 
     const order = orderResult.data;
 
-    if (!order || order.customer_email?.trim().toLowerCase() !== email) {
+    if (!order || !ownsPurchase(identity, order)) {
       return lookupDenied();
     }
 
@@ -228,4 +226,22 @@ export async function POST(
       },
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const identity = await purchaseIdentity();
+    if (!identity) return privateJson({ error: "Verify your email to view your purchases.", verificationRequired: true }, 401);
+    const blocked = await requestLimit(request, "purchase-read", 120, 60);
+    if (blocked) return blocked;
+    const page = Number(request.nextUrl.searchParams.get("page") ?? 1);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 10000) return privateJson({ error: "Invalid page." }, 400);
+    let query = createAdminClient().from("orders").select("order_number,status,total,currency,created_at");
+    query = identity.userId
+      ? query.or(`customer_id.eq.${identity.userId},customer_email.eq.${JSON.stringify(identity.email)}`)
+      : query.eq("customer_email", identity.email);
+    const result = await query.order("created_at", { ascending: false }).order("id", { ascending: false }).range((page - 1) * 20, page * 20);
+    if (result.error) throw Error("Unable to load purchases.");
+    return privateJson({ orders: (result.data ?? []).slice(0, 20), page, hasMore: (result.data?.length ?? 0) > 20, email: identity.email, source: identity.source });
+  } catch { return privateJson({ error: "Unable to load your purchases. Please try again." }, 503); }
 }

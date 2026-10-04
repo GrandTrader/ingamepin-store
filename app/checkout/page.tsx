@@ -1910,7 +1910,7 @@ export default function CheckoutPage() {
               </span>
             </label>
 
-            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-slate-950 p-4">
+            {customerDiscounts.authenticated && customerDiscounts.email?.trim().toLowerCase() === form.email.trim().toLowerCase() && <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-slate-950 p-4">
               <input
                 type="checkbox"
                 checked={marketingConsent}
@@ -1921,7 +1921,7 @@ export default function CheckoutPage() {
                 Email me about product restocks, promotions and special offers.
                 I can unsubscribe at any time.
               </span>
-            </label>
+            </label>}
 
             {message && (
               <p

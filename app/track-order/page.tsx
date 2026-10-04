@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import PurchaseVerification from "@/components/PurchaseVerification";
 import DeliveryReceiptLink from "@/components/DeliveryReceiptLink";
 import {
-  FormEvent,
-  useEffect,
   useState,
+  useRef,
 } from "react";
 
 import DeliveredCodesDownloadButton from "@/components/DeliveredCodesDownloadButton";
@@ -59,8 +59,6 @@ function formatDate(value: string | null) {
 }
 
 export default function TrackOrderPage() {
-  const [orderNumber, setOrderNumber] =
-    useState("");
   const [result, setResult] =
     useState<LookupResult | null>(null);
   const [isLoading, setIsLoading] =
@@ -71,72 +69,25 @@ export default function TrackOrderPage() {
   const [verifiedEmail, setVerifiedEmail] =
     useState("");
 
-  useEffect(() => {
-    const value = new URLSearchParams(
-      window.location.search,
-    )
-      .get("orderNumber")
-      ?.trim();
-
-    if (value) {
-      setOrderNumber(value.toUpperCase());
-    }
-  }, []);
-
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-    setIsLoading(true);
-    setError("");
-    setResult(null);
-
-    const formData = new FormData(
-      event.currentTarget,
-    );
-
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const lookupSequence = useRef(0);
+  function clearPurchase() { lookupSequence.current++; setIsLoading(false); setResult(null); setVerifiedEmail(""); setVerificationRequired(false); setError(""); }
+  async function loadOrder(orderNumber: string, email: string) {
+    const sequence = ++lookupSequence.current;
+    setIsLoading(true); setError(""); setResult(null); setVerificationRequired(false);
     try {
-      const response = await fetch(
-        "/api/orders/lookup",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            orderNumber: formData.get(
-              "order_number",
-            ),
-            email: formData.get("email"),
-          }),
-        },
-      );
-
-      const data =
-        (await response.json()) as LookupResult;
-
-      if (!response.ok || !data.order) {
-        throw new Error(
-          data.error ??
-            "Unable to find this order.",
-        );
-      }
-
-      setResult(data);
-      setVerifiedEmail(String(formData.get("email") ?? "").trim().toLowerCase());
-    } catch (lookupError) {
-      setError(
-        lookupError instanceof Error
-          ? lookupError.message
-          : "Unable to find this order.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
+      const response = await fetch("/api/orders/lookup", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({orderNumber})});
+      const data = await response.json() as LookupResult;
+      if (sequence !== lookupSequence.current) return;
+      if (response.status === 401) { setVerificationRequired(true); setVerifiedEmail(""); }
+      if (!response.ok || !data.order) throw Error(data.error || "Unable to find this order.");
+      setResult(data); setVerifiedEmail(email);
+    } catch (error) { if (sequence === lookupSequence.current) setError(error instanceof Error ? error.message : "Unable to load order."); }
+    finally { if (sequence === lookupSequence.current) setIsLoading(false); }
   }
 
   async function copyCode(code: string) {
-    await navigator.clipboard.writeText(code);
+    try { await navigator.clipboard.writeText(code); } catch { setError("Unable to copy automatically. Select and copy the code."); return; }
     setCopiedCode(code);
 
     window.setTimeout(() => {
@@ -171,75 +122,17 @@ export default function TrackOrderPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-            Track Your Order
+            Your Purchases
           </h1>
 
           <p className="mt-3 max-w-2xl text-slate-400">
-            Enter the exact order number and email used during checkout. Delivered codes remain hidden unless both details match.
+            View your purchases and copy delivered codes. Guests verify their purchase email once; signed-in customers can continue directly.
           </p>
         </div>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl sm:p-8">
-          <form
-            onSubmit={handleSubmit}
-            className="grid gap-5 sm:grid-cols-2"
-          >
-            <label>
-              <span className="text-sm font-bold">
-                Order number
-              </span>
-
-              <input
-                name="order_number"
-                type="text"
-                value={orderNumber}
-                onChange={(event) =>
-                  setOrderNumber(
-                    event.target.value.toUpperCase(),
-                  )
-                }
-                required
-                minLength={8}
-                maxLength={100}
-                autoComplete="off"
-                placeholder="NX-XXXXXXXXXXXX"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 uppercase outline-none transition focus:border-cyan-400"
-              />
-            </label>
-
-            <label>
-              <span className="text-sm font-bold">
-                Checkout email
-              </span>
-
-              <input
-                name="email"
-                type="email"
-                required
-                maxLength={254}
-                autoComplete="email"
-                placeholder="customer@example.com"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 outline-none transition focus:border-cyan-400"
-              />
-            </label>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="track-order-primary-action rounded-xl px-6 py-3 font-black transition disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
-            >
-              {isLoading
-                ? "Checking order..."
-                : "Check Order"}
-            </button>
-          </form>
-
-          {error && (
-            <p className="mt-6 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
-              {error}
-            </p>
-          )}
-        </section>
+        <PurchaseVerification onSelect={(number, email) => void loadOrder(number, email)} onClear={clearPurchase} verificationRequired={verificationRequired} />
+        {isLoading && <p role="status" className="mt-4 text-sm">Loading purchase...</p>}
+        {error && <p role="alert" className="mt-4 rounded-xl bg-red-400/10 p-4 text-sm text-red-300">{error}</p>}
 
         {order && (
           <section className="mt-7 rounded-3xl border border-white/10 bg-slate-900 p-6 sm:p-8">

@@ -21,3 +21,6 @@ Thumbs.db
 # TypeScript cache
 *.tsbuildinfo
 next-env.d.ts
+
+# Isolated security-test database and browser artifacts
+/tmp/security-*/

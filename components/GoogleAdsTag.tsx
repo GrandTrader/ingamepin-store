@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const googleAdsId = "AW-621401578";
 
-export default function GoogleAdsTag() {
+export default function GoogleAdsTag({ nonce }: { nonce?: string }) {
   const pathname = usePathname();
 
   if (pathname.startsWith("/admin")) {
@@ -16,10 +16,11 @@ export default function GoogleAdsTag() {
     <>
       <Script
         id="google-ads-tag"
+        nonce={nonce}
         src={`https://www.googletagmanager.com/gtag/js?id=${googleAdsId}`}
         strategy="afterInteractive"
       />
-      <Script id="google-ads-config" strategy="afterInteractive">
+      <Script id="google-ads-config" nonce={nonce} strategy="afterInteractive">
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}

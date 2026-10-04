@@ -27,19 +27,22 @@ test('push endpoints allow browser services and reject SSRF destinations',()=>{
  for(const url of ['https://fcm.googleapis.com/fcm/send/token','https://updates.push.services.mozilla.com/wpush/v2/token','https://web.push.apple.com/token','https://wns2.notify.windows.com/token']) assert.equal(isAllowedPushEndpoint(url),true,url);
  for(const url of ['https://localhost/a','https://127.0.0.1/a','https://169.254.169.254/','https://evil.example/','https://fcm.googleapis.com.evil.example/a','https://evilnotify.windows.com/a','https://user:pass@fcm.googleapis.com/a','http://fcm.googleapis.com/a','https://fcm.googleapis.com:8443/a','not a url']) assert.equal(isAllowedPushEndpoint(url),false,url);
 });
-test('order lookup requires literal email match before fetching delivered codes',async()=>{
- let codeReads=0;
+test('order lookup ignores submitted email and requires verified ownership before code access',async()=>{
+ let codeReads=0,identity=null;
  const query={select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'test-order',customer_email:'Owner_Test@Example.com',order_number:'IGP-TEST-0001'}})};
  const {POST}=load('app/api/orders/lookup/route.ts',{
   'next/server':{NextResponse:{json:(body,options)=>({body,status:options?.status??200})}},
   '@/lib/supabase/admin':{createAdminClient:()=>({from:(table)=>table==='orders'?query:{select(){return this},eq(){return this},order:async()=>({data:[]})}})},
   '@/lib/delivered-codes':{getAllDeliveredCodes:async()=>{codeReads++;return []}},
-  '@/lib/delivery-receipts':{getAuthorizedDeliveryReceipts:async()=>new Map()}
+  '@/lib/delivery-receipts':{getAuthorizedDeliveryReceipts:async()=>new Map()},
+  '@/lib/purchase-access':{purchaseIdentity:async()=>identity,ownsPurchase:(identity,order)=>Boolean(identity&&identity.email===order.customer_email.toLowerCase())},
+  '@/lib/request-security':{requestLimit:async()=>null,privateJson:(body,status=200)=>({body,status})}
  });
+ assert.equal((await POST({json:async()=>({email:'owner_test@example.com',orderNumber:'IGP-TEST-0001'})})).status,401);
  for(const email of ['%@%.com','owner%test@example.com','owner_test@wrong.com','ownerXtest@example.com']) {
-   assert.equal((await POST({json:async()=>({email,orderNumber:'IGP-TEST-0001'})})).status,404);
+   identity={email};assert.equal((await POST({json:async()=>({email:'owner_test@example.com',orderNumber:'IGP-TEST-0001'})})).status,404);
  }
- assert.equal(codeReads,0);
+ assert.equal(codeReads,0);identity={email:'owner_test@example.com'};
  assert.equal((await POST({json:async()=>({email:' owner_test@example.com ',orderNumber:'IGP-TEST-0001'})})).status,200);
  assert.equal(codeReads,1);
 });

@@ -18,7 +18,7 @@ const yandexMetricaCode = `
 
   ym(${YANDEX_METRICA_TAG_ID},"init",{
     ssr:true,
-    webvisor:true,
+    webvisor:false,
     clickmap:true,
     ecommerce:"dataLayer",
     referrer:document.referrer,
@@ -28,11 +28,12 @@ const yandexMetricaCode = `
   });
 `;
 
-export default function YandexMetrica() {
+export default function YandexMetrica({ nonce }: { nonce?: string }) {
   return (
     <>
       <Script
         id="yandex-metrica"
+        nonce={nonce}
         strategy="afterInteractive"
         type="text/javascript"
         dangerouslySetInnerHTML={{ __html: yandexMetricaCode }}

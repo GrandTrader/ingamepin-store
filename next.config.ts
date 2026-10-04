@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const securityHeaders = [
+  { key: "Content-Security-Policy", value: "object-src 'none'; base-uri 'self'; frame-ancestors 'none'" },
   {
     key: "X-Content-Type-Options",
     value: "nosniff",

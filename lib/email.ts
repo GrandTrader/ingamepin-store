@@ -120,7 +120,7 @@ export async function sendEmail({
 }: SendEmailInput) {
   const recipient = to.trim().toLowerCase();
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+  if (recipient.length > 254 || !/^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i.test(recipient)) {
     throw new Error("The recipient email address is invalid.");
   }
 

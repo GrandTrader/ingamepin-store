@@ -10,6 +10,7 @@ import {
   SUPPORT_COOKIE,
 } from "@/lib/support-chat";
 import { notifyNewSupportMessage } from "@/lib/telegram-chat-notification";
+import { consumeRate, privateJson, requestLimit, sameOrigin } from "@/lib/request-security";
 
 export const dynamic = "force-dynamic";
 
@@ -95,22 +96,22 @@ export async function GET() {
       .from("support_messages")
       .select("id, sender_type, body, created_at")
       .eq("conversation_id", conversation.id)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(250);
 
     if (messagesResult.error) {
       throw new Error(messagesResult.error.message);
     }
 
-    await admin
-      .from("support_conversations")
-      .update({ customer_last_read_at: new Date().toISOString() })
-      .eq("id", conversation.id);
+    const messages = [...(messagesResult.data ?? [])].reverse();
+    const lastDisplayed = messages.at(-1)?.created_at;
+    if (lastDisplayed) await admin.from("support_conversations").update({ customer_last_read_at: lastDisplayed }).eq("id", conversation.id);
 
     return attachCookie(
       NextResponse.json({
         conversation,
-        messages: messagesResult.data ?? [],
+        messages,
       }),
       identity.token,
       identity.isNewToken,
@@ -125,8 +126,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return privateJson({ error: "Invalid request origin." }, 403);
   try {
+    const blocked = await requestLimit(request, "support-message", 10, 60);
+    if (blocked) return blocked;
     const identity = await getIdentity();
+    if (!(await consumeRate("support-identity", identity.user?.id ?? hashSupportToken(identity.token), 10, 60))) return privateJson({ error: "Please wait before sending more messages." }, 429);
     const input = await request.json();
     const body = cleanSupportText(input.message);
     const suppliedName = cleanSupportText(input.name, 100);
@@ -203,6 +208,7 @@ export async function POST(request: NextRequest) {
       .eq("sender_type", "CUSTOMER")
       .gte("created_at", oneMinuteAgo);
 
+    if (recentResult.error) return privateJson({ error: "Unable to verify message limits. Please retry." }, 503);
     if ((recentResult.count ?? 0) >= 10) {
       return NextResponse.json(
         { error: "Please wait before sending more messages." },

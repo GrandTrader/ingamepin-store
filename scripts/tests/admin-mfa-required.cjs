@@ -6,7 +6,7 @@ const ts = require('typescript');
 function load(file, mocks = {}, globals = {}) {
   const exports = {};
   const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX}}).outputText;
-  vm.runInNewContext(js, {exports, require: n => {if(n in mocks) return mocks[n]; throw Error('Unexpected import '+n);}, console, ...globals}, {filename:file});
+  vm.runInNewContext(js, {exports, require: n => {if(n in mocks) return mocks[n]; throw Error('Unexpected import '+n);}, console, Headers, ...globals}, {filename:file});
   return exports;
 }
 const helpers = load('lib/admin-assurance.ts');
@@ -65,9 +65,9 @@ test('legacy disable action cannot remove any factor',async()=>{
 });
 
 test('proxy blocks unenrolled admin pages and APIs but preserves customer and setup access',async()=>{
-  const next={next:()=>({kind:'next',cookies:{set(){}}}),redirect:url=>({kind:'redirect',url,cookies:{set(){}}}),json:(body,opts)=>({kind:'json',status:opts.status,body})};
+  const next={next:()=>({kind:'next',headers:new Headers(),cookies:{set(){}}}),redirect:url=>({kind:'redirect',url,cookies:{set(){}}}),json:(body,opts)=>({kind:'json',status:opts.status,body})};
   for(const [path,config,kind,status] of [['/admin',{},'redirect'],['/api/admin/invoices',{},'json',403],['/api/admin/invoices',{user:false},'json',401],['/admin/login/setup',{},'next'],['/account',{},'next'],['/admin',{level:'aal2',factors:verified},'next'],['/admin',{level:'aal2'},'redirect']]) {
-    const session=client(config);const {proxy}=load('proxy.ts',{'@/lib/admin-assurance':helpers,'@/lib/password-expiry':{getPasswordExpiry:async()=>({required:false}),isPasswordRecoveryPath:()=>false},'@supabase/ssr':{createServerClient:()=>session},'next/server':{NextResponse:next}},{process:{env:{NEXT_PUBLIC_SUPABASE_URL:'https://fixture.test',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture'}}});
+    const session=client(config);const {proxy}=load('proxy.ts',{'@/lib/affiliate-link-expiry':{isExpiredAffiliateLink:()=>false},'@/lib/content-security-policy':{contentSecurityPolicy:()=>"default-src 'self'"},'node:crypto':require('node:crypto'),'@/lib/admin-assurance':helpers,'@/lib/password-expiry':{getPasswordExpiry:async()=>({required:false}),isPasswordRecoveryPath:()=>false},'@supabase/ssr':{createServerClient:()=>session},'next/server':{NextResponse:next}},{process:{env:{NEXT_PUBLIC_SUPABASE_URL:'https://fixture.test',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture'}}});
     const result=await proxy({headers:{},cookies:{getAll:()=>[],set(){}},nextUrl:{pathname:path,clone:()=>new URL('https://fixture.test'+path)}});
     assert.equal(result.kind,kind,path);if(status)assert.equal(result.status,status);
   }

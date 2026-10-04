@@ -1,19 +1,17 @@
 import StorefrontFrame from "@/components/StorefrontFrame";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import { Inter, Roboto_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import StoreAnalytics from "@/components/StoreAnalytics";
 
 import NavigationWarmup from "../components/NavigationWarmup";
 import Header from "../components/Header";
 import MobileBottomNav from "../components/MobileBottomNav";
 import Footer from "../components/Footer";
 import LiveSupportWidget from "../components/LiveSupportWidget";
-import YandexMetrica from "../components/YandexMetrica";
 import WebsiteTranslator from "../components/WebsiteTranslator";
 import { StorePreferencesProvider } from "../components/StorePreferences";
-import GoogleAdsTag from "../components/GoogleAdsTag";
 import SeasonalFall from "../components/SeasonalFall";
 
 import "./globals.css";
@@ -47,9 +45,10 @@ export const metadata: Metadata = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"
@@ -70,11 +69,7 @@ export default function RootLayout({
           >{children}</StorefrontFrame>
         </StorePreferencesProvider>
 
-        <YandexMetrica />
-        <GoogleAdsTag />
-
-        <Analytics />
-        <SpeedInsights />
+        <StoreAnalytics nonce={nonce} />
       </body>
     </html>
   );
