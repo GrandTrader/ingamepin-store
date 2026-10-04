@@ -10,6 +10,11 @@ import {
 } from "./StorePreferences";
 
 const russianText: Record<string, string> = {
+  "← Back to orders": "← К списку заказов",
+  "Open an order to view delivery details and copy your codes.": "Откройте заказ, чтобы посмотреть доставку и скопировать коды.",
+  "Order / Date": "Заказ / Дата",
+  "Awaiting payment": "Ожидает оплаты",
+  "Enter a valid order number.": "Введите корректный номер заказа.",
   "Your Purchases": "Ваши покупки",
   "Your purchases": "Ваши покупки",
   "Purchase email": "Email, указанный при покупке",

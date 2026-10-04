@@ -1,11 +1,21 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { purchaseHref, validOrderReference } from "@/lib/purchase-navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 type Purchase = { order_number: string; status: string; total: number; currency: string; created_at: string };
-type Props = { onSelect: (orderNumber: string, email: string) => void; onClear: () => void; verificationRequired: boolean };
+type Props = { requestedOrder?: string; initialPage?: number };
 
-export default function PurchaseVerification({ onSelect, onClear, verificationRequired }: Props) {
+function orderStatus(status: string) {
+  if (status === "DELIVERED") return { label: "Completed", style: "track-order-status-success" };
+  if (status === "CANCELLED" || status === "REFUNDED") return { label: status === "CANCELLED" ? "Cancelled" : "Refunded", style: "track-order-status-danger" };
+  return { label: status === "PENDING_PAYMENT" ? "Awaiting payment" : status.replaceAll("_", " ").toLowerCase(), style: "track-order-status-warning" };
+}
+
+export default function PurchaseVerification({ requestedOrder, initialPage = 1 }: Props) {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [verified, setVerified] = useState(false);
   const [account, setAccount] = useState(false);
@@ -38,20 +48,16 @@ export default function PurchaseVerification({ onSelect, onClear, verificationRe
         const data = await response.json();
         if (!active) return;
         if (!response.ok) throw Error(data.error || "Unable to check verification.");
-        if (data.verified) await loadOrders();
+        if (data.verified) {
+          if (requestedOrder) { router.replace(purchaseHref(requestedOrder, initialPage)); return; }
+          await loadOrders(initialPage);
+        }
       } catch (error) { if (active) setMessage(error instanceof Error ? error.message : "Unable to load purchases."); }
       finally { if (active) setBusy(false); }
     }
     void initialize();
     return () => { active = false; };
-  }, [loadOrders]);
-
-  useEffect(() => {
-    if (!verificationRequired) return;
-    // Do not keep previous purchase details when server-side access has expired.
-    const timer = window.setTimeout(() => { setVerified(false); setOrders([]); setSent(false); setCode(""); setMessage("Your session expired. Verify your email again."); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [verificationRequired]);
+  }, [loadOrders, requestedOrder, initialPage, router]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -66,7 +72,11 @@ export default function PurchaseVerification({ onSelect, onClear, verificationRe
       const data = await response.json();
       if (!response.ok) throw Error(data.error || "Unable to verify email.");
       if (action === "send") { setSent(true); setCode(""); setCooldown(data.retryAfter || 60); setMessage(data.message); }
-      else { onClear(); setCode(""); setSent(false); await loadOrders(); }
+      else {
+        setCode(""); setSent(false);
+        if (requestedOrder) router.replace(purchaseHref(requestedOrder, initialPage));
+        else await loadOrders(initialPage);
+      }
     } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to verify email."); }
     finally { setBusy(false); }
   }
@@ -76,15 +86,15 @@ export default function PurchaseVerification({ onSelect, onClear, verificationRe
     try {
       const response = await fetch("/api/orders/verification", { method: "DELETE" });
       if (!response.ok) throw Error("Unable to end this session. Please retry.");
-      setVerified(false); setEmail(""); setOrders([]); setSent(false); setCode(""); onClear();
+      setVerified(false); setEmail(""); setOrders([]); setSent(false); setCode("");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to end session."); }
     finally { setBusy(false); }
   }
 
   async function changePage(value: number) {
     setBusy(true); setMessage("");
-    try { await loadOrders(value); }
-    catch (error) { onClear(); setMessage(error instanceof Error ? error.message : "Unable to load purchases."); }
+    try { await loadOrders(value); window.history.replaceState(null, "", value > 1 ? `/track-order?page=${value}` : "/track-order"); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Unable to load purchases."); }
     finally { setBusy(false); }
   }
 
@@ -96,9 +106,33 @@ export default function PurchaseVerification({ onSelect, onClear, verificationRe
       <button disabled={busy} className="track-order-primary-action w-full rounded-xl px-5 py-3 font-bold disabled:opacity-50">{busy ? "Please wait..." : sent ? "Verify and view purchases" : "Send verification code"}</button>
       {sent && <div className="flex justify-between gap-3 text-sm"><button type="button" disabled={busy || cooldown > 0} onClick={() => void verify("send")} className="p-2 text-cyan-400 disabled:opacity-50">{cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}</button><button type="button" disabled={busy} className="p-2" onClick={() => { setSent(false); setCode(""); setMessage(""); }}>Change email</button></div>}
     </form> : <>
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Your purchases</h2><p className="break-all text-sm text-slate-400">{email}</p></div>{!account && <button type="button" onClick={() => void endSession()} disabled={busy} className="rounded-lg border border-white/20 px-3 py-2 text-sm">End session</button>}</div>
-      <form className="my-4 flex flex-col gap-2 sm:flex-row" onSubmit={event => { event.preventDefault(); if (search.trim()) onSelect(search.trim().toUpperCase(), email); }}><input aria-label="Order number" value={search} onChange={event => setSearch(event.target.value)} maxLength={100} placeholder="Find an order number" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-3" /><button disabled={busy || !search.trim()} className="track-order-primary-action rounded-xl px-4 py-3 font-bold disabled:opacity-50">Check order</button></form>
-      {orders.length ? <div className="divide-y divide-white/10">{orders.map(order => <button key={order.order_number} onClick={() => onSelect(order.order_number, email)} disabled={busy} className="flex w-full flex-wrap items-center justify-between gap-3 py-3 text-left"><span className="min-w-0"><span className="block break-all font-bold text-cyan-400">{order.order_number}</span><span className="text-xs text-slate-400">{new Date(order.created_at).toLocaleDateString()} · {order.status.replaceAll("_", " ")}</span></span><span className="text-sm font-bold">{new Intl.NumberFormat("en", { style: "currency", currency: order.currency || "USD" }).format(Number(order.total))} <span aria-hidden="true">→</span></span></button>)}</div> : <p className="py-5 text-sm text-slate-400">No purchases found for this email.</p>}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0"><h2 className="text-lg font-bold">Your purchases</h2><p className="break-all text-xs text-slate-400">{email}</p></div>
+        {!account && <button type="button" onClick={() => void endSession()} disabled={busy} className="min-h-11 rounded-lg border border-white/20 px-3 text-sm">End session</button>}
+      </div>
+      <form className="my-4 flex gap-2" onSubmit={event => {
+        event.preventDefault();
+        const reference = validOrderReference(search);
+        if (reference) router.push(purchaseHref(reference, page));
+        else setMessage("Enter a valid order number.");
+      }}>
+        <input aria-label="Order number" value={search} onChange={event => setSearch(event.target.value)} maxLength={100} placeholder="Find an order number" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm" />
+        <button disabled={busy || !search.trim()} className="track-order-primary-action shrink-0 rounded-xl px-3 py-3 text-sm font-bold disabled:opacity-50">Check order</button>
+      </form>
+      {orders.length ? <div>
+        <div aria-hidden="true" className="mb-2 hidden grid-cols-[minmax(0,1fr)_10rem_7rem_1rem] gap-4 px-4 text-xs font-bold uppercase tracking-wide text-slate-500 sm:grid"><span>Order / Date</span><span>Status</span><span className="text-right">Total</span><span /></div>
+        <div className="space-y-2">{orders.map(order => {
+          const status = orderStatus(order.status);
+          return <Link key={order.order_number} href={purchaseHref(order.order_number, page)} prefetch={false}
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-xl border border-white/10 bg-[var(--surface-page)] p-3 transition hover:border-cyan-400 focus-visible:outline-2 focus-visible:outline-cyan-400 sm:grid-cols-[minmax(0,1fr)_10rem_7rem_1rem] sm:gap-4 sm:px-4"
+            aria-label={`Open order ${order.order_number}`}>
+            <span className="col-start-1 row-start-1 min-w-0"><span className="track-order-accent-text block break-all text-sm font-bold">{order.order_number}</span><span className="mt-1 block text-xs text-slate-400">{new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(order.created_at))}</span></span>
+            <span className={`col-start-1 row-start-2 w-fit rounded-full px-2.5 py-1 text-[11px] font-bold capitalize sm:col-start-2 sm:row-start-1 ${status.style}`}>{status.label}</span>
+            <span className="col-start-2 row-start-1 text-right text-sm font-bold sm:col-start-3">{new Intl.NumberFormat("en", { style: "currency", currency: order.currency || "USD" }).format(Number(order.total))}</span>
+            <span aria-hidden="true" className="col-start-2 row-start-2 text-right text-cyan-400 sm:col-start-4 sm:row-start-1">→</span>
+          </Link>;
+        })}</div>
+      </div> : <p className="py-5 text-sm text-slate-400">No purchases found for this email.</p>}
       {(page > 1 || hasMore) && <div className="mt-4 flex items-center justify-between gap-2 text-sm"><button disabled={busy || page === 1} onClick={() => void changePage(page - 1)} className="rounded-lg border border-white/20 px-3 py-2 disabled:opacity-40">Previous</button><span>Page {page}</span><button disabled={busy || !hasMore} onClick={() => void changePage(page + 1)} className="rounded-lg border border-white/20 px-3 py-2 disabled:opacity-40">Next</button></div>}
     </>}
     {message && <p role="status" className="mt-4 rounded-xl bg-slate-800 p-3 text-sm text-slate-200">{message}</p>}
