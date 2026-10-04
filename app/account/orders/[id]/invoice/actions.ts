@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllDeliveredCodes } from "@/lib/delivered-codes";
+import { deliveredUnits } from "@/lib/delivery-progress";
 
 type BillingDetails = {
   fullName: string;
@@ -41,7 +42,7 @@ export async function saveCustomerInvoice(
 
   let itemsQuery = admin
     .from("order_items")
-    .select("id, product_name, option_name, denomination, platform, quantity, unit_price, total_price")
+    .select("id, product_name, option_name, denomination, platform, quantity, unit_price, total_price, fulfillment_mode, service_delivered_at")
     .eq("order_id", orderId)
     .order("created_at");
   if (orderItemId) itemsQuery = itemsQuery.eq("id", orderItemId);
@@ -49,12 +50,13 @@ export async function saveCustomerInvoice(
   const items = itemsResult.data ?? [];
   if (itemsResult.error || items.length === 0) return { error: "Order product was not found." };
 
+  const orderStatus = orderResult.data.status;
   const deliveredCodes = await getAllDeliveredCodes(items.map((item) => item.id));
   const deliveredByItem = new Map<string, number>();
   for (const code of deliveredCodes) {
     if (code.order_item_id) deliveredByItem.set(code.order_item_id, (deliveredByItem.get(code.order_item_id) ?? 0) + 1);
   }
-  if (items.some((item) => (deliveredByItem.get(item.id) ?? 0) < Number(item.quantity))) {
+  if (items.some((item) => deliveredUnits(item, deliveredByItem.get(item.id) ?? 0, orderStatus) < Number(item.quantity))) {
     return { error: "Invoice is unavailable until every included product is delivered." };
   }
 
