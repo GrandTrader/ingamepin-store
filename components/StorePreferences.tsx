@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -330,12 +331,20 @@ export function StorePreferencesProvider({
   const [currency, setCurrencyState] = useState<StoreCurrency>("USD");
   const [usdRubRate, setUsdRubRate] = useState(85);
   const [usdInrRate, setUsdInrRate] = useState(102);
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [ratesReady, setRatesReady] = useState(false);
+  const [ratesFailed, setRatesFailed] = useState(false);
+  const manualSelection = useRef(false);
 
   useEffect(() => {
-    const savedLanguage = window.localStorage.getItem("storeLanguage");
-    const savedCurrency = window.localStorage.getItem("storeCurrency");
+    const controller = new AbortController();
+    const readPreference = (key: string) => {
+      try { return window.localStorage.getItem(key); } catch { return null; }
+    };
+    const savedLanguage = readPreference("storeLanguage");
+    const savedCurrency = readPreference("storeCurrency");
     const hasManualPreferences =
-      window.localStorage.getItem("storePreferencesManual") === "true";
+      readPreference("storePreferencesManual") === "true";
     const hasSavedLanguage =
       savedLanguage === "en" ||
       savedLanguage === "de" ||
@@ -359,7 +368,7 @@ export function StorePreferencesProvider({
     }
 
     if (!hasManualPreferences || !hasSavedLanguage || !hasSavedCurrency) {
-      fetch("/api/store-location", { cache: "no-store" })
+      fetch("/api/store-location", { cache: "no-store", signal: controller.signal })
         .then((response) => (response.ok ? response.json() : null))
         .then(
           (
@@ -369,7 +378,7 @@ export function StorePreferencesProvider({
               currency?: StoreCurrency;
             } | null,
           ) => {
-            if (!result) return;
+            if (!result || controller.signal.aborted || manualSelection.current) return;
 
             const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             const isIndiaLocalhost =
@@ -384,20 +393,26 @@ export function StorePreferencesProvider({
 
             if ((!hasManualPreferences || !hasSavedLanguage) && detectedLanguage) {
               setLanguageState(detectedLanguage);
-              window.localStorage.setItem("storeLanguage", detectedLanguage);
+              try { window.localStorage.setItem("storeLanguage", detectedLanguage); } catch { /* Storage can be blocked. */ }
             }
 
             if ((!hasManualPreferences || !hasSavedCurrency) && detectedCurrency) {
               setCurrencyState(detectedCurrency);
-              window.localStorage.setItem("storeCurrency", detectedCurrency);
+              try { window.localStorage.setItem("storeCurrency", detectedCurrency); } catch { /* Storage can be blocked. */ }
             }
           },
         )
         .catch(() => {
           // Keep English and USD when location detection is unavailable.
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setPreferencesReady(true);
         });
+    } else {
+      setPreferencesReady(true);
     }
 
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -412,15 +427,21 @@ export function StorePreferencesProvider({
           cache: "no-store",
           signal: controller.signal,
         });
-        if (!response.ok) return;
+        if (!response.ok) throw new Error("Exchange rates unavailable");
         const result = await response.json() as { usdRubRate?: number; usdInrRate?: number };
         if (controller.signal.aborted) return;
         const rubRate = Number(result.usdRubRate);
         const inrRate = Number(result.usdInrRate);
-        if (Number.isFinite(rubRate) && rubRate > 0) setUsdRubRate(rubRate);
-        if (Number.isFinite(inrRate) && inrRate > 0) setUsdInrRate(inrRate);
+        if (!Number.isFinite(rubRate) || rubRate <= 0 || !Number.isFinite(inrRate) || inrRate <= 0) {
+          throw new Error("Invalid exchange rates");
+        }
+        setUsdRubRate(rubRate);
+        setUsdInrRate(inrRate);
+        setRatesReady(true);
+        setRatesFailed(false);
       } catch {
         // Preserve the last loaded rates during a temporary network failure.
+        if (!controller.signal.aborted) setRatesFailed(true);
       } finally {
         loading = false;
       }
@@ -436,7 +457,7 @@ export function StorePreferencesProvider({
       window.removeEventListener("focus", refreshRates);
       document.removeEventListener("visibilitychange", refreshRates);
     };
-  }, [currency]);
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -444,15 +465,23 @@ export function StorePreferencesProvider({
   }, [language]);
 
   const setLanguage = useCallback((nextLanguage: StoreLanguage) => {
+    manualSelection.current = true;
     setLanguageState(nextLanguage);
-    window.localStorage.setItem("storeLanguage", nextLanguage);
-    window.localStorage.setItem("storePreferencesManual", "true");
+    setPreferencesReady(true);
+    try {
+      window.localStorage.setItem("storeLanguage", nextLanguage);
+      window.localStorage.setItem("storePreferencesManual", "true");
+    } catch { /* The current selection still works when storage is blocked. */ }
   }, []);
 
   const setCurrency = useCallback((nextCurrency: StoreCurrency) => {
+    manualSelection.current = true;
     setCurrencyState(nextCurrency);
-    window.localStorage.setItem("storeCurrency", nextCurrency);
-    window.localStorage.setItem("storePreferencesManual", "true");
+    setPreferencesReady(true);
+    try {
+      window.localStorage.setItem("storeCurrency", nextCurrency);
+      window.localStorage.setItem("storePreferencesManual", "true");
+    } catch { /* The current selection still works when storage is blocked. */ }
   }, []);
 
   const t = useCallback(
@@ -488,8 +517,15 @@ export function StorePreferencesProvider({
     (
       usdAmount: number,
       options: Intl.NumberFormatOptions = {},
-    ) =>
-      new Intl.NumberFormat(
+    ) => {
+      // Never show a USD/default-rate price while restoring the customer's currency.
+      // Keep the provider mounted across navigation, so this wait happens only on first load.
+      if (!preferencesReady || (currency !== "USD" && !ratesReady)) {
+        return preferencesReady && ratesFailed
+          ? language === "ru" ? "Цена недоступна" : "Price unavailable"
+          : "…";
+      }
+      return new Intl.NumberFormat(
         language === "ru"
           ? "ru-RU"
           : language === "th"
@@ -512,8 +548,9 @@ export function StorePreferencesProvider({
         maximumFractionDigits: currency === "RUB" ? 2 : 2,
         ...options,
         },
-      ).format(convertFromUsd(usdAmount)),
-    [convertFromUsd, currency, language],
+      ).format(convertFromUsd(usdAmount));
+    },
+    [convertFromUsd, currency, language, preferencesReady, ratesReady, ratesFailed],
   );
 
   const value = useMemo(

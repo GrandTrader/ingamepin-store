@@ -1,3 +1,4 @@
+import type { PromoterFinance } from "./affiliate-directory-finance";
 export type PromoterView = "applications" | "approved";
 export type AffiliatePromoter = {
   id: string;
@@ -10,6 +11,7 @@ export type AffiliatePromoter = {
   promotion_url: string | null;
   commission_override_percent: number | null;
   created_at: string;
+  finance: PromoterFinance;
 };
 
 export function promoterDirectoryPath(view: unknown) {

@@ -15,8 +15,8 @@ const date = (value: string) => new Date(value).toLocaleString("en-GB", {timeZon
 const field = "min-h-[44px]! min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base sm:text-sm";
 const badge = "rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700";
 
-export default function PromoterProfile({data}: {data:Data}) {
-  const [tab, setTab] = useState<Tab>("Products sold");
+export default function PromoterProfile({data,initialTab="Products sold"}: {data:Data;initialTab?:Tab}) {
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(0);

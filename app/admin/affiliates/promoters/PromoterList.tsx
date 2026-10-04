@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import { filterPromotersByEmail, type AffiliatePromoter, type PromoterView } from "@/lib/affiliate-promoters";
 import { savePromoterSettings } from "./actions";
+import PromoterEarnings from "./PromoterEarnings";
 
 const statuses = ["PENDING", "APPROVED", "REJECTED", "SUSPENDED"] as const;
 const pageSize = 25;
@@ -16,7 +17,7 @@ export default function PromoterList({ accounts, view, initialSearch = "" }: { a
   const currentPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / pageSize) - 1));
   const displayed = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   return <>
-    <div className="mt-4 flex flex-wrap items-end gap-2">
+    <div className="mt-4 flex max-w-[1160px] flex-wrap items-end gap-2">
       <label className="min-w-0 flex-1 text-sm font-bold text-slate-700">Search by email
         <input type="search" inputMode="email" maxLength={254} autoComplete="off" placeholder="Search email…" value={search} onChange={event => { setSearch(event.target.value); setPage(0); }} className="mt-1 block min-h-[44px]! w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base font-normal text-slate-900 sm:text-sm" />
       </label>
@@ -24,7 +25,7 @@ export default function PromoterList({ accounts, view, initialSearch = "" }: { a
       <p role="status" className="w-full text-xs text-slate-600">{filtered.length} of {accounts.length} promoters</p>
     </div>
     <p id="promoter-commission-help" className="mt-2 text-xs text-slate-500">Leave commission empty to use the product rate.</p>
-          <section aria-label="Promoters" className="mt-3 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <section aria-label="Promoters" className="mt-3 max-w-[1160px] divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
             {filtered.length === 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
                 {search.trim() ? "No promoters match this email." : view === "approved" ? "No approved promoters yet." : "No affiliate applications to manage."}
@@ -34,13 +35,13 @@ export default function PromoterList({ accounts, view, initialSearch = "" }: { a
                 <form
                   key={`${account.id}-${account.status}-${account.commission_override_percent}`}
                   action={savePromoterSettings}
-                  className="p-3 sm:px-4"
+                  className="px-3 py-2"
                 >
                   <input type="hidden" name="affiliate_id" value={account.id} />
                   <input type="hidden" name="return_view" value={view} />
                   <input type="hidden" name="search" value={search} />
 
-                  <div className="flex flex-col justify-between gap-3 xl:flex-row xl:items-center">
+                  <div className="grid gap-2 xl:grid-cols-[minmax(180px,1fr)_minmax(280px,360px)_minmax(300px,340px)] xl:items-center xl:gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="break-words text-sm font-bold">{account.full_name}</h2>
@@ -49,10 +50,11 @@ export default function PromoterList({ accounts, view, initialSearch = "" }: { a
                         </span>
                       </div>
                       <p className="mt-0.5 break-all text-sm text-slate-700">{account.email || "Email unavailable"}</p>
-                      <Link href={`/admin/affiliates/promoters/${account.id}`} className="inline-flex min-h-[44px]! items-center text-sm font-bold text-blue-700 hover:underline">View profile & activity →</Link>
                       <p className="mt-1 break-words text-xs text-slate-500">
                         {account.country_code} · {account.promotion_channel.replaceAll("_", " ")} · {new Date(account.created_at).toLocaleDateString("en-IN")}
                       </p>
+                      <div className="flex flex-wrap items-center gap-x-4">
+                      <Link href={`/admin/affiliates/promoters/${account.id}`} className="inline-flex min-h-[44px]! items-center text-xs font-bold text-blue-700 hover:underline">View profile →</Link>
                       {account.promotion_url && (
                         <a
                           href={account.promotion_url}
@@ -65,9 +67,11 @@ export default function PromoterList({ accounts, view, initialSearch = "" }: { a
                           Promotion page ↗
                         </a>
                       )}
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:w-[420px] xl:shrink-0">
+                    <PromoterEarnings id={account.id} finance={account.finance}/>
+                    <div className="grid min-w-0 grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                       <label className="min-w-0">
                         <span className="text-xs font-bold text-slate-600">Status</span>
                         <select
@@ -115,7 +119,7 @@ export default function PromoterList({ accounts, view, initialSearch = "" }: { a
               ))
             )}
           </section>
-    {filtered.length > pageSize && <nav aria-label="Promoter pages" className="mt-5 flex items-center justify-between gap-3 text-sm">
+    {filtered.length > pageSize && <nav aria-label="Promoter pages" className="mt-5 flex max-w-[1160px] items-center justify-between gap-3 text-sm">
       <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="rounded-lg border px-4 py-3 disabled:opacity-50">Previous</button>
       <span>Page {currentPage + 1} of {Math.ceil(filtered.length / pageSize)}</span>
       <button type="button" disabled={(currentPage + 1) * pageSize >= filtered.length} onClick={() => setPage(currentPage + 1)} className="rounded-lg border px-4 py-3 disabled:opacity-50">Next</button>
