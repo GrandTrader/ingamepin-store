@@ -6,7 +6,7 @@ const links = [
   ["API access", "Manage API keys, allowed IPs and ordering permissions.", "/account/portal/api-access", "Manage", "⚿"],
   ["Profile", "Manage your account name, email and phone number.", "/account/portal/profile", "Manage", "◎"],
   ["Account security", "Manage passkeys for your account.", "/account/portal/security", "Manage", "◇"],
-  ["Business verification", "View your approved business details and bank deposits.", "/account/portal/business", "View", "✓"],
+  ["Business account", "View your approved business details and bank deposits.", "/account/portal/business", "View", "✓"],
   ["Wallet", "Add funds to the balance shared by retail and business purchases.", "/account/portal/wallet", "Add funds", "+"],
   ["Wallet statement", "View and download activity for your shared wallet.", "/account/portal/statement", "View", "↓"],
 ];

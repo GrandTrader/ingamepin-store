@@ -1,4 +1,5 @@
 import "server-only";
+import { businessSessionReady } from "@/lib/business-security";
 import { saveCheckoutConsent } from "@/lib/checkout-consent";
 import { trustedClientIp } from "@/lib/trusted-client-ip";
 import { requestLimit, sameOrigin, privateJson } from "@/lib/request-security";
@@ -155,10 +156,12 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       }
     }
 
-    const signedInUser = apiUser ?? (await (await createClient()).auth.getUser()).data.user;
+    const browserSession = apiUser ? null : await createClient();
+    const signedInUser = apiUser ?? (await browserSession!.auth.getUser()).data.user;
 
     if(isPortal){
       if(!signedInUser?.email||!signedInUser.email_confirmed_at)return NextResponse.json({error:"Sign in with a verified email."},{status:401});
+      if (browserSession && !(await businessSessionReady(browserSession, signedInUser.id))) return NextResponse.json({error:"Complete password and Google Authenticator verification before using the B2B portal.",redirect:"/account/business/setup"},{status:403});
       customer={email:signedInUser.email,fullName:signedInUser.user_metadata?.name??signedInUser.user_metadata?.full_name,orderNote:portal!.reference};
     }
     if (!Array.isArray(body.items)) {

@@ -1,4 +1,5 @@
 import "server-only";
+import { businessSecurity } from "@/lib/business-security";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,5 +30,9 @@ export async function authorizeBusinessApi(request: Request, ordering = false) {
   if (ordering && !result.data.canOrder) return fail(403, "This API key has read-only access.");
   const { data, error } = await db.auth.admin.getUserById(result.data.userId);
   if (error || !data.user?.email || !data.user.email_confirmed_at) return fail(403, "Business account unavailable.");
+  try {
+    const security = await businessSecurity(data.user.id);
+    if (!security.approved || !security.password_ready || !security.totp_ready) return fail(403, "Complete password and Google Authenticator setup in your business account before using the API.");
+  } catch { return fail(503, "Unable to verify business account security."); }
   return { error: null, principal: { user: data.user, ip, keyId: String(result.data.keyId) } };
 }

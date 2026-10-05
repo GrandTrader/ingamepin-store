@@ -5,7 +5,7 @@ import { businessApplication } from "@/lib/business-verification-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bankFields, type BusinessDeposit } from "@/lib/business-verification";
 import BankInvoicePanel from "./invoices/BankInvoicePanel";
-import BusinessVerificationForm from "./BusinessVerificationForm";
+import BusinessInterestForm from "./BusinessInterestForm";
 export const dynamic="force-dynamic";
 export default async function BusinessPage({searchParams}:{searchParams:Promise<{page?:string;invoice_page?:string}>}) {
   const {user,displayName}=await requireCustomer();const app=await businessApplication(user.id);
@@ -18,9 +18,10 @@ export default async function BusinessPage({searchParams}:{searchParams:Promise<
   if(settings.error||deposits.error)throw Error("Unable to load business banking. Please try again.");
   const rows=(deposits.data??[]) as BusinessDeposit[];
   return <CustomerAccountShell displayName={displayName}><div className="space-y-6">
-    <div><h1 className="text-3xl font-black">Business verification · KYC & KYB</h1><p className="mt-2 text-slate-600">For resellers and bulk buyers. Admin approval is required before business purchases and USD bank deposits.</p><p className="mt-2 text-sm text-slate-500">Verified businesses use the business portal. Monthly net paid purchases of USD 5,000 or more qualify as Reseller; below this amount the tier is Retailer.</p></div>
-    {app&&<section className="rounded-2xl border bg-white p-5"><h2 className="font-bold">{app.details.legal_name} — {app.status.replaceAll("_"," ")}</h2><p className="mt-2 text-sm">Submitted {formatCustomerDate(app.submitted_at)}</p>{app.review_note&&<p className="mt-3 whitespace-pre-wrap">Review note: {app.review_note}</p>}<p className="mt-3 text-sm">Contact support if your approved business details change.</p></section>}
-    {(!app||["REJECTED","REVOKED"].includes(app.status))&&<BusinessVerificationForm details={app?.details}/>}
+    <div><h1 className="text-2xl font-black">{app?.status === "APPROVED" ? "Business account" : "B2B & API interest"}</h1><p className="mt-2 text-sm text-slate-600">{app?.status === "APPROVED" ? "Manage your business account and bank deposits." : "Interested in bulk purchases or our ordering API? Submit your interest below. Our team completes business verification by email."}</p></div>
+    {app?.status === "PENDING" && <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-800">Your request is awaiting review. Please check your account email for the next steps.</p>}
+    {app&&<section className="rounded-2xl border bg-white p-5"><h2 className="font-bold">{app.details.legal_name} — {app.status.replaceAll("_"," ")}</h2><p className="mt-2 text-sm">Submitted {formatCustomerDate(app.submitted_at)}</p>{app.review_note&&<p className="mt-3 whitespace-pre-wrap">Message: {app.review_note}</p>}<p className="mt-3 text-sm">Contact support if your business details change.</p></section>}
+    {(!app||["REJECTED","REVOKED"].includes(app.status))&&<BusinessInterestForm details={app?.details} email={user.email ?? ""} name={displayName}/>}
     {app?.status==="APPROVED"&&<Link href="/account/portal" className="inline-flex rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">Open business portal →</Link>}
     {app?.status==="APPROVED"&&<section className="space-y-5 rounded-2xl border bg-white p-5 sm:p-6"><h2 className="text-xl font-black">USD bank transfer to wallet</h2>
       {!settings.data?.enabled?<p>USD bank transfers are not available yet. You can use the existing <Link href="/account/wallet" className="text-blue-700 underline">wallet payment methods</Link>.</p>:<>

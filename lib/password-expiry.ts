@@ -16,5 +16,5 @@ export async function getPasswordExpiry(client: SupabaseClient): Promise<Passwor
 }
 
 export function isPasswordRecoveryPath(path: string): boolean {
-  return ["/account/password-verification", "/account/renew-password", "/account/reset-password", "/account/forgot-password", "/account/callback", "/admin/login", "/admin/login/setup", "/admin/login/verify"].includes(path);
+  return ["/account/business/setup", "/account/business/setup/confirm", "/account/password-verification", "/account/renew-password", "/account/reset-password", "/account/forgot-password", "/account/callback", "/admin/login", "/admin/login/setup", "/admin/login/verify"].includes(path);
 }

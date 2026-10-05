@@ -17,6 +17,6 @@ export default async function BusinessPortalLayout({children}:{children:React.Re
     </div>
     </PortalHeader>
     <PortalNav/><main className={s.content}>{children}</main>
-    <footer className={s.footer}><span>InGamePIN Business</span><Link href="/account/portal/settings" scroll={false}>Settings</Link><Link href="/account/portal/business" scroll={false}>Business verification</Link><Link href="/account/dashboard">Switch to Retail</Link></footer>
+    <footer className={s.footer}><span>InGamePIN Business</span><Link href="/account/portal/settings" scroll={false}>Settings</Link><Link href="/account/portal/business" scroll={false}>Business account</Link><Link href="/account/dashboard">Switch to Retail</Link></footer>
   </div>;
 }

@@ -12,6 +12,8 @@ const admin={from(table){assert.equal(table,'business_kyb');return chain;},async
 const mocks={'@/lib/portal-checkout':parser,'@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user}})}})},'@/lib/supabase/admin':{createAdminClient:()=>admin},'next/server':{NextResponse:{json:(body,options={})=>({status:options.status??200,body})}}};
 for(const match of fs.readFileSync('lib/order-request-handler.ts','utf8').matchAll(/from ["'](@\/[^"']+)["']/g))mocks[match[1]]??={};
 Object.assign(mocks,{'server-only':{},'@/lib/request-security':{sameOrigin:()=>true,requestLimit:async()=>null,privateJson:(body,status=200)=>({body,status})},'@/lib/trusted-client-ip':{trustedClientIp:()=> '203.0.113.10'},'@/lib/checkout-consent':{saveCheckoutConsent:async()=>{}},'@/lib/purchase-restriction-exemptions':{exemptPurchaseProducts:async()=>new Set()}});
+let securityReady=true;
+mocks['@/lib/business-security']={businessSessionReady:async()=>securityReady};
 const {POST}=load('lib/order-request-handler.ts',mocks);
 const request=body=>({json:async()=>structuredClone(body),nextUrl:{pathname:'/api/account/portal/orders'},headers:new Headers()});
 (async()=>{
@@ -21,7 +23,7 @@ const request=body=>({json:async()=>structuredClone(body),nextUrl:{pathname:'/ap
  assert.equal((await POST(request(base))).status,401);
  user.email_confirmed_at=new Date().toISOString();user.app_metadata.wallet_disabled=true;
  assert.equal((await POST(request(base))).status,403);assert.equal(calls.length,0);
- user.app_metadata={};assert.equal((await POST(request(base))).status,403);assert.equal(calls[0].args.p_user,'real-user');assert.equal(calls[0].args.p_items[0].unitPrice,undefined);
+ user.app_metadata={};securityReady=false;assert.equal((await POST(request(base))).status,403);assert.equal(calls.length,0);securityReady=true;assert.equal((await POST(request(base))).status,403);assert.equal(calls[0].args.p_user,'real-user');assert.equal(calls[0].args.p_items[0].unitPrice,undefined);
  rpcResult={data:{orderId:'existing-order',orderNumber:'IPB2B20260928123456',replayed:true},error:null};
  const replay=await POST(request(base));assert.equal(replay.status,200);assert.equal(replay.body.result.orderId,'existing-order');assert(calls.every(c=>c.name==='portal_wallet_checkout'&&c.args.p_action==='recover'));
  rpcResult={data:null,error:{message:'Connection lost',code:''}};assert.equal((await POST(request(base))).status,503,'Uncertain recovery must preserve the confirmation key');

@@ -38,7 +38,7 @@ test('Bulk cart keeps base prices and routes products requiring details to their
  assert.throws(()=>helpers.portalCartItem(product,{...option,is_in_stock:false},1));
 });
 function dataLayer({user={id:'u1',email:'OWNER@EXAMPLE.COM',email_confirmed_at:'2026-01-01'},status='APPROVED',db={}}={}){
- return load('lib/business-portal-data.ts',{'server-only':{},react:{cache:f=>f},'next/cache':{unstable_cache:f=>f},'next/navigation':{redirect:path=>{throw Error('REDIRECT:'+path)}},'@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user}})}})},'@/lib/supabase/admin':{createAdminClient:()=>db},'./business-verification-data':{businessApplication:async()=>status?{status,details:{legal_name:'Test'}}:null},'./business-portal':helpers});
+ return load('lib/business-portal-data.ts',{'server-only':{},react:{cache:f=>f},'next/cache':{unstable_cache:f=>f},'next/navigation':{redirect:path=>{throw Error('REDIRECT:'+path)}},'@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user}})}})},'@/lib/supabase/admin':{createAdminClient:()=>db},'@/lib/business-security':{businessSessionReady:async()=>true},'./business-verification-data':{businessApplication:async()=>status?{status,details:{legal_name:'Test'}}:null},'./business-portal':helpers});
 }
 test('Every portal page/export requires a verified signed-in approved business',async()=>{
  for(const params of [{user:null},{user:{id:'u1',email:'e@x.test'}},{status:null},{status:'PENDING'},{status:'REJECTED'},{status:'REVOKED'}])await assert.rejects(dataLayer(params).portalCustomer(),/REDIRECT:/);
@@ -80,8 +80,8 @@ test('Legacy B2B catalogue checks approval before any catalogue query',async()=>
 test('Bulk product links require KYB for both slug and canonical rendering',async()=>{
  const file='app/product/[slug]/page.tsx';
  for(const canonicalRequest of [false,true]){
-  let checks=0;const reads=[];const query={select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'bulk-product',is_bulk_order:true}})};
-  const page=load(file,pageMocks(file,{'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;throw Error('KYB required')}},'@/lib/supabase/server':{createClient:async()=>({from:table=>{reads.push(table);return query}})}}));
+  let checks=0;const reads=[];const query={select(){return this},eq(){return this},returns(){return this},maybeSingle:async()=>({data:{id:'bulk-product',is_bulk_order:true}})};
+  const page=load(file,pageMocks(file,{'@/lib/product-platform-query':{readWithGamingPlatforms:async(query,fields)=>query(fields)},'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;throw Error('KYB required')}},'@/lib/supabase/server':{createClient:async()=>({from:table=>{reads.push(table);return query}})}}));
   await assert.rejects(page.renderProductPage({slug:'bulk-product',searchParams:Promise.resolve({}),canonicalRequest}),/KYB required/);assert.equal(checks,1);assert.deepEqual(reads,['products']);
  }
 });

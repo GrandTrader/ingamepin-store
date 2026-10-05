@@ -11,7 +11,7 @@ export default async function CustomerSecurityPage() {
     <CustomerAccountShell displayName={displayName}>
       <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-600">Account protection</p>
       <h1 className="mt-2 text-3xl font-black">Security</h1>
-      <p className="mt-2 text-slate-500">Use a Passkey to sign in without Google Authenticator codes.</p>
+      <p className="mt-2 text-slate-500">Use a passkey for convenient sign-in. B2B portal access still requires Google Authenticator verification.</p>
 
       <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <h2 className="text-xl font-black">Passkeys</h2>

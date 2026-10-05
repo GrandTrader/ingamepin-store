@@ -1,26 +1,60 @@
 "use server";
+import { sendBusinessSetupEmail } from "@/lib/business-setup-email";
+import { businessText } from "@/lib/business-interest";
+import { countryCallingCodes } from "@/lib/countryCallingCodes";
 import { revalidatePath } from "next/cache";
 import { requireBusinessAdmin } from "@/lib/business-verification-data";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { bankFields, businessDocumentLabels, safeBusinessPath } from "@/lib/business-verification";
+import { bankFields } from "@/lib/business-verification";
 function refresh() { for(const path of ["/account/business","/account/wallet","/account/dashboard","/account/portal","/admin/business-verification","/admin/business-verification/deposits"])revalidatePath(path); }
-export async function reviewBusinessApplication(form:FormData) {
-  const user=await requireBusinessAdmin();
-  const status=String(form.get("status")??"");
-  if(status==="APPROVED"&&form.get("checked")!=="yes")return {error:"Confirm that you reviewed the representative’s KYC and all business KYB documents."};
-  const db=createAdminClient();
-  if(status==="APPROVED") {
-    const id=String(form.get("user_id")??"");
-    const current=await db.from("business_kyb").select("documents,revision").eq("user_id",id).maybeSingle();
-    if(current.error||!current.data)return {error:"Unable to load the application for review."};
-    if(current.data.revision!==Number(form.get("revision")))return {error:"The application has changed. Refresh before reviewing it."};
-    const application=current.data;
-    const missing=Object.entries(businessDocumentLabels).filter(([key])=>typeof application.documents?.[key]!=="string"||!safeBusinessPath(application.documents[key],id)).map(([,label])=>label);
-    if(missing.length)return {error:`Required documents missing: ${missing.join(", ")}. Request corrections so the customer can submit KYC and KYB documents.`};
+export async function reviewBusinessApplication(form: FormData) {
+  const user = await requireBusinessAdmin();
+  const status = String(form.get("status") ?? "");
+  if (!["APPROVED", "REJECTED", "REVOKED"].includes(status)) return { error: "Select a valid decision." };
+  if (status === "APPROVED" && form.get("checked") !== "yes") return { error: "Confirm that business verification was completed by email." };
+  const revision = Number(form.get("revision"));
+  if (!Number.isSafeInteger(revision) || revision < 1) return { error: "Refresh before reviewing this request." };
+  const r = await createAdminClient().rpc("review_email_business_account", {
+    p_user: String(form.get("user_id") ?? ""), p_admin: user.id, p_revision: revision,
+    p_status: status, p_note: String(form.get("note") ?? "").trim(), p_confirmed: form.get("checked") === "yes",
+  });
+  if (r.error) return { error: r.error.code === "P0001" ? r.error.message : "Unable to update the business account." };
+  refresh();
+  if (status === "APPROVED") {
+    try { return { success: `Business account activated. ${await sendBusinessSetupEmail(user.id, { userId: String(form.get("user_id") ?? "") })}` }; }
+    catch (error) { return { success: "Business account activated.", error: `Setup email was not sent. ${error instanceof Error ? error.message : "Use Resend setup email to try again."}` }; }
   }
-  const r=await db.rpc("review_business_kyb",{p_user:String(form.get("user_id")??""),p_admin:user.id,p_revision:Number(form.get("revision")),p_status:status,p_note:String(form.get("note")??"").trim()});
-  if(r.error)return {error:r.error.code==="P0001"?r.error.message:"Unable to save the review."};
-  refresh();return {success:"Business verification updated."};
+  return { success: "Business account updated." };
+}
+
+export async function createBusinessAccount(form: FormData) {
+  const user = await requireBusinessAdmin();
+  if (form.get("checked") !== "yes") return { error: "Confirm that business verification was completed by email." };
+  try {
+    const email = businessText(form, "email", "customer email", 254, 3).toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid customer email." };
+    const details = {
+      legal_name: businessText(form, "legal_name", "business name", 160, 2),
+      country: businessText(form, "country", "country", 100, 2),
+      address: businessText(form, "address", "billing address", 600),
+      registration_number: businessText(form, "registration_number", "registration / tax number", 100),
+    };
+    if (!countryCallingCodes.some(([name]) => name === details.country)) return { error: "Select a country." };
+    const note = businessText(form, "note", "review note", 1000, 3);
+    const r = await createAdminClient().rpc("create_email_business_account", { p_admin: user.id, p_email: email, p_details: details, p_note: note, p_confirmed: true });
+    if (r.error) return { error: r.error.code === "P0001" ? r.error.message : "Unable to create the business account." };
+  } catch (error) { return { error: error instanceof Error ? error.message : "Unable to create the business account." }; }
+  refresh();
+  try { return { success: `B2B account created. ${await sendBusinessSetupEmail(user.id, { email: String(form.get("email") ?? "").trim().toLowerCase() })}` }; }
+  catch (error) { return { success: "B2B account created.", error: `Setup email was not sent. ${error instanceof Error ? error.message : "Use Resend setup email to try again."}` }; }
+}
+
+export async function resendBusinessSetupEmail(form: FormData) {
+  const user = await requireBusinessAdmin();
+  const userId = String(form.get("user_id") ?? "");
+  if (!/^[a-f0-9-]{36}$/i.test(userId)) return { error: "Choose a valid business account." };
+  try { return { success: await sendBusinessSetupEmail(user.id, { userId }) }; }
+  catch (error) { return { error: error instanceof Error ? error.message : "Unable to send setup email." }; }
 }
 export async function saveBusinessBankSettings(form:FormData) {
   const user=await requireBusinessAdmin(); const instructions:Record<string,string>={};

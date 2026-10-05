@@ -154,8 +154,8 @@ export default async function CustomerDashboardPage({ searchParams }: {
                 <p className="mt-2 text-sm text-slate-500">Manage your business purchases and account.</p>
               </Link>
               <Link href="/account/business" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">
-                <h2 className="text-lg font-black text-cyan-700">Business verification <span aria-hidden="true">→</span></h2>
-                <p className="mt-2 text-sm text-slate-500">Submit or review your business verification details.</p>
+                <h2 className="text-lg font-black text-cyan-700">Business account <span aria-hidden="true">→</span></h2>
+                <p className="mt-2 text-sm text-slate-500">Request B2B or API access, or view your business account.</p>
               </Link>
             </nav>
           </section>

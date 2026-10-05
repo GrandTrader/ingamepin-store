@@ -12,12 +12,14 @@ process.env.NODE_ENV='development';assert.equal(inputs.businessApiIp(new Headers
 for(const [k,v] of Object.entries(env))if(v===undefined)delete process.env[k];else process.env[k]=v;
 const user={id:'owner-id',email:'owner@example.invalid',email_confirmed_at:'2026-01-01',app_metadata:{}};
 let rpcResult={data:{userId:user.id,keyId:'key',canOrder:false},error:null},rpcCalls=0;
-const auth=load('lib/business-api-auth.ts',{'@/lib/supabase/admin':{createAdminClient:()=>({rpc:async()=>{rpcCalls++;return rpcResult;},auth:{admin:{getUserById:async()=>({data:{user},error:null})}}})},'./business-api-input':{businessApiIp:()=> '203.0.113.10'}});
+let securityReady=true;
+const auth=load('lib/business-api-auth.ts',{'@/lib/supabase/admin':{createAdminClient:()=>({rpc:async()=>{rpcCalls++;return rpcResult;},auth:{admin:{getUserById:async()=>({data:{user},error:null})}}})},'@/lib/business-security':{businessSecurity:async()=>({approved:true,password_ready:securityReady,totp_ready:securityReady})},'./business-api-input':{businessApiIp:()=> '203.0.113.10'}});
 const headers={Authorization:'Bearer igp_b2b_'+'a'.repeat(43)};
 (async()=>{
  assert.equal((await auth.authorizeBusinessApi(new Request('http://test'))).error.status,401);assert.equal(rpcCalls,0);
  assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}),true)).error.status,403);
  assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}))).principal.user.id,user.id);
+ securityReady=false;assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}))).error.status,403);securityReady=true;
  rpcResult={data:null,error:null};assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}))).error.status,403);
  rpcResult={data:null,error:{message:'business_api_rate_limit'}};const limit=await auth.authorizeBusinessApi(new Request('http://test',{headers}));assert.equal(limit.error.status,429);assert.equal(limit.error.headers.get('Retry-After'),'60');
  rpcResult={data:null,error:{message:'database unavailable'}};assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}))).error.status,503);

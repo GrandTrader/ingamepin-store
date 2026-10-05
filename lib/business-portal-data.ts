@@ -1,4 +1,5 @@
 import "server-only";
+import { businessSessionReady } from "@/lib/business-security";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
@@ -12,6 +13,7 @@ export const portalCustomer = cache(async () => {
   if (!user?.email || !user.email_confirmed_at) redirect("/account?error=Please sign in with a verified email.");
   const application = await businessApplication(user.id);
   if (application?.status !== "APPROVED") redirect("/account/business");
+  if (!(await businessSessionReady(session, user.id))) redirect("/account/business/setup");
   return { user, application, email: user.email.toLowerCase(), session };
 });
 export async function businessSummary() {

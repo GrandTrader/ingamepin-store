@@ -1,4 +1,5 @@
 import "server-only";
+import { hasRequiredAdminAssurance } from "./admin-assurance";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,6 +10,7 @@ export async function requireBusinessAdmin() {
   if(!user) redirect("/admin/login");
   const access=await session.from("admin_users").select("user_id").eq("user_id",user.id).maybeSingle();
   if(access.error || !access.data) redirect("/admin/login?error=Access%20denied");
+  if (!(await hasRequiredAdminAssurance(session))) redirect("/admin/login/verify");
   return user;
 }
 export async function businessApplication(userId:string) {
