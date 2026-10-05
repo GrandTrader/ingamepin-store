@@ -187,6 +187,7 @@ export default async function CustomerInvoicePage({
 
   return (
     <CustomerInvoiceBuilder
+      business={isBusiness}
       order={{
         id: order.id,
         orderItemId: selectedItemIndex >= 0 ? allItems[selectedItemIndex].id : null,

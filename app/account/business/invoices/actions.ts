@@ -1,4 +1,7 @@
 "use server";
+import { validateInvoiceBilling } from "@/lib/invoice-billing";
+import { businessSessionReady } from "@/lib/business-security";
+import { createClient } from "@/lib/supabase/server";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireCustomer } from "@/lib/customer-account-data";
@@ -10,7 +13,11 @@ export async function generateBankInvoice(form: FormData) {
   const { user } = await requireCustomer();
   const amount = bankInvoiceAmount(form.get("amount")), id = String(form.get("request_id") ?? "");
   if (amount === null || !bankInvoiceId.test(id)) return { error: "Enter USD 10–50,000 with at most two decimal places." };
-  const result = await createAdminClient().rpc("create_business_bank_invoice", { p_id: id, p_user: user.id, p_amount: amount });
+  if (!(await businessSessionReady(await createClient(),user.id))) return {error:"Complete business account security verification before generating an invoice."};
+  let billing;
+  try { billing=validateInvoiceBilling({fullName:"Business customer",companyName:"",...Object.fromEntries(["country","addressLine1","addressLine2","city","state","postalCode","taxpayerId"].map(key=>[key,form.get(key)]))},true); }
+  catch(error) { return {error:error instanceof Error?error.message:"Enter complete billing details."}; }
+  const result = await createAdminClient().rpc("create_business_bank_invoice_with_billing", { p_id: id, p_user: user.id, p_amount: amount, p_billing: billing });
   if (result.error) return { error: result.error.code === "P0001" ? result.error.message : "Unable to generate the invoice. Please retry; the same request will not create a duplicate." };
   return { invoiceId: result.data as string };
 }

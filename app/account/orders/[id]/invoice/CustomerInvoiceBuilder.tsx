@@ -1,5 +1,6 @@
 "use client";
 
+import { validateInvoiceBilling } from "@/lib/invoice-billing";
 import { formatFaceValue } from "@/lib/face-value";
 import Link from "@/components/ScopedAccountLink";
 import { useState } from "react";
@@ -54,6 +55,7 @@ type BillingDetails = {
 };
 
 type CustomerInvoiceBuilderProps = {
+  business?: boolean;
   order: InvoiceOrder;
   payment: Payment;
   countryNames: string[];
@@ -94,6 +96,7 @@ function formatDate(value: string | null) {
 }
 
 export default function CustomerInvoiceBuilder({
+  business = false,
   order,
   payment,
   countryNames,
@@ -117,6 +120,7 @@ export default function CustomerInvoiceBuilder({
       taxpayerId: String(formData.get("taxpayer_id") ?? "").trim(),
     };
     setError("");
+    try { validateInvoiceBilling(nextBilling,business); } catch(error) { setError(error instanceof Error?error.message:"Enter complete billing details."); return; }
     const result = await saveCustomerInvoice(
       order.id,
       order.orderItemId,
@@ -126,7 +130,7 @@ export default function CustomerInvoiceBuilder({
       setError(result.error);
       return;
     }
-    setBilling(nextBilling);
+    setBilling(result.invoiceData?.billing ?? nextBilling);
   }
 
   return (
@@ -150,7 +154,7 @@ export default function CustomerInvoiceBuilder({
                 : "Generate full order invoice"}
             </h1>
             <p className="mt-2 text-sm text-slate-500">
-              Enter your billing information for order {order.orderNumber}.
+              Enter your billing information for order {order.orderNumber}. {business && "Full address, PIN / postal code and tax number are required for B2B invoices."}
             </p>
           </header>
 
@@ -224,16 +228,17 @@ export default function CustomerInvoiceBuilder({
               </label>
 
               <label>
-                <span className="text-sm font-bold">Postal / ZIP code</span>
+                <span className="text-sm font-bold">PIN / Postal / ZIP code</span>
                 <input name="postal_code" required maxLength={30} defaultValue={defaultBilling.postalCode} className={inputClass} />
               </label>
 
               <label>
                 <span className="text-sm font-bold">
-                  Taxpayer Identification Number (optional)
+                  {business ? "Tax number / GSTIN / TIN *" : "Taxpayer Identification Number (optional)"}
                 </span>
                 <input
                   name="taxpayer_id"
+                  required={business}
                   maxLength={100}
                   placeholder="Tax ID / TIN"
                   defaultValue={defaultBilling.taxpayerId}

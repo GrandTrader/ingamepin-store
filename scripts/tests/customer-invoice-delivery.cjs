@@ -3,11 +3,11 @@ function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileMod
 const delivery=load('lib/delivery-progress.ts');
 const item={id:'item',product_name:'In-account purchase',option_name:'Standard',quantity:1,unit_price:10,total_price:10,fulfillment_mode:'PLAYER_ID_TOPUP',service_delivered_at:'2026-10-04T20:34:57Z'};
 const billing={fullName:'Test',companyName:'',country:'India',addressLine1:'Test',addressLine2:'',city:'Test',state:'Test',postalCode:'123456',taxpayerId:''};
-function fixture({items=[item],codes=[],status='DELIVERED',owner=true,confirmed=true}={}){
+function fixture({items=[item],codes=[],status='DELIVERED',owner=true,confirmed=true,business=false,ready=true}={}){
  const calls=[],invoices=[];
- const db={from(table){let inserting=false;const q={};for(const op of ['select','eq','order','limit','is'])q[op]=(...args)=>{calls.push({table,op,args});return q;};q.insert=value=>{inserting=true;invoices.push(value);return q;};const result=()=>({data:table==='orders'?(owner?{id:'order',order_number:'IP-TEST',status,subtotal:10,discount:0,total:10,currency:'USD',customer_email:'owner@example.invalid'}:null):table==='order_items'?items:table==='saved_invoices'?(inserting?{id:'invoice'}:null):null,error:null});q.then=(resolve,reject)=>Promise.resolve(result()).then(resolve,reject);q.maybeSingle=q.single=()=>Promise.resolve(result());return q;}};
- const m=load('app/account/orders/[id]/invoice/actions.ts',{'@/lib/delivery-progress':delivery,'@/lib/delivered-codes':{getAllDeliveredCodes:async()=>codes},'@/lib/supabase/admin':{createAdminClient:()=>db},'@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'user',email:'owner@example.invalid',email_confirmed_at:confirmed?'2026-01-01':null}}}),updateUser:async()=>({error:null})}})}});
- return {save:()=>m.saveCustomerInvoice('order',null,billing),calls,invoices};
+ const db={from(table){let inserting=false;const q={};for(const op of ['select','eq','order','limit','is'])q[op]=(...args)=>{calls.push({table,op,args});return q;};q.insert=value=>{inserting=true;invoices.push(value);return q;};const result=()=>({data:table==='orders'?(owner?{id:'order',sales_channel:business?'BUSINESS':'RETAIL',order_number:'IP-TEST',status,subtotal:10,discount:0,total:10,currency:'USD',customer_email:'owner@example.invalid'}:null):table==='order_items'?items:table==='saved_invoices'?(inserting?{id:'invoice'}:null):null,error:null});q.then=(resolve,reject)=>Promise.resolve(result()).then(resolve,reject);q.maybeSingle=q.single=()=>Promise.resolve(result());return q;}};
+ const m=load('app/account/orders/[id]/invoice/actions.ts',{'@/lib/invoice-billing':load('lib/invoice-billing.ts'),'@/lib/business-security':{businessSessionReady:async()=>ready},'@/lib/delivery-progress':delivery,'@/lib/delivered-codes':{getAllDeliveredCodes:async()=>codes},'@/lib/supabase/admin':{createAdminClient:()=>db},'@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'user',email:'owner@example.invalid',email_confirmed_at:confirmed?'2026-01-01':null}}}),updateUser:async()=>({error:null})}})}});
+ return {save:(data=billing)=>m.saveCustomerInvoice('order',null,data),calls,invoices};
 }
 test('completed in-account purchase generates an invoice without voucher codes',async()=>{const f=fixture();const r=await f.save();assert.equal(r.error,null);assert.equal(r.invoiceId,'invoice');assert.equal(f.invoices.length,1);const selected=f.calls.find(c=>c.table==='order_items'&&c.op==='select').args[0];assert.match(selected,/fulfillment_mode/);assert.match(selected,/service_delivered_at/);assert(f.calls.some(c=>c.table==='orders'&&c.op==='eq'&&c.args[0]==='customer_email'&&c.args[1]==='owner@example.invalid'));});
 test('completed manual account delivery is recognized',async()=>{const f=fixture({items:[{...item,fulfillment_mode:null}]});assert.equal((await f.save()).error,null);});
@@ -15,3 +15,14 @@ test('voucher invoices still require every code',async()=>{const voucher={...ite
 test('mixed order cannot invoice an undelivered voucher',async()=>{const f=fixture({items:[item,{...item,id:'voucher',fulfillment_mode:'GAMING_VOUCHER',service_delivered_at:null}]});assert.match((await f.save()).error,/every included product/);assert.equal(f.invoices.length,0);});
 test('incomplete orders stay blocked even if a service item is complete',async()=>{const f=fixture({status:'PROCESSING'});assert.match((await f.save()).error,/only after/);assert.equal(f.invoices.length,0);});
 test('ownership and verified-email checks stay enforced',async()=>{for(const options of [{owner:false},{confirmed:false}]){const f=fixture(options);assert((await f.save()).error);assert.equal(f.invoices.length,0);}});
+
+test('B2B invoice requires full address, PIN and tax number on the server',async()=>{
+ const complete={...billing,taxpayerId:'TEST-TAX-123'};
+ for(const key of ['fullName','country','addressLine1','city','state','postalCode','taxpayerId']){
+  const f=fixture({business:true});assert((await f.save({...complete,[key]:'   '})).error,key);assert.equal(f.invoices.length,0);
+ }
+ for(const postalCode of ['12345','012345','ABC123'])assert((await fixture({business:true}).save({...complete,postalCode})).error);
+ const f=fixture({business:true});assert.equal((await f.save({...complete,taxpayerId:'  TEST-TAX-123  '})).error,null);assert.equal(f.invoices[0].invoice_data.billing.taxpayerId,'TEST-TAX-123');
+ assert.equal((await fixture().save(billing)).error,null,'Retail tax number remains optional');
+ assert((await fixture({business:true,ready:false}).save(complete)).error);
+});

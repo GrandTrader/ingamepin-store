@@ -28,7 +28,7 @@ export default async function BusinessPage({searchParams}:{searchParams:Promise<
         <p className="text-sm">Send the payment using these instructions. Your wallet is credited after admin confirms the bank receipt. Bank deductions and currency conversion may reduce the USD amount credited.</p>
         <dl className="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm">{bankFields.map(([key,label])=><div key={key}><dt className="font-bold">{label}</dt><dd className="whitespace-pre-wrap break-words">{String(settings.data?.instructions?.[key]??"")}</dd></div>)}</dl>
         <p className="text-sm">Use your registered business account as the sender and the generated invoice number as your payment reference. If your bank needs additional purpose details, contact support before sending.</p>
-        <BankInvoicePanel userId={user.id} page={Math.max(1,Math.min(10000,Number.parseInt(params.invoice_page??"1")||1))}/>
+        <BankInvoicePanel details={app.details} userId={user.id} page={Math.max(1,Math.min(10000,Number.parseInt(params.invoice_page??"1")||1))}/>
       </>}
     </section>}
     {!!rows.length&&<section className="space-y-3"><h2 className="text-xl font-black">Bank deposit history</h2>{rows.slice(0,10).map(r=><article key={r.id} className="rounded-xl border bg-white p-4 text-sm"><p className="font-bold">USD {Number(r.amount_usd).toFixed(2)} — {r.status}</p><p>{formatCustomerDate(r.created_at)} · {r.customer_reference}</p>{r.credited_usd!=null&&<p>Wallet credited: USD {Number(r.credited_usd).toFixed(2)}</p>}{r.note&&<p className="mt-2 whitespace-pre-wrap">{r.note}</p>}</article>)}<div className="flex gap-5">{page>1&&<Link href={`?page=${page-1}`}>Previous</Link>}{rows.length>10&&<Link href={`?page=${page+1}`}>Next</Link>}</div></section>}

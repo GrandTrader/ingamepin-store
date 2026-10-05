@@ -1,5 +1,7 @@
 "use server";
 
+import { validateInvoiceBilling } from "@/lib/invoice-billing";
+import { businessSessionReady } from "@/lib/business-security";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllDeliveredCodes } from "@/lib/delivered-codes";
@@ -32,12 +34,14 @@ export async function saveCustomerInvoice(
   const admin = createAdminClient();
   const orderResult = await admin
     .from("orders")
-    .select("id, order_number, customer_name, customer_email, currency, subtotal, discount, total, status, created_at, paid_at")
+    .select("id, sales_channel, order_number, customer_name, customer_email, currency, subtotal, discount, total, status, created_at, paid_at")
     .eq("id", orderId)
     .eq("customer_email", user.email.toLowerCase())
     .maybeSingle();
 
   if (orderResult.error || !orderResult.data) return { error: "Order was not found." };
+  const isBusiness = orderResult.data.sales_channel === "BUSINESS";
+  if (isBusiness && !(await businessSessionReady(supabase,user.id))) return {error:"Complete business account security verification before generating an invoice."};
   if (orderResult.data.status !== "DELIVERED") return { error: "Invoice is available only after the order is completed." };
 
   let itemsQuery = admin
@@ -70,6 +74,9 @@ export async function saveCustomerInvoice(
     : existingQuery.is("order_item_id", null);
   const existing = await existingQuery.maybeSingle();
   if (existing.data) return { error: null, invoiceId: existing.data.id, invoiceData: existing.data.invoice_data, alreadyExists: true };
+
+  try { details = validateInvoiceBilling(details, isBusiness); }
+  catch(error) { return {error:error instanceof Error?error.message:"Enter complete billing details."}; }
 
   const subtotal = items.reduce((sum, item) => sum + Number(item.total_price), 0);
   const orderSubtotal = Number(orderResult.data.subtotal);

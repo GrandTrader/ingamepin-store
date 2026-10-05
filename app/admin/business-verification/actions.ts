@@ -20,6 +20,7 @@ export async function reviewBusinessApplication(form: FormData) {
   });
   if (r.error) return { error: r.error.code === "P0001" ? r.error.message : "Unable to update the business account." };
   refresh();
+  revalidatePath(`/admin/business-verification/${String(form.get("user_id") ?? "")}`);
   if (status === "APPROVED") {
     try { return { success: `Business account activated. ${await sendBusinessSetupEmail(user.id, { userId: String(form.get("user_id") ?? "") })}` }; }
     catch (error) { return { success: "Business account activated.", error: `Setup email was not sent. ${error instanceof Error ? error.message : "Use Resend setup email to try again."}` }; }
