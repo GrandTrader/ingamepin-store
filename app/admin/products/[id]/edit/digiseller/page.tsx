@@ -1,6 +1,5 @@
 import ProductSettingsActions from "@/components/ProductSettingsActions";
 import Link from "next/link";
-import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 
 import AdminSidebar from "../../../../AdminSidebar";
@@ -38,9 +37,7 @@ export default async function ProductDigiSellerPage({ params, searchParams }: {
     <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-600">Product settings</p><h1 className="mt-2 text-3xl font-black">{product.name}</h1><p className="mt-1 text-sm text-slate-500">{product.slug}</p></div><ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold">← Product list</Link></ProductSettingsActions></header>
     {success && <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}{error && <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
     <div className="mt-8"><ProductEditPageTabs productId={id} current="digiseller" /></div>
-    <Suspense fallback={<p role="status" className="mt-6 rounded-xl border border-slate-200 p-4 text-sm text-slate-600">Loading DigiSeller settings...</p>}>
       <DigiSellerConnection productId={id} options={(optionsResult.data ?? []).map((option) => ({ id: option.id, name: option.option_name, digisellerProductId: option.digiseller_product_id === null ? null : Number(option.digiseller_product_id), digisellerOptionId: option.digiseller_option_id === null ? null : Number(option.digiseller_option_id), digisellerVariantId: option.digiseller_variant_id === null ? null : Number(option.digiseller_variant_id) }))} />
-    </Suspense>
 
   </main></div></div>;
 }

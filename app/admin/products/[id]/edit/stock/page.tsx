@@ -33,15 +33,16 @@ export default async function ProductStockPage({ params, searchParams }: {
   }
 
   const admin = createAdminClient();
-  const [productResult, optionsResult, codesResult] = await Promise.all([
+  const [productResult, optionsResult, codesResult, supplierIds] = await Promise.all([
     admin.from("products").select("id, name, slug, stock_quantity").eq("id", id).maybeSingle(),
     admin.from("product_options").select("id, option_name, denomination, denomination_currency, stock_quantity").eq("product_id", id).eq("is_active", true).eq("is_custom_value", false).order("sort_order"),
     admin.from("gift_card_codes").select("id, code, product_option_id, status, created_at").eq("product_id", id).order("created_at", { ascending: false }).limit(500),
+    supplierProductIds([id]),
   ]);
   if (productResult.error) throw new Error(`Unable to load product: ${productResult.error.message}`);
   if (!productResult.data) notFound();
   const product = productResult.data;
-  const supplierEnabled=(await supplierProductIds([id])).has(id);
+  const supplierEnabled=supplierIds.has(id);
 
   return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row"><AdminSidebar /><main className="min-w-0 flex-1 p-5 sm:p-8">
     <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-600">Product settings</p><h1 className="mt-2 text-3xl font-black">{product.name}</h1><p className="mt-1 text-sm text-slate-500">{product.slug}</p></div><ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold">← Product list</Link></ProductSettingsActions></header>

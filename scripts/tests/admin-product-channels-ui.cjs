@@ -9,7 +9,7 @@ products.push({...products[0],id:'steam',public_id:500,name:'Steam USA Retail',r
 const chain=data=>({select(){return this},eq(){return this},gte(){return this},maybeSingle:async()=>({data:{role:'ADMIN'}}),then:resolve=>resolve({data,error:null})});
 const actions=Object.fromEntries(['cloneProduct','createDraftProduct','deleteSelectedProducts','syncAllProductImagesToDigiSeller','syncAllDigiSellerStatistics','toggleProductSales'].map(k=>[k,async()=>{}]));
 const pageModule=load('app/admin/products/page.tsx',{
- 'next/form':form,'next/link':link,'next/navigation':{redirect:()=>{throw Error('Unexpected redirect')}},
+ 'next/form':form,'next/link':link,'@/components/ProductEditorLink':link,'next/navigation':{redirect:()=>{throw Error('Unexpected redirect')}},
  './ProductChannelSwitches':switches,'./CodeSearch':noop,'../AdminSidebar':noop,'./ProductBulkSelection':{DeleteSelectedProductsButton:()=>null,SelectAllProductsCheckbox:()=>null},'./actions':actions,
  '@/lib/admin-product-filters':load('lib/admin-product-filters.ts'),'@/lib/product-url':{getProductUrl:()=>'/product'},'@/lib/product-sales':{getPaidProductSales:async()=>new Map()},'@/lib/product-stock':{isUnlimitedStock:q=>q===-1},
  '@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'admin'}}})},from:table=>chain(table==='products'?products:[])})},'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>chain([])})}

@@ -1,6 +1,6 @@
 import { getProductPaypalychRestriction } from "@/lib/paypalych-product-policy-server";
 import PaypalychProductWarning from "./PaypalychProductWarning";
-import Link from "@/components/NavigationLink";
+import Link from "@/components/ProductEditorLink";
 
 const tabs = [
   ["general", "General"],
@@ -35,6 +35,7 @@ export default async function ProductEditPageTabs({
             key={id}
             href={`/admin/products/${productId}/edit/${id}`}
             scroll={false}
+            warm={id === "supplier" || id === "digiseller" || id === "stock" ? "intent" : "visible"}
             aria-current={current === id ? "page" : undefined}
             className={`border border-slate-300 px-4 py-3 text-sm font-bold transition ${
               current === id

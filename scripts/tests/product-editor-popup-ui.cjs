@@ -12,10 +12,11 @@ write('postcss.config.mjs','export default {plugins:{"@tailwindcss/postcss":{}}}
 write('styles.css','@import "../../app/globals.css"; @source "../../components"; @source "../../app/admin"; @source "./";');
 write('app/layout.tsx',`import '../styles.css';export default function Layout({children}:{children:React.ReactNode}){return <html lang="en"><body style={{background:'#f8fafc',color:'#17243a'}}>{children}</body></html>}`);
 write('app/admin/products/layout.tsx',fs.readFileSync('app/admin/products/layout.tsx','utf8'));
-write('app/admin/products/page.tsx',`import Link from 'next/link';import {cookies} from 'next/headers';export default async function Page(){const name=(await cookies()).get('fixture-product')?.value||'Test product';return <main style={{padding:24}}><h1>Products</h1><input aria-label="Product filter" defaultValue="Games"/><div style={{height:500}}/><article><h2>{name}</h2><Link id="edit-product" href="/admin/products/test/edit/general" scroll={false}>Edit product</Link></article><div style={{height:1200}}/></main>}`);
-for(const file of ['default.tsx','page.tsx','[...rest]/page.tsx','(.)[id]/edit/layout.tsx','(.)[id]/edit/loading.tsx','(.)[id]/edit/page.tsx']){
+write('app/admin/products/page.tsx',`import Link from '@/components/ProductEditorLink';import {cookies} from 'next/headers';export default async function Page(){const name=(await cookies()).get('fixture-product')?.value||'Test product';return <main style={{padding:24}}><h1>Products</h1><input aria-label="Product filter" defaultValue="Games"/><div style={{height:500}}/><article><h2>{name}</h2><Link id="edit-product" href="/admin/products/test/edit/general" scroll={false}>Edit product</Link></article><div style={{height:1200}}/></main>}`);
+for(const file of ['default.tsx','page.tsx','[...rest]/page.tsx','(.)[id]/edit/layout.tsx','(.)[id]/edit/page.tsx']){
  write('app/admin/products/@editor/'+file,fs.readFileSync('app/admin/products/@editor/'+file,'utf8'));
 }
+fs.rmSync(path.join(fixture,'app/admin/products/@editor/(.)[id]/edit/loading.tsx'),{force:true});
 let tabComponent=fs.readFileSync('components/ProductEditPageTabs.tsx','utf8');
 tabComponent=tabComponent.replace(/import \{ getProductPaypalychRestriction[^\n]+\n/,'').replace(/import PaypalychProductWarning[^\n]+\n/,'').replace(/  const blockedBrand =[^\n]+\n/,'').replace(/    <PaypalychProductWarning[^\n]+\n/,'');
 write('Tabs.tsx',tabComponent);
@@ -28,13 +29,46 @@ for(const [tab] of tabs){
  write('app/admin/products/@editor/(.)[id]/edit/'+tab+'/page.tsx',original.replace('@/app/admin/products/[id]/edit/'+tab+'/page','../../../../[id]/edit/'+tab+'/page'));
 }
 (async()=>{
- const logs=[];const server=spawn(process.execPath,[require.resolve('next/dist/bin/next'),'dev',fixture,'--port','3011','--hostname','127.0.0.1'],{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});
+ const production=process.argv.includes('--production');
+ if(production){
+  const built=spawnSync(process.execPath,[require.resolve('next/dist/bin/next'),'build',fixture],{cwd:root,windowsHide:true,encoding:'utf8',timeout:180000});
+  assert.equal(built.status,0,(built.stdout||'')+(built.stderr||''));
+ }
+ const logs=[];const server=spawn(process.execPath,[require.resolve('next/dist/bin/next'),production?'start':'dev',fixture,'--port','3011','--hostname','127.0.0.1'],{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});
  server.stdout.on('data',d=>logs.push(d.toString()));server.stderr.on('data',d=>logs.push(d.toString()));
  const browser=await chromium.launch({channel:'chrome',headless:true});
  try{
   let ready=false;for(let i=0;i<60;i++){try{const r=await fetch('http://localhost:3011/admin/products');if(r.ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,500));}assert(ready,logs.join('').slice(-3000));
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   const list='http://localhost:3011/admin/products?category=games&page=2';
+  if(production){
+   await page.setViewportSize({width:1440,height:850});
+   await page.goto(list);
+   const warmed=[];
+   page.on('response',response=>{if(response.request().headers()['next-router-prefetch']==='1')warmed.push(response.url());});
+   const edit=page.locator('#edit-product');await edit.scrollIntoViewIfNeeded();await edit.hover();
+   for(let i=0;i<100&&!warmed.some(url=>url.includes('/edit/general'));i++)await page.waitForTimeout(100);
+   assert(warmed.some(url=>url.includes('/edit/general')),'Hover should fully prefetch the editor in production');
+   await edit.click();const dialog=page.getByRole('dialog',{name:'Edit product'});await dialog.waitFor();
+   for(let i=0;i<100&&!warmed.some(url=>url.includes('/edit/gallery'));i++)await page.waitForTimeout(100);
+   assert(warmed.some(url=>url.includes('/edit/gallery')),'Visible tabs should prefetch in production');
+   // Give the prefetched response body time to finish, not just its headers.
+   await page.waitForTimeout(500);
+   const requests=[];page.on('request',r=>{if(r.url().includes('/edit/gallery')&&r.headers()['rsc']==='1')requests.push(r.url());});
+   const start=Date.now();await dialog.getByRole('link',{name:'Gallery',exact:true}).click();
+   await dialog.getByRole('heading',{name:'gallery',exact:true}).waitFor();
+   assert.equal(requests.length,0,'A warmed tab should open without another server round trip');
+   assert.equal(await page.getByLabel('Opening page').count(),0);
+   console.log('PASS production prefetch: hover opens the prepared popup; Gallery opened from cache in '+(Date.now()-start)+'ms with no tab request.');
+   await dialog.getByRole('textbox',{name:'Product name'}).fill('Updated after prefetch');
+   await dialog.getByRole('button',{name:'Save changes'}).click();
+   await dialog.getByRole('status').filter({hasText:'Saved'}).waitFor();
+   await dialog.getByRole('link',{name:'General',exact:true}).click();
+   await dialog.getByRole('heading',{name:'general',exact:true}).waitFor();
+   assert.equal(await dialog.getByRole('textbox',{name:'Product name'}).inputValue(),'Updated after prefetch','Saving must invalidate prefetched form data');
+   console.log('PASS production save: previously prefetched General reflects the saved changes.');
+   assert.deepEqual(errors,[]);return;
+  }
   for(const width of [320,390,1440]){
    await page.setViewportSize({width,height:850});await page.goto(list);await page.locator('#edit-product').scrollIntoViewIfNeeded();
    const initialScroll=await page.evaluate(()=>scrollY);await page.locator('#edit-product').click();
@@ -42,6 +76,21 @@ for(const [tab] of tabs){
    assert.equal(await dialog.getByRole('navigation',{name:'Product settings tabs'}).getByRole('link').count(),tabs.length);
    assert.equal(await dialog.locator('[data-admin-sidebar]').isVisible(),false);
    assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).overflow),'hidden');
+   // An uncached slow tab must keep the current form visible, without flashing
+   // the old route loading fallback or the global navigation progress bar.
+   let delayedRequests=0;
+   await page.route('**/edit/gallery?*',async route=>{
+    if(route.request().headers()['rsc']==='1') {delayedRequests++;await new Promise(r=>setTimeout(r,1000));}
+    await route.continue();
+   });
+   await dialog.getByRole('link',{name:'Gallery',exact:true}).click();
+   await page.waitForTimeout(350);
+   assert(await dialog.getByRole('heading',{name:'general',exact:true}).isVisible(),'Keep current tab while the next tab is fetched');
+   assert.equal(await page.getByLabel('Opening page').count(),0);
+   assert.equal(await page.getByText('Loading product settings…').count(),0);
+   await dialog.getByRole('heading',{name:'gallery',exact:true}).waitFor();
+   assert(delayedRequests>0,'Slow navigation test must intercept a real tab request');
+   await page.unroute('**/edit/gallery?*');
    for(const [tab,label] of tabs){
     await dialog.getByRole('link',{name:label,exact:true}).click();await page.waitForURL('**/edit/'+tab);
     await dialog.getByRole('heading',{name:tab,exact:true}).waitFor();

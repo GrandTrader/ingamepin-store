@@ -82,3 +82,31 @@ const getCachedPaidProductSales = unstable_cache(async () => {
 export async function getPaidProductSales() {
   return new Map(await getCachedPaidProductSales());
 }
+
+// The editor needs one product's total, not the entire catalogue's order history.
+export const getPaidProductSalesForProduct = unstable_cache(async (productId: string) => {
+  const admin = createAdminClient();
+  const pageSize = 1000;
+  let total = 0;
+  for (let from = 0; ; from += pageSize) {
+    const result = await admin.from("order_items")
+      .select("product_id, quantity, orders!inner(status)")
+      .eq("product_id", productId)
+      .in("orders.status", ["PAID", "PROCESSING", "DELIVERED"])
+      .order("id")
+      .range(from, from + pageSize - 1);
+    if (result.error) {
+      throw new Error(`Unable to calculate product sales: ${result.error.message}`);
+    }
+    const rows = (result.data ?? []) as OrderItemSaleRow[];
+    for (const row of rows) {
+      if (["PAID", "PROCESSING", "DELIVERED"].includes(getOrderStatus(row.orders) ?? "")) {
+        total += Number(row.quantity || 0);
+      }
+    }
+    if (rows.length < pageSize) return total;
+  }
+}, ["paid-product-sales-by-product-v1"], {
+  revalidate: 30,
+  tags: ["paid-product-sales"],
+});

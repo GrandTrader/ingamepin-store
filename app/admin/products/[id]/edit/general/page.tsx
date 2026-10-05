@@ -11,7 +11,7 @@ import ProductEditPageTabs from "@/components/ProductEditPageTabs";
 import ResponsiveImageField from "@/components/ResponsiveImageField";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPaidProductSales } from "@/lib/product-sales";
+import { getPaidProductSalesForProduct } from "@/lib/product-sales";
 import { updateProductGeneral } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +61,7 @@ export default async function ProductGeneralPage({
       .select("id", { count: "exact", head: true })
       .eq("product_id", id)
       .gte("last_viewed_at", twentyFourHoursAgo),
-    getPaidProductSales(),
+    getPaidProductSalesForProduct(id),
   ]);
 
   if (result.error) throw new Error(`Unable to load product: ${result.error.message}`);
@@ -69,7 +69,7 @@ export default async function ProductGeneralPage({
   if (!result.data) notFound();
   const product = result.data;
   const totalSold =
-    Number(product.sold_count ?? 0) + (paidProductSales.get(id) ?? 0);
+    Number(product.sold_count ?? 0) + paidProductSales;
   const visitorsLast24Hours = viewsResult.count ?? 0;
   const isPopupProduct = popupResult.data?.is_enabled === true && popupResult.data.product_id === id;
   const popupImageUrl = popupResult.data?.product_id === id ? popupResult.data.image_url : null;
