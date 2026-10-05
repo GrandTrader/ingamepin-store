@@ -40,9 +40,9 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
    <button type="button" disabled={busy} className={styles.addButton} onClick={()=>purchase(false)}>Add to cart</button>
    <button type="button" disabled={busy} className={styles.buyButton} onClick={()=>purchase(true)}>Buy now</button>
   </div>
+  {range.delivery_mode==="MANUAL"&&<p className={styles.hint}>Delivered manually after payment.</p>}
   {range.step>1&&<p className={styles.hint}>Increments of {range.step} {range.currency}</p>}
   {fields.length>0&&Array.from({length:Math.min(30,Math.max(1,Number(quantity)||1))},(_,index)=><div key={index} className="mt-3 grid gap-2"><p className="font-bold">Code {index+1} details</p>{fields.map(field=><label key={field.id} className={styles.label}>{field.label}{field.is_required?" *":""}<input className={styles.detailInput} maxLength={500} placeholder={field.placeholder??""} value={answers[`${index}:${field.id}`]??""} onChange={e=>setAnswers({...answers,[`${index}:${field.id}`]:e.target.value})}/></label>)}</div>)}
-  {range.delivery_mode==="MANUAL"&&<p className={styles.hint}>Codes are delivered by our team after payment.</p>}
   {error&&<p role="alert" className={styles.error}>{error}</p>}{message&&<p role="status" className={styles.success}>{message}</p>}
  </section>;
 }
