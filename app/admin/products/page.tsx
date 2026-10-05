@@ -481,7 +481,7 @@ export default async function AdminProductsPage({
 
                         <td className="px-3 py-2.5">
                           <Link
-                            href={`/admin/products/${product.id}/edit/general`}
+                            href={`/admin/products/${product.id}/edit/general`} scroll={false}
                             className="admin-product-name-link font-bold text-blue-600 underline-offset-2 hover:underline"
                           >
                             {product.name}
@@ -515,7 +515,7 @@ export default async function AdminProductsPage({
 
                         <td className="px-3 py-2.5 text-center">
                           <Link
-                            href={`/admin/products/${product.id}/edit/stock`}
+                            href={`/admin/products/${product.id}/edit/stock`} scroll={false}
                             className={`font-black underline-offset-2 hover:underline ${availableStock !== "Unlimited" && availableStock <= 5 ? "admin-product-stock-low text-red-600" : "admin-product-stock-link text-blue-600"}`}
                           >
                             {getAvailableLabel(product)}
@@ -529,7 +529,7 @@ export default async function AdminProductsPage({
                               <input type="hidden" name="product_id" value={product.id} />
                               <button className="rounded-md px-2 py-1.5 text-xs font-bold text-slate-500 hover:bg-blue-100 hover:text-blue-700">Clone</button>
                             </form>
-                            <Link href={`/admin/products/${product.id}/edit/general`} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-black text-slate-700 hover:border-blue-400 hover:text-blue-700">Edit</Link>
+                            <Link href={`/admin/products/${product.id}/edit/general`} scroll={false} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-black text-slate-700 hover:border-blue-400 hover:text-blue-700">Edit</Link>
                           </div>
                         </td>
 
