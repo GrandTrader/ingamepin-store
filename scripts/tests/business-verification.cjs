@@ -5,10 +5,11 @@ const vm=require('node:vm');
 const ts=require('typescript');
 function load(file,mocks={}) {
   const exports={};const js=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  vm.runInNewContext(js,{exports,require:name=>{if(name in mocks)return mocks[name];throw Error('Unexpected module '+name);},File,FormData,Uint8Array,Response,console,Map,Set,URL},{filename:file});return exports;
+  vm.runInNewContext(js,{exports,require:name=>{if(name in mocks)return mocks[name];throw Error('Unexpected module '+name);},File,FormData,Uint8Array,Response,console,Map,Set,URL,Error},{filename:file});return exports;
 }
 const helpers=load('lib/business-verification.ts',{'./countryCallingCodes':load('lib/countryCallingCodes.ts'),'libphonenumber-js/max':require('libphonenumber-js/max')});
 const interest=load('lib/business-interest.ts',{'./countryCallingCodes':load('lib/countryCallingCodes.ts')});
+const profile=load('lib/admin-business-profile.ts',{'./business-interest':interest,'./countryCallingCodes':load('lib/countryCallingCodes.ts'),'libphonenumber-js/max':require('libphonenumber-js/max')});
 const uid='00000000-0000-4000-8000-000000000010',other='00000000-0000-4000-8000-000000000011';
 function form(){const f=new FormData();for(const [key] of helpers.businessFields)f.set(key,'Test business data');f.set('buyer_type','RESELLER');f.set('entity_type','Company');f.set('consent','accepted');for(const [k,v] of Object.entries({country:'India',address_line1:'123 Test Street',address_line2:'Unit 4',city:'Kolkata',state:'West Bengal',postal_code:'700110',phone_country:'India',phone_number:'9999999999',identity_document_type:'Passport',representative_role:'Owner / proprietor'}))f.set(k,v);for(const key of Object.keys(helpers.businessDocumentLabels))f.set(key,new File(['%PDF-1.7 test'],key+'.pdf',{type:'application/pdf'}));return f;}
 test('KYB requires ownership, business details and declaration',()=>{
@@ -62,10 +63,10 @@ test('International addresses may omit postal codes, but India must supply a PIN
 test('Admin activation requires email review confirmation and uses the authenticated admin',async()=>{
  const calls=[];
  const db={rpc:async(name,args)=>{calls.push({name,args});return {error:null}}};
- const actions=load('app/admin/business-verification/actions.ts',{'@/lib/business-api-input':load('lib/business-api-input.ts',{'node:net':require('node:net'),'@/lib/trusted-client-ip':{}}),'next/cache':{revalidatePath(){}},'@/lib/business-verification-data':{requireBusinessAdmin:async()=>({id:other})},'@/lib/supabase/admin':{createAdminClient:()=>db},'@/lib/business-verification':helpers,'@/lib/business-setup-email':{sendBusinessSetupEmail:async()=> 'Setup email sent.'},'@/lib/business-interest':interest,'@/lib/countryCallingCodes':load('lib/countryCallingCodes.ts')});
- const f=new FormData();f.set('email','Owner@Example.com');f.set('legal_name','Test shop');f.set('country','India');f.set('note','Verified through email');f.set('p_admin',uid);
+ const actions=load('app/admin/business-verification/actions.ts',{'@/lib/business-api-input':load('lib/business-api-input.ts',{'node:net':require('node:net'),'@/lib/trusted-client-ip':{}}),'next/cache':{revalidatePath(){}},'@/lib/business-verification-data':{requireBusinessAdmin:async()=>({id:other})},'@/lib/supabase/admin':{createAdminClient:()=>db},'@/lib/business-verification':helpers,'@/lib/business-setup-email':{sendBusinessSetupEmail:async()=> 'Setup email sent.'},'@/lib/business-interest':interest,'@/lib/admin-business-profile':profile});
+ const f=new FormData();f.set('email','Owner@Example.com');f.set('legal_name','Test shop');f.set('country','India');f.set('contact_name','Test Owner');f.set('monthly_volume','USD 5000');f.set('interest','BOTH');f.set('registration_number','COMPANY-123');f.set('tax_number','TAX-456');f.set('owners','Test Owner 100%');f.set('note','Verified through email');f.set('p_admin',uid);
  assert((await actions.createBusinessAccount(f)).error);assert.equal(calls.length,0);
- f.set('checked','yes');assert((await actions.createBusinessAccount(f)).success);assert.equal(calls[0].name,'create_email_business_account');assert.equal(calls[0].args.p_admin,other);assert.equal(calls[0].args.p_email,'owner@example.com');
+ f.set('checked','yes');assert((await actions.createBusinessAccount(f)).success);assert.equal(calls[0].name,'create_email_business_account');assert.equal(calls[0].args.p_admin,other);assert.equal(calls[0].args.p_email,'owner@example.com');assert.equal(calls[0].args.p_details.registration_number,'COMPANY-123');assert.equal(calls[0].args.p_details.tax_number,'TAX-456');assert.equal(calls[0].args.p_details.owners,'Test Owner 100%');
  f.set('status','APPROVED');f.set('user_id',uid);f.set('revision','4');assert((await actions.reviewBusinessApplication(f)).success);assert.equal(calls[1].args.p_revision,4);assert.equal(calls[1].args.p_confirmed,true);
  f.delete('checked');assert((await actions.reviewBusinessApplication(f)).error);assert.equal(calls.length,2);
  f.set('ip_revision','0');f.set('ips','203.0.113.10');assert((await actions.approveBusinessApiIps(f)).error);assert.equal(calls.length,2);
@@ -75,6 +76,29 @@ test('Admin activation requires email review confirmation and uses the authentic
 test('Unverified customers cannot submit interest; unauthenticated admins cannot create accounts',async()=>{
  const app=load('app/account/business/actions.ts',{'node:crypto':{},'next/cache':{},'@/lib/customer-account-data':{requireCustomer:async()=>({user:{id:uid,email:'owner@example.com'}})},'@/lib/supabase/admin':{createAdminClient(){throw Error('Unexpected database access')}},'@/lib/business-verification':helpers,'@/lib/business-interest':interest});
  assert.match((await app.submitBusinessApplication(interestForm())).error,/Verify/);
- const admin=load('app/admin/business-verification/actions.ts',{'@/lib/business-api-input':load('lib/business-api-input.ts',{'node:net':require('node:net'),'@/lib/trusted-client-ip':{}}),'next/cache':{},'@/lib/business-verification-data':{requireBusinessAdmin:async()=>{throw Error('Unauthorized')}},'@/lib/supabase/admin':{},'@/lib/business-verification':helpers,'@/lib/business-setup-email':{sendBusinessSetupEmail:async()=> 'Setup email sent.'},'@/lib/business-interest':interest,'@/lib/countryCallingCodes':load('lib/countryCallingCodes.ts')});
+ const admin=load('app/admin/business-verification/actions.ts',{'@/lib/business-api-input':load('lib/business-api-input.ts',{'node:net':require('node:net'),'@/lib/trusted-client-ip':{}}),'next/cache':{},'@/lib/business-verification-data':{requireBusinessAdmin:async()=>{throw Error('Unauthorized')}},'@/lib/supabase/admin':{},'@/lib/business-verification':helpers,'@/lib/business-setup-email':{sendBusinessSetupEmail:async()=> 'Setup email sent.'},'@/lib/business-interest':interest,'@/lib/admin-business-profile':profile});
  await assert.rejects(admin.createBusinessAccount(new FormData()),/Unauthorized/);await assert.rejects(admin.reviewBusinessApplication(new FormData()),/Unauthorized/);await assert.rejects(admin.approveBusinessApiIps(new FormData()),/Unauthorized/);
+});
+
+
+test('Admin profile validates extended details and preserves distinct registration and tax IDs',()=>{
+ const f=new FormData();const values={contact_name:'Sample Owner',legal_name:'Sample Digital Ltd',country:'United Kingdom',residence_country:'Thailand',monthly_volume:'USD 5000',interest:'API',registration_number:'COMPANY-123',tax_number:'TAX-456',entity_type:'Private limited company',registration_jurisdiction:'England and Wales',incorporation_date:'2026-01-02',representative_role:'Director',owners:'Sample Owner 100%',address_line1:'20 Example Road',city:'London',postal_code:'N1 7GU',phone:'+442079460018',website:'https://example.com',activity:'Digital product resale'};
+ for(const [k,v]of Object.entries(values))f.set(k,v);
+ const details=profile.parseAdminBusinessProfile(f);for(const [k,v]of Object.entries(values))assert.equal(details[k],v);
+ assert.equal(details.address,'20 Example Road\nLondon\nN1 7GU\nUnited Kingdom');
+ f.set('status','APPROVED');f.set('verification_method','FORGED');assert.equal(profile.parseAdminBusinessProfile(f).status,undefined);assert.equal(profile.parseAdminBusinessProfile(f).verification_method,undefined);
+ for(const [key,bad]of [['contact_name',''],['monthly_volume',''],['country','Unknown'],['residence_country','Unknown'],['incorporation_date','2026-02-30'],['incorporation_date','2999-01-01'],['website','javascript:alert(1)'],['phone','123'],['postal_code','<invalid>'],['owners','x'.repeat(2001)]]){const old=f.get(key);f.set(key,bad);assert.throws(()=>profile.parseAdminBusinessProfile(f),key);f.set(key,old);}
+ f.delete('tax_number');assert.equal(profile.parseAdminBusinessProfile(f).tax_number,undefined,'Company registration must never fill a missing tax number');
+});
+
+
+test('Customer completion accepts blank fields only and binds the authenticated business customer',async()=>{
+ let captured;const application={details:{legal_name:'Locked business',country:'United Kingdom',address:'Locked legacy address'}};
+ const mocks={'next/cache':{revalidatePath(){}},'@/lib/business-portal-data':{portalCustomer:async()=>({user:{id:uid},application})},'@/lib/supabase/admin':{createAdminClient:()=>({rpc:async(name,args)=>{captured={name,args};return {error:null}}})},'@/lib/admin-business-profile':profile};
+ const {completeBusinessProfile}=load('app/account/portal/profile/actions.ts',mocks);
+ const f=new FormData();f.set('user_id',other);f.set('tax_number','NEW-TAX');f.set('status','APPROVED');assert((await completeBusinessProfile(f)).success);assert.equal(captured.args.p_user,uid);assert.equal(captured.args.p_details.tax_number,'NEW-TAX');assert.equal(captured.args.p_details.status,undefined);
+ captured=null;f.set('legal_name','Forged business');assert.match((await completeBusinessProfile(f)).error,/locked/);assert.equal(captured,null);f.delete('legal_name');f.set('city','Changed city');assert.match((await completeBusinessProfile(f)).error,/locked/);assert.equal(captured,null);
+ f.delete('city');f.delete('tax_number');assert.match((await completeBusinessProfile(f)).error,/at least one/);
+ assert.equal(profile.canCompleteBusinessField({country:'India',address_line1:'Old street',address:'Old street'},'city'),true);
+ const denied=load('app/account/portal/profile/actions.ts',{...mocks,'@/lib/business-portal-data':{portalCustomer:async()=>{throw Error('Setup required')}}});await assert.rejects(denied.completeBusinessProfile(f),/Setup required/);
 });

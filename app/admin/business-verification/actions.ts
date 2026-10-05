@@ -2,7 +2,7 @@
 import { apiAllowedIps } from "@/lib/business-api-input";
 import { sendBusinessSetupEmail } from "@/lib/business-setup-email";
 import { businessText } from "@/lib/business-interest";
-import { countryCallingCodes } from "@/lib/countryCallingCodes";
+import { parseAdminBusinessProfile } from "@/lib/admin-business-profile";
 import { revalidatePath } from "next/cache";
 import { requireBusinessAdmin } from "@/lib/business-verification-data";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -35,13 +35,7 @@ export async function createBusinessAccount(form: FormData) {
   try {
     const email = businessText(form, "email", "customer email", 254, 3).toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid customer email." };
-    const details = {
-      legal_name: businessText(form, "legal_name", "business name", 160, 2),
-      country: businessText(form, "country", "country", 100, 2),
-      address: businessText(form, "address", "billing address", 600),
-      registration_number: businessText(form, "registration_number", "registration / tax number", 100),
-    };
-    if (!countryCallingCodes.some(([name]) => name === details.country)) return { error: "Select a country." };
+    const details = parseAdminBusinessProfile(form);
     const note = businessText(form, "note", "review note", 1000, 3);
     const r = await createAdminClient().rpc("create_email_business_account", { p_admin: user.id, p_email: email, p_details: details, p_note: note, p_confirmed: true });
     if (r.error) return { error: r.error.code === "P0001" ? r.error.message : "Unable to create the business account." };
