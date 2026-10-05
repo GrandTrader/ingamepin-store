@@ -316,4 +316,4 @@
 }
 
 .categoryRow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; min-width: 0; }
-.compact .platformArtwork { aspect-ratio: auto; }
+.compact .platformArtwork { aspect-ratio: 1; }
