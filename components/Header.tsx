@@ -503,7 +503,7 @@ export default function Header() {
 
         <nav aria-label="Store categories" className="hidden border-t border-white/10 bg-slate-950/75 xl:block">
           <div className="mx-auto flex max-w-7xl items-center gap-7 overflow-x-auto px-5 py-3 text-xs font-bold text-slate-300">
-            <Link href="/account/portal" className="header-category-link text-[#ff9b22]">⇄ Switch to B2B</Link>
+            <Link href="/business" className="header-category-link text-[#ff9b22]">⇄ Switch to B2B</Link>
             {headerCategories.map((category) => (
               <Link
                 key={category.id}
@@ -777,7 +777,7 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/account/portal"
+                href="/business"
                 onClick={closeMenu}
                 className="flex items-center justify-between rounded-xl border-2 border-cyan-600 bg-cyan-400 px-4 py-3 font-black text-slate-950 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-300"
               >

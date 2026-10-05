@@ -20,7 +20,7 @@ export default async function BusinessApiDocs() {
     <section className={s.card}><h3 className={s.sectionTitle}>Connection</h3><p>Base URL: <code>https://www.ingamepin.com/api/v1/business</code></p>
       <p className={s.helper}>Use your localhost address during local preview. Confirmation uses the connected wallet; localhost does not create a separate test balance.</p>
       <pre>{`Authorization: Bearer YOUR_API_KEY\nContent-Type: application/json`}</pre>
-      <p>Keep your key on your server. Add its outgoing public IP in API access. Keys expire and can be revoked at any time. Limit: 120 requests per minute per key.</p>
+      <p>Keep your key on your server. Ask our admin team to approve its fixed (static) outgoing public IP. Each API key is bound to one approved IP; requests from any other IP are rejected. View approved IPs in API access; customers cannot change them. Keys expire and can be revoked at any time. Limit: 120 requests per minute per key.</p>
     </section>
     <section className={s.card}><h3 className={s.sectionTitle}>Endpoints</h3>{endpoints.map(([method,path,description])=><div key={method+path} className={s.apiEndpoint}><p><strong>{method}</strong> <code>{path}</code></p><p className={s.muted}>{description}</p></div>)}</section>
     <section className={s.card}><h3 className={s.sectionTitle}>Place an order</h3>

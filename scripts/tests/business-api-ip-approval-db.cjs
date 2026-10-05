@@ -1,0 +1,21 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');const {PGlite}=require('@electric-sql/pglite');
+(async()=>{const db=new PGlite();try{
+ await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,email_confirmed_at timestamptz,banned_until timestamptz);create table public.admin_users(user_id uuid primary key);create table public.business_kyb(user_id uuid primary key,status text);create function public.require_approved_business(p_user uuid) returns void language plpgsql as $$ begin if not exists(select 1 from business_kyb where user_id=p_user and status='APPROVED') then raise exception 'Approved business required.'; end if; end $$;`);
+ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');const admin=id(1),customer=id(2),other=id(3);
+ await db.query('insert into auth.users values($1,now(),null),($2,now(),null),($3,now(),null)',[admin,customer,other]);await db.query('insert into admin_users values($1)',[admin]);await db.query("insert into business_kyb values($1,'APPROVED'),($2,'APPROVED')",[customer,other]);
+ await db.exec(fs.readFileSync('supabase/migrations/20261004_001000_business_customer_api.sql','utf8'));
+ const one=async(sql,p=[])=>(await db.query(sql,p)).rows[0];const create=(hash='a'.repeat(64),ips=['203.0.113.10'],user=customer)=>one("select create_business_api_key($1,'Test key',$2,'prefix',$3,true,now()+interval '30 days') id",[user,hash,ips]);
+ await create();
+ await db.exec(fs.readFileSync('supabase/migrations/20261005_190000_admin_business_api_ips.sql','utf8'));
+ const auth=async(ip='203.0.113.10',hash='a'.repeat(64))=>(await one('select authorize_business_api($1,$2) result',[hash,ip])).result;
+ const approve=(ips=['203.0.113.10','203.0.113.11'],revision=0,actor=admin,confirmed=true)=>db.query('select approve_business_api_ips($1,$2,$3,$4,$5)',[actor,customer,ips,revision,confirmed]);
+ assert.equal(await auth(),null,'Old customer-entered IPs do not become approved automatically');await assert.rejects(create('b'.repeat(64)),/administrator/);
+ await assert.rejects(approve(undefined,0,other),/Administrator/);await assert.rejects(approve(undefined,0,admin,false),/static/);await assert.rejects(approve(['203.0.113.0/24']),/individual/);await approve();
+ assert.equal((await auth()).userId,customer);assert.equal(await auth('203.0.113.11'),null,'A key bound to one IP must reject another approved IP');assert.equal(await auth('203.0.113.99'),null);
+ await assert.rejects(create('b'.repeat(64),['203.0.113.99']),/one admin-approved/);await assert.rejects(create('b'.repeat(64),['203.0.113.10','203.0.113.11']),/one admin-approved/);await create('b'.repeat(64),['203.0.113.11']);assert.equal((await auth('203.0.113.11','b'.repeat(64))).userId,customer);
+ await assert.rejects(approve([],0),/changed/);await approve([],1,admin,false);assert.equal(await auth(),null);assert.equal(await auth('203.0.113.11','b'.repeat(64)),null);
+ await approve(['2001:db8::1'],2);await create('c'.repeat(64),['2001:0db8:0:0::1']);assert.equal((await auth('2001:db8::1','c'.repeat(64))).userId,customer);assert.equal(await auth('2001:db8::2','c'.repeat(64)),null);
+ await db.query("update business_kyb set status='REVOKED' where user_id=$1",[customer]);assert.equal(await auth('2001:db8::1','c'.repeat(64)),null);await assert.rejects(approve(['203.0.113.10'],3),/Approved business/);await approve([],3,admin,false);
+ const perms=await db.query("select has_function_privilege('authenticated','approve_business_api_ips(uuid,uuid,inet[],integer,boolean)','execute') or has_table_privilege('authenticated','business_api_ip_approvals','update') allowed");assert.equal(perms.rows[0].allowed,false);assert.equal(Number((await one('select count(*) n from business_api_ip_events')).n),4);
+ console.log('PASS: only admins approve static IPs, no automatic approval of old IPs, one exact IP per key, IPv4/IPv6, immediate removal, stale-save protection, audit history and restricted database permissions.');
+}finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1});

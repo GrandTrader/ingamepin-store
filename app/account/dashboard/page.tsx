@@ -149,11 +149,11 @@ export default async function CustomerDashboardPage({ searchParams }: {
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Delivered codes</p><p className="mt-2 text-3xl font-black text-emerald-600">{codeCountResult.count ?? 0}</p><p className="mt-2 text-xs text-slate-400">View inside each order</p></div>
             </div>
             <nav aria-label="Business account" className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Link href="/account/portal" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">
+              <Link href="/business" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">
                 <h2 className="text-lg font-black text-cyan-700">Business portal <span aria-hidden="true">→</span></h2>
                 <p className="mt-2 text-sm text-slate-500">Manage your business purchases and account.</p>
               </Link>
-              <Link href="/account/business" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">
+              <Link href="/business" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-cyan-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600">
                 <h2 className="text-lg font-black text-cyan-700">Business account <span aria-hidden="true">→</span></h2>
                 <p className="mt-2 text-sm text-slate-500">Request B2B or API access, or view your business account.</p>
               </Link>

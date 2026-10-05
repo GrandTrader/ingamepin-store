@@ -1,4 +1,5 @@
 "use server";
+import { apiAllowedIps } from "@/lib/business-api-input";
 import { sendBusinessSetupEmail } from "@/lib/business-setup-email";
 import { businessText } from "@/lib/business-interest";
 import { countryCallingCodes } from "@/lib/countryCallingCodes";
@@ -73,4 +74,21 @@ export async function reviewBusinessDeposit(form:FormData) {
   const r=await createAdminClient().rpc("review_business_bank_deposit",{p_id:String(form.get("id")??""),p_admin:user.id,p_status:status,p_bank_reference:String(form.get("bank_reference")??"").trim(),p_currency:currency,p_received:Number(form.get("received")||0),p_rate:currency==="USD"?1:Number(form.get("rate")||0),p_note:String(form.get("note")??"").trim()});
   if(r.error)return {error:r.error.code==="P0001"?r.error.message:r.error.code==="23505"?"This bank reference has already been credited.":"Unable to review the deposit."};
   refresh();return {success:status==="CREDITED"?`USD ${Number(r.data).toFixed(2)} credited to the wallet.`:"Deposit rejected."};
+}
+
+export async function approveBusinessApiIps(form:FormData) {
+  const admin=await requireBusinessAdmin();
+  const userId=String(form.get("user_id")??"");
+  const revision=Number(form.get("ip_revision"));
+  if(!/^[a-f0-9-]{36}$/i.test(userId) || !Number.isSafeInteger(revision) || revision<0) return {error:"Refresh the customer details and try again."};
+  try {
+    const raw=String(form.get("ips")??"").trim();
+    const ips=raw?apiAllowedIps(raw):[];
+    if(ips.length && form.get("static_verified")!=="yes") return {error:"Confirm that these are fixed (static) outgoing server IP addresses."};
+    const result=await createAdminClient().rpc("approve_business_api_ips",{p_admin:admin.id,p_user:userId,p_ips:ips,p_revision:revision,p_static_verified:form.get("static_verified")==="yes"});
+    if(result.error) return {error:result.error.code==="P0001"?result.error.message:"Unable to save IP approvals. Check the database update is installed."};
+    revalidatePath(`/admin/business-verification/${userId}`);
+    revalidatePath("/account/portal/api-access");
+    return {success:ips.length?"Approved IPs saved. Keys only work from their bound IP while it remains approved.":"All IP approvals removed. Customer API access is blocked."};
+  } catch(error) { return {error:error instanceof Error?error.message:"Unable to save IP approvals."}; }
 }

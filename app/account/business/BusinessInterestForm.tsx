@@ -5,13 +5,13 @@ import { businessInterests } from "@/lib/business-interest";
 import { submitBusinessApplication } from "./actions";
 import s from "./BusinessVerificationForm.module.css";
 
-export default function BusinessInterestForm({ details = {}, email, name }: { details?: Record<string,string>; email: string; name: string }) {
-  return <div className={s.form}><BusinessActionForm action={submitBusinessApplication} button="Submit interest">
+export default function BusinessInterestForm({ details = {}, email, name, guest=false, action=submitBusinessApplication }: { details?: Record<string,string>; email: string; name: string; guest?:boolean; action?:(form:FormData)=>Promise<{error?:string;success?:string}> }) {
+  return <div className={s.form}><BusinessActionForm action={action} button={guest?"Submit enquiry":"Submit interest"}>
     <section className={s.section}>
       <div className={s.heading}><div><h2>Work with InGamePin</h2><p>Tell us what you need. Verification will be completed by email before an admin activates your B2B account.</p></div></div>
       <div className={s.grid}>
         <label className={s.field}>Contact name *<input name="contact_name" required minLength={2} maxLength={120} autoComplete="name" defaultValue={details.contact_name || name}/></label>
-        <label className={s.field}>Account email<input type="email" value={email} readOnly/><small>We will contact you at this email address.</small></label>
+        <label className={s.field}>{guest?"Business email *":"Account email"}<input name={guest?"email":undefined} type="email" defaultValue={email} readOnly={!guest} required maxLength={254}/><small>We will contact you at this email address.</small></label>
         <label className={s.field}>Business / store name *<input name="legal_name" required minLength={2} maxLength={160} autoComplete="organization" defaultValue={details.legal_name}/></label>
         <label className={s.field}>Country *<select name="country" required defaultValue={details.country || ""}><option value="" disabled>Select country</option>{countryCallingCodes.map(([country])=><option key={country}>{country}</option>)}</select></label>
         <label className={s.field}>Interested in *<select name="interest" required defaultValue={details.interest || ""}><option value="" disabled>Select interest</option>{businessInterests.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
@@ -21,6 +21,7 @@ export default function BusinessInterestForm({ details = {}, email, name }: { de
         <label className={`${s.field} ${s.full}`}>Your requirements *<textarea name="activity" rows={3} required minLength={10} maxLength={2000} placeholder="Products, regions, and how you plan to use our B2B portal or API." defaultValue={details.activity}/></label>
       </div>
     </section>
+    {guest && <div hidden aria-hidden="true"><label>Leave empty<input name="company_site" tabIndex={-1} autoComplete="off"/></label></div>}
     <label className={s.check}><input name="consent" type="checkbox" value="accepted" required/>I confirm these details are accurate and agree to be contacted about my business request.</label>
   </BusinessActionForm></div>;
 }

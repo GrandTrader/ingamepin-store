@@ -1,10 +1,10 @@
 "use server";
 
+import { normalizeApiIp } from "@/lib/business-api-input";
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { portalCustomer } from "@/lib/business-portal-data";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { apiAllowedIps } from "@/lib/business-api-input";
 
 export type ApiKeyState = { error?: string; message?: string; secret?: string };
 
@@ -13,7 +13,11 @@ export async function createBusinessKey(_state: ApiKeyState, form: FormData): Pr
   try {
     const name = String(form.get("name") ?? "").trim();
     if (name.length < 2 || name.length > 80) throw Error("Use a key name between 2 and 80 characters.");
-    const ips = apiAllowedIps(String(form.get("ips") ?? ""));
+    const approval=await createAdminClient().from("business_api_ip_approvals").select("ips").eq("user_id",user.id).maybeSingle();
+    if(approval.error || !approval.data?.ips?.length) return {error:"Contact support to have your server IP approved before creating an API key."};
+    const ip=normalizeApiIp(String(form.get("ip") ?? ""));
+    if(!approval.data.ips.some((approved:string)=>normalizeApiIp(approved)===ip)) return {error:"Select a static IP approved by an administrator."};
+    const ips=[ip];
     const days = Number(form.get("days"));
     if (![30,90,365].includes(days)) throw Error("Choose a valid expiry.");
     const secret = `igp_b2b_${randomBytes(32).toString("base64url")}`;
@@ -35,7 +39,7 @@ export async function updateBusinessKey(_state: ApiKeyState, form: FormData): Pr
     if (!/^[a-f0-9-]{36}$/i.test(id)) throw Error("Invalid key.");
     const revoke = form.get("operation") === "revoke";
     const changes = revoke ? { revoked_at: new Date().toISOString() } : {
-      allowed_ips: apiAllowedIps(String(form.get("ips") ?? "")), can_order: form.get("can_order") === "on",
+      can_order: form.get("can_order") === "on",
     };
     const result = await createAdminClient().from("business_api_keys").update(changes).eq("id",id).eq("user_id",user.id).is("revoked_at",null).select("id").maybeSingle();
     if (result.error || !result.data) throw Error("Unable to update this key. Reload and try again.");

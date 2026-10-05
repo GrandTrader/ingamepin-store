@@ -364,7 +364,7 @@ export default async function Home() {
           </div>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
-              href="/account/portal"
+              href="/business"
               className="b2b-home-button rounded-xl bg-[#17243d] px-6 py-3 text-sm font-extrabold text-white hover:bg-[#243550]"
             >
               B2B digital products
