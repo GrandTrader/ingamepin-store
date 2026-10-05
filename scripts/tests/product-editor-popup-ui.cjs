@@ -50,6 +50,9 @@ for(const [tab] of tabs){
    await dialog.getByRole('textbox',{name:'Product name'}).fill('Updated '+width);
    await dialog.getByRole('button',{name:'Save changes'}).click();await dialog.getByRole('status').filter({hasText:'Saved'}).waitFor();
    assert(await dialog.isVisible(),'Save redirect should retain popup');
+   await dialog.evaluate(el=>{el.scrollTop=64;});
+   const popupBox=await dialog.boundingBox(),closeBox=await dialog.getByRole('button',{name:'Close product editor'}).boundingBox();
+   assert(closeBox.y>=popupBox.y&&closeBox.y+closeBox.height<=popupBox.y+popupBox.height,'Close button must remain inside the popup after browser scroll restoration');
    await dialog.getByRole('textbox',{name:'Product name'}).fill('');await dialog.getByRole('button',{name:'Save changes'}).click();await dialog.getByRole('alert').waitFor();
    assert(await dialog.isVisible(),'Validation redirect should retain popup');
    await dialog.getByRole('button',{name:'Bottom action'}).scrollIntoViewIfNeeded();assert(await dialog.getByRole('button',{name:'Close product editor'}).isVisible());
@@ -61,11 +64,19 @@ for(const [tab] of tabs){
    await dialog.getByRole('button',{name:'Close product editor'}).click();await page.waitForURL(list);await dialog.waitFor({state:'detached'});
    assert(Math.abs(await page.evaluate(()=>scrollY)-initialScroll)<5,'Closing restores list scroll');
    await page.getByRole('heading',{name:'Updated '+width,exact:true}).waitFor();
+   await page.locator('#edit-product').click();await dialog.waitFor();
+   await dialog.getByRole('heading',{name:'Edit product',exact:true}).click();
+   assert(await dialog.isVisible(),'Clicks inside must not dismiss the editor');
+   const box=await dialog.boundingBox();
+   await page.mouse.move(box.x+40,box.y+30);await page.mouse.down();await page.mouse.move(width/2,1);await page.mouse.up();
+   assert(await dialog.isVisible(),'Dragging from the editor to the backdrop must not dismiss it');
+   await page.mouse.click(width/2,1);await page.waitForURL(list);await dialog.waitFor({state:'detached'});
+   assert(Math.abs(await page.evaluate(()=>scrollY)-initialScroll)<5,'Backdrop dismissal restores list scroll');
    await page.locator('#edit-product').click();await dialog.waitFor();await page.keyboard.press('Escape');await page.waitForURL(list);await dialog.waitFor({state:'detached'});
    await page.locator('#edit-product').click();await dialog.waitFor();await page.goBack();await page.waitForURL(list);await dialog.waitFor({state:'detached'});
    await page.goForward();await dialog.waitFor();
    await page.reload();assert.equal(await page.getByRole('dialog').count(),0,'Direct loads retain full editor');
-   console.log('Passed product popup at '+width+'px: all '+tabs.length+' tabs, saves, validation, close, Escape, Back/Forward, filter/scroll restoration, refresh.');
+   console.log('Passed product popup at '+width+'px: all '+tabs.length+' tabs, saves, validation, visible close button, outside click, inside/drag protection, Escape, Back/Forward, filter/scroll restoration, refresh.');
   }
   assert.deepEqual(errors,[]);
  }catch(error){console.error(error);console.error(logs.join('').slice(-2500));throw error;}finally{

@@ -1,9 +1,10 @@
-.dialog { position: fixed; inset: 0; width: min(1400px, calc(100vw - 48px)); max-width: none; height: min(940px, calc(100dvh - 48px)); max-height: none; margin: auto; padding: 0; border: 1px solid #dbe3ed; border-radius: 16px; background: #fff; color: #17243a; box-shadow: 0 24px 80px rgb(15 23 42 / 30%); overflow: hidden; }
+.dialog { position: fixed; inset: 0; width: min(1400px, calc(100vw - 48px)); max-width: none; height: min(940px, calc(100dvh - 48px)); max-height: none; margin: auto; padding: 0; border: 1px solid #dbe3ed; border-radius: 16px; background: #fff; color: #17243a; box-shadow: 0 24px 80px rgb(15 23 42 / 30%); overflow: clip; }
 .dialog[open] { display: flex; flex-direction: column; }
 .dialog::backdrop { background: rgb(15 23 42 / 55%); }
-.header { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 16px; min-height: 58px; padding: 7px 16px 7px 20px; border-bottom: 1px solid #e2e8f0; background: #fff; }
+.header { position: sticky; top: 0; z-index: 2; display: flex; flex: none; align-items: center; justify-content: space-between; gap: 16px; min-height: 58px; padding: 7px 16px 7px 20px; border-bottom: 1px solid #e2e8f0; background: #fff; }
 .header h2 { font-size: 16px; font-weight: 800; }
-.close { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 1px solid #dbe3ed; border-radius: 9px; background: #f8fafc; color: #17243a; font-size: 28px; line-height: 1; cursor: pointer; }
+.close { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 88px; padding: 0 12px; height: 44px; flex: none; border: 1px solid #dbe3ed; border-radius: 9px; background: #f8fafc; color: #17243a; font-size: 14px; font-weight: 700; line-height: 1; cursor: pointer; }
+.close span[aria-hidden] { font-size: 26px; font-weight: 400; }
 .close:hover { background: #eaf0f8; }
 .close:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .content { flex: 1; min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
