@@ -1,3 +1,5 @@
+import { readWithGamingPlatforms } from "@/lib/product-platform-query";
+import ProductCategoryPlatforms from "@/components/ProductCategoryPlatforms";
 import ProductSettingsActions from "@/components/ProductSettingsActions";
 import PaypalychFormWarning from "@/components/PaypalychFormWarning";
 import Link from "next/link";
@@ -13,6 +15,21 @@ import { getPaidProductSales } from "@/lib/product-sales";
 import { updateProductGeneral } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+type GeneralProductRow = {
+  id: string;
+  category_id: string | null;
+  name: string;
+  name_ru: string | null;
+  slug: string;
+  description: string | null;
+  description_ru: string | null;
+  region: string;
+  gaming_platforms?: string[];
+  sold_count: number;
+  review_reward_enabled: boolean;
+  review_reward_percent: number | string;
+};
 
 export default async function ProductGeneralPage({
   params,
@@ -36,8 +53,8 @@ export default async function ProductGeneralPage({
     Date.now() - 24 * 60 * 60 * 1000,
   ).toISOString();
   const [result, categoriesResult, popupResult, viewsResult, paidProductSales] = await Promise.all([
-    supabase.from("products").select("id, category_id, name, name_ru, slug, description, description_ru, region, sold_count, review_reward_enabled, review_reward_percent").eq("id", id).maybeSingle(),
-    supabase.from("categories").select("id, name").eq("is_active", true).order("sort_order"),
+    readWithGamingPlatforms((fields) => supabase.from("products").select(fields).eq("id", id).returns<GeneralProductRow[]>().maybeSingle(), "id, category_id, name, name_ru, slug, description, description_ru, region, gaming_platforms, sold_count, review_reward_enabled, review_reward_percent"),
+    supabase.from("categories").select("id, name, slug").eq("is_active", true).order("sort_order"),
     admin.from("preorder_popup_settings").select("product_id, is_enabled, image_url").eq("id", true).maybeSingle(),
     admin
       .from("product_views")
@@ -89,6 +106,8 @@ export default async function ProductGeneralPage({
             </div>
           </section>
 
+          {product.gaming_platforms === undefined && <p role="status" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Gaming platform setup is pending. Apply the product gaming platforms database update before saving.</p>}
+
           <form action={updateProductGeneral} className="mt-6 grid gap-6">
             <PaypalychFormWarning initialIdentities={[product.name, product.name_ru ?? "", product.slug]} />
             <input type="hidden" name="id" value={id} />
@@ -97,8 +116,9 @@ export default async function ProductGeneralPage({
               <div className="mt-5 grid gap-5 md:grid-cols-2">
                 <label className="md:col-span-2"><span className="text-sm font-bold">Product name</span><input name="name" defaultValue={product.name} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
                 <label className="md:col-span-2"><span className="text-sm font-bold">Product name (Russian)</span><input name="name_ru" defaultValue={product.name_ru ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
-                <label><span className="text-sm font-bold">Category</span><select name="category_id" defaultValue={product.category_id} required className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3">{(categoriesResult.data ?? []).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-                <CountrySelect defaultValue={product.region} />
+                <ProductCategoryPlatforms categories={categoriesResult.data ?? []} categoryId={product.category_id} platforms={product.gaming_platforms ?? []}>
+                  <CountrySelect defaultValue={product.region} />
+                </ProductCategoryPlatforms>
                 <label className="md:col-span-2"><span className="text-sm font-bold">Description</span><textarea name="description" rows={6} defaultValue={product.description ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
                 <label className="md:col-span-2"><span className="text-sm font-bold">Description (Russian)</span><textarea name="description_ru" rows={6} defaultValue={product.description_ru ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
               </div>

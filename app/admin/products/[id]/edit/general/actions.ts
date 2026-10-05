@@ -1,5 +1,6 @@
 "use server";
 
+import { isGamesCategory, normalizeGamePlatforms, validGamePlatforms } from "@/lib/game-platforms";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -40,8 +41,15 @@ export async function updateProductGeneral(formData: FormData) {
     redirect(`${path}?error=${encodeURIComponent("Product name, category and region are required.")}`);
   }
 
-  const categoryResult = await supabase.from("categories").select("category_type").eq("id", categoryId).eq("is_active", true).maybeSingle();
+  const categoryResult = await supabase.from("categories").select("category_type, name, slug").eq("id", categoryId).eq("is_active", true).maybeSingle();
   if (!categoryResult.data) redirect(`${path}?error=${encodeURIComponent("Select a valid category.")}`);
+
+  const requestedPlatforms = formData.getAll("gaming_platforms");
+  const gamesCategory = isGamesCategory(categoryResult.data);
+  if (gamesCategory && !validGamePlatforms(requestedPlatforms)) {
+    redirect(`${path}?error=${encodeURIComponent("Select valid gaming platforms.")}`);
+  }
+  const gamingPlatforms = gamesCategory ? normalizeGamePlatforms(requestedPlatforms) : [];
 
   if (
     !Number.isFinite(reviewRewardPercent) ||
@@ -72,6 +80,7 @@ export async function updateProductGeneral(formData: FormData) {
       category_id: categoryId,
       product_type: categoryResult.data.category_type,
       region,
+      gaming_platforms: gamingPlatforms,
       review_reward_enabled: reviewRewardEnabled,
       review_reward_percent: reviewRewardEnabled ? reviewRewardPercent : 0,
       updated_at: new Date().toISOString(),

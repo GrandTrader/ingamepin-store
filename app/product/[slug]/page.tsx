@@ -1,3 +1,6 @@
+import { readWithGamingPlatforms } from "@/lib/product-platform-query";
+import ProductPlatformBadges from "@/components/ProductPlatformBadges";
+import { isGamesCategory, normalizeGamePlatforms } from "@/lib/game-platforms";
 import RangePurchaseForm from "@/components/RangePurchaseForm";
 import { productRanges } from "@/lib/product-range-data";
 import { portalCustomer } from "@/lib/business-portal-data";
@@ -54,6 +57,7 @@ type ProductRow = {
   image_url: string | null;
   image_url_ru: string | null;
   region: string;
+  gaming_platforms?: string[];
   currency: string;
   badge: string | null;
   badge_ru: string | null;
@@ -134,9 +138,13 @@ export async function renderProductPage({
     : query.ref?.trim();
   const supabase = await createClient();
 
-  const productResult = await supabase
-    .from("products")
-    .select(
+  const productResult = await readWithGamingPlatforms(
+    (fields) => supabase.from("products").select(fields)
+      .eq("slug", slug)
+      .eq("status", "ACTIVE").eq("retail_enabled", true)
+      .eq("is_preorder_only", false)
+      .returns<ProductRow[]>()
+      .maybeSingle(),
       `
         id,
         public_id,
@@ -148,6 +156,7 @@ export async function renderProductPage({
         image_url,
         image_url_ru,
         region,
+        gaming_platforms,
         currency,
         badge,
         badge_ru,
@@ -176,11 +185,7 @@ export async function renderProductPage({
           public_id
         )
       `,
-    )
-    .eq("slug", slug)
-    .eq("status", "ACTIVE").eq("retail_enabled", true)
-    .eq("is_preorder_only", false)
-    .maybeSingle();
+    );
 
   if (productResult.error) {
     throw new Error(
@@ -195,6 +200,7 @@ export async function renderProductPage({
   const product = productResult.data as ProductRow;
   if (product.is_bulk_order) await portalCustomer();
   const category = getCategory(product.categories);
+  const platforms = isGamesCategory(category) ? normalizeGamePlatforms(product.gaming_platforms) : [];
   if (!canonicalRequest) {
     const canonicalUrl = getProductUrl({
       categorySlug: category.slug,
@@ -433,9 +439,10 @@ export async function renderProductPage({
         <section className={`${styles.panel} ${styles.compact}`} aria-label="Product and purchase options">
           <header className={styles.heading}>
             <div className={styles.identity}>
-              <p className={styles.category}>
-                {category.name}
-              </p>
+              <div className={styles.categoryRow}>
+                <p className={styles.category}>{category.name}</p>
+                <ProductPlatformBadges platforms={platforms} />
+              </div>
 
               <h1 className={styles.title}>
                 <LocalizedProductText
@@ -461,7 +468,7 @@ export async function renderProductPage({
 
           </header>
           <div className={styles.media}>
-            <div className={styles.artwork}>
+            <div className={`${styles.artwork} ${platforms.length ? styles.platformArtwork : ""}`}>
 
               <LocalizedProductImage
                 imageUrl={product.image_url}
@@ -475,6 +482,7 @@ export async function renderProductPage({
                   </div>
                 }
               />
+              <ProductPlatformBadges platforms={platforms} placement="cover" />
             </div>
             <p className={styles.delivery}>
               <span aria-hidden="true">◆</span>

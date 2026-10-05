@@ -1,0 +1,4 @@
+.platforms { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; padding: 0; margin: 0; list-style: none; }
+.platform { max-width: 100%; border: 1px solid var(--product-line, #dfe6ee); border-radius: 5px; background: var(--product-soft, #f2f6fa); color: var(--product-ink, #17243a); padding: 2px 7px; font-size: 11px; font-weight: 700; line-height: 17px; overflow-wrap: anywhere; }
+.cover { justify-content: center; padding: 5px 0 0; gap: 3px; }
+.cover .platform { border: 0; padding: 2px 4px; font-size: 10px; line-height: 14px; }
