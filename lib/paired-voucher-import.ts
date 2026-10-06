@@ -84,3 +84,14 @@ export function parsePairedVoucherCsv(raw: string): PairedVoucher[] {
     return { cardNumber: values[cardIndex], pin: values[pinIndex] };
   }));
 }
+
+/** Pasted lists may omit the CSV header; identifiers always remain strings. */
+export function parsePairedVoucherText(raw: string): PairedVoucher[] {
+  const records = parseVoucherCsvRecords(raw);
+  const first = records[0]?.map((value) => value.trim().toLowerCase().replace(/[ _-]+/g, ""));
+  if (first?.includes("cardnumber") || first?.includes("pin")) return parsePairedVoucherCsv(raw);
+  return validatePairedVouchers(records.map((values, index) => {
+    if (values.length !== 2) throw new Error(`Row ${index + 1}: use card number,PIN with one voucher per line.`);
+    return { cardNumber: values[0], pin: values[1] };
+  }));
+}

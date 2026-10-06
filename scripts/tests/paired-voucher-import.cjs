@@ -75,3 +75,15 @@ test('legacy single codes and multiline delivery bundles retain their format',as
     const items=writes.find(x=>x.table==='gift_card_codes').value;assert.equal(items.length,count);assert.equal(items[0].code,separator?'Bundle first\nBundle second':'CODE-A');
   }
 });
+
+test('pasted text accepts twenty headerless pairs without changing identifiers', () => {
+  const rows = Array.from({length:20}, (_,i)=>({cardNumber:'0012345678901234'+String(i).padStart(2,'0'),pin:'00'+String(i).padStart(4,'0')}));
+  const raw = rows.map(row=>row.cardNumber+','+row.pin).join('\r\n');
+  assert.deepEqual(lib.parsePairedVoucherText(raw),rows);
+  assert.deepEqual(lib.parsePairedVoucherText('card_number,pin\n'+raw),rows);
+  assert.deepEqual(lib.parsePairedVoucherText('PIN,Card Number\n001234,00123456789012345678'),[pair]);
+});
+test('pasted text rejects invalid pairs and duplicates as a whole batch', () => {
+  for (const raw of ['', '123', '123,', '123,456,789', '123,456\n123,789', 'card_number,pin\n123,', '1.23e+17,123456']) assert.throws(()=>lib.parsePairedVoucherText(raw));
+  assert.deepEqual(lib.parsePairedVoucherText('\n00123456789012345678,001234\n\n'),[pair]);
+});

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { addCodesForOption } from "../ProductCodeInventoryActions";
-import { PAIRED_VOUCHER_CSV_TEMPLATE, parsePairedVoucherCsv, validatePairedVouchers, type PairedVoucher } from "@/lib/paired-voucher-import";
+import { PAIRED_VOUCHER_CSV_TEMPLATE, parsePairedVoucherCsv, parsePairedVoucherText, validatePairedVouchers, type PairedVoucher } from "@/lib/paired-voucher-import";
 
 function UploadButton({ count, previewing, disabled }: { count: number; previewing: boolean; disabled: boolean }) {
   const { pending } = useFormStatus();
@@ -11,23 +11,38 @@ function UploadButton({ count, previewing, disabled }: { count: number; previewi
 }
 
 export default function PairedVoucherUpload({ productId, optionId, optionName }: { productId: string; optionId: string; optionName: string }) {
-  const [method, setMethod] = useState<"MANUAL" | "CSV">("MANUAL");
+  const [method, setMethod] = useState<"MANUAL" | "PASTE" | "CSV">("MANUAL");
   const [cardNumber, setCardNumber] = useState("");
   const [pin, setPin] = useState("");
+  const [pastedCodes, setPastedCodes] = useState("");
   const [rows, setRows] = useState<PairedVoucher[]>([]);
   const [error, setError] = useState("");
   const [previewing, setPreviewing] = useState(false);
   const [reading, setReading] = useState(false);
   const readVersion = useRef(0);
-  function changeMethod(value: "MANUAL" | "CSV") {
+  function changeMethod(value: "MANUAL" | "PASTE" | "CSV") {
     readVersion.current++;
-    setMethod(value); setRows([]); setCardNumber(""); setPin(""); setError(""); setPreviewing(false); setReading(false);
+    setMethod(value); setPastedCodes(""); setRows([]); setCardNumber(""); setPin(""); setError(""); setPreviewing(false); setReading(false);
   }
   function addCard() {
     try {
       setRows(validatePairedVouchers([...rows, { cardNumber, pin }]));
       setCardNumber(""); setPin(""); setError(""); setPreviewing(false);
     } catch (cause) { setError((cause as Error).message); }
+  }
+  function updatePastedCodes(value: string) {
+    setPastedCodes(value); setPreviewing(false); setError(""); setRows([]);
+    if (!value.trim()) return;
+    try { setRows(parsePairedVoucherText(value)); }
+    catch (cause) { setError((cause as Error).message); }
+  }
+  function removeRow(index: number) {
+    const remaining = rows.filter((_, rowIndex) => rowIndex !== index);
+    setRows(remaining); setPreviewing(false); setError("");
+    if (method === "PASTE") {
+      const quote = (value: string) => `"${value.replaceAll('"', '""')}"`;
+      setPastedCodes(remaining.map((row) => `${quote(row.cardNumber)},${quote(row.pin)}`).join("\n"));
+    }
   }
   async function loadCsv(file?: File) {
     if (!file) return;
@@ -53,12 +68,15 @@ export default function PairedVoucherUpload({ productId, optionId, optionName }:
     <h3 className="font-black">Card number + PIN</h3>
     <p className="mt-1 text-sm text-slate-600">Each pair counts as one voucher. The customer receives both together.</p>
     <div className="mt-3 flex flex-wrap gap-2">
-      {(["MANUAL", "CSV"] as const).map((value) => <button key={value} type="button" aria-pressed={method === value} onClick={() => changeMethod(value)} className={`rounded-lg border px-4 py-2 text-sm font-bold ${method === value ? "border-blue-600 bg-blue-50 text-blue-800" : "border-slate-300"}`}>{value === "MANUAL" ? "Enter cards" : "Upload CSV"}</button>)}
+      {(["MANUAL", "PASTE", "CSV"] as const).map((value) => <button key={value} type="button" aria-pressed={method === value} onClick={() => changeMethod(value)} className={`rounded-lg border px-4 py-2 text-sm font-bold ${method === value ? "border-blue-600 bg-blue-50 text-blue-800" : "border-slate-300"}`}>{value === "MANUAL" ? "Enter cards" : value === "PASTE" ? "Paste codes" : "Upload CSV"}</button>)}
     </div>
     {method === "MANUAL" ? <div className="mt-4 grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
       <label className="min-w-0 text-sm font-bold">Card number<input type="text" autoComplete="off" maxLength={200} value={cardNumber} onChange={(event) => { setCardNumber(event.target.value); setPreviewing(false); }} className={inputClass} /></label>
       <label className="min-w-0 text-sm font-bold">PIN<input type="text" autoComplete="off" maxLength={200} value={pin} onChange={(event) => { setPin(event.target.value); setPreviewing(false); }} className={inputClass} /></label>
       <button type="button" onClick={addCard} className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 font-bold text-blue-800">Add card</button>
+    </div> : method === "PASTE" ? <div className="mt-4">
+      <label className="block text-sm font-bold">Paste card numbers and PINs<textarea value={pastedCodes} onChange={(event) => updatePastedCodes(event.target.value)} rows={6} autoComplete="off" spellCheck={false} placeholder={"1234567890123456,001234\n1234567890123457,005678"} className={`${inputClass} resize-y`} /></label>
+      <p className="mt-1 text-sm text-slate-600">One card number,PIN pair per line. Paste directly from Notepad++; a column header is optional.</p>
     </div> : <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm">
       <p>Use two columns: <strong>card_number,pin</strong>. One voucher per row.</p>
       <p className="mt-1 text-slate-600">In Excel, format both columns as Text before entering values to preserve leading zeros and long card numbers.</p>
@@ -74,7 +92,7 @@ export default function PairedVoucherUpload({ productId, optionId, optionName }:
       <p className="mt-1 text-sm text-slate-600">{rows.length} voucher(s) — {previewing ? "review both columns before confirming" : "click Preview before uploading"}.{rows.length > 200 ? " Showing the first 200." : ""}</p>
       <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-slate-200">
         <table className="w-full table-fixed text-left text-sm"><thead className="sticky top-0 bg-slate-50"><tr><th className="px-3 py-2">Card number</th><th className="px-3 py-2">PIN</th><th className="w-20 px-2 py-2"><span className="sr-only">Actions</span></th></tr></thead>
-          <tbody>{rows.slice(0, 200).map((row, index) => <tr key={row.cardNumber} className="border-t border-slate-200"><td className="break-all px-3 py-2 font-mono">{row.cardNumber}</td><td className="break-all px-3 py-2 font-mono">{row.pin}</td><td className="px-2 py-2"><button type="button" aria-label={`Remove row ${index + 1}`} className="text-red-700" onClick={() => { setRows(rows.filter((_, rowIndex) => rowIndex !== index)); setPreviewing(false); setError(""); }}>Remove</button></td></tr>)}</tbody>
+          <tbody>{rows.slice(0, 200).map((row, index) => <tr key={row.cardNumber} className="border-t border-slate-200"><td className="break-all px-3 py-2 font-mono">{row.cardNumber}</td><td className="break-all px-3 py-2 font-mono">{row.pin}</td><td className="px-2 py-2"><button type="button" aria-label={`Remove row ${index + 1}`} className="text-red-700" onClick={() => removeRow(index)}>Remove</button></td></tr>)}</tbody>
         </table>
       </div>
     </div>}
