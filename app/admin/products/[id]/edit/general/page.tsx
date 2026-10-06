@@ -78,12 +78,12 @@ export default async function ProductGeneralPage({
     <div className="min-h-screen bg-white text-slate-900">
       <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
         <AdminSidebar />
-        <main className="min-w-0 flex-1 p-5 sm:p-8">
+        <main className="min-w-0 flex-1 p-4 sm:p-5">
           <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Product settings</p>
-              <h1 className="mt-2 text-3xl font-black">Edit product</h1>
-              <p className="mt-1 text-sm text-slate-500">{product.slug}</p>
+              <h1 className="mt-1 text-2xl font-black">Edit product</h1>
+              <p className="mt-1 break-all text-xs text-slate-500">{product.slug}</p>
             </div>
             <ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold">← Product list</Link></ProductSettingsActions>
           </header>
@@ -91,49 +91,49 @@ export default async function ProductGeneralPage({
           {success && <div data-editor-notice role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}
           {error && <div data-editor-notice role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
 
-          <div className="mt-8"><ProductEditPageTabs productId={id} current="general" /></div>
+          <div className="mt-4"><ProductEditPageTabs productId={id} current="general" /></div>
 
-          <section className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+          <section className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-3 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Total units sold</p>
-              <p className="mt-2 text-3xl font-black text-slate-950">{totalSold.toLocaleString("en-IN")}</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{totalSold.toLocaleString("en-IN")}</p>
               <p className="mt-1 text-xs text-slate-500">Includes completed bulk-order quantities.</p>
             </div>
-            <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 shadow-sm">
+            <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-3 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-widest text-cyan-700">Visitors (24 hours)</p>
-              <p className="mt-2 text-3xl font-black text-slate-950">{visitorsLast24Hours.toLocaleString("en-IN")}</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{visitorsLast24Hours.toLocaleString("en-IN")}</p>
               <p className="mt-1 text-xs text-slate-500">Privacy-friendly unique product visitors.</p>
             </div>
           </section>
 
           {product.gaming_platforms === undefined && <p role="status" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Gaming platform setup is pending. Apply the product gaming platforms database update before saving.</p>}
 
-          <form action={updateProductGeneral} className="mt-6 grid gap-6">
+          <form action={updateProductGeneral} className="mt-4 grid gap-4">
             <PaypalychFormWarning initialIdentities={[product.name, product.name_ru ?? "", product.slug]} />
             <input type="hidden" name="id" value={id} />
             <input type="hidden" name="retry_digiseller_sync" value={error?.startsWith("Product saved, but DigiSeller") ? "true" : "false"} />
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-xl font-black">General</h2>
-              <div className="mt-5 grid gap-5 md:grid-cols-2">
-                <label className="md:col-span-2"><span className="text-sm font-bold">Product name</span><input name="name" defaultValue={product.name} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
-                <label className="md:col-span-2"><span className="text-sm font-bold">Product name (Russian)</span><input name="name_ru" defaultValue={product.name_ru ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+            <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+              <h2 className="text-base font-black">General</h2>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <label className="min-w-0"><span className="text-sm font-bold">Product name</span><input name="name" defaultValue={product.name} required className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
+                <label className="min-w-0"><span className="text-sm font-bold">Product name (Russian)</span><input name="name_ru" defaultValue={product.name_ru ?? ""} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
                 <ProductCategoryPlatforms categories={categoriesResult.data ?? []} categoryId={product.category_id} platforms={product.gaming_platforms ?? []}>
                   <CountrySelect defaultValue={product.region} />
                 </ProductCategoryPlatforms>
-                <label className="md:col-span-2"><span className="text-sm font-bold">Description</span><textarea name="description" rows={6} defaultValue={product.description ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
-                <label className="md:col-span-2"><span className="text-sm font-bold">Description (Russian)</span><textarea name="description_ru" rows={6} defaultValue={product.description_ru ?? ""} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3" /></label>
+                <label className="min-w-0"><span className="text-sm font-bold">Description</span><textarea name="description" rows={4} defaultValue={product.description ?? ""} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
+                <label className="min-w-0"><span className="text-sm font-bold">Description (Russian)</span><textarea name="description_ru" rows={4} defaultValue={product.description_ru ?? ""} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm sm:p-6">
-              <h2 className="text-xl font-black">Positive feedback bonus</h2>
-              <p className="mt-1 text-sm text-slate-600">
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 shadow-sm sm:p-4">
+              <h2 className="text-base font-black">Positive feedback bonus</h2>
+              <p className="mt-1 text-xs text-slate-600">
                 Reward a registered customer with wallet credit after one verified positive review.
                 Negative feedback receives no bonus and automatically creates a support case.
               </p>
 
-              <div className="mt-5 grid gap-5 md:grid-cols-2 md:items-end">
-                <label className="flex min-h-[74px] items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3">
+              <div className="mt-3 grid gap-3 md:grid-cols-2 md:items-end">
+                <label className="flex min-h-[60px] items-center gap-3 rounded-xl border border-emerald-200 bg-white px-3 py-2">
                   <input
                     type="checkbox"
                     name="review_reward_enabled"
@@ -141,14 +141,14 @@ export default async function ProductGeneralPage({
                     className="h-5 w-5 accent-emerald-600"
                   />
                   <span>
-                    <span className="block font-black text-slate-900">Enable positive-review bonus</span>
+                    <span className="block text-sm font-bold text-slate-900">Enable positive-review bonus</span>
                     <span className="mt-1 block text-xs text-slate-500">One wallet reward per delivered order.</span>
                   </span>
                 </label>
 
                 <label>
                   <span className="text-sm font-bold">Bonus percentage</span>
-                  <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-white focus-within:border-emerald-500">
+                  <div className="mt-1 flex overflow-hidden rounded-xl border border-slate-200 bg-white focus-within:border-emerald-500">
                     <input
                       name="review_reward_percent"
                       type="number"
@@ -156,7 +156,7 @@ export default async function ProductGeneralPage({
                       max="100"
                       step="0.01"
                       defaultValue={Number(product.review_reward_percent ?? 0)}
-                      className="min-w-0 flex-1 px-4 py-3 outline-none"
+                      className="min-w-0 flex-1 px-3 py-2 text-sm outline-none"
                     />
                     <span className="flex items-center border-l border-slate-200 px-4 font-black text-slate-500">%</span>
                   </div>
@@ -164,7 +164,7 @@ export default async function ProductGeneralPage({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-3 shadow-sm sm:p-4">
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
@@ -173,13 +173,14 @@ export default async function ProductGeneralPage({
                   className="mt-1 h-5 w-5 accent-cyan-500"
                 />
                 <span>
-                  <span className="block text-lg font-black">Use this product as homepage popup</span>
-                  <span className="mt-1 block text-sm text-slate-600">Only one product popup can be active. Selecting this product replaces the current popup.</span>
+                  <span className="block text-base font-black">Use this product as homepage popup</span>
+                  <span className="mt-1 block text-xs text-slate-600">Only one product popup can be active. Selecting this product replaces the current popup.</span>
                 </span>
               </label>
               <input type="hidden" name="was_popup_product" value={popupResult.data?.product_id === id ? "true" : "false"} />
-              <div className="mt-5">
+              <div className="mt-3">
                 <ResponsiveImageField
+                  compact
                   label="Popup image"
                   name="popup_image_url"
                   fileName="popup_image_file"
@@ -189,7 +190,7 @@ export default async function ProductGeneralPage({
                 <p className="mt-2 text-xs text-slate-500">This image is used only inside the popup. The normal product image remains unchanged.</p>
               </div>
             </section>
-            <div className="flex justify-end"><button type="submit" className="admin-save-action rounded-xl px-7 py-3 font-black transition">Save General</button></div>
+            <div className="flex justify-end"><button type="submit" className="admin-save-action rounded-xl px-5 py-2.5 text-sm font-black transition">Save General</button></div>
           </form>
         </main>
       </div>
