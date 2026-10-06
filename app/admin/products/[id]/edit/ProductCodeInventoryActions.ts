@@ -1,5 +1,7 @@
 "use server";
 
+import { parsePairedVoucherPayload } from "@/lib/paired-voucher-import";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -146,14 +148,18 @@ export async function addProductCodes(formData: FormData) {
 
   const verifiedOption = optionResult.data;
 
-  const uniqueCodes = Array.from(
-    new Set(
-      rawCodes
-        .split(usesRecordSeparator ? "\u001e" : /\r?\n/)
-        .map((code) => code.trim())
-        .filter(Boolean),
-    ),
-  );
+  let uniqueCodes: string[];
+  if (formData.get("stock_entry_format") === "CARD_PIN") {
+    try {
+      uniqueCodes = parsePairedVoucherPayload(rawCodes);
+    } catch (error) {
+      redirectWithMessage(productId, "error", error instanceof Error ? error.message : "Invalid card number and PIN list.");
+    }
+  } else {
+    uniqueCodes = Array.from(new Set(rawCodes
+      .split(usesRecordSeparator ? "\u001e" : /\r?\n/)
+      .map((code) => code.trim()).filter(Boolean)));
+  }
 
   if (uniqueCodes.length === 0) {
     redirectWithMessage(productId, "error", "Enter at least one voucher code.");
@@ -382,6 +388,7 @@ export async function addCodesForOption(
   payload.set("codes", String(formData.get(`codes_${fieldKey}`) ?? ""));
   payload.set("note", String(formData.get(`code_note_${fieldKey}`) ?? ""));
   payload.set("entry_separator", String(formData.get("entry_separator") ?? ""));
+  payload.set("stock_entry_format", String(formData.get("stock_entry_format") ?? ""));
   return addProductCodes(payload);
 }
 
