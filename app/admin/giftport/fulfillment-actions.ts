@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { validProductId } from "@/lib/definiteplay-admin";
 import { getGiftPortStatus, giftPortRequest } from "@/lib/giftport-relay";
 import { giftPortAmount, giftPortAmountAllowed } from "@/lib/giftport-import";
+import { giftPortDiscount } from "@/lib/giftport-pricing";
 import type { GiftPortMapping } from "@/lib/giftport-types";
 
 export async function saveGiftPortRecipient(form: FormData) {
@@ -24,13 +25,14 @@ export async function configureGiftPortDelivery(productId: string, enabled: bool
   if (!validProductId(productId) || typeof enabled !== "boolean") return { error: "Choose a valid product." };
   const admin = createAdminClient();
   try {
-    const mappings: {optionId: string; operatorCode: string; amount: string; unitCost: number; limit: number}[] = [];
+    const mappings: {optionId: string; operatorCode: string; amount: string}[] = [];
+    let discount = 0, limit = 10;
     if (enabled) {
       const status = await getGiftPortStatus();
       if (!status.purchasingEnabled || !status.fulfillmentReady || status.stale) return { error: "GiftPort delivery setup must be running and the catalogue refreshed before enabling this product." };
-      const budget = Number(form.get("budget"));
-      const limit = Number(form.get("limit"));
-      if (!Number.isFinite(budget) || budget <= 0 || budget > 10000 || !Number.isInteger(limit) || limit < 1 || limit > 100 || form.get("confirmed") !== "on") return { error: "Enter the full supplier cost budget in USD per 100 INR, a purchase limit (1–100), and confirm the budget includes fees." };
+      discount = giftPortDiscount(form.get("discount"));
+      limit = Number(form.get("limit"));
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) return { error: "Enter a purchase limit from 1 to 100." };
       const links = (await giftPortRequest<{mappings: GiftPortMapping[]}>("links", {operation: "list", productId})).mappings;
       const options = await admin.from("product_options").select("id,denomination,denomination_currency").eq("product_id", productId).eq("is_active", true);
       if (options.error || !options.data?.length) return { error: "Add and link active product options first." };
@@ -39,12 +41,28 @@ export async function configureGiftPortDelivery(productId: string, enabled: bool
         const item = status.snapshot?.items.find(i => i.operatorCode === link?.operator_code);
         const amount = giftPortAmount(String(option.denomination));
         if (!link || !item || option.denomination_currency !== "INR" || giftPortAmount(link.amount) !== amount || !giftPortAmountAllowed(item, amount)) return { error: "Link every active option to its correct GiftPort INR denomination first." };
-        mappings.push({ optionId: option.id, operatorCode: link.operator_code, amount, unitCost: Math.ceil(Number(amount) * budget / 100 * 1e8) / 1e8, limit });
+        mappings.push({ optionId: option.id, operatorCode: link.operator_code, amount });
       }
     }
-    const result = await admin.rpc("configure_giftport_product", {p_product_id: productId, p_enabled: enabled, p_mappings: mappings});
-    if (result.error) return { error: "Unable to change delivery. Check business recipient details, resolve pending supplier orders, and remove available/reserved uploaded stock before enabling." };
+    const result = enabled
+      ? await admin.rpc("configure_giftport_discount_product", {p_product_id: productId, p_mappings: mappings, p_discount: discount, p_limit: limit})
+      : await admin.rpc("configure_giftport_product", {p_product_id: productId, p_enabled: false, p_mappings: []});
+    if (result.error) return { error: "Unable to change delivery. Check the GiftPort discount database update, saved INR exchange rate and business recipient details; resolve pending supplier orders, and remove available/reserved uploaded stock before enabling." };
     revalidatePath(`/admin/products/${productId}/edit/supplier`);
     return { success: true };
   } catch (e) { return { error: e instanceof Error ? e.message : "GiftPort delivery setup failed." }; }
+}
+
+export async function saveGiftPortPricing(productId: string, form: FormData) {
+  await requireGiftPortAdmin();
+  if (!validProductId(productId)) return { error: "Choose a valid product." };
+  try {
+    const discount = giftPortDiscount(form.get("discount"));
+    const limit = Number(form.get("limit"));
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) return { error: "Enter a purchase limit from 1 to 100." };
+    const result = await createAdminClient().rpc("save_giftport_pricing", {p_product_id: productId, p_discount: discount, p_limit: limit});
+    if (result.error) return { error: "Unable to save supplier pricing. Check the database update, INR exchange rate and product supplier." };
+    revalidatePath(`/admin/products/${productId}/edit/supplier`);
+    return { success: true };
+  } catch (e) { return { error: e instanceof Error ? e.message : "Unable to save supplier pricing." }; }
 }
