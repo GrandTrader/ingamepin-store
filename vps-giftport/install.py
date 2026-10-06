@@ -32,12 +32,15 @@ def read_secret(path, key):
 
 
 secret = read_secret(env_path, "GIFTPORT_RELAY_SECRET") if env_path.exists() else read_secret(pathlib.Path("/etc/ingamepin-definiteplay.env"), "DEFINITEPLAY_RELAY_SECRET")
+compile(payload["transport"], "supplier_database.py", "exec")
 compile(payload["source"], "server.py", "exec")
 compile(payload["worker"], "fulfillment.py", "exec")
+previous_transport = (root / "supplier_database.py").read_text() if (root / "supplier_database.py").exists() else None
 previous_worker = (root / "fulfillment.py").read_text() if (root / "fulfillment.py").exists() else None
 previous = (root / "server.py").read_text() if (root / "server.py").exists() else None
 if previous:
     atomic(root / ("server.py.backup-" + str(int(time.time()))), previous)
+atomic(root / "supplier_database.py", payload["transport"])
 atomic(root / "fulfillment.py", payload["worker"])
 atomic(root / "server.py", payload["source"])
 atomic("/etc/systemd/system/ingamepin-giftport.service", payload["unit"])
@@ -63,6 +66,8 @@ if not ready:
         atomic(root / "server.py", previous)
         if previous_worker:
             atomic(root / "fulfillment.py", previous_worker)
+        if previous_transport:
+            atomic(root / "supplier_database.py", previous_transport)
         subprocess.run(["systemctl", "restart", "ingamepin-giftport"], capture_output=True)
     raise SystemExit("GiftPort service failed its readiness check")
 

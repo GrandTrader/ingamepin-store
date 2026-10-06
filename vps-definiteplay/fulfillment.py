@@ -118,22 +118,18 @@ def parse_order(payload, job):
 
 class Database:
     def __init__(self, bridge):
-        self.url = os.environ["NEXT_PUBLIC_SUPABASE_URL"].rstrip("/")
-        self.key = os.environ["SUPABASE_SECRET_KEY"]
-        if not self.url.startswith("https://"):
-            raise ValueError("Database HTTPS required")
-        self.opener = urllib.request.build_opener(bridge.NoRedirect())
+        # Installers put the shared module beside this file. Repository tests use
+        # the single source in vps-common without maintaining duplicate copies.
+        import sys
+        from pathlib import Path
+        common = Path(__file__).resolve().parent.parent / "vps-common"
+        if common.is_dir() and str(common) not in sys.path:
+            sys.path.insert(0, str(common))
+        from supplier_database import DatabaseTransport
+        self.transport = DatabaseTransport(bridge, "DEFINITEPLAY")
 
     def rpc(self, name, payload):
-        request = urllib.request.Request(self.url + "/rest/v1/rpc/" + name,
-            data=json.dumps(payload).encode(), method="POST",
-            headers={"apikey": self.key, "Authorization": "Bearer " + self.key, "Content-Type": "application/json"})
-        try:
-            with self.opener.open(request, timeout=25) as response:
-                body = response.read().decode()
-                return json.loads(body, parse_float=str) if body else None
-        except Exception:
-            raise RuntimeError("Supplier database operation failed") from None
+        return self.transport.rpc(name, payload)
 
 
 class DigiSellerDatabase:

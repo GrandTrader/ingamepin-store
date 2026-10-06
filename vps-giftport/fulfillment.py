@@ -67,24 +67,18 @@ def parse_status(bridge, payload, job, card):
 
 class Database:
     def __init__(self, bridge):
-        self.url = os.environ["NEXT_PUBLIC_SUPABASE_URL"].rstrip("/")
-        self.key = os.environ["SUPABASE_SECRET_KEY"]
-        if not self.url.startswith("https://"):
-            raise ValueError("Database HTTPS required")
-        self.opener = urllib.request.build_opener(bridge.NoRedirect())
+        # Installers put the shared module beside this file. Repository tests use
+        # the single source in vps-common without maintaining duplicate copies.
+        import sys
+        from pathlib import Path
+        common = Path(__file__).resolve().parent.parent / "vps-common"
+        if common.is_dir() and str(common) not in sys.path:
+            sys.path.insert(0, str(common))
+        from supplier_database import DatabaseTransport
+        self.transport = DatabaseTransport(bridge, "GIFTPORT")
 
-    def rpc(self, name, body):
-        request = urllib.request.Request(self.url + "/rest/v1/rpc/" + name,
-            data=json.dumps(body).encode(), method="POST",
-            headers={"apikey": self.key, "Authorization": "Bearer " + self.key, "Content-Type": "application/json"})
-        try:
-            with self.opener.open(request, timeout=25) as response:
-                raw = response.read(8 * 1024 * 1024 + 1)
-                if len(raw) > 8 * 1024 * 1024:
-                    raise ValueError()
-                return json.loads(raw, parse_float=str) if raw else None
-        except Exception:
-            raise RuntimeError("GiftPort database operation failed") from None
+    def rpc(self, name, payload):
+        return self.transport.rpc(name, payload)
 
 
 class Worker:
