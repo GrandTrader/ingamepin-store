@@ -73,7 +73,7 @@ export default function GiftPortPanel({ initialStatus, initialError }: { initial
       </div><p className="mt-3 text-xs text-slate-500">Last checked: {new Date(snapshot.syncedAt * 1000).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST. The server refreshes every five minutes; use Refresh to check now.</p></>}
       {snapshot?.warnings?.map(warning => <p key={warning} role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{warning}</p>)}
       {status?.stale && status.configured && <p className="mt-3 text-sm text-amber-800">Supplier data is out of date. Refresh before using these figures.</p>}
-      <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Import products and save supplier links below. Automatic purchasing and delivery remain disabled while supplier costs and order verification are being set up.</p>
+      <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{status?.purchasingEnabled && status.fulfillmentReady ? "GiftPort delivery is ready. Enable automatic delivery separately in each product’s Supplier tab." : "Automatic delivery is not running yet. Products remain disabled until the database and server setup are complete."}</p>
     </section>
     {snapshot && <GiftPortCatalogue items={snapshot.items} stale={!!status?.stale} />}
   </div>;

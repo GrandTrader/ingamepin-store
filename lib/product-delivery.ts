@@ -4,6 +4,6 @@ export function hasInstantDelivery(product: {
   delivery_type: string;
   is_bulk_order?: boolean | null;
 }) {
-  return product.stock_source === "DEFINITEPLAY" ||
+  return ["DEFINITEPLAY", "GIFTPORT"].includes(product.stock_source ?? "") ||
     (product.delivery_type === "AUTOMATIC" && !product.is_bulk_order);
 }

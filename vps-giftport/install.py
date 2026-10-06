@@ -33,9 +33,12 @@ def read_secret(path, key):
 
 secret = read_secret(env_path, "GIFTPORT_RELAY_SECRET") if env_path.exists() else read_secret(pathlib.Path("/etc/ingamepin-definiteplay.env"), "DEFINITEPLAY_RELAY_SECRET")
 compile(payload["source"], "server.py", "exec")
+compile(payload["worker"], "fulfillment.py", "exec")
+previous_worker = (root / "fulfillment.py").read_text() if (root / "fulfillment.py").exists() else None
 previous = (root / "server.py").read_text() if (root / "server.py").exists() else None
 if previous:
     atomic(root / ("server.py.backup-" + str(int(time.time()))), previous)
+atomic(root / "fulfillment.py", payload["worker"])
 atomic(root / "server.py", payload["source"])
 atomic("/etc/systemd/system/ingamepin-giftport.service", payload["unit"])
 if not env_path.exists():
@@ -50,7 +53,7 @@ for attempt in range(10):
         request = urllib.request.Request("http://127.0.0.1:8800/status", headers={"Authorization": "Bearer " + secret})
         with urllib.request.urlopen(request, timeout=2) as response:
             result = json.load(response)
-            ready = result.get("purchasingEnabled") is False
+            ready = isinstance(result.get("purchasingEnabled"), bool) and "fulfillmentReady" in result
         if ready:
             break
     except Exception:
@@ -58,6 +61,8 @@ for attempt in range(10):
 if not ready:
     if previous:
         atomic(root / "server.py", previous)
+        if previous_worker:
+            atomic(root / "fulfillment.py", previous_worker)
         subprocess.run(["systemctl", "restart", "ingamepin-giftport"], capture_output=True)
     raise SystemExit("GiftPort service failed its readiness check")
 
@@ -80,4 +85,4 @@ if "handle_path /giftport/*" not in original:
         config.write_text(original)
         subprocess.run(["systemctl", "reload", "caddy"], capture_output=True)
         raise SystemExit("Caddy reload failed; previous routing restored")
-print("GiftPort connection service healthy. HTTPS callback installed. Purchasing disabled.")
+print("GiftPort service healthy. Existing activation settings retained; no products were enabled.")

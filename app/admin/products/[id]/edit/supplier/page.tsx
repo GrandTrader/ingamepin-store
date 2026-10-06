@@ -9,7 +9,7 @@ import { getDefinitePlayMappings } from "@/lib/definiteplay-relay";
 import type { DefinitePlayMapping } from "@/lib/definiteplay-types";
 import SupplierOptionEditor from "./SupplierOptionEditor";
 import SupplierDeliveryControl from "./SupplierDeliveryControl";
-import { supplierProductIds, supplierDeliveryEnabled } from "@/lib/definiteplay-fulfillment";
+import { supplierDeliveryEnabled } from "@/lib/definiteplay-fulfillment";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +24,8 @@ export default async function ProductSupplierPage({params,searchParams}:{params:
   if (product.error || options.error) throw new Error("Unable to load product details.");
   if (!product.data) notFound();
   const provider=(await searchParams).provider;
-  if(provider==="giftport" || (!provider && product.data.slug.startsWith("giftport-"))) return <GiftPortSupplierView product={product.data} options={options.data??[]} locked={product.data.stock_source!=="OWNED"}/>;
-  const enabled=(await supplierProductIds([id])).has(id);
+  if(provider==="giftport" || (!provider && (product.data.stock_source === "GIFTPORT" || product.data.slug.startsWith("giftport-")))) return <GiftPortSupplierView product={product.data} options={options.data??[]} locked={product.data.stock_source!=="OWNED"}/>;
+  const enabled=product.data.stock_source === "DEFINITEPLAY";
   const configured=enabled||supplierDeliveryEnabled();
   const jobs=configured ? await createAdminClient().from("definiteplay_jobs")
     .select("item_id,supplier_reference,state,issue,order_items!inner(product_id)")

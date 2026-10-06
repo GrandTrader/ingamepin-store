@@ -10,7 +10,7 @@ export type GiftPortMapping = {
 };
 export type GiftPortStatus = {
   configured: boolean; syncing: boolean; error: string | null;
-  stale: boolean; purchasingEnabled: false;
+  stale: boolean; purchasingEnabled: boolean; fulfillmentReady?: boolean; fulfillmentError?: string | null;
   snapshot: null | {
     balance: string | null; warnings?: string[]; currency: "INR";
     syncedAt: number; items: GiftPortItem[];

@@ -1,4 +1,4 @@
-"""GiftPort catalogue, import links and balance bridge; no purchasing route.
+"""GiftPort catalogue bridge and optional private paid-order worker; no HTTP buy route.
 
 Callbacks are acknowledged, never trusted as proof of payment or delivery.
 Supplier credentials stay in the service's private state directory.
@@ -23,6 +23,8 @@ LAST_ATTEMPT = 0.0
 LAST_ERROR = None
 SYNCING = False
 MAX_BODY = 16384
+FULFILLMENT_ERROR = None
+FULFILLMENT_HEARTBEAT = 0.0
 
 
 class SafeError(Exception):
@@ -64,7 +66,7 @@ def credentials(body):
 
 
 def supplier_request(endpoint, keys):
-    # Explicit allowlist makes accidental purchases impossible in this stage.
+    # HTTP catalogue operations cannot purchase. Only the paid-order worker can buy.
     if endpoint not in {"catalogue", "balance"}:
         raise SafeError("Unsupported supplier operation.")
     request = urllib.request.Request(
@@ -343,7 +345,9 @@ def status():
     with LOCK:
         snapshot = read_json("snapshot.json")
         return {"configured": bool(read_json("credentials.json")), "syncing": SYNCING,
-                "error": LAST_ERROR, "purchasingEnabled": False,
+                "error": LAST_ERROR, "purchasingEnabled": os.environ.get("GIFTPORT_FULFILLMENT_ENABLED") == "true",
+                "fulfillmentReady": FULFILLMENT_HEARTBEAT > time.time() - 180 and not FULFILLMENT_ERROR,
+                "fulfillmentError": FULFILLMENT_ERROR,
                 "stale": not snapshot or time.time() - snapshot["syncedAt"] > 900,
                 "snapshot": snapshot}
 
@@ -400,6 +404,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, manage_links(json.loads(self.read_body())))
             if self.command == "POST" and self.path in ("/configure", "/refresh"):
                 raw = self.read_body()
+                if self.path == "/configure" and os.environ.get("GIFTPORT_FULFILLMENT_ENABLED") == "true":
+                    raise SafeError("Pause GiftPort purchasing and reconcile pending orders before changing accounts.")
                 keys = credentials(json.loads(raw)) if self.path == "/configure" else None
                 if not start_sync(keys):
                     return self.respond(429, {"error": "Wait 30 seconds before trying again."})
@@ -420,5 +426,8 @@ if __name__ == "__main__":
     if not os.environ.get("GIFTPORT_RELAY_SECRET"):
         raise SystemExit("Missing private relay configuration")
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
+    import fulfillment
+    if fulfillment.enabled():
+        threading.Thread(target=fulfillment.Worker(__import__(__name__), fulfillment.Database(__import__(__name__))).run, daemon=True).start()
     threading.Thread(target=periodic_sync, daemon=True).start()
     ThreadingHTTPServer(("127.0.0.1", 8800), Handler).serve_forever()
