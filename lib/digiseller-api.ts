@@ -234,13 +234,14 @@ function digiSellerErrorText(value: unknown): string {
   return "";
 }
 
-async function postDigiSeller(path: string, body: unknown, accessToken?: string): Promise<DigiSellerApiResult> {
-  const token = accessToken || (await getDigiSellerToken()).token;
+async function postDigiSeller(path: string, body: unknown, accessToken?: string, signal?: AbortSignal): Promise<DigiSellerApiResult> {
+  const token = accessToken || (await getDigiSellerToken(signal)).token;
   const response = await fetch(`https://api.digiseller.com${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify(body),
     cache: "no-store",
+    signal,
   });
   const result = await response.json().catch(() => null) as DigiSellerApiResult | null;
   const details = digiSellerErrorText(result?.errors) || digiSellerErrorText(result?.retdesc);
@@ -353,12 +354,13 @@ export async function updateDigiSellerProductName(productId: number, name: strin
       { locale: "en-US", value: name },
       { locale: "ru-RU", value: nameRu || name },
     ],
-  });
+  }, undefined, AbortSignal.timeout(20_000));
 }
 
 export async function uploadDigiSellerProductImage(productId: number, imageUrl: string, region?: string | null) {
-  const { token } = await getDigiSellerToken();
-  const source = await fetch(imageUrl, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
+  const signal = AbortSignal.timeout(25_000);
+  const { token } = await getDigiSellerToken(signal);
+  const source = await fetch(imageUrl, { cache: "no-store", signal });
   if (!source.ok) throw new Error(`Unable to download the website image (${source.status}).`);
   const contentType = source.headers.get("content-type")?.split(";")[0]?.trim() || "";
   if (!contentType.startsWith("image/")) throw new Error("The saved product URL does not return an image.");
@@ -373,6 +375,7 @@ export async function uploadDigiSellerProductImage(productId: number, imageUrl: 
     headers: { Accept: "application/json" },
     body: form,
     cache: "no-store",
+    signal,
   });
   const result = await response.json().catch(() => null) as DigiSellerApiResult | null;
   const details = digiSellerErrorText(result?.errors) || digiSellerErrorText(result?.retdesc);
@@ -385,6 +388,7 @@ export async function uploadDigiSellerProductImage(productId: number, imageUrl: 
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify({ enabled: true, index: 0, delete: false }),
     cache: "no-store",
+    signal,
   });
   if (!position.ok) throw new Error(`The image uploaded, but DigiSeller could not make it the primary image (${position.status}).`);
   return previewId;

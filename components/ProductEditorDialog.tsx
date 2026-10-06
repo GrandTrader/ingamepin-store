@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useProductEditorNavigation } from "./ProductEditorNavigation";
 import styles from "./ProductEditorDialog.module.css";
@@ -16,6 +16,10 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
   const content = useRef<HTMLDivElement>(null);
   const backdropPress = useRef(false);
   const pathname = usePathname();
+  const positions = useRef(new Map<string, { top: number; tabs: number }>());
+  const activePath = useRef(pathname);
+  const lastTabs = useRef(0);
+  const restoring = useRef(false);
   const { close } = useProductEditorNavigation();
 
   useEffect(() => {
@@ -29,7 +33,24 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
     };
   }, []);
 
-  useEffect(() => { content.current?.scrollTo({ top: 0 }); }, [pathname]);
+  function rememberPosition() {
+    if (!content.current || restoring.current) return;
+    const tabs = content.current.querySelector<HTMLElement>("[data-product-edit-tabs]");
+    lastTabs.current = tabs?.scrollLeft ?? lastTabs.current;
+    positions.current.set(activePath.current, { top: content.current.scrollTop, tabs: lastTabs.current });
+  }
+
+  useLayoutEffect(() => {
+    const element = content.current;
+    if (!element) return;
+    restoring.current = true;
+    const position = positions.current.get(pathname);
+    activePath.current = pathname;
+    element.scrollTo({ top: position?.top ?? 0, behavior: "instant" });
+    const tabs = element.querySelector<HTMLElement>("[data-product-edit-tabs]");
+    if (tabs) tabs.scrollLeft = lastTabs.current;
+    restoring.current = false;
+  }, [pathname, children]);
 
   return (
     <dialog ref={dialog} className={styles.dialog} aria-labelledby="product-editor-title"
@@ -47,7 +68,7 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
           <span>Close</span><span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <div ref={content} className={styles.content}>{children}</div>
+      <div ref={content} className={styles.content} onScrollCapture={rememberPosition} onClickCapture={rememberPosition} onSubmitCapture={rememberPosition}>{children}</div>
     </dialog>
   );
 }

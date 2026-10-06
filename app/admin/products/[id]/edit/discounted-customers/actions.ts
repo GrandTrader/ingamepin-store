@@ -15,7 +15,7 @@ function resultRedirect(productId: string, kind: "success" | "error", message: s
 }
 
 async function requireAdministrator() {
-  const supabase = await createClient();
+  const supabase = await createClient({ reuseVerifiedUser: true });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
 

@@ -21,3 +21,8 @@
   .content main > header h1 { font-size: 18px; overflow-wrap: anywhere; }
   .content :global([data-product-edit-tabs]) a { padding: 10px 12px; font-size: 12px; }
 }
+
+/* Keep tab navigation and save feedback from moving the form beneath the cursor. */
+.content main > header { min-height: 76px; }
+.content main > div:has(> [data-product-edit-tabs]) { position: sticky; top: 0; z-index: 1; margin-top: 16px; background: #fff; }
+.content [data-editor-notice] { position: absolute; z-index: 3; right: 20px; bottom: 16px; max-width: min(560px, calc(100% - 40px)); margin: 0; padding: 12px 16px; box-shadow: 0 4px 20px rgb(15 23 42 / 14%); pointer-events: none; }

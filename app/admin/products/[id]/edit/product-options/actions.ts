@@ -13,7 +13,7 @@ export async function saveProductOptions(formData: FormData) {
   const path = `/admin/products/${productId}/edit/product-options`;
   const preserveDiscountedPrices = formData.get("preserve_discounted_prices") === "true";
   const requestedPriceChangePercent = Number(formData.get("price_reduction_percent") ?? 0);
-  const supabase = await createClient();
+  const supabase = await createClient({ reuseVerifiedUser: true });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
   const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();

@@ -88,8 +88,8 @@ export default async function ProductGeneralPage({
             <ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold">← Product list</Link></ProductSettingsActions>
           </header>
 
-          {success && <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}
-          {error && <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
+          {success && <div data-editor-notice role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}
+          {error && <div data-editor-notice role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
 
           <div className="mt-8"><ProductEditPageTabs productId={id} current="general" /></div>
 
@@ -111,6 +111,7 @@ export default async function ProductGeneralPage({
           <form action={updateProductGeneral} className="mt-6 grid gap-6">
             <PaypalychFormWarning initialIdentities={[product.name, product.name_ru ?? "", product.slug]} />
             <input type="hidden" name="id" value={id} />
+            <input type="hidden" name="retry_digiseller_sync" value={error?.startsWith("Product saved, but DigiSeller") ? "true" : "false"} />
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-xl font-black">General</h2>
               <div className="mt-5 grid gap-5 md:grid-cols-2">

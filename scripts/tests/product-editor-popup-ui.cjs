@@ -19,9 +19,10 @@ for(const file of ['default.tsx','page.tsx','[...rest]/page.tsx','(.)[id]/edit/l
 fs.rmSync(path.join(fixture,'app/admin/products/@editor/(.)[id]/edit/loading.tsx'),{force:true});
 let tabComponent=fs.readFileSync('components/ProductEditPageTabs.tsx','utf8');
 tabComponent=tabComponent.replace(/import \{ getProductPaypalychRestriction[^\n]+\n/,'').replace(/import PaypalychProductWarning[^\n]+\n/,'').replace(/  const blockedBrand =[^\n]+\n/,'').replace(/    <PaypalychProductWarning[^\n]+\n/,'');
+tabComponent=tabComponent.replace('"./ProductEditorWarmup"','"@/components/ProductEditorWarmup"');
 write('Tabs.tsx',tabComponent);
 write('actions.ts',`'use server';import {cookies} from 'next/headers';import {redirect} from 'next/navigation';import {revalidatePath} from 'next/cache';export async function save(form:FormData){const name=String(form.get('name')||'');const tab=String(form.get('tab'));if(!name)redirect('/admin/products/test/edit/'+tab+'?error=Name+required');(await cookies()).set('fixture-product',name);revalidatePath('/');redirect('/admin/products/test/edit/'+tab+'?success=Saved');}`);
-write('EditPage.tsx',`import Link from 'next/link';import {cookies} from 'next/headers';import Tabs from './Tabs';import {save} from './actions';export default async function Edit({tab,searchParams}:{tab:string;searchParams:Promise<{success?:string;error?:string}>}){const q=await searchParams;return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row"><aside data-admin-sidebar>Admin sidebar</aside><main className="min-w-0 flex-1 p-5 sm:p-8"><header><h1>Test product</h1><Link href="/admin/products">Product list</Link></header>{q.success&&<p role="status">{q.success}</p>}{q.error&&<p role="alert">{q.error}</p>}<div className="mt-8"><Tabs productId="test" current={tab}/></div><h2 className="mt-6 text-xl font-bold">{tab}</h2><form action={save} className="mt-4 grid gap-4 rounded-xl border border-slate-200 p-4"><input name="tab" type="hidden" value={tab}/><label className="grid gap-2 text-sm font-bold">Product name<input className="min-w-0 rounded-lg border border-slate-300 px-3 py-2" name="name" defaultValue={(await cookies()).get('fixture-product')?.value||'Test product'}/></label><button className="rounded-lg bg-blue-600 px-4 py-3 font-bold text-white">Save changes</button></form><div style={{height:1100}}>Long product form</div><button>Bottom action</button></main></div></div>}`);
+write('EditPage.tsx',`import Link from 'next/link';import {cookies} from 'next/headers';import Tabs from './Tabs';import {save} from './actions';export default async function Edit({tab,searchParams}:{tab:string;searchParams:Promise<{success?:string;error?:string}>}){const q=await searchParams;return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row"><aside data-admin-sidebar>Admin sidebar</aside><main className="min-w-0 flex-1 p-5 sm:p-8"><header><h1>Test product</h1><Link href="/admin/products">Product list</Link></header>{q.success&&<p data-editor-notice role="status">{q.success}</p>}{q.error&&<p data-editor-notice role="alert">{q.error}</p>}<div className="mt-8"><Tabs productId="test" current={tab}/></div><h2 className="mt-6 text-xl font-bold">{tab}</h2><form action={save} className="mt-4 grid gap-4 rounded-xl border border-slate-200 p-4"><input name="tab" type="hidden" value={tab}/><label className="grid gap-2 text-sm font-bold">Product name<input className="min-w-0 rounded-lg border border-slate-300 px-3 py-2" name="name" defaultValue={(await cookies()).get('fixture-product')?.value||'Test product'}/></label><button className="rounded-lg bg-blue-600 px-4 py-3 font-bold text-white">Save changes</button></form><div style={{height:1100}}>Long product form</div><button>Bottom action</button></main></div></div>}`);
 for(const [tab] of tabs){
  write('app/admin/products/[id]/edit/'+tab+'/page.tsx',`import Edit from '../../../../../../EditPage';export default function Page({searchParams}:{searchParams:Promise<{success?:string;error?:string}>}){return <Edit tab="${tab}" searchParams={searchParams}/>} `);
  const original=fs.readFileSync('app/admin/products/@editor/(.)[id]/edit/'+tab+'/page.tsx','utf8');
@@ -60,9 +61,20 @@ for(const [tab] of tabs){
    assert.equal(requests.length,0,'A warmed tab should open without another server round trip');
    assert.equal(await page.getByLabel('Opening page').count(),0);
    console.log('PASS production prefetch: hover opens the prepared popup; Gallery opened from cache in '+(Date.now()-start)+'ms with no tab request.');
+   for(let i=0;i<100&&!warmed.some(url=>url.includes('/edit/affiliate'));i++)await page.waitForTimeout(100);
+   assert(warmed.some(url=>url.includes('/edit/affiliate')),'Offscreen tabs should also be prefetched');
+   const content=dialog.locator('[class*=content]');
+   await content.evaluate(el=>el.scrollTo({top:200}));await page.waitForTimeout(100);
+   const galleryTop=await content.evaluate(el=>el.scrollTop);
+   await dialog.getByRole('link',{name:'General',exact:true}).click();await dialog.getByRole('heading',{name:'general',exact:true}).waitFor();
+   await dialog.getByRole('link',{name:'Gallery',exact:true}).click();await dialog.getByRole('heading',{name:'gallery',exact:true}).waitFor();
+   assert(Math.abs(await content.evaluate(el=>el.scrollTop)-galleryTop)<5,'Returning to a tab should restore its form position');
    await dialog.getByRole('textbox',{name:'Product name'}).fill('Updated after prefetch');
+   const beforeSave=await dialog.getByRole('textbox',{name:'Product name'}).boundingBox();
    await dialog.getByRole('button',{name:'Save changes'}).click();
    await dialog.getByRole('status').filter({hasText:'Saved'}).waitFor();
+   const afterSave=await dialog.getByRole('textbox',{name:'Product name'}).boundingBox();
+   assert(Math.abs(beforeSave.y-afterSave.y)<5,'Save confirmation must not move the form');
    await dialog.getByRole('link',{name:'General',exact:true}).click();
    await dialog.getByRole('heading',{name:'general',exact:true}).waitFor();
    assert.equal(await dialog.getByRole('textbox',{name:'Product name'}).inputValue(),'Updated after prefetch','Saving must invalidate prefetched form data');
@@ -96,9 +108,12 @@ for(const [tab] of tabs){
     await dialog.getByRole('heading',{name:tab,exact:true}).waitFor();
    }
    await dialog.getByRole('link',{name:'General',exact:true}).click();await page.waitForURL('**/edit/general');
+   const tabsBar=dialog.getByRole('navigation',{name:'Product settings tabs'});
+   await tabsBar.evaluate(el=>{el.scrollLeft=250;});
    await dialog.getByRole('textbox',{name:'Product name'}).fill('Updated '+width);
    await dialog.getByRole('button',{name:'Save changes'}).click();await dialog.getByRole('status').filter({hasText:'Saved'}).waitFor();
    assert(await dialog.isVisible(),'Save redirect should retain popup');
+   assert(Math.abs(await tabsBar.evaluate(el=>el.scrollLeft)-Math.min(250,await tabsBar.evaluate(el=>el.scrollWidth-el.clientWidth)))<5,'Save must retain the horizontal tab position');
    await dialog.evaluate(el=>{el.scrollTop=64;});
    const popupBox=await dialog.boundingBox(),closeBox=await dialog.getByRole('button',{name:'Close product editor'}).boundingBox();
    assert(closeBox.y>=popupBox.y&&closeBox.y+closeBox.height<=popupBox.y+popupBox.height,'Close button must remain inside the popup after browser scroll restoration');

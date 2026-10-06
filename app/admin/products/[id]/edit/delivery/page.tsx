@@ -52,8 +52,8 @@ export default async function DeliveryPage({
             </div>
             <ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="h-fit rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold">← Product list</Link></ProductSettingsActions>
           </header>
-          {success && <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}
-          {error && <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
+          {success && <div data-editor-notice role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}
+          {error && <div data-editor-notice role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
           <div className="mt-8"><ProductEditPageTabs productId={id} current="delivery" /></div>
           <form action={saveDeliverySettings} className="mt-6 grid gap-6">
             <input type="hidden" name="id" value={id} />

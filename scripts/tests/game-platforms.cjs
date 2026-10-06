@@ -18,13 +18,14 @@ function fixture({ admin = true, signedIn = true, category = { name: 'Games', sl
     const q = {};
     for (const method of ['select', 'eq', 'not']) q[method] = () => q;
     q.update = (value) => { writes.push({ table, value }); return q; };
-    const result = () => ({ data: table === 'admin_users' ? (admin ? { user_id: 'user' } : null) : table === 'categories' ? category : table === 'product_options' ? [] : null, error: null });
+    const result = () => ({ data: table === 'admin_users' ? (admin ? { user_id: 'user' } : null) : table === 'categories' ? category : table === 'product_options' ? [] : table === 'products' ? {name:'Game',name_ru:null} : null, error: null });
     q.maybeSingle = async () => result();
     q.then = (resolve, reject) => Promise.resolve(result()).then(resolve, reject);
     return q;
   }};
   const action = load('app/admin/products/[id]/edit/general/actions.ts', {
     '@/lib/game-platforms': platforms,
+    '@/lib/product-editor-sync': load('lib/product-editor-sync.ts'),
     'next/cache': { revalidatePath() {} },
     'next/navigation': { redirect(url) { throw new Error(url); } },
     '@/lib/supabase/admin-session': { createClient: async () => db },

@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/admin-session";
 export async function saveDeliverySettings(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const path = `/admin/products/${id}/edit/delivery`;
-  const supabase = await createClient();
+  const supabase = await createClient({ reuseVerifiedUser: true });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
 

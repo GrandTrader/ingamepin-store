@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncProductTargets } from "@/lib/product-editor-sync";
 import { updateDigiSellerProductName } from "@/lib/digiseller-api";
 import { createClient } from "@/lib/supabase/admin-session";
 import { uploadStoreImage } from "@/lib/store-image-upload";
@@ -12,7 +13,7 @@ import { uploadStoreImage } from "@/lib/store-image-upload";
 export async function updateProductGeneral(formData: FormData) {
   const productId = String(formData.get("id") ?? "").trim();
   const path = `/admin/products/${productId}/edit/general`;
-  const supabase = await createClient();
+  const supabase = await createClient({ reuseVerifiedUser: true });
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect("/admin/login");
@@ -41,7 +42,12 @@ export async function updateProductGeneral(formData: FormData) {
     redirect(`${path}?error=${encodeURIComponent("Product name, category and region are required.")}`);
   }
 
-  const categoryResult = await supabase.from("categories").select("category_type, name, slug").eq("id", categoryId).eq("is_active", true).maybeSingle();
+  const [categoryResult, previous] = await Promise.all([
+    supabase.from("categories").select("category_type, name, slug").eq("id", categoryId).eq("is_active", true).maybeSingle(),
+    supabase.from("products").select("name,name_ru").eq("id", productId).maybeSingle(),
+  ]);
+  if (previous.error || !previous.data) redirect(`${path}?error=${encodeURIComponent("Unable to load the current product. Please try again.")}`);
+  const syncNames = previous.data.name !== name || (previous.data.name_ru ?? "") !== nameRu || formData.get("retry_digiseller_sync") === "true";
   if (!categoryResult.data) redirect(`${path}?error=${encodeURIComponent("Select a valid category.")}`);
 
   const requestedPlatforms = formData.getAll("gaming_platforms");
@@ -91,23 +97,24 @@ export async function updateProductGeneral(formData: FormData) {
     redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
   }
 
-  const mappings = await admin
-    .from("product_options")
-    .select("digiseller_product_id")
-    .eq("product_id", productId)
-    .not("digiseller_product_id", "is", null);
-  if (mappings.error) {
-    redirect(`${path}?error=${encodeURIComponent(`Product saved, but DigiSeller sync could not start: ${mappings.error.message}`)}`);
-  }
-  const digisellerProductIds = [...new Set((mappings.data ?? [])
-    .map((row) => Number(row.digiseller_product_id))
-    .filter((id) => Number.isSafeInteger(id) && id > 0))];
-  try {
-    for (const digisellerProductId of digisellerProductIds) {
-      await updateDigiSellerProductName(digisellerProductId, name, nameRu);
+  let digisellerProductIds: number[] = [];
+  if (syncNames) {
+    const mappings = await admin
+      .from("product_options")
+      .select("digiseller_product_id")
+      .eq("product_id", productId)
+      .not("digiseller_product_id", "is", null);
+    if (mappings.error) {
+      redirect(`${path}?error=${encodeURIComponent(`Product saved, but DigiSeller sync could not start: ${mappings.error.message}`)}`);
     }
-  } catch (error) {
-    redirect(`${path}?error=${encodeURIComponent(`Product saved, but DigiSeller name sync failed: ${error instanceof Error ? error.message : "Update failed"}`)}`);
+    digisellerProductIds = [...new Set((mappings.data ?? [])
+      .map((row) => Number(row.digiseller_product_id))
+      .filter((id) => Number.isSafeInteger(id) && id > 0))];
+    try {
+      await syncProductTargets(digisellerProductIds, (digisellerProductId) => updateDigiSellerProductName(digisellerProductId, name, nameRu));
+    } catch (error) {
+      redirect(`${path}?error=${encodeURIComponent(`Product saved, but DigiSeller name sync failed: ${error instanceof Error ? error.message : "Update failed"}`)}`);
+    }
   }
 
   if (useAsPopup) {

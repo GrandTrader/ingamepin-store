@@ -20,7 +20,7 @@ const PAYMENT_METHODS = [
 const USDT_NETWORKS = ["TRC20", "BEP20", "SOLANA"] as const;
 
 async function requireAdministrator() {
-  const supabase = await createClient();
+  const supabase = await createClient({ reuseVerifiedUser: true });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
   const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
