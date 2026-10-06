@@ -1,7 +1,7 @@
 "use client";
 import PaypalychProductWarning from "@/components/PaypalychProductWarning";
 import Link from "next/link";
-import {useRef,useState,useTransition} from "react";
+import {useLayoutEffect,useRef,useState,useTransition} from "react";
 import type {DefinitePlayItem} from "@/lib/definiteplay-types";
 import {priceWithMarkup,supplierDefaultDenomination,supplierSubscriptionMonths} from "@/lib/definiteplay-import";
 import {importSupplierProduct} from "./actions";
@@ -30,6 +30,13 @@ export default function SupplierImportForm({items,categories,requestId}:{items:D
   const [result,setResult]=useState<{productId:string;warning?:string}|null>(null);
   const [pending,startTransition]=useTransition();
   const submitting=useRef(false);
+  const confirmation=useRef<HTMLElement>(null);
+  useLayoutEffect(()=>{
+    if(!result || !confirmation.current)return;
+    // The long form has been replaced; do not leave the viewport at its old footer.
+    confirmation.current.focus({preventScroll:true});
+    confirmation.current.scrollIntoView({block:"start",behavior:"instant"});
+  },[result]);
   let markupError="";
   try{priceWithMarkup("1",markup);}catch(e){markupError=e instanceof Error?e.message:"Invalid markup.";}
   function suggested(item:DefinitePlayItem){try{return priceWithMarkup(item.price,markup);}catch{return "";}}
@@ -67,7 +74,7 @@ export default function SupplierImportForm({items,categories,requestId}:{items:D
       finally{submitting.current=false;}
     });
   }
-  if(result)return <section className="mt-6 rounded-xl border bg-white p-6">
+  if(result)return <section ref={confirmation} tabIndex={-1} aria-label="Draft created" className="mt-6 scroll-mt-40 rounded-xl border bg-white p-6">
     <h2 className="text-xl font-bold">Draft created</h2>
     <PaypalychProductWarning identities={[title,titleRu,...items.filter(i=>selected.includes(i.sku)).map(i=>i.name)]} />
     <p className="mt-2 text-slate-600">Review its details, image and selling prices before publishing. Automatic supplier delivery is not enabled.</p>
