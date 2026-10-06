@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { businessApplication } from "@/lib/business-verification-data";
 import AuthSubmitButton from "@/components/AuthSubmitButton";
 import PasswordInput from "@/components/PasswordInput";
 import RegistrationTurnstile from "@/components/RegistrationTurnstile";
@@ -16,8 +17,11 @@ export default async function BusinessLoginPage({ searchParams }: {
   const { error, success } = await searchParams;
   const client = await createClient();
   const { data: { user } } = await client.auth.getUser();
-  // The portal checks approval, password setup and authenticator assurance.
-  if (user?.email_confirmed_at) redirect("/account/portal");
+  const application = user?.email_confirmed_at ? await businessApplication(user.id) : null;
+  // Only approved business accounts continue to the portal's password and MFA checks.
+  if (application?.status === "APPROVED") redirect("/account/portal");
+  const notRegistered = Boolean(user?.email_confirmed_at);
+  const loginError = error || (notRegistered ? "You are not registered for the B2B Portal." : null);
 
   return <div className={s.page}>
     <section className={s.card} aria-labelledby="business-login-title">
@@ -26,7 +30,7 @@ export default async function BusinessLoginPage({ searchParams }: {
         <span className={s.wordmark}>iNgame<span>PIN</span></span>
       </Link>
       <h1 id="business-login-title" className={s.title}>B2B portal</h1>
-      {error && <p role="alert" className={s.error}>{error}</p>}
+      {loginError && <p role="alert" className={s.error}>{loginError}{notRegistered && <span className="mt-1 block text-xs">{user?.email}</span>}</p>}
       {success && <p role="status" className={s.success}>{success}</p>}
       <form action={customerLogin} className={s.form}>
         <input type="hidden" name="login_area" value="business" />

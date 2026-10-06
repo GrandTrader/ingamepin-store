@@ -92,7 +92,7 @@ export async function customerLogin(formData: FormData) {
     );
   }
 
-  redirect(business ? "/account/portal" : "/account/dashboard");
+  redirect(business ? "/business/login" : "/account/dashboard");
 }
 
 export async function recordCustomerPasskeyLogin() {
