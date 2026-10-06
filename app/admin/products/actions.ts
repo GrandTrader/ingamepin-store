@@ -958,8 +958,8 @@ export async function updateProduct(
         );
 
         if (
-          !Number.isInteger(denomination) ||
-          denomination <= 0
+          !/^\d+(?:\.\d{1,4})?$/.test(denominationValue) ||
+          !Number.isFinite(denomination) || denomination <= 0 || denomination > 2147483647
         ) {
           productRedirect(
             id,

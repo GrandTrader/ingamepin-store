@@ -6,14 +6,16 @@ const {PGlite}=require(process.env.PGLITE_PATH || path.join(process.env.TEMP,"ig
  await db.exec(
   "create role anon; create role authenticated; create role service_role;"+
   "create type order_status as enum ('PENDING_PAYMENT','PAYMENT_REVIEW','PAID','PROCESSING','DELIVERED','CANCELLED','REFUNDED');"+
-  "create table products(id uuid primary key,name text,seller_id uuid,stock_quantity int default 0,delivery_type text default 'MANUAL',allows_custom_value boolean default false,allows_player_id_topup boolean default false,updated_at timestamptz);"+
-  "create table product_options(id uuid primary key,product_id uuid references products(id),is_active boolean default true,stock_quantity int default 0,is_in_stock boolean default false,updated_at timestamptz);"+
+  "create table products(id uuid primary key,name text,denomination integer,seller_id uuid,stock_quantity int default 0,delivery_type text default 'MANUAL',allows_custom_value boolean default false,allows_player_id_topup boolean default false,updated_at timestamptz);"+
+  "create table product_options(id uuid primary key,product_id uuid references products(id),denomination integer,is_active boolean default true,stock_quantity int default 0,is_in_stock boolean default false,updated_at timestamptz);"+
   "create table orders(id uuid primary key,status order_status default 'PENDING_PAYMENT',paid_at timestamptz,currency text default 'USD',subtotal numeric default 20,discount numeric default 0,total numeric default 20,delivered_at timestamptz,updated_at timestamptz);"+
-  "create table order_items(id uuid primary key,order_id uuid references orders(id),product_id uuid,product_option_id uuid,quantity int,custom_value numeric,fulfillment_mode text default 'CODE',service_delivered_at timestamptz,denomination numeric,unit_price numeric default 20,total_price numeric default 20);"+
-  "create table gift_card_codes(id uuid primary key default gen_random_uuid(),product_id uuid,product_option_id uuid,order_item_id uuid,denomination numeric,code text unique,status text,note text,reserved_at timestamptz,sold_at timestamptz);"+
+  "create table order_items(id uuid primary key,order_id uuid references orders(id),product_id uuid,product_option_id uuid,quantity int,custom_value numeric,fulfillment_mode text default 'CODE',service_delivered_at timestamptz,denomination integer,unit_price numeric default 20,total_price numeric default 20);"+
+  "create table gift_card_codes(id uuid primary key default gen_random_uuid(),product_id uuid,product_option_id uuid,order_item_id uuid,denomination integer,code text unique,status text,note text,reserved_at timestamptz,sold_at timestamptz);"+
   "create table payments(order_id uuid,status text,currency text,amount numeric);"+
   "create table order_item_refunds(order_id uuid,order_item_id uuid,status text,quantity int);"
  );
+ // Exercise the upgrade from the original integer schema, not a numeric-only fixture.
+ await db.exec(fs.readFileSync("supabase/migrations/20261006_160000_decimal_product_denominations.sql","utf8"));
  await db.exec(fs.readFileSync("supabase/migrations/20260918_234000_sync_code_inventory.sql","utf8"));
  await db.exec(fs.readFileSync("supabase/migrations/20260925_150000_definiteplay_fulfillment.sql","utf8"));
  await db.exec("create trigger stock_guard before insert on order_items for each row execute function guard_order_item_combined_stock()");
@@ -21,8 +23,8 @@ const {PGlite}=require(process.env.PGLITE_PATH || path.join(process.env.TEMP,"ig
  const query=(sql,p=[])=>db.query(sql,p);
  const one=async(sql,p=[]) => (await query(sql,p)).rows[0];
  const reject=async(sql,p=[])=>{await assert.rejects(query(sql,p));};
- await query("insert into products(id,name) values($1,'Test')",[id(1)]);
- await query("insert into product_options(id,product_id) values($1,$2)",[id(2),id(1)]);
+ await query("insert into products(id,name,denomination) values($1,'Test',4.99)",[id(1)]);
+ await query("insert into product_options(id,product_id,denomination) values($1,$2,4.99)",[id(2),id(1)]);
  const mappings=JSON.stringify([{optionId:id(2),sku:"APPLE10"}]);
  await assert.rejects(query("select configure_definiteplay_product($1,true,$2)",[id(1),mappings]),/invalid input value for enum order_status/);
  await db.exec(fs.readFileSync("supabase/migrations/20260925_160000_fix_definiteplay_order_status_guard.sql","utf8"));
@@ -36,7 +38,7 @@ const {PGlite}=require(process.env.PGLITE_PATH || path.join(process.env.TEMP,"ig
  assert.equal((await one("select stock_quantity from products")).stock_quantity,10);
  await reject("insert into gift_card_codes(product_id,code,status) values($1,'manual','AVAILABLE')",[id(1)]);
  await query("insert into orders(id) values($1)",[id(3)]);
- await query("insert into order_items(id,order_id,product_id,product_option_id,quantity,denomination) values($1,$2,$3,$4,1,10)",[id(4),id(3),id(1),id(2)]);
+ await query("insert into order_items(id,order_id,product_id,product_option_id,quantity,denomination) values($1,$2,$3,$4,1,(select denomination from product_options where id=$4))",[id(4),id(3),id(1),id(2)]);
  assert.equal((await one("select count(*)::int n from definiteplay_jobs")).n,1);
  assert.equal((await one("select claim_definiteplay_job() job")).job,null,"unpaid must not claim");
  await query("update orders set status='PAID',paid_at=now() where id=$1",[id(3)]);
@@ -57,6 +59,8 @@ const {PGlite}=require(process.env.PGLITE_PATH || path.join(process.env.TEMP,"ig
  await reject("select complete_definiteplay_job($1,$2,$3,11)",[id(4),job.lease_token,["TEST-CODE"]]);
  await query("select complete_definiteplay_job($1,$2,$3,9.80)",[id(4),job.lease_token,["TEST-CODE"]]);
  assert.equal((await one("select status from orders")).status,"DELIVERED");
+ for(const table of ["products","product_options","order_items","gift_card_codes"])
+   assert.equal(Number((await one("select denomination from "+table)).denomination),4.99,table+" preserves the exact face value");
  assert.equal((await one("select count(*)::int n from gift_card_codes")).n,1);
  await query("select complete_definiteplay_job($1,$2,$3,9.80)",[id(4),job.lease_token,["TEST-CODE"]]);
  assert.equal((await one("select count(*)::int n from gift_card_codes")).n,1);

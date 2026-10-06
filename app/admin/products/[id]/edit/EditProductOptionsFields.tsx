@@ -262,8 +262,9 @@ export default function EditProductOptionsFields({
                     <span className="text-sm font-bold">Denomination</span>
                     <input
                       type="number"
-                      min="1"
-                      step="1"
+                      min="0.0001"
+                      max="2147483647"
+                      step="0.0001"
                       required
                       value={row.denomination ?? ""}
                       onChange={(event) =>

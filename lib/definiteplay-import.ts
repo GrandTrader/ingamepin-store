@@ -69,7 +69,7 @@ export function prepareSupplierDraft(input:SupplierImportInput,items:DefinitePla
     }
     const months=supplierSubscriptionMonths(item);
     const denomination=months??Number(row.denomination);
-    if(months===null && (typeof row.denomination!=="string" || !/^\d+(?:\.0+)?$/.test(row.denomination) || !Number.isSafeInteger(denomination) || denomination<=0 || denomination>1000000000))throw new Error("Enter a positive whole-number denomination for "+item.name+". Selling prices can contain decimals.");
+    if(months===null && (typeof row.denomination!=="string" || !/^\d+(?:\.\d{1,4})?$/.test(row.denomination) || !Number.isFinite(denomination) || denomination<=0 || denomination>1000000000))throw new Error("Enter a positive denomination with up to four decimal places for "+item.name+".");
     if(typeof row.currency!=="string" || !/^[A-Z]{3}$/.test(row.currency))throw new Error("Use a three-letter denomination currency.");
     return {sku:item.sku,name:item.name.slice(0,150)||item.sku,denomination,currency:row.currency,optionType:months===null?"CURRENCY":"OTHER",price:Number(sellingPrice)};
   });

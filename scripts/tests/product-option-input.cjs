@@ -33,7 +33,7 @@ test('explicit zero price retains existing admin behavior', () => {
   assert.equal(parse({ sellingPrice: '0' }).sellingPrice, 0);
 });
 test('invalid denomination is rejected instead of silently truncated', () => {
-  for (const value of ['', null, false, [], '1.5', '0', '-1']) assert.throws(() => parse({ denomination: value }), /denomination/);
+  for (const value of ['', null, false, [], '1.55555', '0', '-1', 'Infinity', '1e2', '2147483648']) assert.throws(() => parse({ denomination: value }), /denomination/);
 });
 test('bad payloads and malformed rows give validation errors', () => {
   for (const value of ['bad', 'null', '{}', '[]', '[null]', '[12]']) assert.throws(() => parseProductOptions(value));
@@ -95,4 +95,13 @@ test('save action rejects an empty edited price before any database write', asyn
   form.set('options',JSON.stringify([{ ...row,sellingPrice:'' }]));
   await assert.rejects(() => app.save(form), /error=Option 1.*selling price/);
   assert.equal(app.writes.length,0);
+});
+
+test('decimal denominations survive editing and saving without rounding', async () => {
+  for (const value of ['4.99', 9.99, '0.5', '12.3456']) assert.equal(parse({denomination:value}).denomination,Number(value));
+  const app=loadSaveAction();const form=new FormData();form.set('id','test-product');
+  form.set('options',JSON.stringify([{...row,denomination:'4.99',sellingPrice:'4.84'}]));
+  await assert.rejects(()=>app.save(form),/success=Product options saved/);
+  assert.equal(app.writes[0].values.denomination,4.99);
+  assert.equal(app.writes[0].values.selling_price,4.84);
 });

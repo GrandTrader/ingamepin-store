@@ -48,8 +48,7 @@ function harness({denied=false,stale=false,stock=[item],optionsFail=false,linkFa
         assert.equal(admin,true);
         calls.push(["insert",table,payload]);
         if(table==="products"){savedProduct={id:payload.id,slug:payload.slug};return {error:null};}
-        const invalidInteger=payload.some(o=>!Number.isInteger(o.denomination));
-        return {error:optionsFail||invalidInteger?{code:"22P02",message:"invalid integer"}:null};
+        return {error:optionsFail?{code:"XX000",message:"option save failed"}:null};
       },
     };return c;
   };
@@ -298,13 +297,26 @@ test("Game Pass duration defaults do not use retail face value or alter manual p
   assert.equal(logic.supplierSubscriptionMonths({...item,name:"Xbox 100 USD"}),null);
 });
 
-test("fractional gift card values are rejected before any draft write, never rounded",async()=>{
-  const card={...item,cardValue:"9.99"};
-  assert.equal(logic.supplierDefaultDenomination(card),"9.99");
-  for(const denomination of ["9.99","0","-1","NaN","1000000001"]){
+test("fractional card values import unchanged with the original supplier SKU",async()=>{
+  for(const denomination of ["4.99","9.99","99.99","0.5","12.3456"]){
+    const card={...item,name:"Riot "+denomination+" USD",cardValue:denomination};
+    assert.equal(logic.supplierDefaultDenomination(card),denomination);
     const {api,calls}=harness({stock:[card]});
     const result=await api.importSupplierProduct(input({options:[{sku:card.sku,expectedCost:card.price,denomination,currency:"USD"}]}));
-    assert.match(result.error,/whole-number/);
+    assert.equal(result.productId,requestId);assert.equal(result.warning,undefined);
+    const option=calls.find(c=>c[0]==="insert"&&c[1]==="product_options")[2][0];
+    assert.equal(option.denomination,Number(denomination));
+    assert.equal(calls.find(c=>c[0]==="link")[2].body.sku,card.sku);
+  }
+});
+
+test("invalid or overprecise values are rejected before any draft write, never rounded",async()=>{
+  const card={...item,cardValue:"9.99"};
+  assert.equal(logic.supplierDefaultDenomination(card),"9.99");
+  for(const denomination of ["4.99999","0","-1","NaN","Infinity","1e2","0x10","1000000001"]){
+    const {api,calls}=harness({stock:[card]});
+    const result=await api.importSupplierProduct(input({options:[{sku:card.sku,expectedCost:card.price,denomination,currency:"USD"}]}));
+    assert.match(result.error,/denomination/);
     assert.equal(calls.filter(c=>c[0]==="insert").length,0);
   }
 });

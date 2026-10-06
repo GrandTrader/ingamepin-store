@@ -1,3 +1,10 @@
+// Fixed card values may have up to four decimal places; never round a face value.
+export function isValidProductDenomination(value: unknown): boolean {
+  if (typeof value !== "number" && typeof value !== "string") return false;
+  return /^\d+(?:\.\d{1,4})?$/.test(String(value)) &&
+    Number(value) > 0 && Number(value) <= 2147483647;
+}
+
 export type SubmittedProductOption = {
   id: string;
   name: string;
@@ -35,8 +42,8 @@ export function parseProductOptions(payload: string): SubmittedProductOption[] {
     const sellingPrice = inputNumber(option.sellingPrice);
     const label = `Option ${index + 1}${name ? ` (${name})` : ""}`;
     if (!name) throw new Error(`${label}: enter an option name.`);
-    if (!Number.isInteger(denomination) || denomination <= 0) {
-      throw new Error(`${label}: enter a positive whole-number denomination.`);
+    if (!isValidProductDenomination(option.denomination)) {
+      throw new Error(`${label}: enter a positive denomination with up to four decimal places.`);
     }
     if (!/^[A-Z]{3}$/.test(currency)) {
       throw new Error(`${label}: select a valid currency.`);
