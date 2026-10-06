@@ -59,16 +59,18 @@ async function clearPendingSignupEmail() {
 }
 
 export async function customerLogin(formData: FormData) {
+  const business = formData.get("login_area") === "business";
+  const loginPath = business ? "/business/login" : "/account";
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const captchaToken = String(formData.get("captcha_token") ?? "").trim();
 
   if (!captchaToken) {
-    accountRedirect("/account", "error", "Complete the security check before signing in.");
+    accountRedirect(loginPath, "error", "Complete the security check before signing in.");
   }
 
   if (!email || password.length < 8) {
-    accountRedirect("/account", "error", "Enter a valid email and password.");
+    accountRedirect(loginPath, "error", "Enter a valid email and password.");
   }
 
   const supabase = await createClient();
@@ -76,7 +78,7 @@ export async function customerLogin(formData: FormData) {
 
   if (result.error || !result.data.user) {
     accountRedirect(
-      "/account",
+      loginPath,
       "error",
       getAuthErrorMessage(result.error, "login"),
     );
@@ -90,7 +92,7 @@ export async function customerLogin(formData: FormData) {
     );
   }
 
-  redirect("/account/dashboard");
+  redirect(business ? "/account/portal" : "/account/dashboard");
 }
 
 export async function recordCustomerPasskeyLogin() {

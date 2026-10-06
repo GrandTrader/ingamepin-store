@@ -1,0 +1,25 @@
+.page { width: 100%; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; background: #f1eee9; color: #201335; }
+.card { width: 100%; max-width: 440px; border: 1px solid #e2dcee; border-radius: 18px; background: #fff; padding: 32px; box-shadow: 0 8px 30px #20133505; }
+.brand { display: flex; flex-direction: column; align-items: center; gap: 12px; text-decoration: none; color: #142139; }
+.logo { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 16px; background: #10cbe0; color: #123348; font-weight: 900; font-size: 26px; }
+.wordmark { font-weight: 850; font-size: 25px; letter-spacing: -.8px; }
+.wordmark > span { color: #00abc4; }
+.title { margin: 6px 0 26px; text-align: center; color: #776687; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
+.form { display: flex; flex-direction: column; gap: 17px; }
+.label { display: block; font-size: 14px; font-weight: 700; }
+.input, .password { display: block; width: 100%; min-width: 0; height: 46px; border: 1px solid #d8cfe5; border-radius: 8px; padding: 10px 13px; background: white; color: #201335; font-size: 16px; outline: none; }
+.input { margin-top: 8px; }
+.password { padding-right: 65px; }
+.input:focus, .password:focus { border-color: #654b91; box-shadow: 0 0 0 3px #654b911a; }
+.submit { width: 100%; min-height: 48px; border-radius: 8px; background: #3e2a68; color: white; font-size: 15px; font-weight: 750; cursor: pointer; transition: background .15s; }
+.submit:hover { background: #302050; }
+.submit:disabled { opacity: .65; cursor: wait; }
+.forgot { display: block; width: fit-content; margin: 22px auto 0; color: #4b3276; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.enquiry { margin: 23px 0 0; text-align: center; font-size: 13px; line-height: 1.7; color: #746a80; }
+.enquiry a { color: #4b3276; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+.returnLink { margin-top: 20px; padding: 8px; color: #746a80; font-size: 13px; }
+.error, .success { margin: 0 0 18px; padding: 12px; border-radius: 8px; font-size: 14px; overflow-wrap: anywhere; }
+.error { background: #fff1f2; color: #9f1239; }
+.success { background: #ecfdf5; color: #065f46; }
+.page a:focus-visible, .submit:focus-visible { outline: 3px solid #00a5bf; outline-offset: 4px; }
+@media (max-width: 480px) { .page { padding: 24px 12px; } .card { padding: 26px 20px; border-radius: 14px; } }

@@ -10,7 +10,7 @@ import { dateBoundary, indiaMonth, monthlyBusinessTier, type SpendOrder, type Sp
 export const portalCustomer = cache(async () => {
   const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
-  if (!user?.email || !user.email_confirmed_at) redirect("/account?error=Please sign in with a verified email.");
+  if (!user?.email || !user.email_confirmed_at) redirect("/business/login?error=Please sign in with a verified email.");
   const application = await businessApplication(user.id);
   if (application?.status !== "APPROVED") redirect("/account/business");
   if (!(await businessSessionReady(session, user.id))) redirect("/account/business/setup");

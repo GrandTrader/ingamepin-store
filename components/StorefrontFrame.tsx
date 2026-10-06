@@ -21,6 +21,7 @@ export default function StorefrontFrame({ children, header, footer, extras }: {
 }) {
   const pathname = usePathname();
   const business = isBusinessPortalPath(pathname);
+  if (pathname === "/business/login") return <main className="flex min-h-dvh flex-1 flex-col bg-[#f1eee9]">{children}</main>;
   if (business) return <BusinessFrame>{children}</BusinessFrame>;
   if (pathname === "/account") return <main className="flex min-h-dvh flex-1 flex-col justify-center bg-slate-100">{children}</main>;
   return <>{header}<main className="flex flex-1 flex-col">{children}</main>{footer}{extras}</>;

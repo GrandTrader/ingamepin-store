@@ -17,6 +17,6 @@ export default async function BusinessEnquiryPage() {
     <h1 className="text-2xl font-black">B2B & API business enquiry</h1>
     <p className="text-sm text-slate-600">Tell us about your business. Our team will contact you by email.</p>
     <BusinessInterestForm email="" name="" guest action={submitGuestBusinessEnquiry}/>
-    <p className="text-sm">Already have an account? <Link className="font-bold text-blue-700" href="/account">Sign in</Link></p>
+    <p className="text-sm">Already have a business account? <Link className="font-bold text-blue-700" href="/business/login">Sign in</Link></p>
   </div></main>;
 }
