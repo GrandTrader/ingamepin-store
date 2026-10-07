@@ -39,7 +39,7 @@ def atomic(path, content, mode):
     temp.replace(path)
 
 services = []
-for provider, folder in (("DEFINITEPLAY", "definiteplay"), ("GIFTPORT", "giftport")):
+for provider, folder in (("DEFINITEPLAY", "definiteplay"),):
     root = Path("/opt/ingamepin-" + folder)
     env_path = Path("/etc/ingamepin-" + folder + ".env")
     config = environment(env_path)
@@ -61,7 +61,7 @@ for provider, folder in (("DEFINITEPLAY", "definiteplay"), ("GIFTPORT", "giftpor
             os.environ.update(previous_env)
     services.append((folder, root, env_path))
 if mode == "check":
-    print("Both supplier backup paths passed the authenticated read-only database check. No changes made.")
+    print("The Definite Play backup path passed the authenticated read-only database check. No changes made.")
     raise SystemExit(0)
 
 saved = []

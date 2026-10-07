@@ -94,3 +94,15 @@ test("cart quantity check uses fresh supplier availability and preserves owned i
  assert.equal(ownedQueries,1);
  option.is_active=false;assert.equal((await api.POST(request)).body.limits[0].availableQuantity,0);
 });
+
+test("retired GiftPort products fail closed while owned and Definite Play products remain usable",async()=>{
+ let source="GIFTPORT";
+ const chain={select(){return this;},async in(){return {data:[{id:"p",stock_source:source}],error:null};}};
+ const api=load("lib/definiteplay-fulfillment.ts",{"@/lib/supabase/admin":{createAdminClient:()=>({from:()=>chain})}});
+ await assert.rejects(api.supplierProductIds(["p"]),/disconnected/);
+ source="OWNED";assert.equal((await api.supplierProductIds(["p"])).size,0);
+ source="DEFINITEPLAY";assert.equal((await api.supplierProductIds(["p"])).has("p"),true);
+ const display=load("lib/product-delivery.ts",{});
+ assert.equal(display.hasInstantDelivery({stock_source:"GIFTPORT",delivery_type:"AUTOMATIC"}),false);
+ assert.equal(display.hasInstantDelivery({stock_source:"DEFINITEPLAY",delivery_type:"MANUAL"}),true);
+});

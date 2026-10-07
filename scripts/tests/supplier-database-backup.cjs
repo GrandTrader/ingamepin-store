@@ -24,7 +24,7 @@ test('rejects unsigned, expired, altered, and unknown provider requests before d
 test('only exact provider operations and argument sets are accepted',async()=>{
  const {api,calls}=harness();
  for(const body of [{name:'delete_all_orders',args:{}},{name:'constructor',args:{}},{name:'claim_definiteplay_job',args:{p_sql:'bad'}},{name:'claim_supplier_job',args:{p_provider:'DEFINITEPLAY'}}])
-  assert.equal((await api.POST(request(body,{provider:'GIFTPORT'}))).status,400);
+  assert.equal((await api.POST(request(body))).status,400);
  assert.equal(calls.length,0);
 });
 test('health is authenticated and read-only',async()=>{
@@ -47,4 +47,11 @@ test('hides database error details and does not retry an ambiguous failure',asyn
 test('rejects oversized request even with declared signature',async()=>{
  const {api,calls}=harness(); const req=request({name:'claim_definiteplay_job',args:{}}); req.headers.set('content-length',String(3*1024*1024));
  assert.equal((await api.POST(req)).status,413); assert.equal(calls.length,0);
+});
+
+test('retired GiftPort requests are rejected even with a valid old signature',async()=>{
+ const {api,calls}=harness();
+ assert.equal((await api.GET(request(null,{provider:'GIFTPORT',method:'GET'}))).status,401);
+ assert.equal((await api.POST(request({name:'claim_supplier_job',args:{p_provider:'GIFTPORT'}},{provider:'GIFTPORT'}))).status,401);
+ assert.equal(calls.length,0);
 });

@@ -1,4 +1,3 @@
-import GiftPortSupplierView from "@/app/admin/giftport/GiftPortSupplierView";
 import ProductSettingsActions from "@/components/ProductSettingsActions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,7 +12,7 @@ import { supplierDeliveryEnabled } from "@/lib/definiteplay-fulfillment";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
-export default async function ProductSupplierPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{provider?:string}>}) {
+export default async function ProductSupplierPage({params}:{params:Promise<{id:string}>}) {
   const session = await requireDefinitePlayAdmin();
   const {id} = await params;
   if (!validProductId(id)) notFound();
@@ -23,8 +22,7 @@ export default async function ProductSupplierPage({params,searchParams}:{params:
   ]);
   if (product.error || options.error) throw new Error("Unable to load product details.");
   if (!product.data) notFound();
-  const provider=(await searchParams).provider;
-  if(provider==="giftport" || (!provider && (product.data.stock_source === "GIFTPORT" || product.data.slug.startsWith("giftport-")))) return <GiftPortSupplierView product={product.data} options={options.data??[]} locked={product.data.stock_source!=="OWNED"}/>;
+  if (product.data.stock_source === "GIFTPORT") return <main className="p-6"><h1 className="text-xl font-bold">Supplier disconnected</h1><p className="mt-3">This product cannot accept new supplier orders. Existing orders require manual review.</p><Link href="/admin/products" className="mt-4 inline-block text-blue-600">Return to products</Link></main>;
   const enabled=product.data.stock_source === "DEFINITEPLAY";
   const configured=enabled||supplierDeliveryEnabled();
   const jobs=configured ? await createAdminClient().from("definiteplay_jobs")
@@ -40,7 +38,6 @@ export default async function ProductSupplierPage({params,searchParams}:{params:
         <h1 className="mt-2 text-3xl font-black">{product.data.name}</h1><p className="mt-1 text-sm text-slate-500">{product.data.slug}</p></div>
         <ProductSettingsActions slug={product.data.slug}><Link href="/admin/definiteplay" className="rounded-xl border px-5 py-3 font-bold text-blue-600">Supplier catalogue</Link></ProductSettingsActions></header>
       <div className="mt-8"><ProductEditPageTabs productId={id} current="supplier"/></div>
-      <nav aria-label="Supplier provider" className="mt-5 flex gap-3"><Link href={`/admin/products/${id}/edit/supplier?provider=definiteplay`} aria-current="page" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">Definite Play</Link><Link href={`/admin/products/${id}/edit/supplier?provider=giftport`} className="rounded-lg border px-4 py-2 font-semibold">GiftPort</Link></nav>
       <SupplierDeliveryControl productId={id} enabled={enabled} configured={configured}/>
       {jobs?.data?.length ? <section className="mt-6 rounded-2xl border p-5"><h2 className="font-black">Recent supplier orders</h2>
         {jobs.data.map(job=><div key={job.item_id} className="mt-3 border-t pt-3 text-sm"><p className="font-bold">{job.state}</p><p className="break-all text-slate-500">{job.supplier_reference}</p>{job.issue&&<p className="text-amber-800">{job.issue}</p>}</div>)}</section>:null}

@@ -19,13 +19,6 @@ const operations: Record<string, Record<string, string[]>> = {
     update_digiseller_supplier_job: ["p_invoice_id", "p_token", "p_state", "p_issue"],
     complete_digiseller_supplier_job: ["p_invoice_id", "p_token", "p_codes", "p_actual_cost"],
   },
-  GIFTPORT: {
-    ...common, giftport_active_options: [], sync_giftport_stock: ["p_rows"],
-    claim_supplier_job: ["p_provider"], next_giftport_card: ["p_item_id", "p_token"],
-    mark_giftport_card_submitted: ["p_item_id", "p_token", "p_ordinal"],
-    record_giftport_card: ["p_item_id", "p_token", "p_ordinal", "p_transaction_id", "p_code"],
-    complete_giftport_job: ["p_item_id", "p_token"],
-  },
 };
 function failure(status: number) {
   return new Response(JSON.stringify({ error: "Supplier database request unavailable" }), { status, headers });
@@ -51,9 +44,7 @@ async function readBounded(stream: ReadableStream<Uint8Array> | null, limit: num
 function authenticate(request: Request, body: Buffer) {
   const provider = request.headers.get("x-supplier-provider") ?? "";
   if (!Object.hasOwn(operations, provider)) return null;
-  const secret = provider === "GIFTPORT"
-    ? process.env.GIFTPORT_RELAY_SECRET || process.env.DEFINITEPLAY_RELAY_SECRET
-    : process.env.DEFINITEPLAY_RELAY_SECRET;
+  const secret = process.env.DEFINITEPLAY_RELAY_SECRET;
   const stamp = request.headers.get("x-supplier-time") ?? "";
   const signature = request.headers.get("x-supplier-signature") ?? "";
   if (!secret || secret.length < 32 || !/^\d{10}$/.test(stamp) ||
@@ -96,7 +87,6 @@ export async function POST(request: Request) {
         !input.args || typeof input.args !== "object" || Array.isArray(input.args)) return failure(400);
     const fields = operations[provider][input.name];
     if (Object.keys(input.args).sort().join(",") !== [...fields].sort().join(",")) return failure(400);
-    if (input.name === "claim_supplier_job" && input.args.p_provider !== "GIFTPORT") return failure(400);
   } catch { return failure(400); }
   try {
     const response = await upstream("rpc/" + input.name, "POST", JSON.stringify(input.args));

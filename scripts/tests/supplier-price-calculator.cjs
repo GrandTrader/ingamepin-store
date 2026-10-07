@@ -38,31 +38,3 @@ test('rejects invalid percentages, values and prices outside storage limits', ()
   assert.throws(() => calc(['999999999'], 'USD', '1000', {}), /outside/);
   assert.throws(() => calc(['0.01'], 'INR', '0', { store_usd_inr_rate: 102 }), /outside/);
 });
-function harness({ denied = false, failure = false } = {}) {
-  let rate = 100, reads = 0;
-  const chain = { select() { return chain; }, eq() { return chain; }, async maybeSingle() { reads++; return { data: { store_usd_inr_rate: rate }, error: failure ? { message: 'private database detail' } : null }; } };
-  const api = load('app/admin/giftport/import/pricing-actions.ts', {
-    '@/lib/giftport-admin': { requireGiftPortAdmin: async () => { if (denied) throw Error('denied'); } },
-    '@/lib/supabase/admin': { createAdminClient: () => ({ from: () => chain }) },
-    '@/lib/supplier-price-calculator': logic,
-  });
-  return { api, setRate: value => { rate = value; }, reads: () => reads };
-}
-test('calculator requires administrator access before reading rates', async () => {
-  const h = harness({ denied: true });
-  await assert.rejects(() => h.api.calculateGiftPortPrices(['1000'], 'INR', '10'), /denied/);
-  assert.equal(h.reads(), 0);
-});
-test('each apply uses the current saved website rate', async () => {
-  const h = harness();
-  assert.equal((await h.api.calculateGiftPortPrices(['1000'], 'INR', '10')).result.prices['1000'], '11.00');
-  h.setRate(110);
-  assert.equal((await h.api.calculateGiftPortPrices(['1000'], 'INR', '10')).result.prices['1000'], '10.00');
-  assert.equal(h.reads(), 2);
-});
-test('rate errors return no replacement prices or private database details', async () => {
-  const response = await harness({ failure: true }).api.calculateGiftPortPrices(['500'], 'INR', '10');
-  assert.equal(response.result, undefined);
-  assert.match(response.error, /Unable to load/);
-  assert.ok(!response.error.includes('private'));
-});

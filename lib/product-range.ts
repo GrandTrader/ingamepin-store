@@ -22,6 +22,6 @@ export function parseRangeSettings(form:FormData){
   const delivery_mode=String(form.get("delivery_mode")??"");
   if(!["MANUAL","SUPPLIER"].includes(delivery_mode))throw Error("Choose a delivery method.");
   const supplier=String(form.get("supplier")??"").trim();
-  if(delivery_mode==="SUPPLIER"&&!["DEFINITEPLAY","GIFTPORT"].includes(supplier))throw Error("Choose a supplier.");
+  if(delivery_mode==="SUPPLIER"&&supplier!=="DEFINITEPLAY")throw Error("Choose a supplier.");
   return {enabled,currency,minimum,maximum,step,price_basis,price_usd,delivery_mode,supplier:delivery_mode==="SUPPLIER"?supplier:null,supplier_reference:String(form.get("supplier_reference")??"").trim().slice(0,100)||null};
 }

@@ -23,7 +23,6 @@ const links = [
   { label: "Products", href: "/admin/products", icon: "PR" },
   { label: "Sellers", href: "/admin/sellers", icon: "SE" },
   { label: "Definite Play", href: "/admin/definiteplay", icon: "DP" },
-  { label: "GiftPort", href: "/admin/giftport", icon: "GP" },
   { label: "Categories", href: "/admin/categories", icon: "CA" },
   { label: "Orders", href: "/admin/orders", icon: "OR" },
   { label: "Refund requests", href: "/admin/refund-requests", icon: "RF" },
@@ -53,7 +52,6 @@ const menuGroups = [
       "/admin/products",
       "/admin/categories",
       "/admin/definiteplay",
-      "/admin/giftport"
     ]
   },
   {
