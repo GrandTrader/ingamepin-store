@@ -71,7 +71,7 @@ export function prepareSupplierDraft(input:SupplierImportInput,items:DefinitePla
     const denomination=months??Number(row.denomination);
     if(months===null && (typeof row.denomination!=="string" || !/^\d+(?:\.\d{1,4})?$/.test(row.denomination) || !Number.isFinite(denomination) || denomination<=0 || denomination>1000000000))throw new Error("Enter a positive denomination with up to four decimal places for "+item.name+".");
     if(typeof row.currency!=="string" || !/^[A-Z]{3}$/.test(row.currency))throw new Error("Use a three-letter denomination currency.");
-    return {sku:item.sku,name:item.name.slice(0,150)||item.sku,denomination,currency:row.currency,optionType:months===null?"CURRENCY":"OTHER",price:Number(sellingPrice)};
+    return {sku:item.sku,name:item.name.slice(0,150)||item.sku,denomination,currency:row.currency,optionType:months===null?"CURRENCY":"OTHER",price:Number(sellingPrice),pricingCost:row.price===undefined||row.price===""?100:Number(item.price),pricingPrice:row.price===undefined||row.price===""?100+Number(input.markup):Number(sellingPrice)};
   });
   if(groups.size!==1)throw new Error("Import one supplier category, region and product version at a time.");
   const region=items.find(i=>i.sku===options[0].sku)!.region.trim()||"Global";

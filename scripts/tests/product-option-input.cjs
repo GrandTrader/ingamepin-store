@@ -60,7 +60,7 @@ function loadSaveAction() {
       update(values) { operation = 'update'; writes.push({ table, values }); return chain; },
       insert(values) { operation = 'insert'; writes.push({ table, values }); return chain; },
       async maybeSingle() { return { data: { category_id: 'category', stock_quantity: 10 } }; },
-      then(resolve, reject) { return Promise.resolve({ data: operation === 'select' ? [{ id: row.id, selling_price: 1.08, is_active: true }] : null, error: null }).then(resolve, reject); },
+      then(resolve, reject) { return Promise.resolve({ data: operation === 'select' ? [{ id: row.id, selling_price: 1.08, is_active: true }] : [{id:row.id}], error: null }).then(resolve, reject); },
     };
     return chain;
   } };

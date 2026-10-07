@@ -344,3 +344,19 @@ test("Game Pass preview shows months instead of fractional face values",()=>{
   assert.ok(!html.includes('value="9.99"'));
   assert.match(html,/value="12"/);assert.match(html,/value="8.64"/);
 });
+
+test("automatic imports preserve the chosen markup and manual prices preserve their effective margin",()=>{
+ const automatic=logic.prepareSupplierDraft(input(),[item]).options[0];
+ assert.equal(automatic.pricingCost,100);assert.equal(automatic.pricingPrice,107);
+ const manualInput=input();manualInput.options[0].price="12.00";
+ const manual=logic.prepareSupplierDraft(manualInput,[item]).options[0];
+ assert.equal(manual.pricingCost,9.3);assert.equal(manual.pricingPrice,12);
+});
+test("import persists private markup references for every created option",async()=>{
+ const {api,calls}=harness();const result=await api.importSupplierProduct(input());
+ assert.equal(result.productId,requestId);
+ const rules=calls.find(row=>row[0]==="insert"&&row[1]==="definiteplay_price_rules")[2];
+ assert.equal(rules.length,1);assert.equal(rules[0].sku,item.sku);
+ assert.equal(rules[0].base_unit_cost,100);assert.equal(rules[0].base_selling_price,107);
+ assert.equal(rules[0].last_applied_price,9.95);
+});

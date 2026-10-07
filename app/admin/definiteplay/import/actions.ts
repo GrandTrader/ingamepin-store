@@ -49,6 +49,11 @@ export async function importSupplierProduct(input:SupplierImportInput):Promise<{
     const saved=await admin.from("product_options").insert(options);
     if(saved.error)throw new Error("options");
     optionsSaved=true;
+    const pricing=await admin.from("definiteplay_price_rules").insert(options.map((option,index)=>({
+      option_id:option.id,sku:draft.options[index].sku,base_unit_cost:draft.options[index].pricingCost,
+      base_selling_price:draft.options[index].pricingPrice,last_applied_price:option.selling_price,
+    })));
+    if(pricing.error)warning="Draft saved. Automatic pricing is not ready; install the supplier pricing database update before enabling delivery.";
     // Keep the draft if any link fails. Retrying the same import cannot create another product.
     for(let i=0;i<options.length;i++){
       await definitePlayRequest("mapping",{method:"PUT",body:{productId,optionId:options[i].id,sku:draft.options[i].sku}});

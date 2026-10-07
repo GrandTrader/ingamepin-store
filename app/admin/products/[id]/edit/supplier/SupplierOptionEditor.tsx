@@ -10,10 +10,11 @@ function ItemDetails({item}:{item:DefinitePlayItem}) {
     <p className="mt-1 text-slate-500">Code: {item.sku} · {item.available?(item.stock===null?"Available; quantity unspecified":item.stock+" available"):"Out of stock"} · {item.asyncOnly?"Processing required":"Standard processing"} · {item.deliveryMethod}</p>
   </div>;
 }
-export default function SupplierOptionEditor({productId,option,mapping}:{
+export default function SupplierOptionEditor({productId,option,mapping,pricing}:{
   productId:string;
   option:{id:string;option_name:string|null;denomination:number;denomination_currency:string|null;selling_price:number|null};
   mapping:DefinitePlayMapping|null;
+  pricing?:{base_unit_cost:number;base_selling_price:number}|null;
 }) {
   const router=useRouter();
   const [query,setQuery]=useState("");
@@ -49,6 +50,7 @@ export default function SupplierOptionEditor({productId,option,mapping}:{
   return <article className="rounded-xl border border-slate-200 p-4">
     <h3 className="font-black">{option.option_name||option.denomination}</h3>
     <p className="mt-1 text-sm text-slate-500">Website value: {option.denomination} {option.denomination_currency} · Selling price: USD {Number(option.selling_price??0).toFixed(2)}</p>
+    {pricing && <p className="mt-1 text-sm font-semibold text-emerald-700">Automatic markup: {((Number(pricing.base_selling_price)/Number(pricing.base_unit_cost)-1)*100).toLocaleString("en-US",{maximumFractionDigits:4})}%</p>}
     <div className="mt-3 rounded-lg bg-slate-50 p-3">{mapping?.supplier?<><p className="mb-2 text-xs font-bold uppercase text-emerald-700">Linked supplier item</p><ItemDetails item={mapping.supplier}/></>:<p className="text-sm">{mapping?"Linked code "+mapping.sku+" is no longer in the current supplier catalogue.":"No supplier item linked."}</p>}</div>
     <label className="mt-4 block text-sm font-bold" htmlFor={"supplier-search-"+option.id}>Search supplier product or code</label>
     <input id={"supplier-search-"+option.id} value={query} disabled={pending} onChange={e=>{setQuery(e.target.value);setSelected(null);setItems([]);setStale(false);setSearchStatus(e.target.value.trim().length>=2?"Searching…":"");}} placeholder="For example: Apple 10 USD" className="mt-2 w-full rounded-lg border px-3 py-2"/>

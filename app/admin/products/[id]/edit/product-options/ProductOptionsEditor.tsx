@@ -83,7 +83,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
     }
   }
 
-  return <><input type="hidden" name="options" value={JSON.stringify(options)} /><input type="hidden" name="price_reduction_percent" value={appliedReductionPercent} />
+  return <><input type="hidden" name="options" value={JSON.stringify(options.map(option=>({...option,originalSellingPrice:initialOptions.find(initial=>initial.id===option.id&&option.id)?.sellingPrice})))} /><input type="hidden" name="price_reduction_percent" value={appliedReductionPercent} />
     <div className="grid gap-5 xl:grid-cols-[180px_minmax(0,1fr)_250px]">
       <aside className="rounded-xl border border-slate-200 bg-slate-50 p-2"><p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">Options</p><div className="grid gap-1">{options.map((option, index) => <button key={option.id || `new-${index}`} type="button" onClick={() => setSelected(index)} className={`rounded-lg px-3 py-3 text-left text-sm font-bold ${selected === index ? "bg-blue-600 text-white" : "bg-white text-slate-700"}`}>{option.name || `New option ${index + 1}`}</button>)}</div><button type="button" onClick={add} className="mt-3 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 font-bold text-blue-600">+ Add option</button></aside>
 

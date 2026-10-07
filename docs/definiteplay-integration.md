@@ -21,7 +21,7 @@ The server rechecks the selected supplier SKUs and costs before writing. Changed
 
 Imports create DRAFT/MANUAL products with zero owned stock and options marked out of stock. Options are linked to supplier SKUs after creation. If option or mapping persistence fails, the draft is retained and the UI tells the administrator to review it. Re-importing an existing reference does not overwrite it. This intentionally does not simulate atomicity across Supabase and the VPS.
 
-Prices are fixed at import time; later supplier price changes do not automatically reprice products. Edit Product options to change them. A future automatic repricing policy would be a separate feature.
+Automatic pricing for fixed supplier denominations uses the actual USD supplier cost and each option's saved markup. Existing options retain their effective markup; new imports retain the chosen percentage exactly. Editing a selling price establishes a new markup against fresh supplier cost. The private definiteplay_price_rules table stores baseline cost/price pairs to avoid rounding drift. Apply supabase/migrations/20261008_010000_supplier_fixed_markup.sql before deploying the updated importer and price editor. Stale editor forms cannot overwrite newer supplier prices. Existing order prices and supplier purchase limits stay fixed. Non-USD custom-value ranges still require verified supplier billing rates and are not enabled by this update.
 
 ## Configuration
 The website uses server-only DEFINITEPLAY_RELAY_URL and DEFINITEPLAY_RELAY_SECRET.
@@ -64,7 +64,7 @@ The Supplier tab can enable a dedicated DEFINITEPLAY stock source after all acti
 options are linked. Availability comes from supplier USD costs and explicitly
 reported USD Available Balance. Unknown stock quantity is capped at one; known
 stock is capped at 1,000 and the current buying balance. Price changes do not change
-customer selling prices. Stale data (15 minutes), missing products or a missing USD
+previously placed order prices. New selling prices follow each option's saved markup. Stale data (15 minutes), missing products or a missing USD
 balance result in zero availability. Other buyers may consume supplier stock before
 a paid order is processed; stock is not a supplier reservation.
 

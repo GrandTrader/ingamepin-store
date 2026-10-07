@@ -11,6 +11,7 @@ export type SubmittedProductOption = {
   denomination: number;
   currency: string;
   sellingPrice: number;
+  originalSellingPrice?: number;
   isActive: boolean;
   isInStock: boolean;
 };
@@ -55,7 +56,11 @@ export function parseProductOptions(payload: string): SubmittedProductOption[] {
         (option.isInStock !== undefined && typeof option.isInStock !== "boolean")) {
       throw new Error(`${label}: product option settings are invalid.`);
     }
-    return { id: option.id, name, denomination, currency, sellingPrice,
+    const originalSellingPrice = option.originalSellingPrice === undefined ? undefined : inputNumber(option.originalSellingPrice);
+    if (originalSellingPrice !== undefined && (!Number.isFinite(originalSellingPrice) || originalSellingPrice < 0)) {
+      throw new Error(`${label}: reload the original selling price.`);
+    }
+    return { id: option.id, name, denomination, currency, sellingPrice, ...(originalSellingPrice === undefined ? {} : {originalSellingPrice}),
       isActive: option.isActive, isInStock: option.isInStock !== false };
   });
 }

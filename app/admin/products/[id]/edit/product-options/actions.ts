@@ -26,12 +26,23 @@ export async function saveProductOptions(formData: FormData) {
   }
 
   const admin = createAdminClient();
-  const product = await admin.from("products").select("category_id, stock_quantity").eq("id", productId).maybeSingle();
+  const product = await admin.from("products").select("category_id, stock_quantity, stock_source").eq("id", productId).maybeSingle();
   if (!product.data) redirect(`${path}?error=${encodeURIComponent("Product not found.")}`);
 
   const submittedIds = options.map((option) => option.id).filter(Boolean);
   const existingResult = await admin.from("product_options").select("id, selling_price, is_active").eq("product_id", productId).eq("is_custom_value", false);
   if (existingResult.error) redirect(`${path}?error=${encodeURIComponent(existingResult.error.message)}`);
+
+  for (const option of options) {
+    if (!option.id) continue;
+    if (product.data.stock_source === "DEFINITEPLAY" && option.originalSellingPrice === undefined) {
+      redirect(`${path}?error=${encodeURIComponent("Reload this editor before saving supplier prices.")}`);
+    }
+    if (option.originalSellingPrice !== undefined && (option.sellingPrice !== option.originalSellingPrice || preserveDiscountedPrices) &&
+        Number(existingResult.data?.find(row=>row.id===option.id)?.selling_price) !== option.originalSellingPrice) {
+      redirect(`${path}?error=${encodeURIComponent("Supplier prices changed while this editor was open. Reload before changing prices.")}`);
+    }
+  }
 
   let adjustedDiscounts: Array<{ id: string; discountPercent: number | null }> = [];
 
@@ -93,11 +104,16 @@ export async function saveProductOptions(formData: FormData) {
   }
 
   for (const [index, option] of options.entries()) {
-    const values = { category_id: product.data.category_id, option_type: "CURRENCY", option_name: option.name.trim(), denomination: option.denomination, denomination_currency: option.currency, selling_price: option.sellingPrice, sort_order: index, is_active: option.isActive, is_in_stock: option.isInStock !== false, is_custom_value: false, ...(isUnlimitedStock(product.data.stock_quantity) ? { stock_quantity: UNLIMITED_STOCK_QUANTITY } : {}) };
-    const result = option.id
-      ? await admin.from("product_options").update(values).eq("id", option.id).eq("product_id", productId)
-      : await admin.from("product_options").insert({ ...values, product_id: productId, stock_quantity: isUnlimitedStock(product.data.stock_quantity) ? UNLIMITED_STOCK_QUANTITY : 0 });
+    const values = { category_id: product.data.category_id, option_type: "CURRENCY", option_name: option.name.trim(), denomination: option.denomination, denomination_currency: option.currency, ...(!option.id || option.originalSellingPrice === undefined || option.sellingPrice !== option.originalSellingPrice ? {selling_price: option.sellingPrice} : {}), sort_order: index, is_active: option.isActive, is_in_stock: option.isInStock !== false, is_custom_value: false, ...(isUnlimitedStock(product.data.stock_quantity) ? { stock_quantity: UNLIMITED_STOCK_QUANTITY } : {}) };
+    let query = option.id
+      ? admin.from("product_options").update(values).eq("id", option.id).eq("product_id", productId)
+      : admin.from("product_options").insert({ ...values, product_id: productId, stock_quantity: isUnlimitedStock(product.data.stock_quantity) ? UNLIMITED_STOCK_QUANTITY : 0 });
+    if (option.id && option.originalSellingPrice !== undefined && option.sellingPrice !== option.originalSellingPrice) {
+      query=query.eq("selling_price",option.originalSellingPrice);
+    }
+    const result=await query.select("id");
     if (result.error) redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
+    if (!result.data?.length) redirect(`${path}?error=${encodeURIComponent("This option changed while saving. Reload the editor and try again.")}`);
   }
 
   for (const discount of adjustedDiscounts) {

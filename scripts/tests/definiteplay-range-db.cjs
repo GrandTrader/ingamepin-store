@@ -23,6 +23,7 @@ function fn(file,name){const source=read(file),start=source.search(new RegExp('c
  // Reproduce an already-installed function that the production safe-update rule rejects.
  await db.exec(`do $$declare src text;begin src:=pg_get_functiondef('public.sync_definiteplay_ranges(jsonb,timestamptz,boolean)'::regprocedure);execute replace(src,'update definiteplay_ranges set available=false where available=true;','update definiteplay_ranges set available=false;');end;$$;`);
  const safeUpdate=read('20261007_240000_range_sync_safe_update.sql');await db.exec(safeUpdate);await db.exec(safeUpdate);
+ await db.exec(read('20261008_010000_supplier_fixed_markup.sql'));
  const definition=(await db.query("select pg_get_functiondef('public.sync_definiteplay_ranges(jsonb,timestamptz,boolean)'::regprocedure) as source")).rows[0].source;
  assert.ok(definition.includes('update definiteplay_ranges set available=false where available=true;'));
  assert.ok(!definition.includes('update definiteplay_ranges set available=false;'));
