@@ -204,13 +204,14 @@ const PAYMENT_METHOD_IDS: Record<string, string> = {
   wallet: "WALLET",
   binance: "BINANCE_PAY",
   usdt: "USDT_DIRECT",
+  paypal: "PAYPAL",
   pally: "PALLY",
   freekassa: "FREEKASSA",
   upi: "UPI",
   manual_upi: "UPI",
 };
 
-const PAYMENT_METHOD_ORDER = ["wallet", "pally", "manual_upi", "binance", "usdt", "freekassa", "upi"];
+const PAYMENT_METHOD_ORDER = ["wallet", "pally", "manual_upi", "binance", "usdt", "freekassa", "upi", "paypal"];
 
 const initialForm: CheckoutForm = {
   email: "",
@@ -1593,6 +1594,16 @@ export default function CheckoutPage() {
             </div>
 
             <div className={styles.paymentGrid} aria-busy={paymentRestrictions.loading}>
+              {!paymentRestrictions.loading && paymentAllowed("paypal") && <label className={
+                "cursor-pointer rounded-xl border p-3 " + (paymentMethod === "paypal" ? "border-cyan-400 bg-cyan-400/5" : "border-white/10 bg-slate-950")
+              } style={{ order: 10 }}>
+                <input type="radio" name="paymentMethod" value="paypal" checked={paymentMethod === "paypal"}
+                  onChange={() => setPaymentMethod("paypal")} className="sr-only" />
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-lg font-black italic text-blue-800">P</span>
+                  <div><p className="text-sm font-bold">PayPal</p><p className="mt-0.5 text-xs text-slate-500">Secure PayPal checkout · USD</p></div>
+                </div>
+              </label>}
               <label
                 className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "manual_upi"

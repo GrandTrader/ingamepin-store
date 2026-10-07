@@ -32,7 +32,7 @@ export default function PaymentPage() {
       if (
         !parsedOrder?.databaseId ||
         !parsedOrder.accessToken ||
-        !["binance", "nowpayments", "pally", "freekassa", "usdt"].includes(
+        !["binance", "nowpayments", "pally", "freekassa", "usdt", "paypal"].includes(
           parsedOrder.paymentMethod?.toLowerCase() ?? "",
         ) ||
         Number(parsedOrder.totalAmount) <= 0
@@ -74,8 +74,12 @@ export default function PaymentPage() {
     setGatewayOpened(false);
 
     try {
+      if (paymentMethod === "paypal") {
+        sessionStorage.setItem("igp-paypal-storage-check", "1");
+        sessionStorage.removeItem("igp-paypal-storage-check");
+      }
       const response = await fetch(
-        paymentMethod === "nowpayments"
+        paymentMethod === "paypal" ? "/api/paypal/checkout" : paymentMethod === "nowpayments"
           ? "/api/nowpayments/create-invoice"
           : paymentMethod === "pally"
             ? "/api/pally/create-invoice"
@@ -84,8 +88,10 @@ export default function PaymentPage() {
               : "/api/binance-pay/create-order",
         {
         method: "POST",
+        ...(paymentMethod === "paypal" ? { signal: AbortSignal.timeout(55_000) } : {}),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(paymentMethod === "paypal" ? { action: "create" } : {}),
           orderId: order.databaseId,
           accessToken: order.accessToken,
         }),
@@ -100,6 +106,12 @@ export default function PaymentPage() {
         throw new Error(result.error ?? "Unable to open payment gateway.");
       }
 
+      if (paymentMethod === "paypal") {
+        const approval = new URL(result.checkoutUrl);
+        const paypalOrderId = approval.searchParams.get("token");
+        if (approval.origin !== "https://www.paypal.com" || approval.username || approval.password || !paypalOrderId || !/^[A-Z0-9]{10,32}$/.test(paypalOrderId)) throw Error("Invalid PayPal checkout link.");
+        sessionStorage.setItem(`igp-paypal-${order.databaseId}`, JSON.stringify({ orderId: order.databaseId, paypalOrderId }));
+      }
       localStorage.setItem("latestOrder", JSON.stringify(order));
       if (paymentWindow && !paymentWindow.closed) {
         paymentWindow.location.replace(result.checkoutUrl);
@@ -148,7 +160,7 @@ export default function PaymentPage() {
     <main className="min-h-screen bg-slate-950 px-4 py-20 text-white">
       <div className="mx-auto max-w-xl rounded-3xl border border-white/10 bg-slate-900 p-8 text-center">
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">
-          {order.paymentMethod?.toLowerCase() === "nowpayments"
+          {order.paymentMethod?.toLowerCase() === "paypal" ? "PayPal" : order.paymentMethod?.toLowerCase() === "nowpayments"
             ? "NOWPayments"
             : order.paymentMethod?.toLowerCase() === "pally"
               ? "SBP - Faster Payments System"
@@ -158,7 +170,7 @@ export default function PaymentPage() {
         </p>
         <h1 className="mt-3 text-3xl font-black">
           Pay securely with{" "}
-          {order.paymentMethod?.toLowerCase() === "nowpayments"
+          {order.paymentMethod?.toLowerCase() === "paypal" ? "PayPal" : order.paymentMethod?.toLowerCase() === "nowpayments"
             ? "NOWPayments"
             : order.paymentMethod?.toLowerCase() === "pally"
               ? "SBP - Faster Payments System"
@@ -167,7 +179,7 @@ export default function PaymentPage() {
                 : "Binance"}
         </h1>
         <p className="mt-3 text-slate-400">
-          {order.paymentMethod?.toLowerCase() === "freekassa"
+          {order.paymentMethod?.toLowerCase() === "paypal" ? "You will pay in USD on PayPal’s secure website. Your order is fulfilled only after payment confirmation." : order.paymentMethod?.toLowerCase() === "freekassa"
             ? "Continue to the secure SBP payment page. FreeKassa will display the final RUB amount and bank QR code."
             : "Choose an available payment method and complete your order securely. The provider will display the converted payment amount."}
         </p>
@@ -196,7 +208,7 @@ export default function PaymentPage() {
         >
           {isSubmitting
             ? "Opening payment gateway..."
-            : order.paymentMethod?.toLowerCase() === "nowpayments"
+            : order.paymentMethod?.toLowerCase() === "paypal" ? "Continue to PayPal" : order.paymentMethod?.toLowerCase() === "nowpayments"
               ? "Continue to NOWPayments"
               : order.paymentMethod?.toLowerCase() === "pally"
                 ? "Continue to SBP - Faster Payments System"

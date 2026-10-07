@@ -1,4 +1,5 @@
-﻿import { redirect } from "next/navigation";
+﻿import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -50,6 +51,7 @@ export default async function PaymentSettingsPage({
 
         <main className="min-w-0 flex-1 p-5 sm:p-8">
           <h1 className="text-3xl font-black">Payment Settings</h1>
+          <Link href="/admin/payment-settings/paypal" className="mt-3 inline-block text-sm font-bold text-blue-700">PayPal setup and test checkout →</Link>
           <p className="mt-2 text-sm text-slate-500">
             Manage storefront display and payment conversion rates.
           </p>

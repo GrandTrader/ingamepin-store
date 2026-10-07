@@ -1,5 +1,6 @@
 import { supplierRangeLimits } from "@/lib/definiteplay-range-stock";
 import "server-only";
+import { paypalCheckoutAvailable } from "@/lib/paypal-checkout";
 import { businessSessionReady } from "@/lib/business-security";
 import { saveCheckoutConsent } from "@/lib/checkout-consent";
 import { trustedClientIp } from "@/lib/trusted-client-ip";
@@ -128,6 +129,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       wallet: "WALLET",
       binance: "BINANCE_PAY",
       usdt: "USDT_DIRECT",
+      paypal: "PAYPAL",
       pally: "PALLY",
       freekassa: "FREEKASSA",
       upi: "UPI",
@@ -136,6 +138,10 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
 
     if (!paymentMethodId[requestedPaymentMethod]) {
       return NextResponse.json({ error: "Payment method is invalid." }, { status: 400 });
+    }
+
+    if (requestedPaymentMethod === "paypal" && !(await paypalCheckoutAvailable())) {
+      return privateJson({ error: "PayPal is currently unavailable." }, 400);
     }
 
     if (["upi", "manual_upi"].includes(requestedPaymentMethod)) {

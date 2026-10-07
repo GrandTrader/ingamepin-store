@@ -1,9 +1,10 @@
+import { paypalCheckoutAvailable } from "@/lib/paypal-checkout";
 import { getPaypalychRestrictions } from "@/lib/paypalych-product-policy-server";
 import { NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const ALL_METHODS = ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA", "UPI"] as const;
+const ALL_METHODS = ["WALLET", "BINANCE_PAY", "USDT_DIRECT", "PALLY", "FREEKASSA", "UPI", "PAYPAL"] as const;
 const ALL_NETWORKS = ["TRC20", "BEP20", "SOLANA"] as const;
 
 export async function POST(request: NextRequest) {
@@ -42,13 +43,15 @@ export async function POST(request: NextRequest) {
       string,
       { enabled?: boolean }
     >;
+    const paypalAvailable = await paypalCheckoutAvailable();
     const allowedPaymentMethods = ALL_METHODS.filter((method) =>
+      !(method === "PAYPAL" && !paypalAvailable) &&
       !(method === "PALLY" && paypalychBlocked) &&
       (method === "UPI"
         ? gatewaySettings[method]?.enabled === true
         : gatewaySettings[method]?.enabled !== false) &&
       products.every((product) =>
-        (product.allowed_payment_methods ?? ALL_METHODS).includes(method),
+        (method === "PAYPAL" ? product.allowed_payment_methods ?? [] : product.allowed_payment_methods ?? ALL_METHODS).includes(method),
       ),
     );
     const allowedUsdtNetworks = ALL_NETWORKS.filter((network) =>

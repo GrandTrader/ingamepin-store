@@ -11,7 +11,8 @@ type GatewayId =
   | "BINANCE_PAY"
   | "USDT_DIRECT"
   | "PALLY"
-  | "FREEKASSA";
+  | "FREEKASSA"
+  | "PAYPAL";
 
 type GatewayCommission = {
   type: CommissionType;
@@ -31,6 +32,7 @@ const gateways: Array<{
   color: string;
   enabledByDefault: boolean;
 }> = [
+  { id: "PAYPAL", name: "PayPal", description: "USD checkout · requires completed Live setup", icon: "P", color: "bg-blue-100 text-blue-700", enabledByDefault: false },
   {
     id: "WALLET",
     name: "InGamePin Wallet",

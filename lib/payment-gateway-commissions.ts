@@ -4,7 +4,8 @@ export type PaymentGatewayId =
   | "BINANCE_PAY"
   | "USDT_DIRECT"
   | "PALLY"
-  | "FREEKASSA";
+  | "FREEKASSA"
+  | "PAYPAL";
 
 export type GatewayCommission = {
   type: "PERCENTAGE" | "FIXED";
@@ -33,6 +34,8 @@ export function paymentMethodToGatewayId(
       return "USDT_DIRECT";
     case "pally":
       return "PALLY";
+    case "paypal":
+      return "PAYPAL";
     case "freekassa":
       return "FREEKASSA";
     default:

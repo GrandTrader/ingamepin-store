@@ -26,6 +26,7 @@ const paymentMethods = [
   ["BINANCE_PAY", "Binance Pay", "Allow automatic payment through Binance Pay."],
   ["USDT_DIRECT", "Direct USDT", "Allow direct USDT through enabled networks."],
   ["PALLY", "PayPalych", "Allow payment through PayPalych."],
+  ["PAYPAL", "PayPal", "Allow USD payment through PayPal when Live checkout is enabled."],
   ["FREEKASSA", "FreeKassa", "Allow payment through FreeKassa."],
   ["UPI", "Manual Crypto", "Allow manual USDT BEP20 verification."],
 ] as const;
@@ -80,7 +81,7 @@ export default async function RestrictionsPage({ params, searchParams }: Restric
   const product = productResult.data;
   const paypalychBlocked = Boolean(await getProductPaypalychRestriction(id));
   const rule = restrictionResult.data;
-  const allowedPayments = new Set<string>(product.allowed_payment_methods ?? paymentMethods.map(([value]) => value));
+  const allowedPayments = new Set<string>(product.allowed_payment_methods ?? paymentMethods.map(([value]) => value).filter(value => value !== "PAYPAL"));
   const allowedNetworks = new Set<string>(product.allowed_usdt_networks ?? usdtNetworks.map(([value]) => value));
 
   return (

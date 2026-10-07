@@ -14,6 +14,7 @@ export function getCheckoutPaymentCurrency(method: string | null | undefined) {
       return "RUB";
     case "upi":
     case "usdt":
+    case "paypal":
     case "binance":
       return "USD";
     default:

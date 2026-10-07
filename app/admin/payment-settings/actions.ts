@@ -89,6 +89,7 @@ const gatewayIds = [
   "USDT_DIRECT",
   "PALLY",
   "FREEKASSA",
+  "PAYPAL",
 ] as const;
 
 type GatewayId = (typeof gatewayIds)[number];
