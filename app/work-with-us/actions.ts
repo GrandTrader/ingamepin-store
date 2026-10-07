@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { supplierFields } from "@/lib/supplier-application";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, SUPPORT_EMAIL } from "@/lib/email";
 
 function clean(formData: FormData, name: string, maxLength: number) {
   return String(formData.get(name) ?? "").trim().slice(0, maxLength);
@@ -55,7 +55,7 @@ export async function submitPartnerApplication(formData: FormData) {
   const typeLabel = partnerType === "PAYMENT_PROVIDER" ? "Payment Provider" : "Gaming Product Supplier";
   try {
     await sendEmail({
-      to: "amang@ingamepin.com",
+      to: SUPPORT_EMAIL,
       replyTo: email,
       subject: `Partnership application: ${typeLabel} — ${company}`,
       text: `Partnership type: ${typeLabel}\nCompany: ${company}\nContact: ${contactName}\nEmail: ${email}\nWebsite: ${website || "Not provided"}\nCountry: ${country}\nMonthly volume: ${monthlyVolume || "Not provided"}\n\n${supplierText}\n\nProposal:\n${proposal || "Not provided"}`,

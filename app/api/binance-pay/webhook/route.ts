@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { callBinancePay } from "@/lib/binance-pay";
 import { completeDigisellerBinancePayment } from "@/lib/digiseller-binance-pay";
-import { sendEmail, sendOrderStatusEmails } from "@/lib/email";
+import { sendEmail, sendOrderStatusEmails, ORDER_NOTIFICATION_EMAIL } from "@/lib/email";
 import { prepareOrderForManualFulfillment } from "@/lib/manual-fulfillment";
 import { notifyPaidOrderInTelegram } from "@/lib/telegram-order-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -141,7 +141,7 @@ async function sendBinanceWalletEmails(
       text: `${amountLabel} was added to your InGamePin wallet through Binance Pay. Balance: ${balanceLabel}.`,
     }),
     sendEmail({
-      to: "support@ingamepin.com",
+      to: ORDER_NOTIFICATION_EMAIL,
       subject: `Binance wallet top-up completed - ${amountLabel}`,
       html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#0f172a"><h1>Binance wallet top-up completed</h1><p>Customer: <strong>${email}</strong></p><p>Amount credited: <strong>${amountLabel}</strong></p><p>New balance: <strong>${balanceLabel}</strong></p></div>`,
       text: `Binance wallet top-up completed for ${email}. Amount: ${amountLabel}. New balance: ${balanceLabel}.`,

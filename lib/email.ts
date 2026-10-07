@@ -116,7 +116,7 @@ export async function sendEmail({
   subject,
   html,
   text,
-  replyTo = "support@ingamepin.com",
+  replyTo = SUPPORT_EMAIL,
 }: SendEmailInput) {
   const recipient = to.trim().toLowerCase();
 
@@ -136,7 +136,8 @@ export async function sendEmail({
   });
 }
 
-const SUPPORT_EMAIL = "support@ingamepin.com";
+export const SUPPORT_EMAIL = "support@ingamepin.com";
+export const ORDER_NOTIFICATION_EMAIL = "noreply@ingamepin.com";
 
 async function sendOrderEmail(
   input: Omit<
@@ -373,7 +374,7 @@ export async function sendOrderCreatedEmails({
       text: `Your InGamePin order ${orderNumber} has been created. Total: ${totalLabel}. Track it at ${trackingUrl}`,
     }),
     sendOrderEmail({
-      to: "support@ingamepin.com",
+      to: ORDER_NOTIFICATION_EMAIL,
       subject: `New order ${orderNumber} — ${totalLabel}`,
       html: adminHtml,
       text: `New order ${orderNumber} from ${customerEmail}. Total: ${totalLabel}.`,
@@ -488,7 +489,7 @@ export async function sendOrderStatusEmails({
       text: `${eventContent.customerTitle}. Order ${orderNumber}. Status: ${orderStatus}. Track it at ${trackingUrl}`,
     }),
     sendOrderEmail({
-      to: "support@ingamepin.com",
+      to: ORDER_NOTIFICATION_EMAIL,
       subject: `${eventContent.adminTitle} - ${orderNumber}`,
       html: adminHtml,
       text: `${eventContent.adminTitle} for order ${orderNumber}, customer ${customerEmail}, status ${orderStatus}.`,
@@ -544,7 +545,7 @@ export async function sendWalletDebitEmails({
       text: `Wallet payment successful for order ${orderNumber}. Amount deducted: ${amountLabel}. Remaining balance: ${balanceLabel}.`,
     }),
     sendOrderEmail({
-      to: "support@ingamepin.com",
+      to: ORDER_NOTIFICATION_EMAIL,
       subject: `Wallet payment received - ${orderNumber}`,
       html: adminHtml,
       text: `Wallet payment received for order ${orderNumber} from ${customerEmail}. Amount: ${amountLabel}.`,

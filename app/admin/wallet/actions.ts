@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, ORDER_NOTIFICATION_EMAIL } from "@/lib/email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/admin-session";
 
@@ -31,7 +31,7 @@ async function notify(requestId: string, approved: boolean, reason?: string) {
   const message = approved ? `${amount} has been added to your InGamePin wallet.` : `Your ${amount} wallet top-up was rejected. Reason: ${reason}`;
   const results = await Promise.allSettled([
     sendEmail({ to: email, subject: `InGamePin ${title.toLowerCase()}`, html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px"><h1>${title}</h1><p>${message}</p><a href="https://ingamepin.com/account/wallet">Open wallet</a></div>`, text: `${title}. ${message}` }),
-    sendEmail({ to: "support@ingamepin.com", subject: `${title} - ${amount}`, html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px"><h1>${title}</h1><p>Customer: ${email}</p><p>Amount: ${amount}</p>${reason ? `<p>Reason: ${reason}</p>` : ""}</div>`, text: `${title} for ${email}. Amount: ${amount}.` }),
+    sendEmail({ to: ORDER_NOTIFICATION_EMAIL, subject: `${title} - ${amount}`, html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px"><h1>${title}</h1><p>Customer: ${email}</p><p>Amount: ${amount}</p>${reason ? `<p>Reason: ${reason}</p>` : ""}</div>`, text: `${title} for ${email}. Amount: ${amount}.` }),
   ]);
   results.forEach((result) => { if (result.status === "rejected") console.error("Wallet review email failed:", result.reason); });
 }

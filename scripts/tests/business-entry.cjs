@@ -8,9 +8,9 @@ const countries=load('lib/countryCallingCodes.ts'),interest=load('lib/business-i
   if(!status)assert(await page());else await assert.rejects(page(),new RegExp(status==='APPROVED'?'REDIRECT:/account/portal':'REDIRECT:/account/business'));
  }
  let sends=0,allowed=true,mail=null;
- const action=load('app/business/actions.ts',{'next/headers':{headers:async()=>({})},'@/lib/business-interest':interest,'@/lib/request-security':{consumeRate:async()=>allowed},'@/lib/trusted-client-ip':{trustedClientIp:()=> '203.0.113.10'},'@/lib/email':{sendEmail:async value=>{sends++;mail=value;return {rejected:[]}}}}).submitGuestBusinessEnquiry;
+ const action=load('app/business/actions.ts',{'next/headers':{headers:async()=>({})},'@/lib/business-interest':interest,'@/lib/request-security':{consumeRate:async()=>allowed},'@/lib/trusted-client-ip':{trustedClientIp:()=> '203.0.113.10'},'@/lib/email':{SUPPORT_EMAIL:'support@ingamepin.com',sendEmail:async value=>{sends++;mail=value;return {rejected:[]}}}}).submitGuestBusinessEnquiry;
  const f=new FormData();for(const[k,v]of Object.entries({email:'buyer@example.com',legal_name:'Example shop',contact_name:'Example Person',country:'India',interest:'BOTH',activity:'Digital gift card resale',monthly_volume:'USD 5000',consent:'accepted'}))f.set(k,v);
- assert((await action(f)).success);assert.equal(sends,1);assert.equal(mail.to,'amang@ingamepin.com');assert.equal(mail.replyTo,'buyer@example.com');assert(mail.text.includes('USD 5000'));
+ assert((await action(f)).success);assert.equal(sends,1);assert.equal(mail.to,'support@ingamepin.com');assert.equal(mail.replyTo,'buyer@example.com');assert(mail.text.includes('USD 5000'));
  allowed=false;assert((await action(f)).error);assert.equal(sends,1);allowed=true;f.set('email','bad\r\nCc: attacker@example.com');assert((await action(f)).error);assert.equal(sends,1);f.set('company_site','spam');assert((await action(f)).success);assert.equal(sends,1);
  console.log('PASS: guest enquiry page, approved/pending/revoked routing, enquiry validation, fixed internal recipient, rate limits and spam trap. No real emails sent.');
 })().catch(e=>{console.error(e);process.exitCode=1});

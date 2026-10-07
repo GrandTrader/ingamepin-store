@@ -1,5 +1,6 @@
 import "server-only";
 import { notifyAdminsByPush } from "@/lib/admin-push";
+import { sendEmail, SUPPORT_EMAIL } from "@/lib/email";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -16,12 +17,26 @@ export async function notifyNewSupportMessage(input: {
   customerEmail: string | null;
   message: string;
 }) {
-  await notifyAdminsByPush(`chat:${input.messageId}`, {
-    title: "New live-chat message",
-    body: `${input.customerName}: ${input.message.slice(0, 140)}`,
-    url: "/admin/live-chat",
-    tag: `chat-${input.conversationId}`,
-  });
+  const replyTo = input.customerEmail?.trim().toLowerCase();
+  const canReply = replyTo && replyTo.length <= 254 && /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i.test(replyTo);
+  const message = input.message.slice(0, 4000);
+  const alerts = await Promise.allSettled([
+    notifyAdminsByPush(`chat:${input.messageId}`, {
+      title: "New live-chat message",
+      body: `${input.customerName}: ${input.message.slice(0, 140)}`,
+      url: "/admin/live-chat",
+      tag: `chat-${input.conversationId}`,
+    }),
+    sendEmail({
+      to: SUPPORT_EMAIL,
+      replyTo: canReply ? replyTo : SUPPORT_EMAIL,
+      subject: "New InGamePin support enquiry",
+      text: `Customer: ${input.customerName}\nEmail supplied: ${input.customerEmail || "Not provided"}\nConversation: ${input.conversationId}\n\n${message}\n\nOpen live chat: https://www.ingamepin.com/admin/live-chat`,
+      html: `<div style="font-family:Arial,sans-serif"><h1>New support enquiry</h1><p><strong>Customer:</strong> ${escapeHtml(input.customerName)}</p><p><strong>Email supplied:</strong> ${escapeHtml(input.customerEmail || "Not provided")}</p><p><strong>Conversation:</strong> ${escapeHtml(input.conversationId)}</p><p style="white-space:pre-wrap">${escapeHtml(message)}</p><a href="https://www.ingamepin.com/admin/live-chat">Open live chat</a></div>`,
+    }).then(result => { if (result.rejected?.length) throw new Error("Support email rejected."); }),
+  ]);
+  // Saved chat messages still succeed if an alert provider is unavailable.
+  for (const alert of alerts) if (alert.status === "rejected") console.error("Support admin notification failed.");
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
 

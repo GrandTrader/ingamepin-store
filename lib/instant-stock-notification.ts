@@ -1,7 +1,7 @@
 import "server-only";
 
 import { notifyAdminsByPush } from "@/lib/admin-push";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, ORDER_NOTIFICATION_EMAIL } from "@/lib/email";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type OrderItemRow = {
@@ -153,9 +153,7 @@ export async function notifySoldOutInstantOptions(orderId: string) {
           tag: `sold-out-${option.id}`,
         }),
         sendEmail({
-          to:
-            process.env.ADMIN_NOTIFICATION_EMAIL?.trim() ||
-            "support@ingamepin.com",
+          to: ORDER_NOTIFICATION_EMAIL,
           subject,
           html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;color:#0f172a"><h1 style="font-size:24px">Instant product sold out</h1><p><strong>Product:</strong> ${escapeHtml(product.name)}</p><p><strong>Denomination:</strong> ${escapeHtml(optionLabel)}</p><p><strong>Available quantity:</strong> 0</p><a href="${adminUrl}" style="display:inline-block;margin-top:16px;background:#0f172a;color:#fff;text-decoration:none;padding:12px 18px;border-radius:9px;font-weight:700">Add voucher codes</a></div>`,
           text: `${body} Add voucher codes: ${adminUrl}`,

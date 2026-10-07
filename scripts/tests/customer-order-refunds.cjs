@@ -24,13 +24,14 @@ test('refund choices follow original gateway while keeping wallet common to ever
 test('customer cannot submit arbitrary references, methods or unbounded text',()=>{
   for(const fields of [{order_id:'wrong'},{method:'BANK_UNSUPPORTED'},{reason:'x'},{reason:'x'.repeat(1001)},{details:'x'.repeat(1001)}])assert.throws(()=>logic.parseRefundRequest(form(fields)));
 });
-function customerHarness({denied=false,rpcError=null}={}) {
+function customerHarness({denied=false,rpcError=null,emailError=false}={}) {
  const calls=[];
  const api=load('app/account/orders/refund-actions.ts',{
   'next/cache':{revalidatePath:path=>calls.push(['revalidate',path])},
   '@/lib/customer-account-data':{requireCustomer:async()=>{calls.push(['auth']);if(denied)throw Error('denied');return {user:{id:user}};}},
   '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async(name,args)=>{calls.push(['rpc',name,args]);return {data:order,error:rpcError};}})},
   '@/lib/order-refund-request':logic,
+  '@/lib/email':{SUPPORT_EMAIL:'support@ingamepin.com',sendEmail:async message=>{calls.push(['email',message]);if(emailError)throw Error('SMTP offline');return {rejected:[]};}},
  });return {api,calls};
 }
 test('customer action authenticates first and takes identity only from session',async()=>{
@@ -40,7 +41,7 @@ test('customer action authenticates first and takes identity only from session',
 });
 test('customer validation and RPC failures never report success',async()=>{
  const h=customerHarness();assert.ok((await h.api.requestOrderRefund(form({method:'x'}))).error);assert.ok(!h.calls.some(c=>c[0]==='rpc'));
- const e=customerHarness({rpcError:{code:'XX',message:'private backend details'}});const result=await e.api.requestOrderRefund(form());assert.ok(result.error);assert.ok(!result.error.includes('private'));assert.ok(!e.calls.some(c=>c[0]==='revalidate'));
+ const e=customerHarness({rpcError:{code:'XX',message:'private backend details'}});const result=await e.api.requestOrderRefund(form());assert.ok(result.error);assert.ok(!result.error.includes('private'));assert.ok(!e.calls.some(c=>c[0]==='revalidate'));assert.ok(!e.calls.some(c=>c[0]==='email'));
 });
 function adminHarness({denied=false}={}) {
  const calls=[];const chain={select(){return chain;},eq(){return chain;},async maybeSingle(){return {data:{order_id:order},error:null};}};
@@ -133,4 +134,8 @@ test('per-order refund switch requires admin session and strict order/enabled va
   const args=h.calls.find(c=>c[0]==='rpc');assert.equal(args[1],'set_order_refund_permission');assert.equal(args[2].p_admin_id,user);assert.equal(args[2].p_order_id,order);assert.equal(args[2].p_enabled,enabled==='true');
   assert.ok(h.calls.some(c=>c[0]==='revalidate'&&c[1]===`/account/orders/${order}`));
  }
+});
+
+test('refund enquiries notify support after saving and SMTP failure does not invalidate the request',async()=>{
+ for(const emailError of [false,true]){const h=customerHarness({emailError});assert.equal((await h.api.requestOrderRefund(form())).success,true);const index=h.calls.findIndex(c=>c[0]==='email');assert(index>h.calls.findIndex(c=>c[0]==='rpc'));assert.equal(h.calls[index][1].to,'support@ingamepin.com');assert(!h.calls[index][1].text.includes('payout_details'));}
 });
