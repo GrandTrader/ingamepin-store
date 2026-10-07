@@ -1594,6 +1594,33 @@ export default function CheckoutPage() {
 
             <div className={styles.paymentGrid} aria-busy={paymentRestrictions.loading}>
               <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "manual_upi"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="manual_upi"
+                  checked={!paymentRestrictions.loading && paymentAllowed("manual_upi") && paymentMethod === "manual_upi"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("manual_upi")}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                  className="sr-only"
+                />
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600">
+                    <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 max-w-none scale-150 object-contain" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold leading-snug">UPI</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">{paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("manual_upi") ? "Unavailable for this order" : "Scan QR · Submit 12-digit UPI reference"}</p>
+                  </div>
+                </div>
+              </label>
+
+              <label
                 className={`rounded-xl border p-2.5 transition sm:col-span-2 sm:p-3 ${
                   paymentMethod === "wallet"
                     ? "border-cyan-400 bg-cyan-400/5"
@@ -1685,33 +1712,6 @@ export default function CheckoutPage() {
                     <p className="mt-0.5 text-xs leading-snug text-slate-500">
                       {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("pally") ? "Unavailable for this order" : "Pay securely via Pally"}
                     </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "manual_upi"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } `}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="manual_upi"
-                  checked={!paymentRestrictions.loading && paymentAllowed("manual_upi") && paymentMethod === "manual_upi"}
-                  disabled={paymentRestrictions.loading || !paymentAllowed("manual_upi")}
-                  onChange={(event) => setPaymentMethod(event.target.value)}
-                  className="sr-only"
-                />
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600">
-                    <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 max-w-none scale-150 object-contain" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-bold leading-snug">UPI</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">{paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("manual_upi") ? "Unavailable for this order" : "Scan QR · Submit 12-digit UPI reference"}</p>
                   </div>
                 </div>
               </label>

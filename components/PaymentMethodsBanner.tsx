@@ -9,6 +9,12 @@ type PaymentMethodsBannerProps = {
 
 export const paymentMethods = [
   {
+    name: "UPI",
+    description: "Scan and pay",
+    image: "/payment-methods/upi.jpeg",
+    width: 90,
+  },
+  {
     name: "USDT",
     description: "TRC20 · BEP20 · Solana",
     image: "/payment-methods/usdt.png",
@@ -25,12 +31,6 @@ export const paymentMethods = [
     description: "Pay with Binance",
     image: "/payment-methods/binance-pay.png",
     width: 48,
-  },
-  {
-    name: "UPI",
-    description: "Scan and pay",
-    image: "/payment-methods/upi.jpeg",
-    width: 90,
   },
 ] as const;
 

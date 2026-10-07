@@ -125,6 +125,7 @@ export default function Footer() {
           </MobileFooterSection>
 
           <MobileFooterSection title={t("paymentDelivery")}>
+            <span>UPI</span>
             <span>Binance Pay</span>
             <span>Direct USDT: TRC20, BEP20 &amp; Solana</span>
             <span>SBP - Faster Payments System</span>
