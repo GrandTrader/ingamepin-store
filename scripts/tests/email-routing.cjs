@@ -8,6 +8,41 @@ test('order events send admin copies to noreply and customer receipts only to th
  for(const operation of operations){sent.length=0;const results=await operation();assert(results.every(r=>r.status==='fulfilled'));assert.deepEqual(sent.map(m=>m.to),['customer@example.invalid','noreply@ingamepin.com']);assert(sent.every(m=>m.replyTo==='support@ingamepin.com'));assert(!sent[1].html.includes('PRIVATE-FIXTURE-CODE'),'Admin routing must not forward delivered codes');}
  await mail.sendOrderStatusEmails({...order,event:'PRODUCT_SENT',deliveredItems:[{productName:'Fixture',optionName:'10',codes:['PRIVATE-FIXTURE-CODE']}]});assert(sent.at(-2).html.includes('PRIVATE-FIXTURE-CODE'));
 });
+test('receipt distinguishes unpaid, review, paid and closed orders without changing the payable amount',async()=>{
+ const {mail,sent}=mailer();
+ for(const [status,badge,totalLabel] of [
+  ['PENDING_PAYMENT','Awaiting payment','Total due'],
+  ['PAYMENT_REVIEW','Payment under review','Order total'],
+  ['PAID','Payment confirmed','Total paid'],
+  ['PROCESSING','Preparing your order','Total paid'],
+  ['DELIVERED','Order completed','Total paid'],
+  ['CANCELLED','Order cancelled','Order total'],
+  ['REFUNDED','Order refunded','Order total'],
+ ]) {
+  sent.length=0;
+  await mail.sendOrderCreatedEmails({...order,total:10.8,status,paymentMethod:'WALLET',items:[{productName:'Apple India',optionName:'100',denomination:100,platform:null,quantity:10}]});
+  const receipt=sent[0];assert(receipt.html.includes(badge));assert(receipt.html.includes(totalLabel));assert(receipt.text.includes(totalLabel));assert(receipt.html.includes('$10.80'));
+  if(totalLabel!=='Total paid')assert(!receipt.html.includes('Total paid'));
+  if(['PAID','PROCESSING','DELIVERED'].includes(status))assert(!receipt.html.includes('Delivery starts after your payment is confirmed.'));
+ }
+});
+test('receipt preserves multiple items and currencies, and escapes all visitor-controlled markup',async()=>{
+ const {mail,sent}=mailer();
+ await mail.sendOrderCreatedEmails({...order,orderNumber:'IP-<tag>"&',status:'PENDING_PAYMENT',currency:'GBP',total:22.5,paymentMethod:'WALLET',items:[
+  {productName:'Apple <script>alert(1)</script>',optionName:'10 & bonus',denomination:10,platform:'<b>UK</b>',quantity:2},
+  {productName:'Second item',optionName:null,denomination:5,platform:null,quantity:1},
+ ]});
+ const html=sent[0].html;assert(html.includes('£22.50'));assert(html.includes('GBP'));assert(html.includes('Second item'));assert(html.includes('Value: 5'));assert(html.includes('10 &amp; bonus'));assert(html.includes('&lt;script&gt;'));assert(!html.includes('<script>'));assert(html.includes('orderNumber=IP-%3Ctag%3E%22%26'));assert(html.includes('&amp;orderNumber='));
+ assert(!/display\s*:\s*(flex|grid)/.test(html),'Email layout must not depend on flex or grid support');
+});
+test('rejection and delivered-code receipts keep the correct status and preserve private code bundles',async()=>{
+ const {mail,sent}=mailer();
+ await mail.sendOrderStatusEmails({...order,event:'PAYMENT_REJECTED',orderStatus:'PENDING_PAYMENT',reason:'Bad <img src=x>',customerName:'<b>Customer</b>'});
+ assert(sent[0].html.includes('Payment not approved'));assert(!sent[0].html.includes('Total paid'));assert(sent[0].html.includes('Bad &lt;img src=x&gt;'));assert(!sent[0].html.includes('<b>Customer</b>'));
+ sent.length=0;
+ await mail.sendOrderStatusEmails({...order,event:'PRODUCT_SENT',deliveredItems:[{productName:'Voucher <x>',optionName:'Card + PIN',codes:['Card: TEST-0001\nPIN: 000042','<private-code>']} ]});
+ assert(sent[0].html.includes('PIN: 000042'));assert(sent[0].html.includes('&lt;private-code&gt;'));assert(!sent[1].html.includes('TEST-0001'));assert(sent[0].html.includes('Order completed'));
+});
 test('support enquiries reach support even without Telegram and safely escape visitor content',async()=>{
  const sent=[];const api=load('lib/telegram-chat-notification.ts',{'server-only':{},'@/lib/admin-push':{notifyAdminsByPush:async()=>{throw Error('Push offline')}},'@/lib/email':{SUPPORT_EMAIL:'support@ingamepin.com',sendEmail:async message=>{sent.push(message);return {rejected:[]}}}},{process:{env:{}},console:{warn(){},error(){}}});
  const message={messageId:'m',conversationId:'c',customerName:'<img src=x>',customerEmail:'customer@example.invalid',message:'<script>not markup</script>'};

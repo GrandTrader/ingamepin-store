@@ -191,6 +191,113 @@ function createCustomerOrderUrl(orderId: string, orderNumber: string) {
   return `${siteUrl}/account/orders?${query.toString()}`;
 }
 
+type ReceiptTone = "pending" | "success" | "neutral" | "error";
+
+function getReceiptStatus(status: string): { label: string; tone: ReceiptTone } {
+  switch (status) {
+    case "PENDING_PAYMENT": return { label: "Awaiting payment", tone: "pending" };
+    case "PAYMENT_REVIEW": return { label: "Payment under review", tone: "pending" };
+    case "PAID": return { label: "Payment confirmed", tone: "success" };
+    case "PROCESSING": return { label: "Preparing your order", tone: "success" };
+    case "DELIVERED": return { label: "Order completed", tone: "success" };
+    case "CANCELLED": return { label: "Order cancelled", tone: "neutral" };
+    case "REFUNDED": return { label: "Order refunded", tone: "neutral" };
+    default: return { label: formatOrderStatus(status), tone: "neutral" };
+  }
+}
+
+function receiptTotalLabel(status: string) {
+  if (status === "PENDING_PAYMENT") return "Total due";
+  return ["PAID", "PROCESSING", "DELIVERED"].includes(status) ? "Total paid" : "Order total";
+}
+
+function createReceiptTotalHtml(label: string, amount: string, currency: string) {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:20px">
+      <tr>
+        <td style="padding:20px 12px 20px 0;border-top:1px solid #e1e8ee;vertical-align:middle">
+          <strong style="font-size:15px">${escapeHtml(label)}</strong>
+          <div style="font-size:13px;line-height:20px;color:#586a7c">${escapeHtml(currency || "USD")}</div>
+        </td>
+        <td align="right" style="padding:20px 0;border-top:1px solid #e1e8ee;vertical-align:middle;font-size:28px;line-height:34px;font-weight:700;word-break:break-word">${escapeHtml(amount)}</td>
+      </tr>
+    </table>`;
+}
+
+// Tables and inline styles keep the receipt readable when an email client strips CSS.
+// contentHtml is composed only by the escaped, server-owned templates below.
+function createReceiptHtml({
+  title, intro, orderNumber, status, contentHtml, actionUrl,
+  actionLabel = "View your order", paymentMethod, note,
+}: {
+  title: string;
+  intro: string;
+  orderNumber: string;
+  status: { label: string; tone: ReceiptTone };
+  contentHtml: string;
+  actionUrl: string;
+  actionLabel?: string;
+  paymentMethod?: string;
+  note?: string;
+}) {
+  const colors = {
+    pending: { background: "#fff5de", color: "#865306" },
+    success: { background: "#e8f8ef", color: "#11633f" },
+    neutral: { background: "#edf2f7", color: "#475569" },
+    error: { background: "#fef2f2", color: "#991b1b" },
+  }[status.tone];
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)} — ${escapeHtml(orderNumber)}</title>
+  <style>
+    @media only screen and (max-width:480px) {
+      .receipt-outer { padding:12px 8px !important; }
+      .receipt-padding { padding:22px 18px !important; }
+      .receipt-heading { font-size:25px !important; line-height:31px !important; }
+      .receipt-meta { display:block !important; width:auto !important; }
+      .receipt-payment { padding:12px 0 0 !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f7fa;color:#17283b;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all">${escapeHtml(status.label)} · ${escapeHtml(orderNumber)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;background-color:#f4f7fa">
+    <tr><td class="receipt-outer" align="center" style="padding:28px 12px">
+      <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;border-spacing:0;border:1px solid #e1e8ee;border-top:5px solid #00bfd5;border-radius:16px;background-color:#ffffff;color:#17283b;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px">
+        <tr><td class="receipt-padding" style="padding:24px 28px;border-bottom:1px solid #e1e8ee">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>
+            <td width="40" height="40" align="center" bgcolor="#00c6dc" style="width:40px;height:40px;border-radius:11px;background-color:#00c6dc;color:#06354a;font-size:20px;font-weight:700">iP</td>
+            <td style="padding-left:11px"><div style="font-size:22px;line-height:26px;font-weight:700;color:#17283b">iNgame<span style="color:#007c91">PIN</span></div><div style="font-size:11px;line-height:17px;letter-spacing:1.2px;color:#586a7c">DIGITAL GAME STORE</div></td>
+          </tr></table>
+        </td></tr>
+        <tr><td class="receipt-padding" style="padding:26px 28px">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:separate"><tr><td bgcolor="${colors.background}" style="padding:5px 11px;border-radius:20px;background-color:${colors.background};color:${colors.color};font-size:13px;line-height:20px;font-weight:700">${escapeHtml(status.label)}</td></tr></table>
+          <h1 class="receipt-heading" style="margin:16px 0 10px;font-size:28px;line-height:35px;font-weight:700;color:#17283b">${escapeHtml(title)}</h1>
+          <p style="margin:0 0 22px;font-size:15px;line-height:24px;color:#586a7c;overflow-wrap:anywhere">${escapeHtml(intro)}</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:separate;border-spacing:0;margin-bottom:22px;background-color:#f4f7fa;border-radius:10px"><tr><td style="padding:15px 16px">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse"><tr>
+              <td class="receipt-meta" style="vertical-align:top"><div style="font-size:13px;line-height:20px;color:#586a7c">Order number</div><div style="font-size:14px;line-height:22px;font-weight:700;word-break:break-all">${escapeHtml(orderNumber)}</div></td>
+              ${paymentMethod ? `<td class="receipt-meta receipt-payment" style="width:42%;vertical-align:top;padding-left:16px"><div style="font-size:13px;line-height:20px;color:#586a7c">Payment method</div><div style="font-size:14px;line-height:22px;font-weight:700;word-break:break-word">${escapeHtml(paymentMethod)}</div></td>` : ""}
+            </tr></table>
+          </td></tr></table>
+          ${contentHtml}
+          ${note ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:0 0 22px"><tr><td style="border-left:3px solid #00bfd5;padding-left:12px;color:#586a7c;font-size:14px;line-height:22px">${escapeHtml(note)}</td></tr></table>` : ""}
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:separate"><tr><td align="center" bgcolor="#00bfd5" style="border-radius:9px;background-color:#00bfd5;mso-padding-alt:14px 20px"><a href="${escapeHtml(actionUrl)}" style="display:block;padding:14px 20px;border-radius:9px;background-color:#00bfd5;color:#053144;font-size:16px;line-height:22px;font-weight:700;text-align:center;text-decoration:none">${escapeHtml(actionLabel)}</a></td></tr></table>
+        </td></tr>
+        <tr><td align="center" style="padding:18px 20px;background-color:#f4f7fa;border-radius:0 0 15px 15px;font-size:13px;line-height:22px;color:#586a7c">Questions about your order? Reply to this email.<br><a href="mailto:${SUPPORT_EMAIL}" style="color:#007c91;text-decoration:underline">${SUPPORT_EMAIL}</a></td></tr>
+      </table>
+      <!--[if mso]></td></tr></table><![endif]-->
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 function createOrderItemsHtml(items: OrderEmailItem[]) {
   return items
     .map((item) => {
@@ -218,6 +325,27 @@ function createOrderItemsHtml(items: OrderEmailItem[]) {
       `;
     })
     .join("");
+}
+
+function createReceiptItemsHtml(items: OrderEmailItem[]) {
+  const rows = items.map((item) => {
+    const details = [
+      item.optionName,
+      item.platform,
+      item.denomination === null || item.optionName?.trim() === String(item.denomination)
+        ? null
+        : `Value: ${item.denomination}`,
+    ].filter(Boolean).map((value) => escapeHtml(String(value))).join(" · ");
+    return `<tr>
+      <td style="padding:14px 12px 14px 0;vertical-align:top;border-bottom:1px solid #e1e8ee;word-break:break-word"><strong style="font-size:15px;line-height:23px">${escapeHtml(item.productName)}</strong>${details ? `<div style="margin-top:4px;font-size:13px;line-height:21px;color:#586a7c">${details}</div>` : ""}</td>
+      <td align="right" style="width:64px;padding:14px 0;vertical-align:top;border-bottom:1px solid #e1e8ee;font-size:15px;line-height:23px;font-weight:700">${item.quantity}</td>
+    </tr>`;
+  }).join("");
+  if (!rows) return "";
+  return `<table width="100%" cellpadding="0" cellspacing="0" aria-label="Order items" style="width:100%;table-layout:fixed;border-collapse:collapse">
+    <thead><tr><th scope="col" align="left" style="font-size:13px;font-weight:400;line-height:20px;color:#586a7c">Product</th><th scope="col" align="right" style="width:64px;font-size:13px;font-weight:400;line-height:20px;color:#586a7c">Quantity</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
 
 async function loadSoldInventory(orderId: string) {
@@ -335,24 +463,23 @@ export async function sendOrderCreatedEmails({
   const totalLabel = formatMoney(total, currency);
   const trackingUrl = createCustomerOrderUrl(orderId, orderNumber);
 
-  const customerHtml = `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
-      <div style="background:#06b6d4;border-radius:14px;padding:18px 22px;font-size:24px;font-weight:800">InGamePin</div>
-      <h1 style="font-size:26px;margin:28px 0 10px">We received your order</h1>
-      <p style="color:#475569;line-height:1.7">Hello, your order has been created successfully.</p>
-      <div style="background:#f1f5f9;border-radius:12px;padding:16px;margin:22px 0">
-        <div style="color:#64748b;font-size:13px">Order number</div>
-        <div style="font-size:20px;font-weight:800;margin-top:4px">${safeOrderNumber}</div>
-      </div>
-      <table style="width:100%;border-collapse:collapse"><tbody>${itemRows}</tbody></table>
-      <div style="display:flex;justify-content:space-between;margin-top:22px;padding-top:18px;border-top:2px solid #0f172a;font-size:18px">
-        <strong>Total</strong><strong>${escapeHtml(totalLabel)}</strong>
-      </div>
-      <p style="margin-top:22px;color:#475569;line-height:1.7">Payment method: <strong>${escapeHtml(formatPaymentMethod(paymentMethod))}</strong><br>Status: <strong>${escapeHtml(formatOrderStatus(status))}</strong></p>
-      <a href="${trackingUrl}" style="display:inline-block;margin-top:12px;background:#06b6d4;color:#082f49;text-decoration:none;padding:13px 20px;border-radius:10px;font-weight:800">View your order</a>
-      <p style="margin-top:28px;color:#64748b;font-size:13px;line-height:1.6">Need help? Reply to this email or contact support@ingamepin.com.</p>
-    </div>
-  `;
+  const deliveryNote = status === "PENDING_PAYMENT" || status === "PAYMENT_REVIEW"
+    ? "Delivery starts after your payment is confirmed."
+    : status === "DELIVERED"
+      ? "Your order is complete. Open your order page to access your delivery."
+      : ["PAID", "PROCESSING"].includes(status)
+        ? "We’re preparing your order. Follow its delivery status on your order page."
+        : "Open your order page for the latest details.";
+  const customerHtml = createReceiptHtml({
+    title: "We’ve received your order.",
+    intro: "Thanks for choosing InGamePin. Your order details are below.",
+    orderNumber,
+    status: getReceiptStatus(status),
+    paymentMethod: formatPaymentMethod(paymentMethod),
+    contentHtml: createReceiptItemsHtml(items) + createReceiptTotalHtml(receiptTotalLabel(status), totalLabel, currency),
+    actionUrl: trackingUrl,
+    note: deliveryNote,
+  });
 
   const adminHtml = `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
@@ -371,7 +498,7 @@ export async function sendOrderCreatedEmails({
       to: customerEmail,
       subject: `InGamePin order received — ${orderNumber}`,
       html: customerHtml,
-      text: `Your InGamePin order ${orderNumber} has been created. Total: ${totalLabel}. Track it at ${trackingUrl}`,
+      text: `Your InGamePin order ${orderNumber} has been created. Status: ${getReceiptStatus(status).label}. ${receiptTotalLabel(status)}: ${totalLabel} ${currency}. Payment method: ${formatPaymentMethod(paymentMethod)}. ${deliveryNote} Track it at ${trackingUrl}`,
     }),
     sendOrderEmail({
       to: ORDER_NOTIFICATION_EMAIL,
@@ -441,7 +568,7 @@ export async function sendOrderStatusEmails({
                 ${item.optionName ? `<div style="margin-top:4px;color:#64748b;font-size:13px">${escapeHtml(item.optionName)}</div>` : ""}
                 ${item.codes
                   .map(
-                    (code) => `<div style="margin-top:10px;background:#0f172a;color:#f8fafc;border-radius:8px;padding:12px;font-family:monospace;font-size:15px;word-break:break-all">${escapeHtml(code)}</div>`,
+                    (code) => `<div style="margin-top:10px;background:#0f172a;color:#f8fafc;border-radius:8px;padding:12px;font-family:monospace;font-size:15px;line-height:23px;white-space:pre-wrap;word-break:break-all">${escapeHtml(code)}</div>`,
                   )
                   .join("")}
               </div>
@@ -452,22 +579,21 @@ export async function sendOrderStatusEmails({
       </div>
     `
     : "";
-  const customerHtml = `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
-      <div style="background:#06b6d4;border-radius:14px;padding:18px 22px;font-size:24px;font-weight:800">InGamePin</div>
-      <h1 style="font-size:26px;margin:28px 0 10px">${escapeHtml(eventContent.customerTitle)}</h1>
-      <p style="color:#475569;line-height:1.7">Hello ${safeCustomerName}, ${escapeHtml(eventContent.customerMessage)}</p>
-      <div style="background:#f1f5f9;border-radius:12px;padding:16px;margin:22px 0">
-        <div style="color:#64748b;font-size:13px">Order number</div>
-        <div style="font-size:20px;font-weight:800;margin-top:4px">${safeOrderNumber}</div>
-        <div style="margin-top:10px;color:#475569">Total: <strong>${escapeHtml(totalLabel)}</strong></div>
-        <div style="margin-top:5px;color:#475569">Status: <strong>${escapeHtml(formatOrderStatus(orderStatus))}</strong></div>
-      </div>
-      ${deliveredCodesHtml}
-      <a href="${trackingUrl}" style="display:inline-block;background:#06b6d4;color:#082f49;text-decoration:none;padding:13px 20px;border-radius:10px;font-weight:800">View your order</a>
-      <p style="margin-top:28px;color:#64748b;font-size:13px;line-height:1.6">Need help? Reply to this email or contact support@ingamepin.com.</p>
-    </div>
-  `;
+  const receiptStatus = event === "PAYMENT_REJECTED"
+    ? { label: "Payment not approved", tone: "error" as const }
+    : getReceiptStatus(orderStatus);
+  const customerHtml = createReceiptHtml({
+    title: eventContent.customerTitle,
+    intro: `Hello ${customerName || "Customer"}, ${eventContent.customerMessage}`,
+    orderNumber,
+    status: receiptStatus,
+    contentHtml: deliveredCodesHtml + createReceiptTotalHtml(
+      event === "PAYMENT_REJECTED" ? "Order total" : receiptTotalLabel(orderStatus),
+      totalLabel,
+      currency,
+    ),
+    actionUrl: trackingUrl,
+  });
   const adminHtml = `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
       <h1>${escapeHtml(eventContent.adminTitle)}</h1>
@@ -511,20 +637,17 @@ export async function sendWalletDebitEmails({
   const amountLabel = formatMoney(amount, currency);
   const balanceLabel = formatMoney(balanceAfter, currency);
 
-  const customerHtml = `
-    <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
-      <div style="background:#06b6d4;border-radius:14px;padding:18px 22px;font-size:24px;font-weight:800">InGamePin</div>
-      <h1 style="font-size:26px;margin:28px 0 10px">Wallet payment successful</h1>
-      <p style="color:#475569;line-height:1.7">Hello ${safeCustomerName}, your InGamePin Wallet payment was completed successfully.</p>
-      <div style="background:#f1f5f9;border-radius:12px;padding:16px;margin:22px 0">
-        <div style="color:#64748b;font-size:13px">Order number</div>
-        <div style="font-size:20px;font-weight:800;margin-top:4px">${safeOrderNumber}</div>
-        <div style="margin-top:12px;color:#475569">Amount deducted: <strong>${escapeHtml(amountLabel)}</strong></div>
-        <div style="margin-top:6px;color:#475569">Remaining balance: <strong>${escapeHtml(balanceLabel)}</strong></div>
-      </div>
-      <a href="https://ingamepin.com/account/wallet" style="display:inline-block;background:#06b6d4;color:#082f49;text-decoration:none;padding:13px 20px;border-radius:10px;font-weight:800">View wallet</a>
-    </div>
-  `;
+  const customerHtml = createReceiptHtml({
+    title: "Wallet payment successful",
+    intro: `Hello ${customerName || "Customer"}, your InGamePin Wallet payment was completed successfully.`,
+    orderNumber,
+    status: { label: "Payment confirmed", tone: "success" },
+    paymentMethod: "InGamePin Wallet",
+    contentHtml: createReceiptTotalHtml("Amount deducted", amountLabel, currency)
+      + `<p style="margin:0 0 22px;font-size:15px;line-height:24px;color:#586a7c">Remaining balance: <strong style="color:#17283b">${escapeHtml(balanceLabel)}</strong></p>`,
+    actionUrl: "https://ingamepin.com/account/wallet",
+    actionLabel: "View wallet",
+  });
 
   const adminHtml = `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#0f172a">
