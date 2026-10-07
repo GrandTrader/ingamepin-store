@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, context: Context) {
         const { product_options, product_customer_fields, ...details } = product;
         const discountPercent = Math.max(0,Math.min(100,Number(discounts.data.find(d=>d.product_id===product.id)?.discount_percent ?? 0)));
         return { ...details, customerFields:product_customer_fields.slice().sort((a,b)=>a.sort_order-b.sort_order), requiresDeliveryDetails: product_customer_fields.length>0 || product.allows_player_id_topup || product.product_type==="GAME_TOPUP", priceCurrency:"USD", discountPercent,
-          options:product_options.filter(o=>o.is_active).map(option=>({ ...option, unitPrice:Number(option.selling_price), range:ranges.ranges.find(r=>r.enabled&&r.option_id===option.id) ? (()=>{const r=ranges.ranges.find(r=>r.enabled&&r.option_id===option.id)!;return {currency:r.currency,minimum:r.minimum,maximum:r.maximum,step:r.step,priceBasis:r.price_basis,priceUsd:r.price_usd};})() : null })),
+          options:product_options.filter(o=>o.is_active).map(option=>({ ...option, unitPrice:Number(option.selling_price), range:ranges.ranges.find(r=>r.enabled&&r.option_id===option.id) ? (()=>{const r=ranges.ranges.find(r=>r.enabled&&r.option_id===option.id)!;return {currency:r.currency,minimum:r.minimum,maximum:r.maximum,step:r.step,priceBasis:r.price_basis,priceUsd:r.price_usd,rounding:r.price_rounding??"NEAREST"};})() : null })),
         };
       });
       return businessApiJson({data,page,pageSize:20,total:products.count,nextPage:page*20<(products.count??0)?page+1:null});

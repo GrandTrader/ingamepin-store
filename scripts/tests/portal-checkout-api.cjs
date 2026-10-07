@@ -43,6 +43,7 @@ const request=body=>({json:async()=>structuredClone(body),nextUrl:{pathname:'/ap
  admin.rpc=async(name,args)=>{events.push(args.p_action);assert.equal(name,'portal_wallet_checkout');return {data:args.p_action==='recover'?null:{total:12,...(args.p_action==='confirm'?{orderId:'fixture-order'}:{})},error:null};};
  mocks['@/lib/definiteplay-fulfillment'].supplierProductIds=async()=>{events.push('supplier:start');await delay();events.push('supplier:end');if(fixture.supplierError)throw Error('Supplier delivery setup is not ready.');return new Set();};
  mocks['@/lib/product-range-data'].productRanges=async()=>{events.push('range:start');await delay();events.push('range:end');if(fixture.rangeError)throw Error('Unable to load ranges.');return {ranges:fixture.ranges??[]};};
+ mocks['@/lib/definiteplay-range-stock'].supplierRangeLimits=async ids=>new Map(ids.map(id=>[id,fixture.rangeAvailable===false?0:1000]));
  mocks['@/lib/product-range'].rangePrice=()=>{if(fixture.invalidRange)throw Error('Invalid range denomination.');return 12;};
  mocks['@/lib/product-stock'].isUnlimitedStock=n=>n===2147483647;
  mocks['@/lib/cart-stock'].quantityForOption=(items,id)=>items.filter(i=>i.productOptionId===id).reduce((n,i)=>n+i.quantity,0);
@@ -54,6 +55,8 @@ const request=body=>({json:async()=>structuredClone(body),nextUrl:{pathname:'/ap
  assert(events.indexOf('supplier:end')<events.indexOf('quote'),'Quote waits for supplier checks');
  await full('confirm');assert.equal(notifications,1);assert(events.indexOf('supplier:end')<events.indexOf('range:start'),'Confirmation validation remains sequential');
  for(const action of ['quote','confirm']){
+  await full(action,{ranges:[{option_id:base.items[0].productOptionId,enabled:true,delivery_mode:'SUPPLIER'}]});
+  await full(action,{rangeAvailable:false,ranges:[{option_id:base.items[0].productOptionId,enabled:true,delivery_mode:'SUPPLIER'}]},400);
   await full(action,{product:{business_enabled:false}},409);
   await full(action,{option:{is_active:false}},409);
   await full(action,{product:{allowed_payment_methods:['PALLY']}},400);

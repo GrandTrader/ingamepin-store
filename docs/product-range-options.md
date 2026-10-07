@@ -1,19 +1,29 @@
-# Product range denominations (local implementation)
+# Product range denominations
 
-Every product’s Product options screen now has a separate Range denomination form. Fixed options keep their existing prices and delivery settings. Presets populate Apple India INR 100–10000 and Apple USA USD 2–500; administrators must enter the actual USD selling price and pricing basis before enabling.
+## Release — 7 October 2026
 
-Migration: `supabase/migrations/20260928_160000_product_range_options.sql`. Not applied to the shared database. No deployment or supplier purchases were performed.
+This release connects the production website to Definite Play custom-value delivery. The supplier worker and migrations 20261007_220000, 20261007_230000 and 20261007_240000 are already installed and verified. The worker reports both fixed and range delivery ready, with 36 fresh catalogue entries synchronized to Supabase.
 
-A dedicated custom option is stored with each range. Price is calculated from the selected face value, configured currency, basis and USD selling price. The database calculates the authoritative price and checks bounds/step, regardless of client-supplied prices. Quantities keep product purchase limits; custom customer-information fields remain required.
+The website release includes the existing-product range importer, percentage pricing, retail and business API checkout readiness checks, and the signed supplier database backup allowlist. Deploying this release does not enable or alter individual product settings. Apple USA (324000US, USD 2–500 in 0.01 increments) retains its saved 11.42% markup and disabled range setting. No test purchases were made.
 
-Manual ranges support Add to cart and Buy now on product pages and directly in the business catalogue when no extra customer fields are required. Paid range items receive the immutable `RANGE_MANUAL` delivery marker and a denomination/currency order label. They bypass fixed code inventory and fixed supplier jobs; administrators use the existing paid-order code batch delivery. Disabling a range stops new purchases without erasing paid-order details.
+## Configuration
 
-Automatic supplier range delivery is NOT implemented or activated. The admin can save a disabled supplier configuration, but both the save RPC and checkout block activation until the supplier’s variable-denomination contract is verified and the worker adapter is implemented. Existing Definite Play API orders only contain SKU and quantity, and the GiftPort integration has been retired. Await the user’s supplier selection and variable-value API documentation; never invent an amount parameter or fall back to a fixed SKU. No automatic fallback after an uncertain supplier purchase is permitted.
+In Product options, select **Import from Definite Play**, choose the matching product and region, set **Markup on supplier cost (%)**, review the example, then enable and save when ready. Import fills the editor and defaults to disabled; it does not save automatically. Fixed denominations retain their existing settings.
 
-Validation:
-- product-range-db.cjs: isolated PostgreSQL price/bounds/steps, manual delivery payment gate, INR/USD, enabled/disabled, supplier separation, migration reapplication and admin permissions. Covers both original and seller-aware instant delivery functions, reserved seller stock, retry safety, preserved permissions, and rollback for unknown function definitions.
-- product-range-ui.cjs: browser cart/Buy now payloads, exact price rounding, invalid denomination and quantity.
-- Existing portal access tests, supplier quantity checks and browser filter stability pass.
-- Isolated production build and type check pass.
+Price = face value × (1 − supplier discount / 100) × (1 + markup / 100), rounded up to cents only for the final card price. A USD 100 card at 2% supplier discount and 5% markup sells for USD 102.90. Customer discounts apply separately. Supplier refreshes retain the chosen markup; existing orders and supplier budgets never change.
 
-The admin form now shows currency, minimum, maximum and one clearly labelled USD selling price, with a live example. Increments, pricing amount and delivery configuration are under Advanced settings; existing saved values are retained. The business catalogue displays range options as compact table rows with card value, live discounted price, quantity buttons and Add. Different entered values remain separate draft/cart lines; adding the same value merges only that value. Fixed options continue alongside them. No additional migration is required for this interface update.
+The server ignores submitted supplier costs and calculated prices, re-fetches the private catalogue and independently validates the configuration in the database. Supplier cost and markup remain private. Public range data contains the selling rate and rounding rule only: UP for percentage pricing, NEAREST for legacy/manual pricing.
+
+Automatic activation and percentage pricing currently support USD face-value products only. EUR/GBP/CAD require verified supplier billing conversion before activation; no exchange rate is guessed. Legacy manual ranges retain their existing controls and payment-gated manual delivery.
+
+## Delivery safeguards
+
+Checkout requires an available supplier range, fresh catalogue and recent successful range worker heartbeat. The order snapshots the exact supplier SKU, denomination, currency and maximum cost. Only paid orders enter the purchasing queue. Supplier requests use cardvalue and currency with the existing write-ahead submission marker, 90-second timeout and fetch-only recovery. Uncertain purchases are held for review without repeat purchasing.
+
+Range failures are isolated from fixed delivery. A supplier database backup connection can forward only explicitly allowlisted operations with a valid HMAC signature. Migration 20261007_240000 repairs the catalogue sync UPDATE with WHERE available=true for the database safe-update rule.
+
+Protected worker rollback backup: /root/ingamepin-range-upgrade-1791390204344228360.
+
+## Validation
+
+Isolated PostgreSQL tests cover repeat migrations, safe-update repair, exact price calculations, bounds and increments, private percentage persistence, changing supplier costs, immutable paid orders, payment gating, permissions and duplicate-purchase protection. Browser checks cover desktop/mobile import, compact markup editing, manual range purchases and cart payloads. Server-action and checkout tests cover authentication, forged pricing, unavailable workers and foreign-currency activation restrictions. No live purchases are used for validation.

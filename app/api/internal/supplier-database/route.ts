@@ -13,6 +13,7 @@ const operations: Record<string, Record<string, string[]>> = {
   DEFINITEPLAY: {
     ...common, claim_definiteplay_job: [],
     sync_definiteplay_stock: ["p_rows", "p_synced_at"],
+    sync_definiteplay_ranges: ["p_rows", "p_synced_at", "p_ready"],
     complete_definiteplay_job: ["p_item_id", "p_token", "p_codes", "p_actual_cost"],
     claim_digiseller_supplier_job: [],
     mark_digiseller_supplier_submitted: ["p_invoice_id", "p_token"],

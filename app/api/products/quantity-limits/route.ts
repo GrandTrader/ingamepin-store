@@ -1,3 +1,4 @@
+import { supplierRangeLimits } from "@/lib/definiteplay-range-stock";
 import { productRanges } from "@/lib/product-range-data";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
 
     const supplierProducts = await supplierProductIds(productIds);
     const rangeData=await productRanges(productIds);
+    const rangeLimits=await supplierRangeLimits(rangeData.ranges.filter(r=>r.enabled&&r.delivery_mode==="SUPPLIER").map(r=>r.option_id));
     const limits = await Promise.all(normalizedItems.map(async (item) => {
       const product = products.get(item.productId)!;
       const option = item.productOptionId ? options.get(item.productOptionId) : null;
@@ -82,6 +84,7 @@ export async function POST(request: NextRequest) {
       let availableQuantity: number | null = null;
       if (product.status !== 'ACTIVE' || (option && (!option.is_active || option.is_in_stock === false))) availableQuantity = 0;
       else if (rangeData.ranges.some(r=>r.option_id===option?.id&&r.enabled&&r.delivery_mode==="MANUAL")) availableQuantity=null;
+      else if (rangeData.ranges.some(r=>r.option_id===option?.id&&r.delivery_mode==="SUPPLIER")) availableQuantity=rangeLimits.get(option!.id)??0;
       else if (supplierProducts.has(product.id)) {
         availableQuantity = option ? await supplierAvailableQuantity(option.id) : 0;
       }

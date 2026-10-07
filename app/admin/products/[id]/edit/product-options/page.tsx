@@ -1,4 +1,4 @@
-import { productRanges } from "@/lib/product-range-data";
+import { productRanges, rangeMarkupForAdmin } from "@/lib/product-range-data";
 import RangeOptionEditor from "./RangeOptionEditor";
 import { saveRangeOption } from "./range-actions";
 import ProductSettingsActions from "@/components/ProductSettingsActions";
@@ -51,6 +51,7 @@ export default async function ProductOptionsPage({
   if (!productResult.data) notFound();
   const product = productResult.data;
   const rangeData=await productRanges([id]);
+  const rangeMarkup=rangeData.ranges[0]?.delivery_mode==="SUPPLIER"?await rangeMarkupForAdmin(id):null;
   const optionCurrencies=[...new Set((optionsResult.data??[]).map(o=>o.denomination_currency).filter((value):value is string=>typeof value==="string"&&/^[A-Z]{3}$/.test(value)))];
   const productCurrency=optionCurrencies.length===1?optionCurrencies[0]:product.currency||"USD";
 
@@ -75,7 +76,7 @@ export default async function ProductOptionsPage({
 
           <div className="mt-8"><ProductEditPageTabs productId={id} current="product-options" /></div>
 
-          <form action={saveRangeOption} className="mt-6"><input type="hidden" name="id" value={id}/><RangeOptionEditor productCurrency={productCurrency} ready={rangeData.ready} range={rangeData.ranges[0]??null}/></form>
+          <form action={saveRangeOption} className="mt-6"><input type="hidden" name="id" value={id}/><RangeOptionEditor initialMarkup={rangeMarkup} productCurrency={productCurrency} ready={rangeData.ready} range={rangeData.ranges[0]??null}/></form>
           <form action={saveProductOptions} className="mt-6 grid gap-6">
             <input type="hidden" name="id" value={id} />
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

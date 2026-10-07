@@ -1,3 +1,4 @@
+import { supplierRangeLimits } from "@/lib/definiteplay-range-stock";
 import "server-only";
 import { businessSessionReady } from "@/lib/business-security";
 import { saveCheckoutConsent } from "@/lib/checkout-consent";
@@ -275,7 +276,8 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       const [supplierProducts, ranges] = portal?.action === "quote"
         ? await Promise.all([supplierProductIds(productIds), productRanges(productIds)])
         : [await supplierProductIds(productIds), await productRanges(productIds)];
-      for(const submitted of submittedItems){const range=ranges.ranges.find(r=>r.option_id===submitted.productOptionId);if(range){try{rangePrice(range,Number(submitted.customValue));if(range.delivery_mode!=="MANUAL")throw Error("Supplier range delivery is not connected.");}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Invalid range denomination."},{status:400});}}}
+      const rangeLimits = await supplierRangeLimits(ranges.ranges.filter(r=>r.enabled&&r.delivery_mode==="SUPPLIER").map(r=>r.option_id));
+      for(const submitted of submittedItems){const range=ranges.ranges.find(r=>r.option_id===submitted.productOptionId);if(range){try{rangePrice(range,Number(submitted.customValue));if(range.delivery_mode==="SUPPLIER"&&!(rangeLimits.get(range.option_id)??0))throw Error("Supplier range is temporarily unavailable.");}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Invalid range denomination."},{status:400});}}}
       const stockCounts = new Map<string, number>();
       for (const item of submittedItems) {
         const option = options.find((entry) => entry.id === item.productOptionId);
@@ -301,6 +303,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
         if (!product) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
         if (!stockCounts.has(option.id)) {
           if (ranges.ranges.some(r=>r.option_id===option.id&&r.enabled&&r.delivery_mode==="MANUAL")) stockCounts.set(option.id,2147483647);
+          else if (ranges.ranges.some(r=>r.option_id===option.id&&r.delivery_mode==="SUPPLIER")) stockCounts.set(option.id,rangeLimits.get(option.id)??0);
           else if (supplierProducts.has(product.id)) {
             stockCounts.set(option.id, await supplierAvailableQuantity(option.id));
           } else if (isUnlimitedStock(product.stock_quantity)) stockCounts.set(option.id, 2147483647);

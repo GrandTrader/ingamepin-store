@@ -1,4 +1,5 @@
 """Private catalogue and product-link service. It has no purchasing endpoint."""
+from open_value import normalize as normalize_open_catalogue
 import hashlib
 import hmac
 import json
@@ -26,6 +27,8 @@ LAST_REQUEST = 0
 LAST_DT = ""
 FULFILLMENT_ERROR = None
 FULFILLMENT_HEARTBEAT = 0
+RANGE_HEARTBEAT = 0
+RANGE_ERROR = None
 UUID = re.compile(r"^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
 SKU = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 
@@ -41,10 +44,16 @@ def database():
         connection.close()
 
 
+def range_enabled():
+    return os.environ.get("DEFINITEPLAY_RANGE_ENABLED") == "true"
+
+
 def initialize():
     STATE.mkdir(parents=True, exist_ok=True)
     with database() as db:
         db.execute("CREATE TABLE IF NOT EXISTS snapshot (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL, synced REAL NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS open_snapshot (id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL, synced REAL NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS open_sync_status (id INTEGER PRIMARY KEY CHECK(id=1), error TEXT, attempted REAL NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS mappings (option_id TEXT PRIMARY KEY, product_id TEXT NOT NULL, sku TEXT NOT NULL, updated REAL NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS sync_status (id INTEGER PRIMARY KEY CHECK(id=1), error TEXT, attempted REAL NOT NULL)")
 
@@ -56,7 +65,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def supplier_request(endpoint, method, body=None, authenticated=True, query=None, timeout=30):
     global LAST_REQUEST, LAST_DT
-    permitted = ["session.php", "balances.php", "fetchstocklist_v2.php"]
+    permitted = ["session.php", "balances.php", "fetchstocklist_v2.php", "fetchopencardlist.php"]
     if os.environ.get("DEFINITEPLAY_FULFILLMENT_ENABLED") == "true":
         permitted += ["order_v2.php", "fetchorder_v2.php"]
     if endpoint not in permitted:
@@ -81,6 +90,8 @@ def supplier_request(endpoint, method, body=None, authenticated=True, query=None
     request = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
         with urllib.request.build_opener(NoRedirect()).open(request, timeout=timeout) as response:
+            if endpoint == "fetchopencardlist.php" and response.status == 201:
+                return "[]"
             return response.read().decode("utf-8-sig")
     except urllib.error.HTTPError as error:
         # Never expose supplier URLs (containing cid), tokens, or response bodies.
@@ -200,6 +211,43 @@ def load_snapshot():
     return payload
 
 
+def sync_open_catalogue():
+    global SESSION_UNTIL
+    if not SYNC_LOCK.acquire(blocking=False):
+        return False
+    try:
+        with database() as db:
+            previous = db.execute("SELECT attempted FROM open_sync_status WHERE id=1").fetchone()
+            if previous and time.time() - previous["attempted"] < 300:
+                return False
+            db.execute("INSERT OR REPLACE INTO open_sync_status VALUES(1,NULL,?)", (time.time(),))
+        authenticate()
+        rows = normalize_open_catalogue(json.loads(supplier_request("fetchopencardlist.php", "GET"), parse_float=str))
+        with DB_LOCK, database() as db:
+            db.execute("INSERT OR REPLACE INTO open_snapshot VALUES(1,?,?)", (json.dumps(rows), time.time()))
+        return True
+    except Exception as error:
+        if isinstance(error, RuntimeError) and str(error) == "Supplier HTTP 401":
+            SESSION_UNTIL = 0
+        with database() as db:
+            db.execute("UPDATE open_sync_status SET error='Custom value refresh failed' WHERE id=1")
+        return False
+    finally:
+        SYNC_LOCK.release()
+
+
+def load_open_snapshot():
+    with database() as db:
+        row = db.execute("SELECT payload,synced FROM open_snapshot WHERE id=1").fetchone()
+        status = db.execute("SELECT error FROM open_sync_status WHERE id=1").fetchone()
+    return {
+        "products": json.loads(row["payload"]) if row else [],
+        "checkedAt": datetime.fromtimestamp(row["synced"], timezone.utc).isoformat() if row else None,
+        "stale": not row or time.time() - row["synced"] > 900 or bool(status and status["error"]),
+        "rangeReady": range_enabled() and os.environ.get("DEFINITEPLAY_FULFILLMENT_ENABLED") == "true" and time.time()-FULFILLMENT_HEARTBEAT < 120 and not FULFILLMENT_ERROR and time.time()-RANGE_HEARTBEAT < 120 and not RANGE_ERROR,
+    }
+
+
 def save_mapping(product_id, option_id, sku):
     if not UUID.fullmatch(product_id) or not UUID.fullmatch(option_id) or not SKU.fullmatch(sku):
         raise ValueError("Invalid product link")
@@ -243,6 +291,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, {**snapshot, "productCount": count,
                     "fulfillmentReady": os.environ.get("DEFINITEPLAY_FULFILLMENT_ENABLED") == "true" and time.time() - FULFILLMENT_HEARTBEAT < 120 and not FULFILLMENT_ERROR,
                     "fulfillmentError": FULFILLMENT_ERROR})
+            if self.command == "GET" and parsed.path == "/open-catalogue":
+                return self.respond(200, load_open_snapshot())
             if self.command == "GET" and parsed.path == "/catalogue":
                 snapshot = load_snapshot()
                 q = query.get("q", [""])[0][:200].casefold()
@@ -321,6 +371,7 @@ class Handler(BaseHTTPRequestHandler):
 def background_sync():
     while True:
         sync_catalogue()
+        sync_open_catalogue()
         time.sleep(30)
 
 

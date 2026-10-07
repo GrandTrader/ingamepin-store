@@ -55,3 +55,12 @@ test('retired GiftPort requests are rejected even with a valid old signature',as
  assert.equal((await api.POST(request({name:'claim_supplier_job',args:{p_provider:'GIFTPORT'}},{provider:'GIFTPORT'}))).status,401);
  assert.equal(calls.length,0);
 });
+
+test('permits only the exact range catalogue sync arguments', async()=>{
+ const {api,calls}=harness('null');
+ const args={p_rows:[{sku:'TEST-USD'}],p_synced_at:'2026-10-07T00:00:00Z',p_ready:true};
+ assert.equal((await api.POST(request({name:'sync_definiteplay_ranges',args}))).status,200);
+ assert.equal(calls.length,1); assert.match(calls[0].url,/rpc\/sync_definiteplay_ranges$/);
+ assert.equal((await api.POST(request({name:'sync_definiteplay_ranges',args:{...args,p_sql:'bad'}}))).status,400);
+ assert.equal(calls.length,1);
+});

@@ -2,13 +2,19 @@ export type ProductRange = {
   product_id:string; option_id:string; enabled:boolean; currency:string;
   minimum:number; maximum:number; step:number; price_basis:number; price_usd:number;
   delivery_mode:"MANUAL"|"SUPPLIER"; supplier:string|null; supplier_reference:string|null;
+  price_rounding?:"NEAREST"|"UP";
 };
 export function rangePrice(range:ProductRange,value:number){
   if(!range.enabled)throw Error("Range purchasing is disabled for this product.");
   const cents=Math.round(value*100),low=Math.round(Number(range.minimum)*100),step=Math.round(Number(range.step)*100);
   if(!Number.isFinite(value)||Math.abs(value*100-cents)>0.000001||cents<low||value>Number(range.maximum)||step<1||(cents-low)%step!==0)throw Error(`Enter a denomination from ${range.minimum} to ${range.maximum} ${range.currency}, in steps of ${range.step}.`);
   const basis=BigInt(Math.round(Number(range.price_basis)*100));
-  const price=basis>BigInt(0)?Number((BigInt(cents)*BigInt(Math.round(Number(range.price_usd)*100))*BigInt(2)+basis)/(BigInt(2)*basis))/100:NaN;
+  // Keep the full percentage rate; round only the final card price, like PostgreSQL.
+  const rate=Number(range.price_usd);
+  if(!Number.isFinite(rate)||rate<=0||rate>1000000)throw Error("This denomination does not have a valid selling price.");
+  const scale=BigInt(10000000000),scaled=BigInt(rate.toFixed(10).replace(".",""));
+  const numerator=BigInt(cents)*scaled*BigInt(100),denominator=basis*scale;
+  const price=basis>BigInt(0)?Number(range.price_rounding==="UP"?(numerator+denominator-BigInt(1))/denominator:(numerator*BigInt(2)+denominator)/(denominator*BigInt(2)))/100:NaN;
   if(!Number.isFinite(price)||price<=0)throw Error("This denomination does not have a valid selling price.");
   return price;
 }

@@ -18,7 +18,7 @@ const {createClient}=require("@supabase/supabase-js");
  "file=pathlib.Path('/etc/ingamepin-definiteplay.env')",
  "original=file.read_text()",
  "if 'DEFINITEPLAY_FULFILLMENT_ENABLED=' in original: raise RuntimeError('Worker already configured')",
- "for name in ('server.py','fulfillment.py'): compile((pathlib.Path('/opt/ingamepin-definiteplay')/name).read_text(),name,'exec')",
+ "for name in ('server.py','fulfillment.py','open_value.py'): compile((pathlib.Path('/opt/ingamepin-definiteplay')/name).read_text(),name,'exec')",
  "def write_env(data):",
  "    tmp=file.with_suffix('.env.new')",
  "    fd=os.open(tmp,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)",

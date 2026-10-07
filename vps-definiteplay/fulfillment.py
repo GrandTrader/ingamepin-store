@@ -1,4 +1,5 @@
 """Paid-order worker. No HTTP purchase endpoint and no retry of order submissions."""
+from open_value import preflight as range_preflight
 import json
 import os
 import time
@@ -76,6 +77,9 @@ def parse_order(payload, job):
     line = lines[0]
     if line.get("sku") != job["sku"] or str(line.get("quantity")) != str(job["quantity"]):
         raise Review("Supplier SKU or quantity does not match")
+    if job.get("card_value") is not None and line.get("cardvalue") is not None:
+        if money(line["cardvalue"]) != money(job["card_value"]):
+            raise Review("Supplier card value does not match")
     status = line.get("linestatus")
     if status in ("Processing", "Creating", "Part Processed", "New"):
         return "WAITING", [], None
@@ -171,10 +175,19 @@ class Worker:
             with self.bridge.SYNC_LOCK:
                 self.bridge.authenticate()
                 if not submitted:
-                    items = [self.bridge.normalize_item(row) for row in json.loads(
-                        self.bridge.supplier_request("fetchstocklist_v2.php", "GET"), parse_float=str)]
+                    is_range = job.get("card_value") is not None
+                    if is_range and os.environ.get("DEFINITEPLAY_RANGE_ENABLED") != "true":
+                        raise Review("Custom value purchasing is disabled")
+                    raw_items = json.loads(self.bridge.supplier_request("fetchopencardlist.php" if is_range else "fetchstocklist_v2.php", "GET"), parse_float=str)
                     balances = json.loads(self.bridge.supplier_request("balances.php", "POST"), parse_float=str)
-                    preflight(job, items, balances)
+                    if is_range:
+                        try:
+                            line = range_preflight(job, raw_items, usd_funds(balances))
+                        except ValueError as error:
+                            raise Review(str(error)) from None
+                    else:
+                        preflight(job, [self.bridge.normalize_item(row) for row in raw_items], balances)
+                        line = {"sku": job["sku"], "quantity": str(job["quantity"])}
                     # Write-ahead submission marker. If this RPC times out, we
                     # do not send anything. The next claim reconciles by fetch.
                     self.db.rpc("mark_definiteplay_submitted", {
@@ -182,7 +195,7 @@ class Worker:
                     submitted = True
                     raw = self.bridge.supplier_request("order_v2.php", "POST",
                         {"order_number": job["supplier_reference"],
-                         "line_items": [{"sku": job["sku"], "quantity": str(job["quantity"])}]},
+                         "line_items": [line]},
                         query={"format": "2"}, timeout=90)
                 else:
                     raw = self.bridge.supplier_request("fetchorder_v2.php", "GET",
@@ -214,6 +227,16 @@ class Worker:
         self.db.rpc("sync_definiteplay_stock", {"p_rows": stock_rows(snapshot),
             "p_synced_at": snapshot["syncedAt"] or "1970-01-01T00:00:00Z"})
 
+    def sync_ranges(self):
+        if os.environ.get("DEFINITEPLAY_RANGE_ENABLED") != "true":
+            return
+        snapshot = self.bridge.load_open_snapshot()
+        self.db.rpc("sync_definiteplay_ranges", {"p_rows": snapshot["products"],
+            "p_synced_at": snapshot["checkedAt"] or "1970-01-01T00:00:00Z",
+            "p_ready": not snapshot["stale"]})
+        self.bridge.RANGE_HEARTBEAT = time.time()
+        self.bridge.RANGE_ERROR = "Custom value catalogue needs refresh" if snapshot["stale"] else None
+
     def run(self):
         last_sync = 0
         digiseller = Worker(self.bridge, DigiSellerDatabase(self.db)) if os.environ.get("DIGISELLER_FULFILLMENT_ENABLED") == "true" else None
@@ -221,6 +244,11 @@ class Worker:
             try:
                 if time.monotonic() - last_sync > 30:
                     self.sync_stock()
+                    try:
+                        self.sync_ranges()
+                    except Exception:
+                        # An unavailable range RPC must not stall existing fixed-value orders.
+                        self.bridge.RANGE_ERROR = "Custom value database connection needs attention"
                     last_sync = time.monotonic()
                 self.step()
                 if digiseller:

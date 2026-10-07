@@ -1,7 +1,7 @@
 import "server-only";
 import type { DefinitePlayCatalogue, DefinitePlayMapping, DefinitePlayStatus } from "./definiteplay-types";
 
-type Endpoint = "status" | "catalogue" | "mappings" | "mapping" | "refresh";
+type Endpoint = "status" | "catalogue" | "open-catalogue" | "mappings" | "mapping" | "refresh";
 
 export async function definitePlayRequest<T>(
   endpoint: Endpoint, options: { method?: "GET" | "POST" | "PUT" | "DELETE"; query?: Record<string,string>; body?: unknown } = {},

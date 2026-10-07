@@ -13,6 +13,7 @@ mode = payload["mode"]
 if mode not in ("check", "enable", "disable"):
     raise SystemExit("Unknown backup deployment mode")
 compile(payload["transport"], "supplier_database.py", "exec")
+compile(payload["openvalue"], "open_value.py", "exec")
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -74,6 +75,7 @@ try:
         changes[env_path] = ("\n".join(lines) + "\nSUPPLIER_DATABASE_BACKUP_ENABLED=" + ("true" if mode == "enable" else "false") + "\n", 0o600)
         if mode == "enable":
             changes[root / "supplier_database.py"] = (payload["transport"], 0o644)
+            changes[root / "open_value.py"] = (payload["openvalue"], 0o644)
             changes[root / "fulfillment.py"] = (payload[folder], 0o644)
         for path, (content, file_mode) in changes.items():
             previous = path.read_text() if path.exists() else None
