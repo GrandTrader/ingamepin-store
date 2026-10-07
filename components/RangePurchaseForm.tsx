@@ -15,6 +15,9 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
  const markedPrice=(price:number)=>Math.round((price+Math.round(price*Math.max(0,affiliatePercent))/100)*100)/100;
  let price:number|null=null;try{if(value.trim())price=markedPrice(rangePrice(range,Number(value)));}catch{}
  const {formatPrice:money}=useStorePreferences();
+ let currencySymbol=range.currency;
+ try{currencySymbol=new Intl.NumberFormat("en-US",{style:"currency",currency:range.currency,currencyDisplay:"narrowSymbol"}).formatToParts(0).find(part=>part.type==="currency")?.value??range.currency;}catch{}
+ const rangePlaceholder=`${range.minimum}${currencySymbol}-${range.maximum}${currencySymbol}`;
  async function purchase(buyNow:boolean){
   if(lock.current)return;lock.current=true;setBusy(true);setError("");setMessage("");
   try{
@@ -34,14 +37,13 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
  return <section className={styles.form} aria-label={`Range purchase for ${product.name}`}>
   <div className={styles.controls}>
    <LocalizedProductImage imageUrl={product.image_url??null} imageUrlRu={product.image_url_ru} alt={product.name} altRu={product.name_ru} className={styles.productIcon} fallback={<span className={styles.productIconFallback} aria-hidden="true">{product.name.charAt(0).toUpperCase()}</span>}/>
-   <label className={styles.label}>Denomination ({range.currency})<input className={styles.denomination} aria-label={`Denomination for ${product.name}`} type="number" inputMode="decimal" placeholder={`${range.minimum}–${range.maximum}`} title={`Allowed range: ${range.minimum}–${range.maximum} ${range.currency}; increments of ${range.step}`} min={range.minimum} max={range.maximum} step={range.step} value={value} onChange={e=>{setValue(e.target.value);setError("");}}/></label>
+   <label className={styles.label}>Denomination ({range.currency})<input className={styles.denomination} aria-label={`Denomination for ${product.name}`} type="number" inputMode="decimal" placeholder={rangePlaceholder} title={`Allowed range: ${range.minimum}–${range.maximum} ${range.currency}; increments of ${range.step}`} min={range.minimum} max={range.maximum} step={range.step} value={value} onChange={e=>{setValue(e.target.value);setError("");}}/></label>
    <label className={styles.label}>Quantity<input className={styles.quantity} aria-label={`Range quantity for ${product.name}`} type="number" min={Math.max(1,product.minimum_quantity)} max={product.is_bulk_order?undefined:product.maximum_quantity??undefined} step="1" value={quantity} onChange={e=>setQuantity(e.target.value)}/></label>
    <div className={styles.price} aria-live="polite"><strong>{price===null?"—":money(price*(1-discountPercent/100))} / code</strong><p>Total: {price===null?"—":money(price*(1-discountPercent/100)*(Number(quantity)||0))}</p></div>
    <button type="button" disabled={busy} className={styles.addButton} onClick={()=>purchase(false)}>Add to cart</button>
    <button type="button" disabled={busy} className={styles.buyButton} onClick={()=>purchase(true)}>Buy now</button>
   </div>
-  {range.delivery_mode==="MANUAL"&&<p className={styles.hint}>Delivered manually after payment.</p>}
-  {range.delivery_mode==="SUPPLIER"&&<p className={styles.hint}>Supplier delivery after payment. Codes may take a few minutes.</p>}
+  <p className={styles.hint}>Manual Delivery will take Few Minutes.</p>
   {range.step>1&&<p className={styles.hint}>Increments of {range.step} {range.currency}</p>}
   {fields.length>0&&Array.from({length:Math.min(30,Math.max(1,Number(quantity)||1))},(_,index)=><div key={index} className="mt-3 grid gap-2"><p className="font-bold">Code {index+1} details</p>{fields.map(field=><label key={field.id} className={styles.label}>{field.label}{field.is_required?" *":""}<input className={styles.detailInput} maxLength={500} placeholder={field.placeholder??""} value={answers[`${index}:${field.id}`]??""} onChange={e=>setAnswers({...answers,[`${index}:${field.id}`]:e.target.value})}/></label>)}</div>)}
   {error&&<p role="alert" className={styles.error}>{error}</p>}{message&&<p role="status" className={styles.success}>{message}</p>}
