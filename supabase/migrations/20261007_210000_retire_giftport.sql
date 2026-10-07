@@ -14,7 +14,7 @@ create or replace function public.guard_retired_supplier() returns trigger
 language plpgsql security definer set search_path=public as $$
 begin
  if TG_TABLE_NAME='products' then
-  if NEW.stock_source='GIFTPORT' and (NEW.status<>'INACTIVE' or NEW.stock_quantity<>0) then
+  if NEW.stock_source='GIFTPORT' and (NEW.status is distinct from 'INACTIVE' or NEW.stock_quantity is distinct from 0) then
    raise exception 'Supplier disconnected';
   end if;
  elsif TG_TABLE_NAME='product_options' then
@@ -34,10 +34,15 @@ begin
  end if;
  return NEW;
 end $$;
+drop trigger if exists retired_supplier_product on products;
 create trigger retired_supplier_product before insert or update on products for each row execute function guard_retired_supplier();
+drop trigger if exists retired_supplier_option on product_options;
 create trigger retired_supplier_option before insert or update on product_options for each row execute function guard_retired_supplier();
+drop trigger if exists retired_supplier_order on order_items;
 create trigger retired_supplier_order before insert or update of product_id,product_option_id,quantity on order_items for each row execute function guard_retired_supplier();
+drop trigger if exists retired_supplier_job on definiteplay_jobs;
 create trigger retired_supplier_job before insert or update on definiteplay_jobs for each row execute function guard_retired_supplier();
+drop trigger if exists retired_supplier_range on product_range_settings;
 create trigger retired_supplier_range before insert or update on product_range_settings for each row execute function guard_retired_supplier();
 -- Remove access to retired supplier RPCs even for stale application deployments.
 do $$ declare fn record; begin

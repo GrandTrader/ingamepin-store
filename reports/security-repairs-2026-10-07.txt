@@ -1,0 +1,35 @@
+INGAMEPIN — SECURITY REPAIRS
+7 October 2026
+
+IMPLEMENTED
+- Updated sharp 0.35.4 -> 0.35.5, including platform binaries/libvips.
+- Updated source-map-js 1.2.1 -> 1.2.2.
+- DigiSeller image sync accepts only the existing Supabase store-images bucket, the existing Cloudinary image/upload account path, PlayStation's image CDN path, or the store's static /images/ paths. Other image URLs must first be uploaded through Gallery.
+- HTTPS required; credentials, alternate ports, arbitrary origins/API paths, and redirects rejected. Requests send no credentials.
+- Downloads have a 15-second deadline and a streaming 10 MB cap; cancelled/oversized responses stop reading.
+- PNG/JPEG/GIF/WebP file signatures are checked before conversion or storage upload. Remote SVG and MIME-disguised files are rejected. Trusted internally generated branding/flag SVG overlays remain supported by patched sharp.
+- Repaired broken UTF-8 characters in supplier-editor labels.
+- Repaired the product-range browser test fixture and updated obsolete display assertions while retaining currency, bounds, quantity, cart and checkout-payload checks.
+- Retirement SQL can be applied repeatedly and retains historical orders, payments and delivered codes.
+
+DEVELOPMENT-ONLY DEPENDENCY MITIGATION
+The published braces 3.0.3 advisory has no patched upstream release. A reproducible postinstall patch adds nesting limits and bounded AST validation to its parser and recursive walkers. Source checksums are checked; unexpected dependency changes stop installation for review. Balanced/unbalanced nesting, parentheses, cyclic ASTs and normal glob behavior are tested. npm audit still reports five high-severity dependency-tree entries arising from this one upstream advisory. They are not five production vulnerabilities. This local mitigation must be reviewed/removed once a patched upstream version is available.
+
+VALIDATED
+- Production-only npm audit: zero known vulnerabilities.
+- 83 code/security regressions passed.
+- GiftPort retirement/history preservation/repeat application, guest purchase security and portal wallet database suites passed in isolated databases.
+- Real JPG/PNG/WebP/GIF conversion with brand and region overlays passed.
+- Actual stored Supabase and PlayStation CDN images downloaded and converted without posting to DigiSeller.
+- One existing Cloudinary source for Grand Theft Auto VI (GTA 6) India responds HTTP 401 even to the original URL. This is a pre-existing upstream image-access problem; no product image was replaced with guessed content. Its replacement requires an accessible image from the owner.
+- Product-range browser fixture passed without a real purchase.
+- Targeted application lint and production build/TypeScript passed.
+
+PENDING
+- Apply the prepared retirement SQL in the live Supabase SQL Editor. This session has no SQL management credentials and its browser-control connection fails at startup. The user confirmed SQL Editor access; live application is not yet confirmed.
+- Deployment and live smoke checks will be recorded after release.
+
+SOURCES
+https://github.com/advisories/GHSA-wq5f-xc86-pv6w
+https://github.com/advisories/GHSA-68fv-2mgg-jv7q
+https://github.com/advisories/GHSA-vfj7-8cjw-p6xm

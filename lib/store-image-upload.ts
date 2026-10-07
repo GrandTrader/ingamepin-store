@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { assertRasterImage } from "./product-image-format";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -32,6 +33,7 @@ export async function uploadStoreImage(
     throw new Error("The image must be smaller than 10 MB.");
   }
 
+  assertRasterImage(new Uint8Array(await value.arrayBuffer()), value.type);
   const extension = extensions[value.type];
   const path = `${folder}/${Date.now()}-${randomUUID()}.${extension}`;
   const admin = createAdminClient();

@@ -1,4 +1,5 @@
 import "server-only";
+import { assertRasterImage } from "./product-image-format";
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -22,6 +23,7 @@ async function textImage(markup: string, width: number, height: number) {
 
 /** Creates an upload-only copy. Never modifies the source image or storage URL. */
 export async function renderDigiSellerImage(source: Buffer, region?: string | null) {
+  assertRasterImage(source);
   const input = sharp(source, { limitInputPixels: 40_000_000 });
   const metadata = await input.metadata();
   // Remove white source padding, but preserve coloured product backgrounds.

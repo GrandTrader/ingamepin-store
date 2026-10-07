@@ -12,6 +12,6 @@ The production GiftPort service is stopped and disabled. A systemd condition pre
 
 The one GiftPort-backed product is INACTIVE with zero stock and inactive options. Two unresolved supplier jobs are in REVIEW, with existing payment/order records retained. One had been submitted to GiftPort and must not be automatically repurchased or refunded. Supplier records, credentials and mappings remain private on the stopped service; automatic approval review rejected permanent deletion, so reversible isolation was used instead.
 
-Website code removal and the new retirement SQL migration are local and NOT deployed/applied to production. Keep them separate from pending Nexapin domain changes during release.
+Website code removal was deployed as 6d503f37 on 7 October 2026 and verified live. The retirement SQL migration remains unapplied because database management access was unavailable. Pending Nexapin domain changes were excluded from this release.
 
-Validation: TypeScript and targeted ESLint pass; supplier API/authentication, pricing, retirement and existing Definite Play checks pass. The older product-range UI fixture cannot bundle its missing CSS and LocalizedProductImage dependencies; this check did not run to completion. No real purchase was used for testing.
+Validation: TypeScript and targeted ESLint pass; supplier API/authentication, pricing, retirement and existing Definite Play checks pass. The product-range browser fixture now loads its CSS and localized image dependencies and passes cart/price/quantity checks. No real purchase was used for testing.

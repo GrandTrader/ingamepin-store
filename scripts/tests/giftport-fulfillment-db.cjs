@@ -118,6 +118,8 @@ const {PGlite}=require("@electric-sql/pglite");
  const priorJobs=(await one('select count(*)::int n from definiteplay_jobs')).n;
  const priorCodes=(await one('select count(*)::int n from gift_card_codes')).n;
  await db.exec(fs.readFileSync('supabase/migrations/20261007_210000_retire_giftport.sql','utf8'));
+ // Retrying the deployment is safe and preserves all existing records.
+ await db.exec(fs.readFileSync('supabase/migrations/20261007_210000_retire_giftport.sql','utf8'));
  assert.equal((await one('select count(*)::int n from definiteplay_jobs')).n,priorJobs);
  assert.equal((await one('select count(*)::int n from gift_card_codes')).n,priorCodes);
  assert.equal((await one("select count(*)::int n from products where stock_source='GIFTPORT' and (status<>'INACTIVE' or stock_quantity<>0)")).n,0);

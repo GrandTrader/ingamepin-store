@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { renderDigiSellerImage } from "./digiseller-image";
+import { downloadProductImage } from "./safe-product-image";
 
 type DigiSellerLoginResponse = {
   retval?: number;
@@ -359,15 +360,10 @@ export async function updateDigiSellerProductName(productId: number, name: strin
 
 export async function uploadDigiSellerProductImage(productId: number, imageUrl: string, region?: string | null) {
   const signal = AbortSignal.timeout(25_000);
-  const { token } = await getDigiSellerToken(signal);
-  const source = await fetch(imageUrl, { cache: "no-store", signal });
-  if (!source.ok) throw new Error(`Unable to download the website image (${source.status}).`);
-  const contentType = source.headers.get("content-type")?.split(";")[0]?.trim() || "";
-  if (!contentType.startsWith("image/")) throw new Error("The saved product URL does not return an image.");
-  const bytes = await source.arrayBuffer();
-  if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024) throw new Error("The product image must be between 1 byte and 10 MB.");
-  const jpeg = await renderDigiSellerImage(Buffer.from(bytes), region);
+  const bytes = await downloadProductImage(imageUrl, signal);
+  const jpeg = await renderDigiSellerImage(bytes, region);
   if (jpeg.byteLength > 10 * 1024 * 1024) throw new Error("The converted product image is larger than 10 MB.");
+  const { token } = await getDigiSellerToken(signal);
   const form = new FormData();
   form.append("file", new Blob([jpeg], { type: "image/jpeg" }), `product-${productId}.jpg`);
   const response = await fetch(`https://api.digiseller.com/api/product/preview/add/images/${productId}?token=${encodeURIComponent(token)}`, {
