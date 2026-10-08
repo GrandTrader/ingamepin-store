@@ -1594,43 +1594,6 @@ export default function CheckoutPage() {
             </div>
 
             <div className={styles.paymentGrid} aria-busy={paymentRestrictions.loading}>
-              {!paymentRestrictions.loading && paymentAllowed("paypal") && <label className={
-                "cursor-pointer rounded-xl border p-3 " + (paymentMethod === "paypal" ? "border-cyan-400 bg-cyan-400/5" : "border-white/10 bg-slate-950")
-              } style={{ order: 10 }}>
-                <input type="radio" name="paymentMethod" value="paypal" checked={paymentMethod === "paypal"}
-                  onChange={() => setPaymentMethod("paypal")} className="sr-only" />
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-lg font-black italic text-blue-800">P</span>
-                  <div><p className="text-sm font-bold">PayPal</p><p className="mt-0.5 text-xs text-slate-500">Secure PayPal checkout · USD</p></div>
-                </div>
-              </label>}
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "manual_upi"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } `}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="manual_upi"
-                  checked={!paymentRestrictions.loading && paymentAllowed("manual_upi") && paymentMethod === "manual_upi"}
-                  disabled={paymentRestrictions.loading || !paymentAllowed("manual_upi")}
-                  onChange={(event) => setPaymentMethod(event.target.value)}
-                  className="sr-only"
-                />
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600">
-                    <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 max-w-none scale-150 object-contain" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-bold leading-snug">UPI</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">{paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("manual_upi") ? "Unavailable for this order" : "Scan QR · Submit 12-digit UPI reference"}</p>
-                  </div>
-                </div>
-              </label>
-
               <label
                 className={`rounded-xl border p-2.5 transition sm:col-span-2 sm:p-3 ${
                   paymentMethod === "wallet"
@@ -1685,6 +1648,75 @@ export default function CheckoutPage() {
                       {wallet.authenticated
                         ? formatPrice(wallet.balance)
                         : "—"}
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "manual_upi"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="manual_upi"
+                  checked={!paymentRestrictions.loading && paymentAllowed("manual_upi") && paymentMethod === "manual_upi"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("manual_upi")}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                  className="sr-only"
+                />
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-b from-orange-400 via-white to-green-600">
+                    <Image src="/payment-methods/upi.jpeg" alt="UPI" width={40} height={40} className="h-10 w-10 max-w-none scale-150 object-contain" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold leading-snug">UPI</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">{paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("manual_upi") ? "Unavailable for this order" : "Scan QR · Submit 12-digit UPI reference"}</p>
+                  </div>
+                </div>
+              </label>
+
+              {!paymentRestrictions.loading && paymentAllowed("paypal") && <label className={
+                "cursor-pointer rounded-xl border p-3 " + (paymentMethod === "paypal" ? "border-cyan-400 bg-cyan-400/5" : "border-white/10 bg-slate-950")
+              }>
+                <input type="radio" name="paymentMethod" value="paypal" checked={paymentMethod === "paypal"}
+                  onChange={() => setPaymentMethod("paypal")} className="sr-only" />
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-lg font-black italic text-blue-800">P</span>
+                  <div><p className="text-sm font-bold">PayPal</p><p className="mt-0.5 text-xs text-slate-500">Secure PayPal checkout · USD</p></div>
+                </div>
+              </label>}
+
+              <label
+                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
+                  paymentMethod === "binance"
+                    ? "border-cyan-400 bg-cyan-400/5"
+                    : "border-white/10 bg-slate-950 hover:border-white/20"
+                } `}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="binance"
+                  checked={!paymentRestrictions.loading && paymentAllowed("binance") && paymentMethod === "binance"}
+                  disabled={paymentRestrictions.loading || !paymentAllowed("binance")}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value)
+                  }
+                  className="sr-only"
+                />
+
+                <div className="flex items-center gap-2.5">
+                  <Image src="/payment-methods/binance-pay.png" alt="Binance Pay" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
+
+                  <div>
+                    <p className="text-sm font-bold leading-snug">Binance Pay</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("binance") ? "Unavailable for this order" : "Pay securely with Binance"}
                     </p>
                   </div>
                 </div>
@@ -1760,37 +1792,6 @@ export default function CheckoutPage() {
 
               <label
                 className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
-                  paymentMethod === "binance"
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-slate-950 hover:border-white/20"
-                } `}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="binance"
-                  checked={!paymentRestrictions.loading && paymentAllowed("binance") && paymentMethod === "binance"}
-                  disabled={paymentRestrictions.loading || !paymentAllowed("binance")}
-                  onChange={(event) =>
-                    setPaymentMethod(event.target.value)
-                  }
-                  className="sr-only"
-                />
-
-                <div className="flex items-center gap-2.5">
-                  <Image src="/payment-methods/binance-pay.png" alt="Binance Pay" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-contain" />
-
-                  <div>
-                    <p className="text-sm font-bold leading-snug">Binance Pay</p>
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                      {paymentRestrictions.loading ? "Checking availability…" : !paymentAllowed("binance") ? "Unavailable for this order" : "Pay securely with Binance"}
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "usdt"
                     ? "border-cyan-400 bg-cyan-400/5"
                     : "border-white/10 bg-slate-950 hover:border-white/20"
@@ -1819,6 +1820,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </label>
+
               <label
                 className={`cursor-pointer rounded-xl border p-2.5 transition sm:p-3 ${
                   paymentMethod === "freekassa"
