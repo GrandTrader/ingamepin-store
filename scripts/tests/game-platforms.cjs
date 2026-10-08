@@ -46,6 +46,23 @@ test('Games saves several platforms and removes duplicates; clearing all is supp
     assert.deepEqual(Array.from(f.writes[0].value.gaming_platforms), [...new Set(selected)]);
   }
 });
+
+test('Xbox and Xbox Games retain their supported platforms', async () => {
+  for (const category of [
+    { name: 'Xbox Games', slug: 'xbox-games', category_type: 'GAME_KEY' },
+    { name: 'Xbox', slug: 'xbox', category_type: 'SUBSCRIPTION' },
+  ]) {
+    const f = fixture({ category });
+    assert.match(await f.save(['Xbox One', 'Xbox Series X|S']), /success=/);
+    assert.deepEqual(Array.from(f.writes[0].value.gaming_platforms), ['Xbox One', 'Xbox Series X|S']);
+  }
+});
+
+test('renaming Games to PlayStation Games retains PS4 and PS5 selections', async () => {
+  const f = fixture({ category: { name: 'PlayStation Games', slug: 'playstation-games', category_type: 'GAME_KEY' } });
+  assert.match(await f.save(['PS4', 'PS5']), /success=/);
+  assert.deepEqual(Array.from(f.writes[0].value.gaming_platforms), ['PS4', 'PS5']);
+});
 test('changing to a non-Games category clears platform metadata', async () => {
   const f = fixture({ category: { name: 'Gift Cards', slug: 'gift-cards', category_type: 'GIFT_CARD' } });
   assert.match(await f.save(['PS5']), /success=/);

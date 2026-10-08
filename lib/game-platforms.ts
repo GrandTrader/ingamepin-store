@@ -8,8 +8,8 @@ export const GAME_PLATFORMS = [
 export type GamePlatform = (typeof GAME_PLATFORMS)[number];
 
 export function isGamesCategory(category?: { slug?: string | null; name?: string | null } | null) {
-  return category?.slug?.trim().toLowerCase() === "games" ||
-    category?.name?.trim().toLowerCase() === "games";
+  return ["games", "playstation-games", "xbox", "xbox-games"].includes(category?.slug?.trim().toLowerCase() ?? "") ||
+    ["games", "playstation games", "xbox", "xbox games"].includes(category?.name?.trim().toLowerCase() ?? "");
 }
 
 export function normalizeGamePlatforms(values: unknown): GamePlatform[] {

@@ -17,7 +17,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import Editor from './editor';
 import Badges from './badges';
-const categories=[{id:'games',name:'Games',slug:'games'},{id:'cards',name:'Gift Cards',slug:'gift-cards'}];
+const categories=[{id:'games',name:'Games',slug:'games'},{id:'playstation-games',name:'PlayStation Games',slug:'playstation-games'},{id:'xbox-games',name:'Xbox Games',slug:'xbox-games'},{id:'xbox',name:'Xbox',slug:'xbox'},{id:'cards',name:'Gift Cards',slug:'gift-cards'}];
 createRoot(document.getElementById('root')).render(<>
 <div style={{padding:16,maxWidth:1152,margin:'auto'}}>
 <h1 style={{fontSize:22,fontWeight:800,marginBottom:12}}>Product settings</h1>
@@ -48,6 +48,15 @@ createRoot(document.getElementById('root')).render(<>
     assert.deepEqual(await page.locator('#editor').evaluate(el=>new FormData(el).getAll('gaming_platforms')),[]);
     await page.getByLabel('Category',{exact:true}).selectOption('games');
     assert(await page.getByRole('checkbox',{name:'PS4',exact:true}).isChecked());
+    await page.getByLabel('Category',{exact:true}).selectOption('playstation-games');
+    assert(await page.getByRole('checkbox',{name:'PS4',exact:true}).isChecked());
+    assert(await page.getByRole('checkbox',{name:'PS5',exact:true}).isChecked());
+    await page.getByLabel('Category',{exact:true}).selectOption('xbox-games');
+    for(const platform of ['PS4','PS5','Steam']) await page.getByRole('checkbox',{name:platform,exact:true}).uncheck();
+    for(const platform of ['Xbox One','Xbox Series X|S']) await page.getByRole('checkbox',{name:platform,exact:true}).check();
+    assert.deepEqual(await page.locator('#editor').evaluate(el=>new FormData(el).getAll('gaming_platforms')),['Xbox One','Xbox Series X|S']);
+    await page.getByLabel('Category',{exact:true}).selectOption('xbox');
+    assert.deepEqual(await page.locator('#editor').evaluate(el=>new FormData(el).getAll('gaming_platforms')),['Xbox One','Xbox Series X|S']);
     for(const theme of ['light','dark']) for(const width of [320,390,1440]){
       await page.setViewportSize({width,height:1000});await page.evaluate(theme=>document.documentElement.dataset.storeTheme=theme,theme);
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Page must not overflow at '+width);
