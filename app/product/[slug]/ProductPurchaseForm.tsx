@@ -687,6 +687,11 @@ export default function ProductPurchaseForm({
               const isUnavailable =
                 !option.isInStock ||
                 (!product.isBulkOrder && !product.isUnlimitedStock && option.stockQuantity < 1);
+              const sale = activePromotion(product.promotionRules, option.id, promotionNow);
+              const salePrice = applyAffiliateMarkup(discountedPrice(option.sellingPrice, sale?.percent ?? 0));
+              const finalPrice = salePrice - Math.round(
+                salePrice * extraCustomerPercent(sale?.percent ?? 0, product.customerDiscountPercent),
+              ) / 100;
 
               return (
                 <button
@@ -703,23 +708,25 @@ export default function ProductPurchaseForm({
                       : "border-white/10 bg-slate-950 hover:border-cyan-400"
                   } disabled:cursor-not-allowed`}
                 >
-                  <span className="block break-words text-xs leading-4 font-bold sm:text-sm">{option.optionName}</span>
+                  <span className="product-option-name block break-words text-xs leading-4 font-bold sm:text-sm">{option.optionName}</span>
                   {option.platform && (
                     <span className="mt-1 inline-flex rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold">
                       {option.platform}
                     </span>
                   )}
                   <span className="product-option-price mt-0.5 block text-xs leading-4">
-                    {(() => {
-                      const sale=activePromotion(product.promotionRules,option.id,promotionNow);
-                      const salePrice=applyAffiliateMarkup(discountedPrice(option.sellingPrice,sale?.percent??0));
-                      const finalPrice=salePrice-Math.round(salePrice*extraCustomerPercent(sale?.percent??0,product.customerDiscountPercent))/100;
-                      return <><span className="font-black">{formatPrice(finalPrice)}</span>
-                        {(sale||product.customerDiscountPercent>0)&&<> <del className="text-[10px] opacity-60">{formatPrice(applyAffiliateMarkup(option.sellingPrice))}</del></>}
-                        {sale&&sale.percent>=product.customerDiscountPercent&&<span className="mt-1 block text-[11px] font-bold">Save {sale.percent}% · Ends {promotionExpiryLabel(sale.endsAt!)}</span>}
-                      </>;
-                    })()}
+                    <span className="font-black">{formatPrice(finalPrice)}</span>
+                    {(sale || product.customerDiscountPercent > 0) && (
+                      <del className="line-through text-[10px] opacity-60">
+                        {formatPrice(applyAffiliateMarkup(option.sellingPrice))}
+                      </del>
+                    )}
                   </span>
+                  {sale && sale.percent >= product.customerDiscountPercent && (
+                    <span className="product-option-sale mt-1 block text-[11px] font-bold">
+                      Save {sale.percent}% · Ends {promotionExpiryLabel(sale.endsAt!)}
+                    </span>
+                  )}
                   {(isUnavailable ||
                     (!product.isBulkOrder &&
                       !product.isUnlimitedStock &&

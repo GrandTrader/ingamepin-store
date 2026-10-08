@@ -128,6 +128,12 @@
   margin-top: 0;
 }
 .page .purchase :global(button.product-option-button > span:not(:first-child):not(.product-option-price)) { grid-column: 1 / -1; justify-self: start; }
+.page .purchase :global(button.product-option-button .product-option-sale) {
+  min-width: 0;
+  max-width: 100%;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
 .page .purchase :global(button.product-option-button[aria-pressed="true"]:not(:disabled)) { padding-right: 9px; }
 .page .purchase :global(button.product-option-button[aria-pressed="true"]:not(:disabled))::after { display: none; }
 
