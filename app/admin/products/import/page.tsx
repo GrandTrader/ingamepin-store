@@ -20,6 +20,7 @@ export default async function ImportProductPage() {
         <AdminSidebar />
         <main className="min-w-0 flex-1 p-4 sm:p-6">
           <Link href="/admin/products" className="text-sm font-bold text-blue-600">← Product list</Link>
+          <Link href="/admin/products/bulk-import" className="ml-4 font-bold text-blue-600">Bulk Product Import →</Link>
           <h1 className="mt-4 text-2xl font-black">Import full product</h1>
           <p className="mt-2 text-slate-600">Upload one CSV with English and Russian details, denominations and selling prices.</p>
           {categories.error ? (
