@@ -13,7 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
 import {
-  DeleteSelectedProductsButton,
+  SelectedProductActions,
   SelectAllProductsCheckbox,
 } from "./ProductBulkSelection";
 import {
@@ -421,11 +421,8 @@ export default async function AdminProductsPage({
 
             <form id="bulk-delete-products" action={deleteSelectedProducts} />
 
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-              <p className="text-xs font-semibold text-slate-500">
-                Select products using the checkboxes, then delete them together.
-              </p>
-              <DeleteSelectedProductsButton />
+            <div className="border-b border-slate-200 bg-white px-4 py-3">
+              <SelectedProductActions selectionKey={visibleProducts.map(product => product.id + product.status).join(",")} />
             </div>
 
             <div className="overflow-x-auto">
@@ -444,7 +441,7 @@ export default async function AdminProductsPage({
                     <th className="px-3 py-3 text-center">Available</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                     <th className="w-14 px-4 py-3 text-center">
-                      <SelectAllProductsCheckbox />
+                      <SelectAllProductsCheckbox selectionKey={visibleProducts.map(product => product.id + product.status).join(",")} />
                     </th>
                   </tr>
                 </thead>
