@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "@/components/NavigationLink";
+import ProductSearch from "./ProductSearch";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -13,19 +14,6 @@ import {
 type CartItem = {
   cartId: string;
   quantity: number;
-};
-
-type SearchProduct = {
-  id: string;
-  name: string;
-  nameRu: string | null;
-  slug: string;
-  href: string;
-  image: string | null;
-  imageRu: string | null;
-  price: number;
-  badge: string | null;
-  category: string;
 };
 
 type HeaderCategory = {
@@ -60,17 +48,9 @@ export default function Header() {
     setLanguage,
     setCurrency,
     t,
-    formatPrice,
   } = useStorePreferences();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartQuantity, setCartQuantity] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchProducts, setSearchProducts] =
-    useState<SearchProduct[]>([]);
-  const [isSearchFocused, setIsSearchFocused] =
-    useState(false);
-  const [isSearching, setIsSearching] =
-    useState(false);
   const [isAuthenticated, setIsAuthenticated] =
     useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
@@ -249,63 +229,6 @@ export default function Header() {
     };
   }, [updateCartQuantity]);
 
-  useEffect(() => {
-    const query = searchQuery.trim();
-
-    if (query.length < 2) {
-      setSearchProducts([]);
-      setIsSearching(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    setIsSearching(true);
-    setSearchProducts([]);
-    const timeout = window.setTimeout(
-      async () => {
-        setIsSearching(true);
-
-        try {
-          const response = await fetch(
-            `/api/products/search?q=${encodeURIComponent(query)}`,
-            {
-              signal: controller.signal,
-            },
-          );
-
-          const result = (await response.json()) as {
-            products?: SearchProduct[];
-          };
-
-          if (controller.signal.aborted) return;
-          setSearchProducts(
-            response.ok
-              ? result.products ?? []
-              : [],
-          );
-        } catch (error) {
-          if (
-            !controller.signal.aborted &&
-            error instanceof Error &&
-            error.name !== "AbortError"
-          ) {
-            setSearchProducts([]);
-          }
-        } finally {
-          if (!controller.signal.aborted) {
-            setIsSearching(false);
-          }
-        }
-      },
-      250,
-    );
-
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [searchQuery]);
-
   function closeMenu() {
     setIsMenuOpen(false);
   }
@@ -359,11 +282,9 @@ export default function Header() {
             </div>
           </Link>
 
-          <form action="/products" method="get" role="search" className="hidden min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-600 bg-white focus-within:border-[#ff9418] xl:flex">
-            <label htmlFor="desktop-product-search" className="sr-only">{t("searchProducts")}</label>
-            <input id="desktop-product-search" name="search" type="search" placeholder={t("searchPlaceholder")} className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400" />
-            <button type="submit" aria-label="Search" className="px-4 text-xl text-slate-500 transition hover:text-[#ff9418]">⌕</button>
-          </form>
+          <div className="hidden min-w-0 flex-1 xl:block">
+            <ProductSearch id="desktop-product-search" desktop />
+          </div>
 
           {/* Header actions */}
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -542,135 +463,10 @@ export default function Header() {
           !pathname.startsWith("/digiseller/usdt/") &&
           pathname !== "/checkout/payment" && (
           <div className="border-t border-white/10 bg-slate-950/70 px-3 py-2.5 sm:px-5 sm:py-3 xl:hidden">
-          <div className="relative mx-auto max-w-3xl">
-            <form
-              action="/products"
-              method="get"
-              role="search"
-              className="flex overflow-hidden rounded-xl border border-white/10 bg-slate-950 transition focus-within:border-cyan-400"
-            >
-              <label
-                htmlFor="header-product-search"
-                className="sr-only"
-              >
-                {t("searchProducts")}
-              </label>
-
-              <input
-                id="header-product-search"
-                name="search"
-                type="search"
-                value={searchQuery}
-                onChange={(event) =>
-                  setSearchQuery(event.target.value)
-                }
-                onFocus={() =>
-                  setIsSearchFocused(true)
-                }
-                onBlur={() => {
-                  window.setTimeout(
-                    () =>
-                      setIsSearchFocused(false),
-                    150,
-                  );
-                }}
-                autoComplete="off"
-                placeholder={t("searchPlaceholder")}
-                className="min-h-11 min-w-0 flex-1 bg-transparent px-3 py-2.5 text-base text-white outline-none placeholder:text-slate-500 sm:px-4 sm:py-3 sm:text-sm"
-              />
-
-              <button
-                type="submit"
-                className="shrink-0 bg-cyan-400 px-4 text-sm font-black text-slate-950 transition hover:bg-cyan-300 sm:px-5"
-              >
-                {t("search")}
-              </button>
-            </form>
-
-            {isSearchFocused &&
-              searchQuery.trim().length >= 2 && (
-                <div className="absolute left-0 right-0 top-full z-[60] mt-2 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
-                  {isSearching && (
-                    <p className="p-4 text-sm text-slate-400">
-                      {t("searching")}
-                    </p>
-                  )}
-
-                  {!isSearching &&
-                    searchProducts.length === 0 && (
-                      <p className="p-4 text-sm text-slate-400">
-                        {t("noResults")}
-                      </p>
-                    )}
-
-                  {!isSearching &&
-                    searchProducts.map((product) => (
-                      <Link
-                        key={product.id}
-                        href={product.href}
-                        onClick={() => {
-                          setIsSearchFocused(false);
-                          setSearchQuery("");
-                        }}
-                        className="flex items-center gap-3 border-b border-white/10 p-3 transition last:border-b-0 hover:bg-white/5"
-                      >
-                        <div className="flex h-14 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-cyan-400/10 font-black text-cyan-300">
-                          {(language === "ru" && product.imageRu
-                            ? product.imageRu
-                            : product.image) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={
-                                language === "ru" && product.imageRu
-                                  ? product.imageRu
-                                  : product.image ?? ""
-                              }
-                              alt=""
-                              onError={(event) => {
-                                if (
-                                  product.image &&
-                                  event.currentTarget.dataset.fallbackApplied !== "true"
-                                ) {
-                                  event.currentTarget.dataset.fallbackApplied = "true";
-                                  event.currentTarget.src = product.image;
-                                  return;
-                                }
-
-                                event.currentTarget.style.display = "none";
-                              }}
-                              className="h-full w-full object-cover object-center"
-                            />
-                          ) : (
-                            product.name
-                              .charAt(0)
-                              .toUpperCase()
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold text-white">
-                            {language === "ru" && product.nameRu
-                              ? product.nameRu
-                              : product.name}
-                          </p>
-
-                          <p className="mt-1 truncate text-xs text-slate-400">
-                            {product.category}
-                          </p>
-                        </div>
-
-                        <p className="shrink-0 text-sm font-black text-cyan-300">
-                          {formatPrice(product.price, {
-                            maximumFractionDigits: currency === "RUB" ? 0 : 2,
-                          })}
-                        </p>
-                      </Link>
-                    ))}
-                </div>
-              )}
+            <div className="mx-auto max-w-3xl">
+              <ProductSearch id="header-product-search" />
+            </div>
           </div>
-        </div>
-
         )}
 
         {/* Mobile navigation */}
