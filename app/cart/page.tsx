@@ -1,4 +1,5 @@
 "use client";
+import { customerDetailDisplay } from "@/lib/sensitive-customer-fields";
 
 import { formatFaceValue } from "@/lib/face-value";
 import { validateCartStock } from "@/lib/cart-stock";
@@ -392,7 +393,7 @@ export default function CartPage() {
                           {(item.customerInformation ?? []).map((field) => (
                             <p key={field.fieldId} className="mt-1 break-all text-sm text-slate-400">
                               {field.label}:{" "}
-                              <span className="text-white">{field.value}</span>
+                              <span className="text-white">{customerDetailDisplay(field)}</span>
                             </p>
                           ))}
                           {item.productId && Number(customerDiscounts[item.productId] ?? 0) > 0 && (

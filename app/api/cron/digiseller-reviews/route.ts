@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
 import { syncDigiSellerStatistics } from "@/lib/digiseller-stat-sync";
@@ -13,6 +14,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
   try {
+    const cleanup = await createAdminClient().rpc("purge_expired_account_details");
+    if (cleanup.error && cleanup.error.code !== "PGRST202") throw Error("Protected detail cleanup failed.");
     return NextResponse.json({ ok: true, ...(await syncDigiSellerStatistics()) });
   } catch (error) {
     return NextResponse.json(

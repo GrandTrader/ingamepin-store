@@ -22,7 +22,7 @@ export default async function BulkProductImportPage() {
     <Link href="/admin/products" className="font-bold text-blue-600">← Product list</Link>
     <h1 className="mt-4 text-2xl font-black">Bulk Product Import</h1>
     <p className="mt-2 text-slate-600">PlayStation India purchase assistance. Editions use your existing Product options. New products stay in Draft.</p>
-    <p className="mt-2 text-sm text-slate-600">Customer information: PlayStation account email and PSN Online ID. No passwords or verification codes.</p>
+    <p className="mt-2 text-sm text-slate-600">Customer information uses the category’s configured fields. Protected Games details require a verified customer login and the protected-storage database update.</p>
     {(settings.error || categories.error) && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-amber-900">{settings.error ? "The catalog import database update must be installed before preview or import." : "Categories could not be loaded. Refresh this page."}</p>}
     <BulkImportForm ready={!settings.error && !categories.error} categories={categories.data || []} initialSettings={settings.data ? { markup_percent: String(settings.data.markup_percent), inr_per_usd: String(settings.data.inr_per_usd) } : DEFAULT_CATALOG_SETTINGS} />
   </main></div></div>;

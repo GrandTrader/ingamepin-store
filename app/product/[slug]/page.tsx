@@ -1,3 +1,5 @@
+import { gameAccountDescription } from "@/lib/game-account-description";
+import { isSensitiveCustomerField } from "@/lib/sensitive-customer-fields";
 import { readWithGamingPlatforms } from "@/lib/product-platform-query";
 import ProductPlatformBadges from "@/components/ProductPlatformBadges";
 import { isGamesCategory, normalizeGamePlatforms } from "@/lib/game-platforms";
@@ -281,6 +283,7 @@ export async function renderProductPage({
   }
 
   const customerFields = (customerFieldResult.data ?? []) as ProductCustomerFieldRow[];
+  const protectedFields = customerFields.some(field => isSensitiveCustomerField(field.label));
   const options = (optionResult.data ?? []) as ProductOptionRow[];
 
 
@@ -610,10 +613,10 @@ export async function renderProductPage({
 
               <ProductDetailsTabs
                 description={
-                  product.description ??
+                  gameAccountDescription(product.description, protectedFields) ??
                   "Product details and delivery information will be provided with your order."
                 }
-                descriptionRu={product.description_ru}
+                descriptionRu={gameAccountDescription(product.description_ru, protectedFields)}
                 deliveryInstructions={product.delivery_instructions}
                 reviews={allProductReviews}
                 positiveCount={positiveReviewCount}

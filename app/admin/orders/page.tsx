@@ -1,3 +1,4 @@
+import { customerDetailDisplay } from "@/lib/sensitive-customer-fields";
 import { loadAdminOrders } from "@/lib/admin-orders-query";
 ﻿import { redirect } from "next/navigation";
 
@@ -415,7 +416,7 @@ export default async function AdminOrdersPage({
                                     )}
                                     {(item.customer_information ?? []).map((field) => (
                                       <p key={field.fieldId} className="mt-1 break-all rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-800">
-                                        {field.label}: <span className="font-bold">{field.value}</span>
+                                        {field.label}: <span className="font-bold">{customerDetailDisplay(field)}</span>
                                       </p>
                                     ))}
                                   </div>

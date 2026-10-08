@@ -97,7 +97,7 @@ export function parseCatalogImport(csv: string, mapping: Record<string, string>,
       if (v.slug && (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v.slug) || v.slug.length > 180)) throw new Error("Use a lowercase slug with letters, digits and hyphens.");
       if (v.region && v.region !== "India") throw new Error("This purchase-assistance importer supports region India.");
       if (v.platform && !["PS4", "PS5", "PS4/PS5"].includes(v.platform)) throw new Error("Platform must be PS4, PS5 or PS4/PS5.");
-      if (v.customer_fields && v.customer_fields !== "PSN_EMAIL_AND_ID") throw new Error("Use PSN_EMAIL_AND_ID. Passwords and verification codes are not collected.");
+      if (v.customer_fields && !["PSN_EMAIL_AND_ID", "GAME_ACCOUNT_DETAILS"].includes(v.customer_fields)) throw new Error("Use GAME_ACCOUNT_DETAILS for the Games customer-field preset.");
       if (v.store_url && !isOfficialStoreUrl(v.store_url)) throw new Error("Use an official https://store.playstation.com/en-in/product/... or concept/... URL.");
       if (v.image_url) { const u = new URL(v.image_url); if (u.protocol !== "https:" || u.username || u.password) throw new Error("Use an HTTPS image URL you have permission to use."); }
       if (v.availability && !["AVAILABLE", "PREORDER", "UNAVAILABLE", "UNVERIFIED"].includes(v.availability)) throw new Error("Availability must be AVAILABLE, PREORDER, UNAVAILABLE or UNVERIFIED.");

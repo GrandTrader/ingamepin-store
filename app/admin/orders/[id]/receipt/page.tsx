@@ -556,6 +556,7 @@ export default async function OrderReceipt({
                           </p>
                         )}
                         <CopyableCustomerInformation
+                          orderItemId={item.id}
                           playerId={item.player_id}
                           fields={item.customer_information ?? []}
                         />

@@ -50,7 +50,7 @@ export function buildCatalogPlan(csv: string, mapping: Record<string, string>, s
             warnings: [...e.warnings, ...(!verified ? ["Unverified: ordering stays blocked."] : [])] });
         } catch (error) { errors.push({ row: e.row, sku: e.sku, values: raw.get(e.row)!, error: (error as Error).message }); }
       }
-      if (editions.length) plan.push({ parent_sku: game.parent_sku, expected: old, product, editions, customer_fields: !old || game.product.customer_fields === "PSN_EMAIL_AND_ID", rows: editions.map(e => e.row) });
+      if (editions.length) plan.push({ parent_sku: game.parent_sku, expected: old, product, editions, customer_fields: !old || ["PSN_EMAIL_AND_ID", "GAME_ACCOUNT_DETAILS"].includes(game.product.customer_fields), rows: editions.map(e => e.row) });
     } catch (error) { for (const e of game.editions) errors.push({ row: e.row, sku: e.sku, values: raw.get(e.row)!, error: (error as Error).message }); }
   }
   return { plan, errors, rowCount: parsed.rowCount };

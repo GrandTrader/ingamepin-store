@@ -1,5 +1,7 @@
 "use client";
 
+import { captureProtectedDetails, ACCOUNT_PURCHASE_CONSENT } from "@/lib/protected-detail-client";
+import { isSensitiveCustomerField } from "@/lib/sensitive-customer-fields";
 import { formatFaceValue } from "@/lib/face-value";
 import { FormEvent, useMemo, useRef, useState } from "react";
 import { validateCartStock } from "@/lib/cart-stock";
@@ -183,6 +185,8 @@ export default function ProductPurchaseForm({
   const [playerId, setPlayerId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [quantityDraft, setQuantityDraft] = useState<string | null>(null);
+  const protectedFields = customerFields.filter(field => isSensitiveCustomerField(field.label));
+  const [accountAuthorized, setAccountAuthorized] = useState(false);
   const [customerValues, setCustomerValues] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] =
@@ -397,6 +401,9 @@ export default function ProductPurchaseForm({
       );
     }
 
+    if (protectedFields.length && !accountAuthorized) return showError("Confirm that you own the account and authorize this purchase.");
+    if (protectedFields.length && quantity > 20) return showError("Maximum 20 accounts per checkout.");
+
     for (let unitIndex = 0; unitIndex < quantity; unitIndex += 1) {
       for (const field of customerFields) {
         const value = (customerValues[`${unitIndex}:${field.id}`] ?? "").trim();
@@ -415,7 +422,7 @@ export default function ProductPurchaseForm({
     return true;
   }
 
-  function createCartItem(unitIndex = 0, separateUnit = false): StoredCartItem {
+  function createCartItem(unitIndex = 0, separateUnit = false, protectedValues: Record<string, string> = {}): StoredCartItem {
     if (!selectedOption) {
       throw new Error("No product option selected.");
     }
@@ -484,24 +491,35 @@ export default function ProductPurchaseForm({
         .map((field) => ({
           fieldId: field.id,
           label: field.label,
-          value: (customerValues[`${unitIndex}:${field.id}`] ?? "").trim(),
+          value: isSensitiveCustomerField(field.label) ? (protectedValues[field.id] ?? "") : (customerValues[`${unitIndex}:${field.id}`] ?? "").trim(),
         }))
         .filter((field) => field.value),
     };
   }
 
-  function createCartItems() {
+  async function createCartItems() {
     const separateUnits = customerFields.length > 0 && quantity > 1;
+    let references: Record<string, string>[] = [];
+    if (protectedFields.length) {
+      const units = Array.from({ length: quantity }, (_, unitIndex) => Object.fromEntries(protectedFields.map(field => [field.id, customerValues[`${unitIndex}:${field.id}`] ?? ""])));
+      references = await captureProtectedDetails(product.id, accountAuthorized, units);
+    }
     return separateUnits
-      ? Array.from({ length: quantity }, (_, index) => createCartItem(index, true))
-      : [createCartItem(0, false)];
+      ? Array.from({ length: quantity }, (_, index) => createCartItem(index, true, references[index]))
+      : [createCartItem(0, false, references[0])];
+  }
+
+  function clearProtectedValues() {
+    if (!protectedFields.length) return;
+    setCustomerValues(current => Object.fromEntries(Object.entries(current).filter(([key]) => !protectedFields.some(field => key.endsWith(":" + field.id)))));
+    setAccountAuthorized(false);
   }
 
   async function completeAddToCart() {
     if (purchaseBusy.current) return;
     purchaseBusy.current = true;
     try {
-      const newItems = createCartItems();
+      const newItems = await createCartItems();
       const savedCart = localStorage.getItem("shoppingCart");
       const currentCart = savedCart
         ? (JSON.parse(savedCart) as StoredCartItem[])
@@ -509,6 +527,7 @@ export default function ProductPurchaseForm({
 
       await validateCartStock([...currentCart, ...newItems]);
       currentCart.push(...newItems);
+      clearProtectedValues();
       localStorage.setItem("shoppingCart", JSON.stringify(currentCart));
       window.dispatchEvent(new Event("cartUpdated"));
       setMessageType("success");
@@ -522,12 +541,13 @@ export default function ProductPurchaseForm({
     if (purchaseBusy.current) return;
     purchaseBusy.current = true;
     try {
-      const newItems = createCartItems();
+      const newItems = await createCartItems();
       await validateCartStock(newItems);
       localStorage.setItem(
         "buyNowItem",
         JSON.stringify(newItems.length === 1 ? newItems[0] : newItems),
       );
+      clearProtectedValues();
       router.push("/checkout");
     } catch (error) {
       showError(error instanceof Error ? error.message : "Unable to continue to checkout.");
@@ -774,7 +794,7 @@ export default function ProductPurchaseForm({
                       {field.label}
                       {field.isRequired && <span className="ml-1 text-red-300">*</span>}
                     </span>
-                    {field.fieldType === "TEXTAREA" ? (
+                    {field.fieldType === "TEXTAREA" && !isSensitiveCustomerField(field.label) ? (
                       <textarea
                         rows={3}
                         required={field.isRequired}
@@ -789,7 +809,9 @@ export default function ProductPurchaseForm({
                       />
                     ) : (
                       <input
-                        type={field.fieldType === "EMAIL" ? "email" : field.fieldType === "NUMBER" ? "number" : "text"}
+                        type={isSensitiveCustomerField(field.label) ? "password" : field.fieldType === "EMAIL" ? "email" : field.fieldType === "NUMBER" ? "number" : "text"}
+                        autoComplete={isSensitiveCustomerField(field.label) ? "off" : undefined}
+                        spellCheck={isSensitiveCustomerField(field.label) ? false : undefined}
                         required={field.isRequired}
                         maxLength={field.fieldType === "NUMBER" ? undefined : 500}
                         value={customerValues[valueKey] ?? ""}
@@ -809,6 +831,10 @@ export default function ProductPurchaseForm({
         </section>
       )}
 
+      {protectedFields.length > 0 && <label className="mt-4 flex items-start gap-3 rounded-xl border border-slate-300 p-4 text-sm">
+        <input type="checkbox" required checked={accountAuthorized} onChange={event => setAccountAuthorized(event.target.checked)} className="mt-1" />
+        <span>{ACCOUNT_PURCHASE_CONSENT}</span>
+      </label>}
       </div>
       <div className="product-order-controls">
       <section className="product-quantity-section mt-5 sm:mt-7">

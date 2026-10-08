@@ -1,5 +1,7 @@
 "use client";
 
+import ProtectedAccountDetail from "@/components/ProtectedAccountDetail";
+import { isSensitiveCustomerField, customerDetailDisplay } from "@/lib/sensitive-customer-fields";
 import { useState } from "react";
 
 type CustomerField = {
@@ -11,9 +13,11 @@ type CustomerField = {
 export default function CopyableCustomerInformation({
   playerId,
   fields,
+  orderItemId,
 }: {
   playerId?: string | null;
   fields: CustomerField[];
+  orderItemId?: string;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -28,14 +32,14 @@ export default function CopyableCustomerInformation({
     ...fields,
   ];
 
-  return values.map((field) => (
+  return values.map((field) => isSensitiveCustomerField(field.label) && orderItemId ? <ProtectedAccountDetail key={field.fieldId} orderItemId={orderItemId} fieldId={field.fieldId} label={field.label} /> : (
     <div key={field.fieldId} className="mt-2 flex max-w-xl items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-900">
       <span className="min-w-0 flex-1 break-all">
-        {field.label}: <strong>{field.value}</strong>
+        {field.label}: <strong>{customerDetailDisplay(field)}</strong>
       </span>
       <button
         type="button"
-        onClick={() => copyValue(field.fieldId, field.value)}
+        onClick={() => copyValue(field.fieldId, customerDetailDisplay(field))}
         className="shrink-0 rounded-md bg-blue-600 px-3 py-1.5 font-black text-white hover:bg-blue-500"
       >
         {copied === field.fieldId ? "Copied" : "Copy"}
