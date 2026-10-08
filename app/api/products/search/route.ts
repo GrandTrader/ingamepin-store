@@ -3,6 +3,8 @@ import {
   NextResponse,
 } from "next/server";
 
+import { matchesStorefrontProduct, storefrontSearchQuery } from "@/lib/storefront-search";
+import { productSearchPages } from "@/lib/product-search-pages";
 import { createClient } from "@/lib/supabase/server";
 import { getProductUrl } from "@/lib/product-url";
 
@@ -11,13 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET(
   request: NextRequest,
 ) {
-  const query = String(
-    request.nextUrl.searchParams.get("q") ?? "",
-  )
-    .trim()
-    .replaceAll("%", "")
-    .replaceAll("_", "")
-    .slice(0, 80);
+  const query = storefrontSearchQuery(request.nextUrl.searchParams.get("q"));
 
   if (query.length < 2) {
     return NextResponse.json(
@@ -33,7 +29,7 @@ export async function GET(
   }
 
   const supabase = await createClient();
-  const result = await supabase
+  const result = await productSearchPages((from, to) => supabase
     .from("products")
     .select(
       `
@@ -47,7 +43,10 @@ export async function GET(
         price,
         badge,
         is_bulk_order,
+        region,
+        product_options (option_name, platform, is_active),
         categories (
+          name,
           short_name,
           slug,
           public_id
@@ -56,14 +55,13 @@ export async function GET(
     )
     .eq("status", "ACTIVE").eq("retail_enabled", true)
     .eq("is_preorder_only", false)
-    .ilike("name", `%${query}%`)
     .order("is_featured", {
       ascending: false,
     })
     .order("sort_order", {
       ascending: true,
     })
-    .limit(6);
+    .order("id", { ascending: true }).range(from, to));
 
   if (result.error) {
     return NextResponse.json(
@@ -80,7 +78,7 @@ export async function GET(
     );
   }
 
-  const products = (result.data ?? []).map(
+  const products = (result.data ?? []).filter(product => matchesStorefrontProduct(product, query)).slice(0, 6).map(
     (product) => {
       const category = Array.isArray(
         product.categories,

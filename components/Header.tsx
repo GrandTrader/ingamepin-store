@@ -259,6 +259,8 @@ export default function Header() {
     }
 
     const controller = new AbortController();
+    setIsSearching(true);
+    setSearchProducts([]);
     const timeout = window.setTimeout(
       async () => {
         setIsSearching(true);
@@ -275,6 +277,7 @@ export default function Header() {
             products?: SearchProduct[];
           };
 
+          if (controller.signal.aborted) return;
           setSearchProducts(
             response.ok
               ? result.products ?? []
@@ -282,6 +285,7 @@ export default function Header() {
           );
         } catch (error) {
           if (
+            !controller.signal.aborted &&
             error instanceof Error &&
             error.name !== "AbortError"
           ) {

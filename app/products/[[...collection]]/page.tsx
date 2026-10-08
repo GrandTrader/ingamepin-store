@@ -1,3 +1,5 @@
+import { matchesStorefrontProduct, storefrontSearchQuery } from "@/lib/storefront-search";
+import { productSearchPages } from "@/lib/product-search-pages";
 import { hasInstantDelivery } from "@/lib/product-delivery";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -14,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 type ProductsPageProps = {
+  searchParams?: Promise<{ search?: string | string[] }>;
   params: Promise<{
     collection?: string[];
   }>;
@@ -55,6 +58,7 @@ type ProductRow = {
   product_options:
     | {
         platform: string | null;
+        option_name: string | null;
         stock_quantity: number;
         is_active: boolean;
         is_in_stock: boolean;
@@ -201,8 +205,10 @@ function matchesCollection(
 
 export default async function ProductsPage({
   params,
+  searchParams,
 }: ProductsPageProps) {
   const { collection: segments } = await params;
+  const search = storefrontSearchQuery((await searchParams)?.search);
   const requestedCollection = segments?.[0] ?? "all";
 
   if (
@@ -219,7 +225,7 @@ export default async function ProductsPage({
 
   const collection = requestedCollection as CollectionKey;
   const supabase = await createClient();
-  const productResult = await supabase
+  const productResult = await productSearchPages((from, to) => supabase
     .from("products")
     .select(
       `
@@ -248,6 +254,7 @@ export default async function ProductsPage({
           public_id
         ),
         product_options (
+          option_name,
           platform,
           stock_quantity,
           is_active,
@@ -258,7 +265,8 @@ export default async function ProductsPage({
     .eq("status", "ACTIVE").eq("retail_enabled", true)
     .eq("is_preorder_only", false)
     .order("is_featured", { ascending: false })
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true }).range(from, to));
 
   if (productResult.error) {
     throw new Error(
@@ -271,7 +279,7 @@ export default async function ProductsPage({
     getPaidProductSales(),
   ]);
   const products = ((productResult.data ?? []) as ProductRow[])
-    .filter((product) => matchesCollection(product, collection))
+    .filter((product) => matchesCollection(product, collection) && matchesStorefrontProduct(product, search))
     .map(
       (product): ProductCardData => ({
         id: product.id,
@@ -314,11 +322,12 @@ export default async function ProductsPage({
               Browse store
             </p>
             <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-              {details.title}
+              {search ? "Search results" : details.title}
             </h1>
             <p className="mt-3 max-w-2xl text-slate-400">
-              {details.description}
+              {search ? `Results for “${search}”` : details.description}
             </p>
+            {search && <Link href={collection === "all" ? "/products" : `/products/${collection}`} className="mt-3 inline-block text-sm font-bold text-cyan-300 hover:underline">Clear search</Link>}
           </div>
 
           <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-cyan-300">
@@ -334,7 +343,7 @@ export default async function ProductsPage({
           </section>
         ) : (
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-slate-400">
-            No active products are available in this collection yet.
+            {search ? `No products found for “${search}”. Try a different name, region or platform.` : "No active products are available in this collection yet."}
           </div>
         )}
       </div>

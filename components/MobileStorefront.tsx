@@ -2,6 +2,7 @@
 /* Product and category artwork use the existing store image URLs. */
 /* eslint-disable @next/next/no-img-element */
 
+import { matchesStorefrontSearch } from "@/lib/storefront-search";
 import Link from "@/components/NavigationLink";
 import { useEffect, useRef, useState } from "react";
 import type { BrowseProduct } from "./ProductBrowser";
@@ -80,7 +81,7 @@ export default function MobileStorefront({ products, popularIds, newestIds, cate
   }, []);
   const map = new Map(products.map(p => [p.id, p]));
   const ranked = (tab === "New arrivals" ? newestIds : popularIds).map(id => map.get(id)).filter((p): p is BrowseProduct => !!p);
-  const shown = query.trim() ? products.filter(p => `${p.name} ${p.nameRu ?? ""} ${p.category}`.toLowerCase().includes(query.trim().toLowerCase())) : tab === "Top-ups" ? products.filter(p => p.productType === "GAME_TOPUP") : ranked;
+  const shown = query.trim() ? products.filter(p => matchesStorefrontSearch([p.name, p.nameRu, p.category, p.region], query)) : tab === "Top-ups" ? products.filter(p => p.productType === "GAME_TOPUP") : ranked;
   const preferred = ["playstation", "apple", "steam", "xbox"];
   const quickCategories = [...categories].sort((a, b) => {
     const rank = (c: Category) => { const index = preferred.findIndex(key => `${c.slug} ${c.name}`.toLowerCase().includes(key)); return index < 0 ? 10 : index; };
@@ -112,7 +113,7 @@ export default function MobileStorefront({ products, popularIds, newestIds, cate
         if (next >= 0) { event.preventDefault(); buttons[next].focus(); buttons[next].click(); }
       }}>{["Popular", "New arrivals", "Top-ups"].map(label => <button key={label} role="tab" tabIndex={tab === label ? 0 : -1} aria-selected={tab === label} aria-controls="mobile-products-panel" id={`mobile-tab-${label.replaceAll(" ", "-")}`} onClick={() => {setTab(label); setQuery("");}}>{label}</button>)}</div>
       {query && <p className={styles.resultCount}>{shown.length} results for “{query}”</p>}
-      <div id="mobile-products-panel" role="tabpanel" aria-labelledby={`mobile-tab-${tab.replaceAll(" ", "-")}`} className={styles.products}>{shown.slice(0,24).map(product => <MobileProduct key={product.id} product={product} />)}</div>{shown.length === 0 && <p className={styles.empty}>No products found. Try another search or category.</p>}<Link className={styles.viewAll} href="/products">View all products <Icon name="arrow" /></Link></section>
+      <div id="mobile-products-panel" role="tabpanel" aria-labelledby={`mobile-tab-${tab.replaceAll(" ", "-")}`} className={styles.products}>{shown.slice(0,24).map(product => <MobileProduct key={product.id} product={product} />)}</div>{shown.length === 0 && <p className={styles.empty}>No products found. Try another search or category.</p>}<Link className={styles.viewAll} href={query.trim() ? `/products?search=${encodeURIComponent(query.trim())}` : "/products"}>{query.trim() ? "View all search results" : "View all products"} <Icon name="arrow" /></Link></section>
       <footer className={styles.footer}><Link href="/support">Help & support</Link><Link href="/work-with-us">Partnerships</Link><Link href="/terms">Terms</Link><Link href="/privacy-policy">Privacy</Link><Link href="/business/login">B2B Portal</Link></footer>
     </div>
 
