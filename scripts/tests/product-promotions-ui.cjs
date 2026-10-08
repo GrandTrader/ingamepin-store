@@ -6,7 +6,7 @@ const write=(name,text)=>fs.writeFileSync(path.join(out,name),text);
 const unwrapGlobal=css=>css.replace(/:global\(((?:[^()]|\([^()]*\))*)\)/g,'$1');
 write('ts-loader.cjs',`const ts=require(${JSON.stringify(require.resolve('typescript'))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;`);
 write('css-loader.cjs',`module.exports=s=>'module.exports='+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z_][\\w-]*)/g)].map(m=>[m[1],m[1]])));`);
-write('preferences.js',`exports.useStorePreferences=()=>({language:'en',currency:'USD',setCurrency:()=>{},formatPrice:n=>'$'+n.toFixed(2),t:k=>({buyNow:'Buy Now',addToCart:'Add to Cart',total:'Total'}[k]||k)});`);
+write('preferences.js',`exports.useStorePreferences=()=>({language:'en',currency:'USD',setCurrency:()=>{},formatPrice:n=>location.search.includes('currency=INR')?'₹'+(n*100.5).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'$'+n.toFixed(2),t:k=>({buyNow:'Buy Now',addToCart:'Add to Cart',total:'Total'}[k]||k)});`);
 write('navigation.js',`exports.useRouter=()=>({push:p=>window.fixtureNavigation=p});`);
 write('link.js',`module.exports=({children,...props})=>require('react').createElement('a',props,children);`);
 write('image.js',`module.exports=({unoptimized,priority,fill,...props})=>require('react').createElement('img',props);`);
@@ -56,7 +56,10 @@ createRoot(document.getElementById('app')).render(component);`);
   await page.locator('.product-option-button').first().getByText('$34.27',{exact:true}).waitFor();
   await page.locator('.product-option-button').nth(1).getByText('$58.76',{exact:true}).waitFor();
   assert.equal(await page.locator('.product-option-button').nth(1).getByText(/Save .*Ends/).count(),0,'Other editions retain normal pricing');
-  for(const width of [1440,1024,768,390,320]){
+  for(const currency of ['USD','INR']){
+  await page.goto(base+'/product?personal=0&layout=1&currency='+currency);
+  await page.locator('.product-option-button').first().waitFor();
+  for(const width of [1440,1024,901,768,390,320]){
    await page.setViewportSize({width,height:1000});
    const dimensions=await page.locator('.product-option-button').first().evaluate(button=>{
     const name=button.firstElementChild,price=button.querySelector('.product-option-price'),sale=[...button.querySelectorAll('span')].find(span=>span.textContent.startsWith('Save '));
@@ -70,7 +73,8 @@ createRoot(document.getElementById('app')).render(component);`);
    assert.ok(dimensions.button.height<220,'Option card remains compact at '+width);
    assert.equal(dimensions.overflow,false,'Option card overflow '+width);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Product page overflow '+width);
-   await page.screenshot({path:path.join(out,'product-'+width+'.png'),fullPage:true});
+   await page.screenshot({path:path.join(out,'product-'+currency+'-'+width+'.png'),fullPage:true});
+  }
   }
   await page.setViewportSize({width:1280,height:950});
   await page.goto(base+'/editor');

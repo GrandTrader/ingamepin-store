@@ -113,6 +113,7 @@
   font-size: 10px;
   line-height: 14px;
 }.page .purchase :global(button.product-option-button) {
+  container-type: inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-content: center;
@@ -133,6 +134,16 @@
   max-width: 100%;
   line-height: 16px;
   overflow-wrap: anywhere;
+}
+@container (max-width: 260px) {
+  .page .purchase :global(button.product-option-button > span:first-child),
+  .page .purchase :global(button.product-option-button .product-option-price) {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  .page .purchase :global(button.product-option-button .product-option-price) {
+    justify-content: flex-start;
+  }
 }
 .page .purchase :global(button.product-option-button[aria-pressed="true"]:not(:disabled)) { padding-right: 9px; }
 .page .purchase :global(button.product-option-button[aria-pressed="true"]:not(:disabled))::after { display: none; }
