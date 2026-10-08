@@ -5,6 +5,7 @@ import ProductPlatformBadges from "@/components/ProductPlatformBadges";
 import { isGamesCategory, normalizeGamePlatforms } from "@/lib/game-platforms";
 import RangePurchaseForm from "@/components/RangePurchaseForm";
 import { productRanges } from "@/lib/product-range-data";
+import { productPromotions } from "@/lib/product-promotion-data";
 import { portalCustomer } from "@/lib/business-portal-data";
 import { hasInstantDelivery } from "@/lib/product-delivery";
 ﻿import Link from "next/link";
@@ -351,6 +352,7 @@ export async function renderProductPage({
   );
 
   const customerDiscountPercent = customerDiscounts.get(product.id) ?? 0;
+  const promotionRules = (await productPromotions([product.id])).rows[0]?.rules ?? [];
   let affiliateCommissionPercent = 0;
   let affiliateMaximumCommissionPercent = 0;
 
@@ -500,7 +502,7 @@ export async function renderProductPage({
             </div>
           </div>
           <aside className={styles.purchase} aria-label="Purchase options">
-            {range && <RangePurchaseForm range={range} product={product} fields={customerFields} affiliatePercent={affiliateCommissionPercent} discountPercent={customerDiscounts.get(product.id)??0}/>}
+            {range && <RangePurchaseForm range={range} product={product} fields={customerFields} affiliatePercent={affiliateCommissionPercent} discountPercent={customerDiscounts.get(product.id)??0} promotionRules={promotionRules}/>}
             {(!range||options.some(option=>option.id!==range.option_id)) && <ProductPurchaseForm
               product={{
                 id: product.id,
@@ -530,6 +532,7 @@ export async function renderProductPage({
                 playerIdLabel:
                   product.player_id_label,
                 customerDiscountPercent,
+                promotionRules,
                 affiliateCommissionPercent,
                 affiliateMaximumCommissionPercent,
                 isBulkOrder: product.is_bulk_order,

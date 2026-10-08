@@ -2,6 +2,8 @@
 
 import Link from "@/components/NavigationLink";
 import { useState } from "react";
+import { cardPromotionPrice, type PromotionPrice } from "@/lib/product-promotions";
+import { usePromotionClock } from "./usePromotionClock";
 import CountryFlag from "./CountryFlag";
 import { countryCode } from "@/lib/country-flag";
 import { useStorePreferences } from "./StorePreferences";
@@ -23,6 +25,7 @@ export type ProductCardData = {
   slug: string;
   href?: string;
   discountPercent?: number;
+  promotionPrices?: PromotionPrice[];
   isBulkOrder?: boolean;
   isInstantDelivery?: boolean;
 };
@@ -40,8 +43,10 @@ export default function ProductCard({ product }: Props) {
   const stockLabel = isOutOfStock
     ? t("outOfStock")
     : t("inStock");
-  const discountPercent = Math.max(0, Number(product.discountPercent ?? 0));
-  const customerPrice = product.price * (1 - discountPercent / 100);
+  const promotionNow=usePromotionClock((product.promotionPrices??[]).map(p=>p.endsAt));
+  const offer=cardPromotionPrice(product.promotionPrices,product.price,product.discountPercent??0,promotionNow);
+  const discountPercent=offer.percent;
+  const customerPrice=offer.price;
   const localizedName =
     language === "ru" && product.nameRu ? product.nameRu : product.name;
   const regionCode = countryCode(product.region);
@@ -149,7 +154,7 @@ export default function ProductCard({ product }: Props) {
             <span className="min-w-0">
               {discountPercent > 0 && (
                 <span className="block text-[10px] font-bold text-emerald-300 sm:text-xs">
-                  {t("yourDiscount", { percent: discountPercent })}
+                  {offer.sale>=Number(product.discountPercent??0)?`Save ${discountPercent}%`:t("yourDiscount", { percent: discountPercent })}
                 </span>
               )}
               <span className="flex flex-wrap items-baseline gap-1.5">
@@ -158,7 +163,7 @@ export default function ProductCard({ product }: Props) {
                 </span>
                 {discountPercent > 0 && (
                   <span className="text-xs text-slate-500 line-through">
-                    {formatPrice(product.price)}
+                    {formatPrice(offer.regular)}
                   </span>
                 )}
               </span>

@@ -1,6 +1,7 @@
 import { matchesStorefrontProduct, storefrontSearchQuery } from "@/lib/storefront-search";
 import { productSearchPages } from "@/lib/product-search-pages";
 import { hasInstantDelivery } from "@/lib/product-delivery";
+import { cataloguePromotions } from "@/lib/product-promotion-data";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { portalCustomer } from "@/lib/business-portal-data";
@@ -278,6 +279,7 @@ export default async function ProductsPage({
     getSignedInCustomerDiscounts(),
     getPaidProductSales(),
   ]);
+  const promotions=await cataloguePromotions((productResult.data??[]).map(p=>p.id));
   const products = ((productResult.data ?? []) as ProductRow[])
     .filter((product) => matchesCollection(product, collection) && matchesStorefrontProduct(product, search))
     .map(
@@ -298,6 +300,7 @@ export default async function ProductsPage({
         sold: Number(product.sold_count ?? 0) + (paidProductSales.get(product.id) ?? 0),
         category: getCategory(product),
         discountPercent: customerDiscounts.get(product.id) ?? 0,
+        promotionPrices: promotions.get(product.id),
         isBulkOrder: product.is_bulk_order,
         isInstantDelivery: hasInstantDelivery(product),
       }),

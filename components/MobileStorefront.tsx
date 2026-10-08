@@ -3,6 +3,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { matchesStorefrontSearch } from "@/lib/storefront-search";
+import { cardPromotionPrice } from "@/lib/product-promotions";
+import { usePromotionClock } from "./usePromotionClock";
 import Link from "@/components/NavigationLink";
 import { useEffect, useRef, useState } from "react";
 import type { BrowseProduct } from "./ProductBrowser";
@@ -35,7 +37,9 @@ function MobileProduct({ product }: { product: BrowseProduct }) {
   const name = language === "ru" && product.nameRu ? product.nameRu : product.name;
   const unavailable = !product.isBulkOrder && product.stock <= 0;
   const instantDelivery = !!product.isInstantDelivery;
-  const discount = Math.min(100, Math.max(0, product.discountPercent ?? 0));
+  const promotionNow=usePromotionClock((product.promotionPrices??[]).map(p=>p.endsAt));
+  const offer=cardPromotionPrice(product.promotionPrices,product.price,product.discountPercent??0,promotionNow);
+  const discount=offer.percent;
   return <Link className={styles.card} href={product.href ?? `/product/${product.slug}`}>
     <div className={styles.art} data-unavailable={unavailable}>
       {image && !broken ? <img src={image} alt={name} loading="lazy" onError={() => setBroken(true)} /> : <span aria-hidden="true">🎮</span>}
@@ -46,7 +50,7 @@ function MobileProduct({ product }: { product: BrowseProduct }) {
     </span>
     <h3>{name}</h3>
     <div className={styles.badges}><span className={styles.region}><CountryFlag region={product.region} className="h-3 w-4" />{countryCode(product.region)?.toUpperCase() ?? "Global"}</span><span className={styles.stock} data-empty={unavailable}><i />{t(unavailable ? "outOfStock" : "inStock")}</span></div>
-    <div className={styles.priceRow}><div><small>{language === "ru" ? "От" : "From"}</small><strong>{formatPrice(product.price * (1 - discount / 100))}</strong>{discount > 0 && <del>{formatPrice(product.price)}</del>}</div><span className={styles.productArrow} aria-label={unavailable ? "View unavailable product" : "Choose denomination"}><Icon name="arrow" /></span></div>
+    <div className={styles.priceRow}><div><small>{language === "ru" ? "От" : "From"}</small><strong>{formatPrice(offer.price)}</strong>{discount > 0 && <del>{formatPrice(offer.regular)}</del>}</div><span className={styles.productArrow} aria-label={unavailable ? "View unavailable product" : "Choose denomination"}><Icon name="arrow" /></span></div>
   </Link>;
 }
 export default function MobileStorefront({ products, popularIds, newestIds, categories }: Props) {

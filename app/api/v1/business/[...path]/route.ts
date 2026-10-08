@@ -5,6 +5,8 @@ import { apiPage } from "@/lib/business-api-input";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllDeliveredCodes } from "@/lib/delivered-codes";
 import { productRanges } from "@/lib/product-range-data";
+import { productPromotions } from "@/lib/product-promotion-data";
+import { activePromotion, promotionLineTotal } from "@/lib/product-promotions";
 import { handleOrder } from "@/lib/order-request-handler";
 import { POST as quantityLimits } from "@/app/api/products/quantity-limits/route";
 
@@ -37,12 +39,14 @@ export async function GET(request: NextRequest, context: Context) {
       ]);
       if (products.error || discounts.error) throw Error("Catalogue unavailable.");
       const ranges = await productRanges(products.data.map(p=>p.id));
+      const promotions=await productPromotions(products.data.map(p=>p.id));
       if (!ranges.ready) throw Error("Product ranges unavailable.");
       const data = products.data.map(product=>{
         const { product_options, product_customer_fields, ...details } = product;
         const discountPercent = Math.max(0,Math.min(100,Number(discounts.data.find(d=>d.product_id===product.id)?.discount_percent ?? 0)));
+        const saleFor=(optionId:string)=>activePromotion(promotions.rows.find(p=>p.product_id===product.id)?.rules,optionId);
         return { ...details, customerFields:product_customer_fields.slice().sort((a,b)=>a.sort_order-b.sort_order), requiresDeliveryDetails: product_customer_fields.length>0 || product.allows_player_id_topup || product.product_type==="GAME_TOPUP", priceCurrency:"USD", discountPercent,
-          options:product_options.filter(o=>o.is_active).map(option=>({ ...option, unitPrice:Number(option.selling_price), range:ranges.ranges.find(r=>r.enabled&&r.option_id===option.id) ? (()=>{const r=ranges.ranges.find(r=>r.enabled&&r.option_id===option.id)!;return {currency:r.currency,minimum:r.minimum,maximum:r.maximum,step:r.step,priceBasis:r.price_basis,priceUsd:r.price_usd,rounding:r.price_rounding??"NEAREST"};})() : null })),
+          options:product_options.filter(o=>o.is_active).map(option=>({ ...option, unitPrice:Number(option.selling_price), salePercent:saleFor(option.id)?.percent??0, saleEndsAt:saleFor(option.id)?.endsAt??null, effectiveDiscountPercent:Math.max(saleFor(option.id)?.percent??0,discountPercent), payableUnitPrice:option.is_custom_value?null:promotionLineTotal(Number(option.selling_price),saleFor(option.id)?.percent??0,discountPercent), range:ranges.ranges.find(r=>r.enabled&&r.option_id===option.id) ? (()=>{const r=ranges.ranges.find(r=>r.enabled&&r.option_id===option.id)!;return {currency:r.currency,minimum:r.minimum,maximum:r.maximum,step:r.step,priceBasis:r.price_basis,priceUsd:r.price_usd,rounding:r.price_rounding??"NEAREST"};})() : null })),
         };
       });
       return businessApiJson({data,page,pageSize:20,total:products.count,nextPage:page*20<(products.count??0)?page+1:null});

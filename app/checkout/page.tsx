@@ -1,6 +1,9 @@
 "use client";
 
 import { formatFaceValue } from "@/lib/face-value";
+import { extraCustomerPercent } from "@/lib/product-promotions";
+import { refreshCartPrices, pricesChanged } from "@/lib/cart-prices";
+import { useCartPrices } from "@/components/useCartPrices";
 import { useCheckoutPaymentCurrency } from "@/components/useCheckoutPaymentCurrency";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,6 +14,10 @@ import LocalizedProductImage from "@/components/LocalizedProductImage";
 import { useStorePreferences } from "../../components/StorePreferences";
 
 type CartItem = {
+  salePercent?: number;
+  regularPrice?: number;
+  saleEndsAt?: string | null;
+  expectedSaleUnitPrice?: number;
   id: string;
   productId?: string;
   productOptionId?: string;
@@ -37,6 +44,10 @@ type CartItem = {
 };
 
 type RawCartItem = {
+  salePercent?: number;
+  regularPrice?: number;
+  saleEndsAt?: string | null;
+  expectedSaleUnitPrice?: number;
   id?: string;
   cartId?: string;
   productId?: string;
@@ -131,6 +142,10 @@ function normalizeCartItem(
     denominationCurrency: item.denominationCurrency,
     customValue,
     price: unitPrice,
+    salePercent: item.salePercent,
+    regularPrice: item.regularPrice,
+    saleEndsAt: item.saleEndsAt,
+    expectedSaleUnitPrice: item.expectedSaleUnitPrice,
     quantity,
     minQuantity: item.minQuantity ?? 1,
     maxQuantity: Boolean(item.isBulkOrder)
@@ -260,6 +275,7 @@ export default function CheckoutPage() {
     loading: true,
   });
   const [paymentFee, setPaymentFee] = useState(0);
+  const priceRefresh = useCartPrices(cartItems, setCartItems);
   const [paymentRestrictions, setPaymentRestrictions] = useState<PaymentRestrictions>({
     allowedPaymentMethods: [],
     allowedUsdtNetworks: [],
@@ -590,9 +606,9 @@ export default function CheckoutPage() {
 
     return cartItems.reduce((total, item) => {
       const percent = item.productId
-        ? Number(customerDiscounts.discounts[item.productId] ?? 0)
+        ? extraCustomerPercent(item.salePercent??0, Number(customerDiscounts.discounts[item.productId] ?? 0))
         : 0;
-      return total + Number(item.price) * Number(item.quantity || 1) * percent / 100;
+      return total + Math.round(Number(item.price) * Number(item.quantity || 1) * percent) / 100;
     }, 0);
   }, [cartItems, customerDiscounts.discounts, customerDiscounts.email, form.email]);
 
@@ -767,6 +783,8 @@ export default function CheckoutPage() {
   }
 
   function validateForm() {
+    if (priceRefresh.loading) return "Please wait while current prices are checked.";
+    if (priceRefresh.error) return priceRefresh.error;
     if (!form.email.trim()) {
       return "Please enter your email address.";
     }
@@ -839,8 +857,16 @@ export default function CheckoutPage() {
   setIsSubmitting(true);
 
   try {
-    const secureItems = cartItems.map((item) => ({
+    const currentPrices = await refreshCartPrices(cartItems);
+    setCartItems(currentPrices);
+    if (pricesChanged(cartItems,currentPrices)) {
+      setMessage("A price or discount changed. Review the updated total and continue again.");
+      setIsSubmitting(false);
+      return;
+    }
+    const secureItems = currentPrices.map((item) => ({
       productOptionId: item.productOptionId,
+      expectedSaleUnitPrice: item.expectedSaleUnitPrice,
 
       categorySlug:
         item.categorySlug ?? item.slug ?? "",
@@ -1083,10 +1109,13 @@ export default function CheckoutPage() {
 
                     {item.productId &&
                       form.email.trim().toLowerCase() === customerDiscounts.email?.toLowerCase() &&
-                      Number(customerDiscounts.discounts[item.productId] ?? 0) > 0 && (
+                      Number(customerDiscounts.discounts[item.productId] ?? 0) > (item.salePercent??0) && (
                       <p className="mt-2 inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-300">
                         {customerDiscounts.discounts[item.productId]}% customer discount
                       </p>
+                    )}
+                    {(item.salePercent??0)>0 && (item.salePercent??0)>=Number(item.productId&&form.email.trim().toLowerCase()===customerDiscounts.email?.toLowerCase()?customerDiscounts.discounts[item.productId]??0:0) && (
+                      <p className="mt-2 text-xs font-bold text-emerald-600">{item.salePercent}% sale discount included</p>
                     )}
 
                     </div>

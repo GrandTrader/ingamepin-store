@@ -10,6 +10,9 @@ import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../../../../AdminSidebar";
 import { saveProductOptions } from "./actions";
 import ProductOptionsEditor from "./ProductOptionsEditor";
+import ProductDiscountEditor from "./ProductDiscountEditor";
+import { saveProductPromotions } from "./promotion-actions";
+import { productPromotions } from "@/lib/product-promotion-data";
 
 export const dynamic = "force-dynamic";
 
@@ -38,21 +41,23 @@ export default async function ProductOptionsPage({
   if (!access.data) redirect("/admin/login?error=Access denied");
 
   const [productResult, optionsResult] = await Promise.all([
-    supabase.from("products").select("id, name, slug, currency").eq("id", id).maybeSingle(),
+    supabase.from("products").select("id, name, slug, currency, minimum_custom_value").eq("id", id).maybeSingle(),
     supabase
       .from("product_options")
-      .select("id, option_name, denomination, denomination_currency, selling_price, is_active, is_in_stock")
+      .select("id, option_name, denomination, denomination_currency, selling_price, is_active, is_in_stock, is_custom_value")
       .eq("product_id", id)
-      .eq("is_custom_value", false)
-      .eq("is_active", true)
       .order("sort_order"),
   ]);
 
   if (!productResult.data) notFound();
   const product = productResult.data;
+  if (optionsResult.error) throw Error("Unable to load product denominations.");
+  const fixedOptions = (optionsResult.data??[]).filter(o=>o.is_active&&!o.is_custom_value);
   const rangeData=await productRanges([id]);
+  const promotions=await productPromotions([id]);
+  const promotion=promotions.rows[0];
   const rangeMarkup=rangeData.ranges[0]?.delivery_mode==="SUPPLIER"?await rangeMarkupForAdmin(id):null;
-  const optionCurrencies=[...new Set((optionsResult.data??[]).map(o=>o.denomination_currency).filter((value):value is string=>typeof value==="string"&&/^[A-Z]{3}$/.test(value)))];
+  const optionCurrencies=[...new Set(fixedOptions.map(o=>o.denomination_currency).filter((value):value is string=>typeof value==="string"&&/^[A-Z]{3}$/.test(value)))];
   const productCurrency=optionCurrencies.length===1?optionCurrencies[0]:product.currency||"USD";
 
   return (
@@ -76,13 +81,18 @@ export default async function ProductOptionsPage({
 
           <div className="mt-8"><ProductEditPageTabs productId={id} current="product-options" /></div>
 
+            <ProductDiscountEditor action={saveProductPromotions} productId={id} revision={promotion?.revision??""} ready={promotions.ready} rules={promotion?.rules??[]} options={[
+              ...(optionsResult.data??[]).filter(o=>!rangeData.ranges.some(r=>r.option_id===o.id)).map(o=>({id:o.id,name:o.option_name+(o.is_active?"":" (inactive)"),price:Number(o.is_custom_value?product.minimum_custom_value??1:o.selling_price),priceLabel:o.is_custom_value?"Normal price at minimum value":undefined})),
+              ...rangeData.ranges.map(r=>({id:r.option_id,name:`Custom range (${r.currency})`,price:Number(r.price_usd),priceLabel:`Normal price for ${r.price_basis} ${r.currency}`})),
+            ]}/>
+
           <form action={saveRangeOption} className="mt-6"><input type="hidden" name="id" value={id}/><RangeOptionEditor initialMarkup={rangeMarkup} productCurrency={productCurrency} ready={rangeData.ready} range={rangeData.ranges[0]??null}/></form>
           <form action={saveProductOptions} className="mt-6 grid gap-6">
             <input type="hidden" name="id" value={id} />
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <ProductOptionsEditor
                 productName={product.name}
-                initialOptions={(optionsResult.data ?? []).map((option) => ({
+                initialOptions={fixedOptions.map((option) => ({
                   id: option.id,
                   name: option.option_name,
                   denomination: Number(option.denomination ?? 1),

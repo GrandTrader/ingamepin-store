@@ -2,6 +2,8 @@
 
 import { captureProtectedDetails, ACCOUNT_PURCHASE_CONSENT } from "@/lib/protected-detail-client";
 import { isSensitiveCustomerField } from "@/lib/sensitive-customer-fields";
+import { activePromotion, discountedPrice, extraCustomerPercent, promotionExpiryLabel, type PromotionRule } from "@/lib/product-promotions";
+import { usePromotionClock } from "@/components/usePromotionClock";
 import { formatFaceValue } from "@/lib/face-value";
 import { FormEvent, useMemo, useRef, useState } from "react";
 import { validateCartStock } from "@/lib/cart-stock";
@@ -66,6 +68,7 @@ type ProductPurchaseFormProps = {
     allowsGamingVoucher: boolean;
     playerIdLabel: string | null;
     customerDiscountPercent: number;
+    promotionRules?: PromotionRule[];
     affiliateCommissionPercent?: number;
     affiliateMaximumCommissionPercent?: number;
     isBulkOrder?: boolean;
@@ -106,6 +109,8 @@ type StoredCartItem = {
   productType: string;
   deliveryType: string;
   customerInformation: CustomerInformation[];
+  salePercent?: number;
+  expectedSaleUnitPrice?: number;
 };
 
 function hasBrokenProductText(value: string) {
@@ -118,6 +123,7 @@ export default function ProductPurchaseForm({
   customerFields = [],
 }: ProductPurchaseFormProps) {
   const router = useRouter();
+  const promotionNow = usePromotionClock((product.promotionRules??[]).map(r=>r.endsAt));
   const purchaseBusy = useRef(false);
   const {
     language,
@@ -218,12 +224,15 @@ export default function ProductPurchaseForm({
     return Math.round((basePrice + markup) * 100) / 100;
   }
 
-  const selectedUnitPrice =
+  const selectedSale = activePromotion(product.promotionRules, selectedOption?.id, promotionNow);
+  const selectedRegularPrice =
     valueMode === "CUSTOM"
       ? Number.isFinite(parsedCustomValue)
-        ? applyAffiliateMarkup(parsedCustomValue)
+        ? parsedCustomValue
         : 0
-      : applyAffiliateMarkup(selectedFixedOption?.sellingPrice ?? 0);
+      : selectedFixedOption?.sellingPrice ?? 0;
+  const saleUnitPrice = discountedPrice(selectedRegularPrice, selectedSale?.percent??0);
+  const selectedUnitPrice = applyAffiliateMarkup(saleUnitPrice);
 
   const requiresSingleQuantity = valueMode === "CUSTOM";
 
@@ -254,7 +263,7 @@ export default function ProductPurchaseForm({
 
   const totalPrice = selectedUnitPrice * quantity;
   const customerDiscountAmount =
-    totalPrice * Math.max(0, product.customerDiscountPercent) / 100;
+    Math.round(totalPrice * extraCustomerPercent(selectedSale?.percent??0, product.customerDiscountPercent)) / 100;
   const customerTotal = totalPrice - customerDiscountAmount;
   const affiliateMaximumCommissionPercent = Math.max(
     0,
@@ -475,6 +484,8 @@ export default function ProductPurchaseForm({
       playerId: normalizedPlayerId,
       image: localizedProductImage ?? undefined,
       price: selectedUnitPrice,
+      salePercent: selectedSale?.percent??0,
+      expectedSaleUnitPrice: saleUnitPrice,
       unitPrice: selectedUnitPrice,
       totalPrice: separateUnit ? selectedUnitPrice : totalPrice,
       quantity: separateUnit ? 1 : quantity,
@@ -580,7 +591,7 @@ export default function ProductPurchaseForm({
   return (
     <form onSubmit={handleSubmit} className="product-purchase-form mt-5 sm:mt-8">
       <div className="product-configuration">
-      {product.customerDiscountPercent > 0 && (
+      {product.customerDiscountPercent > (selectedSale?.percent??0) && (
         <div
           className="customer-discount-notice mb-5 rounded-xl border p-4 text-sm font-black"
           style={{
@@ -699,9 +710,15 @@ export default function ProductPurchaseForm({
                     </span>
                   )}
                   <span className="product-option-price mt-0.5 block text-xs leading-4">
-                    {product.customerDiscountPercent > 0 ? (
-                      <><span className="font-black">{formatPrice(applyAffiliateMarkup(option.sellingPrice) * (1 - product.customerDiscountPercent / 100))}</span>{" "}<span className="text-[10px] line-through opacity-60">{formatPrice(applyAffiliateMarkup(option.sellingPrice))}</span></>
-                    ) : formatPrice(applyAffiliateMarkup(option.sellingPrice))}
+                    {(() => {
+                      const sale=activePromotion(product.promotionRules,option.id,promotionNow);
+                      const salePrice=applyAffiliateMarkup(discountedPrice(option.sellingPrice,sale?.percent??0));
+                      const finalPrice=salePrice-Math.round(salePrice*extraCustomerPercent(sale?.percent??0,product.customerDiscountPercent))/100;
+                      return <><span className="font-black">{formatPrice(finalPrice)}</span>
+                        {(sale||product.customerDiscountPercent>0)&&<> <del className="text-[10px] opacity-60">{formatPrice(applyAffiliateMarkup(option.sellingPrice))}</del></>}
+                        {sale&&sale.percent>=product.customerDiscountPercent&&<span className="mt-1 block text-[11px] font-bold">Save {sale.percent}% · Ends {promotionExpiryLabel(sale.endsAt!)}</span>}
+                      </>;
+                    })()}
                   </span>
                   {(isUnavailable ||
                     (!product.isBulkOrder &&

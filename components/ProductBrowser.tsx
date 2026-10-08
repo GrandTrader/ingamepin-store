@@ -1,4 +1,6 @@
 "use client";
+import { cardPromotionPrice } from "@/lib/product-promotions";
+import { usePromotionClock } from "@/components/usePromotionClock";
 
 import {
   useEffect,
@@ -113,6 +115,7 @@ export default function ProductBrowser({
   products: BrowseProduct[];
 }) {
   const { language } = useStorePreferences();
+  const promotionNow=usePromotionClock(products.flatMap(p=>(p.promotionPrices??[]).map(r=>r.endsAt)));
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] =
     useState<FilterValue>("ALL");
@@ -163,13 +166,14 @@ export default function ProductBrowser({
       },
     );
 
+    const price=(product:BrowseProduct)=>cardPromotionPrice(product.promotionPrices,product.price,product.discountPercent??0,promotionNow).price;
     return [...filtered].sort((first, second) => {
       switch (sortBy) {
         case "PRICE_LOW":
-          return first.price - second.price;
+          return price(first) - price(second);
 
         case "PRICE_HIGH":
-          return second.price - first.price;
+          return price(second) - price(first);
 
         case "BEST_SELLING":
           return second.sold - first.sold;
@@ -191,6 +195,7 @@ export default function ProductBrowser({
     products,
     search,
     sortBy,
+    promotionNow,
   ]);
 
   const groupedProducts = useMemo(

@@ -1,4 +1,5 @@
 import { hasInstantDelivery } from "@/lib/product-delivery";
+import { cataloguePromotions } from "@/lib/product-promotion-data";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -154,6 +155,7 @@ export default async function CategoryPage({
     getSignedInCustomerDiscounts(),
     getPaidProductSales(),
   ]);
+  const promotions=await cataloguePromotions((productResult.data??[]).map(p=>p.id));
   const products = ((productResult.data ?? []) as ProductRow[]).map(
     (product): ProductCardData => ({
       id: product.id,
@@ -176,6 +178,7 @@ export default async function CategoryPage({
       sold: Number(product.sold_count ?? 0) + (paidProductSales.get(product.id) ?? 0),
       category: category.short_name ?? category.name,
       discountPercent: customerDiscounts.get(product.id) ?? 0,
+      promotionPrices: promotions.get(product.id),
       isBulkOrder: product.is_bulk_order,
       isInstantDelivery: hasInstantDelivery(product),
     }),

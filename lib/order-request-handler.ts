@@ -1,4 +1,5 @@
 import { supplierRangeLimits } from "@/lib/definiteplay-range-stock";
+import { extraCustomerPercent } from "@/lib/product-promotions";
 import "server-only";
 import { paypalCheckoutAvailable } from "@/lib/paypal-checkout";
 import { businessSessionReady } from "@/lib/business-security";
@@ -550,10 +551,16 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
         : null;
 
     if (discountEligibleUser) {
-      const createdItemsResult = await admin
+      let createdItemsResult = await admin
         .from("order_items")
-        .select("product_id, total_price")
+        .select("product_id, total_price, promotion_percent")
         .eq("order_id", orderResult.data.id);
+
+      // Rolling deployment: no promotions can exist before the database update.
+      if (createdItemsResult.error && ["42703", "PGRST204"].includes(createdItemsResult.error.code)) {
+        const legacyItems = await admin.from("order_items").select("product_id, total_price").eq("order_id", orderResult.data.id);
+        createdItemsResult = legacyItems.error ? legacyItems : { ...legacyItems, data: legacyItems.data.map(item => ({ ...item, promotion_percent: 0 })) };
+      }
 
       if (createdItemsResult.error) {
         return NextResponse.json({ error: "Unable to verify customer discounts." }, { status: 500 });
@@ -580,7 +587,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       );
       const discountAmount = (createdItemsResult.data ?? []).reduce(
         (total, item) =>
-          total + Number(item.total_price) * Number(discountByProduct.get(item.product_id) ?? 0) / 100,
+          total + Math.round(Number(item.total_price) * extraCustomerPercent(Number(item.promotion_percent??0),Number(discountByProduct.get(item.product_id) ?? 0))) / 100,
         0,
       );
 

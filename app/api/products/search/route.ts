@@ -4,6 +4,8 @@ import {
 } from "next/server";
 
 import { matchesStorefrontProduct, storefrontSearchQuery } from "@/lib/storefront-search";
+import { cataloguePromotions } from "@/lib/product-promotion-data";
+import { cardPromotionPrice } from "@/lib/product-promotions";
 import { productSearchPages } from "@/lib/product-search-pages";
 import { createClient } from "@/lib/supabase/server";
 import { getProductUrl } from "@/lib/product-url";
@@ -78,7 +80,9 @@ export async function GET(
     );
   }
 
-  const products = (result.data ?? []).filter(product => matchesStorefrontProduct(product, query)).slice(0, 6).map(
+  const matched=(result.data??[]).filter(product=>matchesStorefrontProduct(product,query)).slice(0,6);
+  const promotions=await cataloguePromotions(matched.map(p=>p.id));
+  const products = matched.map(
     (product) => {
       const category = Array.isArray(
         product.categories,
@@ -100,7 +104,7 @@ export async function GET(
           : `/product/${encodeURIComponent(product.slug)}`,
         image: product.image_url,
         imageRu: product.image_url_ru,
-        price: Number(product.price),
+        price: cardPromotionPrice(promotions.get(product.id),Number(product.price)).price,
         badge: product.badge,
         isBulkOrder: product.is_bulk_order,
         category:

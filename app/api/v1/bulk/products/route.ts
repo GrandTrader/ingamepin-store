@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 
 import { authorizeBulkApi, bulkApiNoStore } from "@/lib/bulk-api-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { productPromotions } from "@/lib/product-promotion-data";
+import { activePromotion, discountedPrice } from "@/lib/product-promotions";
 
 export const runtime = "nodejs";
 
@@ -21,6 +23,7 @@ export async function GET(request: NextRequest) {
     return bulkApiNoStore({ error: "Unable to load bulk products." }, { status: 500 });
   }
 
+  const promotions=await productPromotions((result.data??[]).map(p=>p.id));
   const products = (result.data ?? []).map((product) => ({
     id: product.id,
     name: product.name,
@@ -37,7 +40,9 @@ export async function GET(request: NextRequest) {
         name: option.option_name,
         denomination: option.denomination,
         denominationCurrency: option.denomination_currency,
-        unitPrice: Number(option.selling_price),
+        regularUnitPrice: Number(option.selling_price),
+        unitPrice: discountedPrice(Number(option.selling_price),activePromotion(promotions.rows.find(p=>p.product_id===product.id)?.rules,option.id)?.percent??0),
+        sale: activePromotion(promotions.rows.find(p=>p.product_id===product.id)?.rules,option.id),
         minimumQuantity: option.minimum_quantity,
         maximumQuantity: option.maximum_quantity,
       })),

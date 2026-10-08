@@ -1,5 +1,7 @@
 "use client";
 import { customerDetailDisplay } from "@/lib/sensitive-customer-fields";
+import { extraCustomerPercent } from "@/lib/product-promotions";
+import { useCartPrices } from "@/components/useCartPrices";
 
 import { formatFaceValue } from "@/lib/face-value";
 import { validateCartStock } from "@/lib/cart-stock";
@@ -10,6 +12,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type CartItem = {
+  salePercent?: number;
+  regularPrice?: number;
+  saleEndsAt?: string | null;
+  expectedSaleUnitPrice?: number;
   cartId: string;
   productId?: string;
   productOptionId?: string;
@@ -51,6 +57,7 @@ export default function CartPage() {
   const checkoutBusy = useRef(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [customerDiscounts, setCustomerDiscounts] = useState<Record<string, number>>({});
+  useCartPrices(cartItems, saveCart);
 
   const quantityLookupKey = useMemo(
     () =>
@@ -258,8 +265,8 @@ export default function CartPage() {
 
   const discountAmount = useMemo(
     () => cartItems.reduce((total, item) => {
-      const percent = item.productId ? Number(customerDiscounts[item.productId] ?? 0) : 0;
-      return total + item.unitPrice * item.quantity * percent / 100;
+      const percent = item.productId ? extraCustomerPercent(item.salePercent??0, Number(customerDiscounts[item.productId] ?? 0)) : 0;
+      return total + Math.round(item.unitPrice * item.quantity * percent) / 100;
     }, 0),
     [cartItems, customerDiscounts],
   );
@@ -396,10 +403,13 @@ export default function CartPage() {
                               <span className="text-white">{customerDetailDisplay(field)}</span>
                             </p>
                           ))}
-                          {item.productId && Number(customerDiscounts[item.productId] ?? 0) > 0 && (
+                          {item.productId && Number(customerDiscounts[item.productId] ?? 0) > (item.salePercent??0) && (
                             <p className={styles.discountBadge}>
                               Your {customerDiscounts[item.productId]}% discount
                             </p>
+                          )}
+                          {(item.salePercent??0)>0 && (item.salePercent??0)>=Number(item.productId?customerDiscounts[item.productId]??0:0) && (
+                            <p className={styles.discountBadge}>{item.salePercent}% sale discount included</p>
                           )}
                         </div>
 
@@ -503,7 +513,7 @@ export default function CartPage() {
                             {(
                               item.unitPrice *
                               item.quantity *
-                              (1 - Number(item.productId ? customerDiscounts[item.productId] ?? 0 : 0) / 100)
+                              (1 - extraCustomerPercent(item.salePercent??0,Number(item.productId ? customerDiscounts[item.productId] ?? 0 : 0)) / 100)
                             ).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                         </div>

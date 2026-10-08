@@ -27,6 +27,7 @@ export default async function BusinessApiDocs() {
       <p>1. Load products and choose an option ID. Request a quote with a new UUID as the Idempotency-Key header.</p>
       <pre>{`POST /orders/quote\nIdempotency-Key: 123e4567-e89b-42d3-a456-426614174000\n\n{\n  "reference": "MY-ORDER-1001",\n  "items": [{ "productOptionId": "OPTION_UUID", "quantity": 2 }]\n}`}</pre>
       <p>The response contains <code>result.total</code>, <code>result.walletBalance</code>, <code>result.balanceAfter</code> and the priced items. Catalogue prices are estimates; the quote is authoritative.</p>
+      <p className={s.helper}>Catalogue options retain the normal price in <code>unitPrice</code>. <code>salePercent</code> and <code>saleEndsAt</code> describe a current sale; <code>payableUnitPrice</code> estimates one unit using the larger of the sale and your personal discount. Discounts do not stack. Expiry timestamps use UTC. Request a new quote if a discount expires before confirmation.</p>
       <p className={s.helper}>For an enabled denomination range, include customValue. Products requiring delivery information must include the required customerInformation or playerId.</p>
       <pre>{`"customerInformation": [{ "fieldId": "FIELD_UUID", "value": "Customer value" }]`}</pre>
       <p className={s.helper}>Use customerFields from the catalogue to get the field IDs, labels, types and required flags. Include playerId when the product requires it.</p>

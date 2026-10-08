@@ -1,4 +1,5 @@
 import { hasInstantDelivery } from "@/lib/product-delivery";
+import { cataloguePromotions } from "@/lib/product-promotion-data";
 import Link from "next/link";
 import MobileStorefront from "@/components/MobileStorefront";
 
@@ -181,6 +182,7 @@ export default async function Home() {
 
   const productRows =
     homepageData.products as ProductRow[];
+  const promotions=await cataloguePromotions(productRows.map(p=>p.id));
 
   const products: StoreProduct[] =
     productRows
@@ -213,6 +215,7 @@ export default async function Home() {
       isInstantDelivery:
         hasInstantDelivery(product),
       discountPercent: customerDiscounts.get(product.id) ?? 0,
+      promotionPrices: promotions.get(product.id),
       }));
 
   const popupRow =
