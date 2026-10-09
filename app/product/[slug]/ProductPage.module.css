@@ -100,9 +100,9 @@
   font-weight: 800;
 }
 .page .purchase :global(button.product-option-button .product-option-price .line-through) {
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 400;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
   color: var(--product-muted) !important;
   -webkit-text-fill-color: var(--product-muted) !important;
   opacity: 1;
@@ -130,10 +130,22 @@
 }
 .page .purchase :global(button.product-option-button > span:not(:first-child):not(.product-option-price)) { grid-column: 1 / -1; justify-self: start; }
 .page .purchase :global(button.product-option-button .product-option-sale) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
   min-width: 0;
   max-width: 100%;
-  line-height: 16px;
   overflow-wrap: anywhere;
+}
+.page .purchase :global(button.product-option-button .product-option-expiry),
+.page .purchase :global(button.product-option-button .product-option-expiry time) {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--product-muted) !important;
+  -webkit-text-fill-color: var(--product-muted) !important;
 }
 @container (max-width: 260px) {
   .page .purchase :global(button.product-option-button > span:first-child),

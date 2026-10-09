@@ -8,18 +8,20 @@ write('ts-loader.cjs',`const ts=require(${JSON.stringify(require.resolve('typesc
 write('css-loader.cjs',`module.exports=s=>'module.exports='+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z_][\\w-]*)/g)].map(m=>[m[1],m[1]])));`);
 write('preferences.js',`exports.useStorePreferences=()=>({language:'en',currency:'USD',setCurrency:()=>{},formatPrice:n=>location.search.includes('currency=INR')?'₹'+(n*100.5).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'$'+n.toFixed(2),t:k=>({buyNow:'Buy Now',addToCart:'Add to Cart',total:'Total'}[k]||k)});`);
 write('navigation.js',`exports.useRouter=()=>({push:p=>window.fixtureNavigation=p});`);
-write('link.js',`module.exports=({children,...props})=>require('react').createElement('a',props,children);`);
+write('link.js',`module.exports=({children,...props})=>require('react').createElement('a',props,children);module.exports.useLinkStatus=()=>({pending:false});`);
 write('image.js',`module.exports=({unoptimized,priority,fill,...props})=>require('react').createElement('img',props);`);
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 write('entry.js',`const React=require('react'),{createRoot}=require('react-dom/client');
 const Editor=require(${JSON.stringify(path.join(root,'app/admin/products/[id]/edit/product-options/ProductDiscountEditor.tsx'))}).default;
 const Range=require(${JSON.stringify(path.join(root,'components/RangePurchaseForm.tsx'))}).default;
 const Product=require(${JSON.stringify(path.join(root,'app/product/[slug]/ProductPurchaseForm.tsx'))}).default;
+const ProductCard=require(${JSON.stringify(path.join(root,'components/ProductCard.tsx'))}).default;
 const Checkout=require(${JSON.stringify(path.join(root,'app/checkout/page.tsx'))}).default;
 const params=new URLSearchParams(location.search),expiry=new Date(Date.now()+(params.has('expire')?1800:86400000)).toISOString();
 const rules=[{optionId:null,percent:20,endsAt:expiry}];
 let component;
 if(location.pathname==='/checkout')component=React.createElement(Checkout);
+else if(location.pathname==='/card')component=React.createElement('div',{style:{maxWidth:240}},React.createElement(ProductCard,{product:{id:'${id(1)}',name:'Resident Evil Requiem — PS5',category:'PlayStation Games',price:100,image:'',badge:'PS5',stock:10,rating:5,sold:10,slug:'test',discountPercent:Number(params.get('personal')||0),promotionPrices:[{price:100,percent:20,endsAt:expiry}]}}));
 else if(location.pathname==='/range')component=React.createElement(Range,{range:{product_id:'${id(1)}',option_id:'${id(2)}',enabled:true,currency:'INR',minimum:100,maximum:10000,step:1,price_basis:100,price_usd:10},product:{id:'${id(1)}',name:'Test range',slug:'test',minimum_quantity:1,maximum_quantity:10,is_bulk_order:false},discountPercent:Number(params.get('personal')||10),promotionRules:rules});
 else if(location.pathname==='/product')component=React.createElement(Product,{product:{id:'${id(1)}',slug:'test',categorySlug:'playstation-games',name:'Test game',imageUrl:null,currency:'USD',productType:'GIFT_CARD',deliveryType:'MANUAL',allowsFixedValues:true,allowsCustomValue:false,allowsPlayerIdTopup:false,allowsGamingVoucher:false,minimumQuantity:1,maximumQuantity:10,isUnlimitedStock:true,customerDiscountPercent:Number(params.get('personal')||10),promotionRules:rules},options:[{id:'${id(2)}',optionName:'Standard Edition',platform:'PS5',denomination:100,sellingPrice:100,stockQuantity:10,isCustomValue:false,isInStock:true},{id:'${id(3)}',optionName:'Deluxe Edition',platform:'PS5',denomination:200,sellingPrice:200,stockQuantity:10,isCustomValue:false,isInStock:true}]});
 else component=React.createElement(Editor,{productId:'${id(1)}',revision:'',ready:true,rules:[],options:[{id:'${id(2)}',name:'Standard Edition',price:100},{id:'${id(3)}',name:'Deluxe Edition',price:200}],action:async f=>{window.savedDiscounts=JSON.parse(f.get('rules'));}});
@@ -32,7 +34,7 @@ createRoot(document.getElementById('app')).render(component);`);
  const {webpack}=require('next/dist/compiled/webpack/webpack-lib');
  await new Promise((resolve,reject)=>webpack({mode:'development',devtool:false,entry:path.join(out,'entry.js'),output:{path:out,filename:'bundle.js'},module:{rules:[{test:/\.tsx?$/,use:path.join(out,'ts-loader.cjs')},{test:/\.css$/,use:path.join(out,'css-loader.cjs')}]},resolve:{extensions:['.tsx','.ts','.js'],alias:{'@/components/StorePreferences':path.join(out,'preferences.js'),[path.join(root,'components/StorePreferences')]:path.join(out,'preferences.js'),'@':root,'next/navigation':path.join(out,'navigation.js'),'next/link':path.join(out,'link.js'),'next/image':path.join(out,'image.js')}}},(err,stats)=>err||stats.hasErrors()?reject(err||Error(stats.toString({all:false,errors:true}))):resolve()));
  const globals=fs.readdirSync('.next/static/chunks').filter(n=>n.endsWith('.css')).map(n=>fs.readFileSync('.next/static/chunks/'+n,'utf8')).join('\n');
- const modules=['components/RangePurchaseForm.module.css','app/product/[slug]/ProductPurchaseForm.module.css','app/checkout/Checkout.module.css'].map(f=>unwrapGlobal(fs.readFileSync(f,'utf8'))).join('\n');
+ const modules=['components/SaleBadge.module.css','components/RangePurchaseForm.module.css','app/product/[slug]/ProductPurchaseForm.module.css','app/checkout/Checkout.module.css'].map(f=>unwrapGlobal(fs.readFileSync(f,'utf8'))).join('\n');
  const productCss=unwrapGlobal(fs.readFileSync('app/product/[slug]/ProductPage.module.css','utf8'));
  const server=http.createServer((req,res)=>{const isProduct=req.url.startsWith('/product');res.setHeader('Content-Type',req.url==='/bundle.js'?'text/javascript; charset=utf-8':'text/html; charset=utf-8');res.end(req.url==='/bundle.js'?fs.readFileSync(path.join(out,'bundle.js')):'<!doctype html><html data-store-theme="light"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+globals+'\n'+modules+(isProduct?'\n'+productCss:'')+'</style></head><body><main id="app" style="'+(isProduct?'':'max-width:1100px;margin:auto;padding:16px')+'"></main><script src="/bundle.js"></script></body></html>');});await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const {chromium}=require('C:/Users/amans/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'),browser=await chromium.launch({channel:'chrome',headless:true});
@@ -56,9 +58,12 @@ createRoot(document.getElementById('app')).render(component);`);
   await page.locator('.product-option-button').first().getByText('$34.27',{exact:true}).waitFor();
   await page.locator('.product-option-button').nth(1).getByText('$58.76',{exact:true}).waitFor();
   assert.equal(await page.locator('.product-option-button').nth(1).getByText(/Save .*Ends/).count(),0,'Other editions retain normal pricing');
-  for(const currency of ['USD','INR']){
+  for(const theme of ['light','dark'])for(const currency of ['USD','INR']){
   await page.goto(base+'/product?personal=0&layout=1&currency='+currency);
+  await page.evaluate(theme=>document.documentElement.dataset.storeTheme=theme,theme);
   await page.locator('.product-option-button').first().waitFor();
+  const badgeStyle=await page.locator('.sale-badge').evaluate(el=>{const s=getComputedStyle(el);return {color:s.color,fill:s.webkitTextFillColor,background:s.backgroundColor,size:parseFloat(s.fontSize)}});
+  assert.equal(badgeStyle.color,'rgb(255, 255, 255)','Badge overrides option text colors in '+theme);assert.equal(badgeStyle.fill,badgeStyle.color);assert.equal(badgeStyle.background,'rgb(185, 28, 28)');assert.ok(badgeStyle.size>=12);
   for(const width of [1440,1024,901,768,390,320]){
    await page.setViewportSize({width,height:1000});
    const dimensions=await page.locator('.product-option-button').first().evaluate(button=>{
@@ -73,8 +78,15 @@ createRoot(document.getElementById('app')).render(component);`);
    assert.ok(dimensions.button.height<220,'Option card remains compact at '+width);
    assert.equal(dimensions.overflow,false,'Option card overflow '+width);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Product page overflow '+width);
-   await page.screenshot({path:path.join(out,'product-'+currency+'-'+width+'.png'),fullPage:true});
+   await page.screenshot({path:path.join(out,'product-'+theme+'-'+currency+'-'+width+'.png'),fullPage:true});
   }
+  for(const theme of ['light','dark']){
+   await page.goto(base+'/card');await page.evaluate(theme=>document.documentElement.dataset.storeTheme=theme,theme);await page.locator('.sale-badge').getByText('Save 20%',{exact:true}).waitFor();
+   await page.getByText('$80.00',{exact:true}).waitFor();await page.getByText('$100.00',{exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Product card fits mobile');await page.screenshot({path:path.join(out,'sale-card-'+theme+'.png'),fullPage:true});
+  }
+  await page.goto(base+'/card?expire=1');await page.getByText('$80.00',{exact:true}).waitFor();await page.getByText('$100.00',{exact:true}).waitFor();await page.locator('.sale-badge').waitFor({state:'detached',timeout:7000});
+  await page.goto(base+'/card?personal=30');await page.getByText('$70.00',{exact:true}).waitFor();assert.equal(await page.locator('.sale-badge').count(),0,'Larger personal discount is not relabeled as a public sale');
   }
   await page.setViewportSize({width:1280,height:950});
   await page.goto(base+'/editor');

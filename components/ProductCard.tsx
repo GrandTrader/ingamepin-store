@@ -4,6 +4,7 @@ import Link from "@/components/NavigationLink";
 import { useState } from "react";
 import { cardPromotionPrice, type PromotionPrice } from "@/lib/product-promotions";
 import { usePromotionClock } from "./usePromotionClock";
+import SaleBadge from "./SaleBadge";
 import CountryFlag from "./CountryFlag";
 import { countryCode } from "@/lib/country-flag";
 import { useStorePreferences } from "./StorePreferences";
@@ -153,8 +154,8 @@ export default function ProductCard({ product }: Props) {
           <div className="mt-3 flex flex-col items-stretch justify-between gap-2 sm:mt-2 sm:flex-row sm:items-center sm:gap-1.5">
             <span className="min-w-0">
               {discountPercent > 0 && (
-                <span className="block text-[10px] font-bold text-emerald-300 sm:text-xs">
-                  {offer.sale>=Number(product.discountPercent??0)?`Save ${discountPercent}%`:t("yourDiscount", { percent: discountPercent })}
+                <span className="mb-1.5 block">
+                  {offer.sale>=Number(product.discountPercent??0)?<SaleBadge percent={discountPercent} label={language === "ru" ? "Скидка" : "Save"}/>:<span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{t("yourDiscount", { percent: discountPercent })}</span>}
                 </span>
               )}
               <span className="flex flex-wrap items-baseline gap-1.5">

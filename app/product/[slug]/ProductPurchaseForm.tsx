@@ -4,6 +4,7 @@ import { captureProtectedDetails, ACCOUNT_PURCHASE_CONSENT } from "@/lib/protect
 import { isSensitiveCustomerField } from "@/lib/sensitive-customer-fields";
 import { activePromotion, discountedPrice, extraCustomerPercent, promotionExpiryLabel, type PromotionRule } from "@/lib/product-promotions";
 import { usePromotionClock } from "@/components/usePromotionClock";
+import SaleBadge from "@/components/SaleBadge";
 import { formatFaceValue } from "@/lib/face-value";
 import { FormEvent, useMemo, useRef, useState } from "react";
 import { validateCartStock } from "@/lib/cart-stock";
@@ -723,8 +724,9 @@ export default function ProductPurchaseForm({
                     )}
                   </span>
                   {sale && sale.percent >= product.customerDiscountPercent && (
-                    <span className="product-option-sale mt-1 block text-[11px] font-bold">
-                      Save {sale.percent}% · Ends {promotionExpiryLabel(sale.endsAt!)}
+                    <span className="product-option-sale">
+                      <SaleBadge percent={sale.percent} />
+                      <span className="product-option-expiry">Ends <time dateTime={sale.endsAt!}>{promotionExpiryLabel(sale.endsAt!)}</time></span>
                     </span>
                   )}
                   {(isUnavailable ||

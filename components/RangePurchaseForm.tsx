@@ -10,6 +10,7 @@ import {rangePrice,type ProductRange} from "@/lib/product-range";
 import {validateCartStock} from "@/lib/cart-stock";
 import {activePromotion,discountedPrice,extraCustomerPercent,promotionExpiryLabel,type PromotionRule} from "@/lib/product-promotions";
 import {usePromotionClock} from "@/components/usePromotionClock";
+import SaleBadge from "@/components/SaleBadge";
 type Field={id:string;label:string;field_type:string;is_required:boolean;placeholder?:string|null};
 type RangeProduct={id:string;name:string;slug:string;image_url?:string|null;image_url_ru?:string|null;name_ru?:string|null;minimum_quantity:number;maximum_quantity:number|null;is_bulk_order:boolean};
 export default function RangePurchaseForm({range,product,discountPercent=0,affiliatePercent=0,fields=[],promotionRules=[]}:{fields?:Field[];affiliatePercent?:number;range:ProductRange;product:RangeProduct;discountPercent?:number;promotionRules?:PromotionRule[]}){
@@ -63,7 +64,7 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
    <button type="button" disabled={busy} className={styles.buyButton} onClick={()=>purchase(true)}>Buy now</button>
   </div>
   <p className={styles.hint}>Manual Delivery will take Few Minutes.</p>
-  {sale&&sale.percent>=discountPercent&&<p className={styles.hint}>Save {sale.percent}% · Ends {promotionExpiryLabel(sale.endsAt!)}</p>}
+  {sale&&sale.percent>=discountPercent&&<p className={styles.saleOffer}><SaleBadge percent={sale.percent}/><span>Ends <time dateTime={sale.endsAt!}>{promotionExpiryLabel(sale.endsAt!)}</time></span></p>}
   {range.step>1&&<p className={styles.hint}>Increments of {range.step} {range.currency}</p>}
   {fields.length>0&&Array.from({length:Math.min(30,Math.max(1,Number(quantity)||1))},(_,index)=><div key={index} className="mt-3 grid gap-2"><p className="font-bold">Code {index+1} details</p>{fields.map(field=><label key={field.id} className={styles.label}>{field.label}{field.is_required?" *":""}<input className={styles.detailInput} type={isSensitiveCustomerField(field.label)?"password":field.field_type==="EMAIL"?"email":"text"} autoComplete={isSensitiveCustomerField(field.label)?"off":undefined} spellCheck={isSensitiveCustomerField(field.label)?false:undefined} maxLength={500} placeholder={field.placeholder??""} value={answers[`${index}:${field.id}`]??""} onChange={e=>setAnswers({...answers,[`${index}:${field.id}`]:e.target.value})}/></label>)}</div>)}
   {protectedFields.length>0&&<label className="mt-4 flex items-start gap-3 rounded-xl border border-slate-300 p-4 text-sm"><input type="checkbox" required checked={accountAuthorized} onChange={e=>setAccountAuthorized(e.target.checked)} className="mt-1"/><span>{ACCOUNT_PURCHASE_CONSENT}</span></label>}

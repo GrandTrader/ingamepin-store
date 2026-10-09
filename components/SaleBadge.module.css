@@ -1,0 +1,24 @@
+.saleBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  border: 1px solid #991b1b;
+  border-radius: 6px;
+  background: #b91c1c;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* Keep contrast when the storefront sets text colors on every option child. */
+:global(html[data-store-theme]) :global(button.product-option-button) .saleBadge {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}

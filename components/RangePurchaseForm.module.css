@@ -62,6 +62,7 @@
 }
 .form .buyButton:not(:disabled):hover { background: #1e40af; }
 .hint { margin-top: 8px; color: var(--range-muted); font-size: 13px; line-height: 1.5; }
+.saleOffer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; color: var(--range-muted); font-size: 13px; line-height: 1.5; }
 .error, .success { margin-top: 8px; font-size: 14px; line-height: 1.5; }
 .error { color: #b91c1c; }
 .success { color: #047857; }
