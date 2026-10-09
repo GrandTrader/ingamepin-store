@@ -1,0 +1,75 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
+const {PGlite}=require('@electric-sql/pglite');
+const modules={};
+function load(file){if(modules[file])return modules[file];const exports={};modules[file]=exports;const js=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;new Function('exports','require',js)(exports,name=>name.startsWith('.')?load(path.join(path.dirname(file),name+'.ts')):require(name));return exports;}
+const api=load('lib/bulk-price-import.ts'),csvApi=load('lib/catalog-import.ts');
+const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+const admin=id(1),product=id(2),option=id(3),otherOption=id(4),category=id(5);
+const future=new Date(Date.now()+86400000).toISOString();
+const headers=['product_id','option_id','regular_price_usd','discount_percent','discount_expires_at'];
+const file=(rows,cols=headers)=>csvApi.catalogCsv(cols,rows);
+const valid=file([[product,option,'120.00','25',future]]);
+assert.equal(api.priceExpiry('2026-12-31 23:59'),'2026-12-31T18:29:00.000Z');
+assert.throws(()=>api.priceExpiry('2026-02-30 12:00'));
+assert.throws(()=>api.priceExpiry('2026-02-30T12:00:00Z'));
+assert.equal(api.parsePriceImport(valid).errors.length,0);
+for(const [price,percent,expiry,match]of [['0','25',future,/Regular price/],['1e2','25',future,/decimal/],['100','100',future,/99.99/],['100','20','',/date/],['100','20','2000-01-01 00:00',/future/],['100','0',future,/Leave expiry/],['','','',/Enter/]])assert.match(api.parsePriceImport(file([[product,option,price,percent,expiry]])).errors[0].error,match);
+assert.equal(api.parsePriceImport(file([[product,option,100,20,future],[product,option,100,30,future]])).errors.length,2);
+assert.throws(()=>api.parsePriceImport('product_id,option_id,sale_price\n'+product+','+option+',1'),/Unsupported/);
+assert.equal(api.priceSourceUrl('https://www.xbox.com/en-IN/games/store/test-game/9n2zdn7nwqkv'),true);
+assert.equal(api.priceSourceUrl('https://www.xbox.com.evil.test/en-IN/games/store/test-game/9n2zdn7nwqkv'),false);
+
+(async()=>{
+ const db=new PGlite();
+ try{
+  const initial=fs.readFileSync('supabase/migrations/00000000_initial_schema.sql','utf8');
+  await db.exec("create schema auth;create table auth.users(id uuid primary key);create role anon;create role authenticated;create role service_role;create type public.delivery_type as enum('AUTO','MANUAL');create type public.product_status as enum('DRAFT','ACTIVE','INACTIVE');");
+  for(const table of ['categories','products','product_options'])await db.exec(initial.match(new RegExp(`create table if not exists public.${table} \\([\\s\\S]*?\\n\\);`))[0]);
+  await db.exec("alter table products add column stock_source text default 'LOCAL',add column is_bulk_order boolean default false,add column affiliate_enabled boolean default false,add column affiliate_commission_percent numeric default 0,add column affiliate_updated_at timestamptz,add column name_ru text,add column description_ru text,add column gaming_platforms text[];alter table product_options add column is_in_stock boolean default true;create table admin_users(user_id uuid primary key);create table product_range_settings(product_id uuid,option_id uuid);create table seller_product_submissions(product_id uuid);create table product_customer_fields(id uuid primary key,product_id uuid,label text,field_type text,placeholder text,is_required boolean,sort_order int,updated_at timestamptz);create table order_items(id uuid primary key default gen_random_uuid(),product_id uuid,product_option_id uuid);");
+  await db.exec(fs.readFileSync('supabase/migrations/20260801_150000_sync_product_price_from_options.sql','utf8').split('update public.products as product')[0]);
+  await db.exec(fs.readFileSync('supabase/migrations/20261008_140000_playstation_catalog_import.sql','utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20261009_010000_expiring_product_discounts.sql','utf8').split('-- Preserve all installed')[0]+'commit;');
+  const migration=fs.readFileSync('supabase/migrations/20261009_060000_bulk_price_discounts.sql','utf8');
+  await db.exec(migration);await db.exec(migration);
+  await db.query('insert into auth.users values($1)',[admin]);await db.query('insert into admin_users values($1)',[admin]);
+  await db.query("insert into categories(id,name,slug,category_type)values($1,'Xbox','xbox','GAME')",[category]);
+  await db.query("insert into products(id,category_id,name,slug,description,region,product_type,delivery_type,status,stock_quantity)values($1,$2,'Test game','test-game','Untouched','India','GAME','MANUAL','ACTIVE',100)",[product,category]);
+  await db.query("insert into product_options(id,product_id,category_id,option_name,option_type,selling_price,denomination,is_active,is_custom_value,stock_quantity)values($1,$3,$4,'Standard','OTHER',100,100,true,false,10),($2,$3,$4,'Deluxe','OTHER',200,200,true,false,10)",[option,otherOption,product,category]);
+  const one=async(sql,args=[]) => (await db.query(sql,args)).rows[0];
+  const snapshot=async()=> (await one('select bulk_price_snapshot($1) s',[product])).s;
+  const plan=async(csv=valid)=>api.buildPricePlan(csv,{[product]:await snapshot()});
+  const run=async(plans,who=admin)=> (await one("insert into product_import_runs(created_by,created_by_email,filename,settings,plan)values($1,'admin@test.invalid','prices.csv','{\"mode\":\"prices\",\"version\":1}',$2) returning id",[who,JSON.stringify(plans)])).id;
+  const apply=async(r)=>(await one('select apply_bulk_price_import_item($1,0) r',[r])).r;
+  const undo=async(r)=>(await one('select undo_bulk_price_import_item($1,0) r',[r])).r;
+  const save=async rules=>{const s=await snapshot();return one('select save_product_promotions($1,$2,$3,$4)',[product,admin,s.promotion?.revision||null,JSON.stringify(rules)]);};
+  await save([{optionId:null,percent:10,endsAt:future},{optionId:otherOption,percent:15,endsAt:future}]);
+  const original=await snapshot(),p=await plan();
+  assert.equal(p.preview[0].previous,90);assert.equal(p.preview[0].sale,90);assert.equal(p.errors.length,0);assert.deepEqual(await snapshot(),original,'Preview performs no writes');
+  const run1=await run(p.plan);assert.equal((await apply(run1)).status,'UPDATED');const updated=await snapshot();
+  assert.equal(Number(updated.options.find(o=>o.id===option).selling_price),120);assert.equal(updated.promotion.rules.find(r=>r.optionId===otherOption).percent,15);
+  assert.equal(Number((await one('select promotion_unit_price($1,$2,120) price',[product,option])).price),90);
+  assert.equal((await one('select description from products where id=$1',[product])).description,'Untouched');
+  assert.deepEqual(await apply(run1),await apply(run1),'Retry is idempotent');assert.deepEqual(await snapshot(),updated);
+  assert.equal((await undo(run1)).status,'UNDONE');assert.deepEqual(await snapshot(),original,'Undo restores price and original rules');assert.equal((await undo(run1)).status,'UNDONE');
+  const off=await plan(file([[product,option,'','0','']]));const offRun=await run(off.plan);assert.equal((await apply(offRun)).status,'UPDATED');assert.equal(Number((await one('select promotion_unit_price($1,$2,100) price',[product,option])).price),100);await undo(offRun);
+  const keep=await plan(file([[product,option,'150','','']]));assert.equal(keep.preview[0].sale,135);const keepRun=await run(keep.plan);assert.equal((await apply(keepRun)).status,'UPDATED');assert.deepEqual((await snapshot()).promotion,original.promotion);await undo(keepRun);
+  const stale=await plan();await save([{optionId:null,percent:12,endsAt:future}]);assert.equal((await apply(await run(stale.plan))).status,'REJECTED');
+  const corrupt=await plan();corrupt.plan[0].rows.push({...corrupt.plan[0].rows[0],optionId:id(999),rule:{optionId:id(999),percent:20,endsAt:future}});const beforeFailure=await snapshot();assert.equal((await apply(await run(corrupt.plan))).status,'REJECTED');assert.deepEqual(await snapshot(),beforeFailure,'Failure rolls back preceding price writes');
+  const duplicate=await plan();duplicate.plan[0].rows.push(duplicate.plan[0].rows[0]);assert.equal((await apply(await run(duplicate.plan))).status,'REJECTED');assert.deepEqual(await snapshot(),beforeFailure);
+  const expired=await plan();expired.plan[0].rows[0].rule.endsAt='2000-01-01T00:00:00Z';assert.equal((await apply(await run(expired.plan))).status,'REJECTED');assert.deepEqual(await snapshot(),beforeFailure);
+  const changed=await plan();const changedRun=await run(changed.plan);await apply(changedRun);await db.query('update product_options set selling_price=140 where id=$1',[option]);assert.equal((await undo(changedRun)).status,'PROTECTED');assert.equal(Number((await snapshot()).options.find(o=>o.id===option).selling_price),140);
+  await db.query('insert into seller_product_submissions values($1)',[product]);assert.match((await plan()).errors[0].error,/seller/i);await db.query('delete from seller_product_submissions');
+  await db.query('insert into product_range_settings values($1,$2)',[product,option]);assert.match((await plan()).errors[0].error,/range/);assert.match((await plan(file([[product,option,'','20',future]]))).errors[0].error,/range/);await db.query('delete from product_range_settings');
+  const source={provider:'XBOX_INDIA',giftable:true,fulfillment:'MANUAL_GIFT',availability:'AVAILABLE',store_url:'https://www.xbox.com/en-IN/games/store/test-game/9n2zdn7nwqkv',store_price_inr:'100',price_checked_at:new Date().toISOString(),sale_ends_at:'2000-01-01T00:00:00Z'};
+  await db.query('update product_options set catalog_source=$1 where id=$2',[source,option]);
+  const sourceHeaders=[...headers,'store_regular_price_inr','store_url','price_checked_at'];const sourceFile=file([[product,option,120,25,future,'10000',source.store_url,source.price_checked_at]],sourceHeaders);const sourcePlan=await plan(sourceFile);assert.equal(sourcePlan.errors.length,0);
+  const sourceRun=await run(sourcePlan.plan);assert.equal((await apply(sourceRun)).status,'UPDATED');
+  const savedSource=(await snapshot()).options.find(o=>o.id===option).catalog_source;assert.equal(savedSource.giftable,true);assert.equal(savedSource.fulfillment,'MANUAL_GIFT');assert.equal(savedSource.sale_ends_at,'');
+  const s=await snapshot();await save(s.promotion.rules.map(r=>r.optionId===option?{...r,endsAt:'2000-01-01T00:00:00Z'}:r));assert.equal(Number((await one('select promotion_unit_price($1,$2,120) price',[product,option])).price),120,'Expired option discount returns regular price');
+  await db.query('insert into order_items(product_id,product_option_id)values($1,$2)',[product,option]);
+  assert.equal((await undo(sourceRun)).status,'PROTECTED','Orders/later rules protect history');
+  for(const role of ['anon','authenticated'])assert.equal((await one("select has_function_privilege($1,'apply_bulk_price_import_item(uuid,integer)','EXECUTE') allowed",[role])).allowed,false);
+  console.log('PASS: CSV validation, exact USD prices, IST dates, preview, idempotence, per-option overrides, preservation, expiry, atomic rollback, stale previews, source refresh, undo protection, and service-only access.');
+ }finally{await db.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

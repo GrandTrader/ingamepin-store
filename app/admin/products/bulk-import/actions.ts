@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseCatalogImport, validateCatalogSettings, type CatalogSettings } from "@/lib/catalog-import";
 import { buildCatalogPlan, type CatalogSnapshot, type CatalogPlanItem } from "@/lib/catalog-import-plan";
+import type { PricePlan, PriceSnapshot } from "@/lib/bulk-price-import";
 
 export type ImportInput = { csv: string; mapping: Record<string, string>; categoryId: string; filename: string };
 async function authorize() {
@@ -87,23 +88,25 @@ export async function processCatalogBatch(runId: string, offset: number, undo = 
   try {
     const { admin } = await authorize();
     if (!Number.isSafeInteger(offset) || offset < 0) throw new Error("Invalid batch position.");
-    const run = await admin.from("product_import_runs").select("plan,status").eq("id", runId).single();
+    const run = await admin.from("product_import_runs").select("plan,status,settings").eq("id", runId).single();
     if (run.error) throw new Error("Import not found.");
     const count = (run.data.plan as CatalogPlanItem[]).length;
     const results: { sku: string; status: string; message?: string; productId?: string }[] = [];
     for (let i = offset; i < Math.min(offset + 5, count); i++) {
-      const result = await admin.rpc(undo ? "undo_catalog_import_item" : "apply_catalog_import_item", { p_run: runId, p_index: i });
+      const prices = run.data.settings?.mode === "prices";
+      const result = await admin.rpc(prices ? (undo ? "undo_bulk_price_import_item" : "apply_bulk_price_import_item") : (undo ? "undo_catalog_import_item" : "apply_catalog_import_item"), { p_run: runId, p_index: i });
       if (result.error) throw new Error("Batch paused. Retry or resume this import from history.");
       results.push(result.data);
     }
     revalidatePath("/admin/products");
+    if (run.data.settings?.mode === "prices") revalidatePath("/", "layout");
     return { results, next: Math.min(offset + 5, count), count };
   } catch (error) { return { error: message(error) }; }
 }
 export async function catalogHistory() {
   try {
     const { admin } = await authorize();
-    const result = await admin.from("product_import_runs").select("id,filename,created_by_email,created_at,status").order("created_at", { ascending: false }).limit(30);
+    const result = await admin.from("product_import_runs").select("id,filename,created_by_email,created_at,status,settings").order("created_at", { ascending: false }).limit(30);
     if (result.error) throw new Error("Install the catalog import database update to view history.");
     return { runs: result.data };
   } catch (error) { return { error: message(error) }; }
@@ -116,6 +119,20 @@ export async function catalogRunDetails(runId: string) {
       admin.from("product_import_items").select("parent_sku,status,message,before_snapshot,after_snapshot").eq("run_id", runId).order("item_index").range(0, 1999),
     ]);
     if (run.error || items.error) throw new Error("Unable to read import details.");
+    if (run.data.settings?.mode === "prices") {
+      const changes = items.data.map(item => {
+        const before = item.before_snapshot as PriceSnapshot | null, after = item.after_snapshot as PriceSnapshot | null;
+        const fields: { field: string; before: string; after: string }[] = [];
+        for (const option of after?.options || []) {
+          const old = before?.options.find(o => o.id === option.id);
+          for (const key of ["selling_price", "catalog_source"] as const) if (JSON.stringify(old?.[key]) !== JSON.stringify(option[key])) fields.push({ field: `${option.option_name}: ${key}`, before: JSON.stringify(old?.[key] ?? ""), after: JSON.stringify(option[key] ?? "") });
+        }
+        if (JSON.stringify(before?.promotion?.rules) !== JSON.stringify(after?.promotion?.rules)) fields.push({ field: "Discounts and expiry", before: JSON.stringify(before?.promotion?.rules || []), after: JSON.stringify(after?.promotion?.rules || []) });
+        return { sku: before?.product.name || item.parent_sku, status: item.status, message: item.message, fields };
+      });
+      const errors = items.data.filter(i => i.status === "REJECTED").flatMap(item => ((run.data.plan as PricePlan[]).find(p => p.parent_sku === item.parent_sku)?.rows || []).map(row => ({ row: row.row, sku: row.optionId, values: row.values, error: item.message || "Price update rejected" })));
+      return { count: (run.data.plan as unknown[]).length, errors, settings: run.data.settings, changes };
+    }
     const changes = items.data.map(item => {
       const before = item.before_snapshot as CatalogSnapshot | null, after = item.after_snapshot as CatalogSnapshot | null;
       const fields: { field: string; before: string; after: string }[] = [];
