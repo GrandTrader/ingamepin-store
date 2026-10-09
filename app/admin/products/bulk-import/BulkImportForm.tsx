@@ -48,9 +48,11 @@ export default function BulkImportForm({ ready, categories, initialSettings }: {
   }
   return <div className="mt-6 space-y-6">
     <section className="rounded-2xl border bg-white p-5">
-      <h2 className="text-lg font-bold">Pricing</h2><p className="mt-1 text-sm text-slate-600">Your business pricing settings. Each edition: INR price × (1 + markup) ÷ INR per USD, rounded to 2 decimals.</p>
+      <h2 className="text-lg font-bold">Game pricing</h2><p className="mt-1 text-sm text-slate-600">Markup is selected from each edition’s current India Store price, including an active offer. The marked-up INR price is converted to USD and rounded to 2 decimals.</p>
+      <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+        {[["Below ₹500", "50%"], ["₹500–₹2,000", "30%"], ["Above ₹2,000", "20%"]].map(([range, markup]) => <div key={range} className="rounded-lg bg-blue-50 p-3"><dt className="text-sm text-slate-600">{range}</dt><dd className="mt-1 text-lg font-bold text-blue-800">{markup} markup</dd></div>)}
+      </dl>
       <fieldset disabled={busy || !ready} className="mt-4 flex flex-wrap items-end gap-4">
-        <label className="grid gap-1 text-sm font-bold">Markup (%)<input className={inputStyle} inputMode="decimal" value={settings.markup_percent} onChange={e => { setSettings({ ...settings, markup_percent: e.target.value }); invalidate(); }} /></label>
         <label className="grid gap-1 text-sm font-bold">INR per USD<input className={inputStyle} inputMode="decimal" value={settings.inr_per_usd} onChange={e => { setSettings({ ...settings, inr_per_usd: e.target.value }); invalidate(); }} /></label>
         <button className={button} type="button" disabled={!dirty} onClick={() => task(async () => { const r = await saveCatalogPricing(settings); if (r.error) throw new Error(r.error); setSaved(settings); invalidate(); setNotice("Pricing saved. Existing product prices change only when you import updated prices."); })}>Save pricing</button>
       </fieldset>

@@ -67,6 +67,15 @@ assert.equal(api.priceSourceUrl('https://www.xbox.com.evil.test/en-IN/games/stor
   const sourceRun=await run(sourcePlan.plan);assert.equal((await apply(sourceRun)).status,'UPDATED');
   const savedSource=(await snapshot()).options.find(o=>o.id===option).catalog_source;assert.equal(savedSource.giftable,true);assert.equal(savedSource.fulfillment,'MANUAL_GIFT');assert.equal(savedSource.sale_ends_at,'');
   const s=await snapshot();await save(s.promotion.rules.map(r=>r.optionId===option?{...r,endsAt:'2000-01-01T00:00:00Z'}:r));assert.equal(Number((await one('select promotion_unit_price($1,$2,120) price',[product,option])).price),120,'Expired option discount returns regular price');
+  // An offer crossing a markup tier needs its own effective discount, not the store's percentage.
+  const regularGame=csvApi.calculateGameCatalogPrice('2999','98'),saleGame=csvApi.calculateGameCatalogPrice('1999','98');
+  assert.equal(regularGame,'36.72');assert.equal(saleGame,'26.52');
+  const tierPlan=await plan(file([[product,option,regularGame,'27.78',future]]));
+  assert.equal(tierPlan.preview[0].sale,Number(saleGame));
+  assert.equal((await apply(await run(tierPlan.plan))).status,'UPDATED');
+  assert.equal(Number((await one('select promotion_unit_price($1,$2,$3) price',[product,option,regularGame])).price),26.52);
+  const tierSnapshot=await snapshot();await save(tierSnapshot.promotion.rules.map(r=>r.optionId===option?{...r,endsAt:'2000-01-01T00:00:00Z'}:r));
+  assert.equal(Number((await one('select promotion_unit_price($1,$2,$3) price',[product,option,regularGame])).price),36.72,'Expiry restores the regular INR price with its own 20% tier');
   await db.query('insert into order_items(product_id,product_option_id)values($1,$2)',[product,option]);
   assert.equal((await undo(sourceRun)).status,'PROTECTED','Orders/later rules protect history');
   for(const role of ['anon','authenticated'])assert.equal((await one("select has_function_privilege($1,'apply_bulk_price_import_item(uuid,integer)','EXECUTE') allowed",[role])).allowed,false);

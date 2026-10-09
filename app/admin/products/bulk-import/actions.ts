@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { parseCatalogImport, validateCatalogSettings, type CatalogSettings } from "@/lib/catalog-import";
+import { GAME_MARKUP_POLICY, parseCatalogImport, validateCatalogSettings, type CatalogSettings } from "@/lib/catalog-import";
 import { buildCatalogPlan, type CatalogSnapshot, type CatalogPlanItem } from "@/lib/catalog-import-plan";
 import type { PricePlan, PriceSnapshot } from "@/lib/bulk-price-import";
 
@@ -29,7 +29,7 @@ async function prepare(input: ImportInput) {
   if (!input || typeof input.csv !== "string" || !input.mapping || typeof input.mapping !== "object" || Array.isArray(input.mapping) || Object.values(input.mapping).some(v => typeof v !== "string")) throw new Error("Invalid import request.");
   const settingsQuery = await admin.from("product_import_settings").select("markup_percent,inr_per_usd").eq("id", true).single();
   if (settingsQuery.error) throw new Error("Install the catalog import database update before using this page.");
-  const settings: CatalogSettings = { markup_percent: String(settingsQuery.data.markup_percent), inr_per_usd: String(settingsQuery.data.inr_per_usd) };
+  const settings = { markup_percent: String(settingsQuery.data.markup_percent), inr_per_usd: String(settingsQuery.data.inr_per_usd), markup_policy: GAME_MARKUP_POLICY };
   const parsed = parseCatalogImport(input.csv, input.mapping, settings);
   const categories = await admin.from("categories").select("id,name,slug,category_type").eq("is_active", true);
   if (categories.error) throw new Error("Unable to load categories.");
@@ -59,7 +59,7 @@ export async function previewCatalog(input: ImportInput) {
 export async function saveCatalogPricing(settings: CatalogSettings) {
   try {
     const { admin, user } = await authorize(); validateCatalogSettings(settings);
-    const result = await admin.from("product_import_settings").update({ markup_percent: settings.markup_percent, inr_per_usd: settings.inr_per_usd, updated_by: user.id, updated_at: new Date().toISOString() }).eq("id", true).select("id").single();
+    const result = await admin.from("product_import_settings").update({ inr_per_usd: settings.inr_per_usd, updated_by: user.id, updated_at: new Date().toISOString() }).eq("id", true).select("id").single();
     if (result.error) throw new Error("Unable to save pricing. Check the catalog database update.");
     return { success: true };
   } catch (error) { return { error: message(error) }; }

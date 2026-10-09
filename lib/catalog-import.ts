@@ -4,6 +4,7 @@ export const CATALOG_COLUMNS = ["parent_sku", "sku", "title_en", "title_ru", "sl
 export type CatalogColumn = typeof CATALOG_COLUMNS[number];
 export type CatalogSettings = { markup_percent: string; inr_per_usd: string };
 export const DEFAULT_CATALOG_SETTINGS: CatalogSettings = { markup_percent: "20", inr_per_usd: "98" };
+export const GAME_MARKUP_POLICY = "inr_game_tiers_v1";
 export type CsvRecord = Record<string, string>;
 export type CatalogIssue = { row: number; sku: string; error: string; values: CsvRecord };
 export type CatalogGame = { parent_sku: string; product: CsvRecord; editions: CatalogEdition[]; rows: number[] };
@@ -32,6 +33,17 @@ export function calculateCatalogPrice(inr: string, settings: CatalogSettings): s
   const cents = (numerator + rate / BigInt(2)) / rate;
   if (cents < BigInt(1)) throw new Error("Calculated selling price must be at least $0.01.");
   return `${cents / BigInt(100)}.${String(cents % BigInt(100)).padStart(2, "0")}`;
+}
+
+// Use the current official edition price, before conversion, to select its markup.
+export function gameMarkupPercent(inr: string): "50" | "30" | "20" {
+  const paise = decimalUnits(inr, 2, "India Store price");
+  if (paise <= BigInt(0) || paise > BigInt(100000000)) throw new Error("India Store price must be greater than 0 and at most 1,000,000 INR.");
+  return paise < BigInt(50000) ? "50" : paise <= BigInt(200000) ? "30" : "20";
+}
+
+export function calculateGameCatalogPrice(inr: string, inrPerUsd: string): string {
+  return calculateCatalogPrice(inr, { markup_percent: gameMarkupPercent(inr), inr_per_usd: inrPerUsd });
 }
 
 export function readCatalogCsv(input: string): string[][] {
@@ -107,7 +119,7 @@ export function parseCatalogImport(csv: string, mapping: Record<string, string>,
       if (v.is_preorder?.toLowerCase() === "true" && v.availability && v.availability !== "PREORDER") throw new Error("A preorder must have PREORDER availability.");
       if (v.availability === "PREORDER" && v.is_preorder?.toLowerCase() === "false") throw new Error("PREORDER availability cannot use is_preorder=false.");
       const warnings: string[] = [];
-      const price = v.store_price_inr ? calculateCatalogPrice(v.store_price_inr, settings) : undefined;
+      const price = v.store_price_inr ? calculateGameCatalogPrice(v.store_price_inr, settings.inr_per_usd) : undefined;
       if (v.price) { decimalUnits(v.price, 2, "Supplied USD price"); if (!price) throw new Error("Provide store_price_inr when supplying a USD price."); if (Number(v.price) !== Number(price)) warnings.push(`Supplied $${v.price} will be replaced with calculated $${price}.`); }
       if (v.sale_ends_at && Date.parse(v.sale_ends_at) <= now) warnings.push("Sale expired. Purchases remain blocked until the price is rechecked.");
       if (v.availability === "UNVERIFIED" || !v.store_price_inr || !v.price_checked_at || !v.store_url) warnings.push("New editions require a verified public INR price and source before purchases can be accepted.");
@@ -118,7 +130,7 @@ export function parseCatalogImport(csv: string, mapping: Record<string, string>,
       for (const [k, value] of Object.entries(product)) if (game.product[k] && game.product[k] !== value) throw new Error(`Conflicting ${k} for parent ${parent}.`);
       Object.assign(game.product, product);
       const source = Object.fromEntries(["store_url", "price_checked_at", "availability", "is_preorder", "release_date", "sale_ends_at"].filter(k => v[k]).map(k => [k, v[k]]));
-      if (v.store_price_inr) { source.store_price_inr = v.store_price_inr; source.markup_percent = settings.markup_percent; source.inr_per_usd = settings.inr_per_usd; source.sale_ends_at = v.sale_ends_at || ""; }
+      if (v.store_price_inr) { source.store_price_inr = v.store_price_inr; source.markup_percent = gameMarkupPercent(v.store_price_inr); source.markup_policy = GAME_MARKUP_POLICY; source.inr_per_usd = settings.inr_per_usd; source.sale_ends_at = v.sale_ends_at || ""; }
       game.editions.push({ sku, ...(v.option_name ? { option_name: v.option_name } : {}), ...(v.platform ? { platform: v.platform } : {}), ...(price ? { price, store_price_inr: v.store_price_inr } : {}), source, row, warnings }); game.rows.push(row);
     } catch (error) { errors.push({ row, sku: v.sku || "", error: error instanceof Error ? error.message : "Invalid row.", values: v }); }
   }

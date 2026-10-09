@@ -18,6 +18,13 @@ assert.equal(api.calculateCatalogPrice('2999', settings), '36.72');
 assert.equal(api.calculateCatalogPrice('0.49', { markup_percent: '0', inr_per_usd: '98' }), '0.01');
 assert.throws(() => api.calculateCatalogPrice('3e3', settings));
 assert.throws(() => api.calculateCatalogPrice('2999', { markup_percent: '20', inr_per_usd: '0' }));
+for (const [inr, markup, usd] of [['499.99', '50', '7.65'], ['500', '30', '6.63'], ['2000', '30', '26.53'], ['2000.01', '20', '24.49']]) {
+  assert.equal(api.gameMarkupPercent(inr), markup);
+  assert.equal(api.calculateGameCatalogPrice(inr, '98'), usd);
+}
+for (const invalid of ['0', '-1', 'NaN', '5e2', '499.999', '1000000.01']) assert.throws(() => api.gameMarkupPercent(invalid));
+assert.equal(api.calculateGameCatalogPrice('100', '100'), '1.50');
+assert.equal(api.calculateCatalogPrice('100', { markup_percent: '5', inr_per_usd: '49' }), '2.14', 'Explicit flat pricing remains unchanged for other products');
 const category = { id: '11111111-1111-4111-8111-111111111111', name: 'PlayStation', slug: 'playstation', category_type: 'GAME' };
 const user = '22222222-2222-4222-8222-222222222222';
 const columns = ['parent_sku','sku','title_en','title_ru','slug','description_en','description_ru','option_name','platform','store_price_inr','store_url','price_checked_at','availability','customer_fields','is_featured','affiliate_enabled','affiliate_commission_percent','delivery_instructions'];
@@ -25,6 +32,14 @@ const row = ['PS-IN-TEST','PS-IN-TEST-STANDARD','Test game','Тестовая и
 const csv = api.catalogCsv(columns,[row,[...row.slice(0,1),'PS-IN-TEST-DELUXE',...row.slice(2,7),'Deluxe Edition',...row.slice(8)]]);
 const mapping = api.defaultColumnMapping(columns);
 const prepared = buildCatalogPlan(csv,mapping,settings,[category],category.id,{},{});
+for (const [inr, markup, usd] of [['499', '50', '7.64'], ['1500', '30', '19.90'], ['2500', '20', '30.61']]) {
+  const tierRow = [...row]; tierRow[9] = inr;
+  const tierPlan = buildCatalogPlan(api.catalogCsv(columns, [tierRow]), mapping, { ...settings, markup_percent: '10' }, [category], category.id, {}, {});
+  assert.equal(tierPlan.errors.length, 0);
+  assert.equal(tierPlan.plan[0].editions[0].price, usd);
+  assert.equal(tierPlan.plan[0].editions[0].source.markup_percent, markup);
+  assert.equal(tierPlan.plan[0].editions[0].source.markup_policy, api.GAME_MARKUP_POLICY);
+}
 assert.equal(prepared.plan.length,1); assert.equal(prepared.plan[0].editions.length,2); assert.equal(prepared.errors.length,0);
 assert.equal(prepared.plan[0].product.description_ru,'Русское описание 🎮');
 assert.equal(prepared.plan[0].product.affiliate_commission_percent,'3');
