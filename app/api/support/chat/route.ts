@@ -11,6 +11,7 @@ import {
 } from "@/lib/support-chat";
 import { notifyNewSupportMessage } from "@/lib/telegram-chat-notification";
 import { consumeRate, privateJson, requestLimit, sameOrigin } from "@/lib/request-security";
+import { parseContactMessage } from "@/lib/contact-form";
 
 export const dynamic = "force-dynamic";
 
@@ -132,10 +133,14 @@ export async function POST(request: NextRequest) {
     if (blocked) return blocked;
     const identity = await getIdentity();
     if (!(await consumeRate("support-identity", identity.user?.id ?? hashSupportToken(identity.token), 10, 60))) return privateJson({ error: "Please wait before sending more messages." }, 429);
-    const input = await request.json();
-    const body = cleanSupportText(input.message);
-    const suppliedName = cleanSupportText(input.name, 100);
-    const suppliedEmail = cleanSupportText(input.email, 320).toLowerCase();
+    const input = await request.json().catch(() => null);
+    if (!input || typeof input !== "object" || Array.isArray(input)) return privateJson({ error: "Invalid message." }, 400);
+    const parsed = input.source === "contact" ? parseContactMessage(input, identity.user?.email) : null;
+    if (parsed?.error) return privateJson({ error: parsed.error }, 400);
+    const contact = parsed?.contact;
+    const body = contact?.body ?? cleanSupportText(input.message);
+    const suppliedName = contact?.name ?? cleanSupportText(input.name, 100);
+    const suppliedEmail = contact?.email ?? cleanSupportText(input.email, 320).toLowerCase();
 
     if (!body) {
       return NextResponse.json(
@@ -144,15 +149,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tokenHash = hashSupportToken(identity.token);
+    let tokenHash = hashSupportToken(identity.token);
     let conversation = await findConversation(
       identity.user?.id ?? null,
       tokenHash,
     );
+    // Keep earlier enquiries and their reply addresses intact when contact details change.
+    if (contact && conversation && (
+      conversation.customer_email?.toLowerCase() !== contact.email ||
+      conversation.customer_name !== contact.name
+    )) {
+      conversation = null;
+      // Guest tokens uniquely identify a conversation in the existing database.
+      if (!identity.user) {
+        identity.token = createSupportToken();
+        identity.isNewToken = true;
+        tokenHash = hashSupportToken(identity.token);
+      }
+    }
     const admin = createAdminClient();
 
     if (!conversation) {
       const name =
+        contact?.name ||
         cleanSupportText(identity.user?.user_metadata?.full_name, 100) ||
         suppliedName ||
         "Guest";

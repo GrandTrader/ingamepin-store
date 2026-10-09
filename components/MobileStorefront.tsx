@@ -118,7 +118,7 @@ export default function MobileStorefront({ products, popularIds, newestIds, cate
       }}>{["Popular", "New arrivals", "Top-ups"].map(label => <button key={label} role="tab" tabIndex={tab === label ? 0 : -1} aria-selected={tab === label} aria-controls="mobile-products-panel" id={`mobile-tab-${label.replaceAll(" ", "-")}`} onClick={() => {setTab(label); setQuery("");}}>{label}</button>)}</div>
       {query && <p className={styles.resultCount}>{shown.length} results for “{query}”</p>}
       <div id="mobile-products-panel" role="tabpanel" aria-labelledby={`mobile-tab-${tab.replaceAll(" ", "-")}`} className={styles.products}>{shown.slice(0,24).map(product => <MobileProduct key={product.id} product={product} />)}</div>{shown.length === 0 && <p className={styles.empty}>No products found. Try another search or category.</p>}<Link className={styles.viewAll} href={query.trim() ? `/products?search=${encodeURIComponent(query.trim())}` : "/products"}>{query.trim() ? "View all search results" : "View all products"} <Icon name="arrow" /></Link></section>
-      <footer className={styles.footer}><Link href="/support">Help & support</Link><Link href="/work-with-us">Partnerships</Link><Link href="/terms">Terms</Link><Link href="/privacy-policy">Privacy</Link><Link href="/business/login">B2B Portal</Link></footer>
+      <footer className={styles.footer}><Link href="/about-us">About Us</Link><Link href="/contact-us">Contact Us</Link><Link href="/work-with-us">Partnerships</Link><Link href="/terms">Terms</Link><Link href="/privacy-policy">Privacy</Link><Link href="/refund-policy">Refunds &amp; cancellations</Link><Link href="/business/login">B2B Portal</Link></footer>
     </div>
 
   </div>;

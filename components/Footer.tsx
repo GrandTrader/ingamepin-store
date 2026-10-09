@@ -65,6 +65,13 @@ export default function Footer() {
             <p>{"\u00A9"} {currentYear} InGamePin, {t("operatedBy")} {t("rightsReserved")}</p>
             <div className="flex flex-col items-center gap-3 sm:items-end">
               <ThemeModeSwitch />
+              <nav aria-label="Store information" className="flex flex-wrap justify-center gap-3 sm:justify-end">
+                <Link href="/about-us">About Us</Link>
+                <Link href="/contact-us">Contact Us</Link>
+                <Link href="/terms">{t("terms")}</Link>
+                <Link href="/privacy-policy">{t("privacyPolicy")}</Link>
+                <Link href="/refund-policy">{t("refundPolicy")}</Link>
+              </nav>
               <p>{t("trademarkNotice")}</p>
             </div>
           </div>
@@ -110,8 +117,9 @@ export default function Footer() {
           </MobileFooterSection>
 
           <MobileFooterSection title={t("customerHelp")}>
+            <Link href="/about-us">About Us</Link>
+            <Link href="/contact-us">Contact Us</Link>
             <Link href="/track-order">{t("trackYourOrder")}</Link>
-            <Link href="/support">{t("contactSupport")}</Link>
             <Link href="/work-with-us">Partnership With US</Link>
             <Link href="/work-with-us?type=PAYMENT_PROVIDER#partner-application">Be a Payment Gateway Provider</Link>
             <Link href="/cart">{t("shoppingCart")}</Link>
@@ -212,18 +220,13 @@ export default function Footer() {
           </h2>
 
           <nav className="mt-5 grid gap-3 text-sm text-slate-400">
+            <Link href="/about-us" className="transition hover:text-cyan-400">About Us</Link>
+            <Link href="/contact-us" className="transition hover:text-cyan-400">Contact Us</Link>
             <Link
               href="/track-order"
               className="transition hover:text-cyan-400"
             >
               {t("trackYourOrder")}
-            </Link>
-
-            <Link
-              href="/support"
-              className="transition hover:text-cyan-400"
-            >
-              {t("contactSupport")}
             </Link>
 
             <Link href="/work-with-us" className="transition hover:text-cyan-400">

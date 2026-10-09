@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 function load(file, mocks = {}, env = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
-    {exports, require:n=>n==='server-only'?{}:n in mocks?mocks[n]:require(n),process:{env:{NODE_ENV:'production',VERCEL:'1',GUEST_PURCHASE_SECRET:'isolated-test-secret',...env}},URL,Headers,Buffer,console:{error(){}},Date}, {filename:file});
+    {exports, require:n=>n==='server-only'?{}:n in mocks?mocks[n]:n==='@/lib/contact-form'?load('lib/contact-form.ts'):require(n),process:{env:{NODE_ENV:'production',VERCEL:'1',GUEST_PURCHASE_SECRET:'isolated-test-secret',...env}},URL,Headers,Buffer,console:{error(){}},Date}, {filename:file});
   return exports;
 }
 function query(result, calls = []) {

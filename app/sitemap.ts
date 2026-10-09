@@ -18,7 +18,7 @@ type Product = {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createAdminClient();
   const entries: MetadataRoute.Sitemap = [
-    "/", "/products", "/support", "/work-with-us",
+    "/", "/products", "/about-us", "/contact-us", "/work-with-us",
     "/affiliate-program", "/terms", "/privacy-policy", "/refund-policy",
   ].map((path) => ({ url: `${siteUrl}${path}` }));
 

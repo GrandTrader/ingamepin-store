@@ -1,0 +1,26 @@
+.page {
+  --information-accent: #67e8f9;
+}
+
+:global(html[data-store-theme="light"]) .page {
+  --information-accent: #0e7490;
+}
+
+.page :global(.text-cyan-400) {
+  color: var(--information-accent) !important;
+}
+
+/* These links are information cards, so use readable text in both themes. */
+.page a:global(.support-channel),
+.page a:global(.support-channel) * {
+  color: var(--information-accent) !important;
+  -webkit-text-fill-color: var(--information-accent) !important;
+}
+
+:global(html[data-store-theme="light"]) .page :global(.text-emerald-400) {
+  color: #047857 !important;
+}
+
+:global(html[data-store-theme="light"]) .page :global(.text-red-300) {
+  color: #b91c1c !important;
+}
