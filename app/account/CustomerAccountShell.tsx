@@ -2,15 +2,24 @@
 import { usePathname } from "next/navigation";
 import { isBusinessPortalPath } from "@/lib/portal-navigation";
 import type { ReactNode } from "react";
-
+import Link from "@/components/NavigationLink";
+import { customerLogout } from "./actions";
+import AccountIcon from "./AccountIcon";
 import CustomerAccountNav from "./CustomerAccountNav";
+import styles from "./Account.module.css";
 
 export default function CustomerAccountShell({
   displayName,
   children,
+  activePage,
+  orderCount,
+  unreadCount,
 }: {
   displayName: string;
   children: ReactNode;
+  activePage?: "overview" | "orders";
+  orderCount?: number;
+  unreadCount?: number;
 }) {
   const business = isBusinessPortalPath(usePathname());
   if (business) return <section className="min-w-0">{children}</section>;
@@ -21,26 +30,30 @@ export default function CustomerAccountShell({
     .join("");
 
   return (
-    <main className="min-w-0 max-w-full overflow-x-hidden bg-slate-100 text-slate-950">
-      <div className="mx-auto grid min-h-[75vh] w-full min-w-0 max-w-7xl md:grid-cols-[230px_minmax(0,1fr)]">
-        <aside className="min-w-0 max-w-full overflow-hidden border-b border-slate-200 bg-white p-4 md:border-b-0 md:border-r md:p-5">
-          <div className="flex min-w-0 items-center gap-3 px-2 py-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500 font-black text-slate-950">
+    <div className={styles.shell}>
+      <div className={styles.layout}>
+        <aside className={styles.sidebar}>
+          <div className={styles.identity}>
+            <div className={styles.avatar}>
               {initials}
             </div>
-            <div className="min-w-0">
-              <p className="truncate font-black">{displayName}</p>
-              <p className="truncate text-xs text-slate-500">Customer</p>
+            <div className={styles.identityText}>
+              <strong>{displayName}</strong>
+              <p>Customer account</p>
             </div>
           </div>
 
-          <CustomerAccountNav />
+          <CustomerAccountNav activePage={activePage} orderCount={orderCount} unreadCount={unreadCount} />
+          <div className={styles.sidebarBottom}>
+            <Link href="/" className={styles.navLink}><AccountIcon name="back" />Back to store</Link>
+            <form action={customerLogout}><button type="submit" className={styles.navLink}><AccountIcon name="signout" />Sign out</button></form>
+          </div>
         </aside>
 
-        <section className="min-w-0 max-w-full overflow-hidden p-4 sm:p-8">
+        <section className={styles.content}>
           {children}
         </section>
       </div>
-    </main>
+    </div>
   );
 }

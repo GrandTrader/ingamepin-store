@@ -1,0 +1,56 @@
+.shell {
+  --account-bg: light-dark(#f4f7fb, #101722);
+  --account-surface: light-dark(#fff, #182232);
+  --account-soft: light-dark(#f7f9fc, #202e40);
+  --account-ink: light-dark(#102137, #e9f0fa);
+  --account-muted: light-dark(#607086, #acbdd2);
+  --account-border: light-dark(#e1e8f0, #304055);
+  --account-accent: light-dark(#006d80, #69e2ef);
+  --account-tint: light-dark(#e6fafc, #163e48);
+  --account-selected: light-dark(#142c4b, #c9e0fc);
+  --account-selected-text: light-dark(#fff, #142c4b);
+  background: var(--account-bg);
+  color: var(--account-ink);
+  min-width: 0;
+  width: 100%;
+}
+.layout {display: grid; grid-template-columns: 210px minmax(0, 1fr); max-width: 1280px; margin: 0 auto; min-height: 75vh;}
+.sidebar {display: flex; flex-direction: column; gap: 23px; padding: 28px 16px 20px; background: var(--account-surface); border-right: 1px solid var(--account-border); min-width: 0;}
+.identity {display: flex; align-items: center; gap: 11px; padding: 0 7px; min-width: 0;}
+.avatar {width: 40px; height: 40px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid var(--account-border); border-radius: 12px; background: var(--account-tint); color: var(--account-accent); font-size: 15px; font-weight: 800;}
+.identityText {min-width: 0;}
+.identityText strong {display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 800;}
+.identityText p {color: var(--account-muted); font-size: 11px; margin-top: 3px;}
+.nav {display: flex; flex-direction: column; gap: 5px; min-width: 0;}
+.navLink {display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 11px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--account-muted); font-size: 13px; font-weight: 600; text-align: left; text-decoration: none; width: 100%;}
+.navLink svg {flex-shrink: 0;}
+.navLink:hover {background: var(--account-soft); color: var(--account-ink);}
+.navLink[aria-current="page"] {background: var(--account-tint); color: var(--account-accent); font-weight: 750;}
+.count {margin-left: auto; border-radius: 5px; background: var(--account-soft); color: var(--account-muted); padding: 1px 6px; font-size: 11px; font-variant-numeric: tabular-nums;}
+.sidebarBottom {margin-top: auto; padding-top: 16px; border-top: 1px solid var(--account-border);}
+.content {min-width: 0; padding: 32px;}
+.shell a:focus-visible, .shell button:focus-visible {outline: 2px solid var(--account-accent); outline-offset: 3px;}
+@media (max-width: 1023px) {
+  .layout {grid-template-columns: 185px minmax(0, 1fr);}
+  .content {padding: 26px 20px;}
+  .sidebar {padding-left: 12px; padding-right: 12px;}
+  .navLink {font-size: 12px; padding: 11px 9px;}
+}
+@media (max-width: 767px) {
+  .layout {display: block;}
+  .sidebar {padding: 17px 16px; border-right: 0; border-bottom: 1px solid var(--account-border); gap: 13px;}
+  .identity {padding: 0;}
+  .avatar {width: 34px; height: 34px; border-radius: 10px;}
+  .nav {flex-direction: row; flex-wrap: wrap; gap: 4px;}
+  .navLink {width: auto; padding: 9px 10px; min-height: 42px; gap: 7px;}
+  .navLink svg {width: 16px; height: 16px;}
+  .count {padding: 0 4px;}
+  .sidebarBottom {display: flex; align-items: center; justify-content: space-between; padding-top: 8px;}
+  .sidebarBottom .navLink {min-height: 38px; padding: 6px 4px; font-size: 11px;}
+  .content {padding: 24px 16px;}
+}
+@media (max-width: 374px) {
+  .sidebar {padding: 14px 12px;}
+  .content {padding: 22px 12px;}
+  .navLink {padding: 8px; font-size: 11px;}
+}

@@ -34,6 +34,7 @@ const announcementItems = [
 
 export default function Header() {
   const pathname = usePathname();
+  const isAccountPage = pathname === "/account" || pathname.startsWith("/account/");
   const hideProductSearch = [
     "/admin",
     "/vendor",
@@ -428,7 +429,7 @@ export default function Header() {
 
         <nav aria-label="Store categories" className="hidden border-t border-white/10 bg-slate-950/75 xl:block">
           <div className="mx-auto flex max-w-7xl items-center gap-7 overflow-x-auto px-5 py-3 text-xs font-bold text-slate-300">
-            <Link href="/business/login" className="header-category-link text-[#ff9b22]">⇄ Switch to B2B</Link>
+            {!isAccountPage && <Link href="/business/login" className="header-category-link text-[#ff9b22]">⇄ Switch to B2B</Link>}
             {headerCategories.map((category) => (
               <Link
                 key={category.id}
@@ -442,7 +443,7 @@ export default function Header() {
           </div>
         </nav>
 
-        {!hideProductSearch && (
+        {!hideProductSearch && !isAccountPage && (
           <aside aria-label="Store announcements" className="announcement-ticker">
             <div className="announcement-ticker-track">
               {[0, 1].map((copy) => (
@@ -576,7 +577,7 @@ export default function Header() {
                 <span aria-hidden="true">{"\u203A"}</span>
               </Link>
 
-              <Link
+              {!isAccountPage && <Link
                 href="/business/login"
                 onClick={closeMenu}
                 className="flex items-center justify-between rounded-xl border-2 border-cyan-600 bg-cyan-400 px-4 py-3 font-black text-slate-950 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-300"
@@ -586,7 +587,7 @@ export default function Header() {
                   Switch to B2B
                 </span>
                 <span aria-hidden="true">{"\u203A"}</span>
-              </Link>
+              </Link>}
 
               <div className="my-2 border-t border-white/10" />
 

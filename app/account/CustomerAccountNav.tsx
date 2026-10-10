@@ -2,38 +2,44 @@
 
 import Link from "@/components/NavigationLink";
 import { usePathname } from "next/navigation";
+import AccountIcon, { type AccountIconName } from "./AccountIcon";
+import styles from "./Account.module.css";
 
 const links = [
-  { label: "Overview", href: "/account/dashboard" },
-  { label: "My Orders", href: "/account/orders" },
-  { label: "Wallet", href: "/account/wallet" },
-  { label: "Affiliate", href: "/account/affiliate" },
-  { label: "Notifications", href: "/account/notifications" },
-  { label: "Security", href: "/account/security" },
-  { label: "B2B portal", href: "/business" },
-  { label: "Profile", href: "/account/profile" },
-];
+  { label: "Overview", href: "/account/dashboard", icon: "overview" },
+  { label: "My orders", href: "/account/orders", icon: "orders" },
+  { label: "Wallet", href: "/account/wallet", icon: "wallet" },
+  { label: "Affiliate", href: "/account/affiliate", icon: "affiliate" },
+  { label: "Notifications", href: "/account/notifications", icon: "notifications" },
+  { label: "Security", href: "/account/security", icon: "security" },
+  { label: "Profile", href: "/account/profile", icon: "profile" },
+] satisfies { label: string; href: string; icon: AccountIconName }[];
 
-export default function CustomerAccountNav() {
+export default function CustomerAccountNav({ activePage, orderCount, unreadCount }: {
+  activePage?: "overview" | "orders";
+  orderCount?: number;
+  unreadCount?: number;
+}) {
   const pathname = usePathname();
 
   return (
-    <nav className="mt-3 flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 md:grid md:overflow-visible md:pb-0">
+    <nav className={styles.nav} aria-label="Account navigation">
       {links.map((link) => {
-        const active =
-          pathname === link.href || pathname.startsWith(`${link.href}/`);
+        const active = activePage && pathname === "/account/dashboard"
+          ? link.icon === activePage
+          : pathname === link.href || pathname.startsWith(`${link.href}/`);
+        const count = link.icon === "orders" ? orderCount : link.icon === "notifications" && unreadCount ? unreadCount : undefined;
 
         return (
           <Link
             key={link.href}
             href={link.href}
-            className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold md:shrink ${
-              active
-                ? "bg-cyan-50 text-cyan-700"
-                : "text-slate-500 hover:bg-slate-50"
-            }`}
+            className={styles.navLink}
+            aria-current={active ? "page" : undefined}
           >
+            <AccountIcon name={link.icon} />
             {link.label}
+            {count !== undefined && <span className={styles.count}>{count}</span>}
           </Link>
         );
       })}

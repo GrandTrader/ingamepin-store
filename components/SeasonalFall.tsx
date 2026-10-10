@@ -13,7 +13,7 @@ export default function SeasonalFall() {
     setClientPathname(pathname);
   }, [pathname]);
 
-  if (!clientPathname || clientPathname.startsWith("/admin")) {
+  if (!clientPathname || pathname.startsWith("/admin") || pathname === "/account" || pathname.startsWith("/account/")) {
     return null;
   }
 
