@@ -3,7 +3,7 @@ import { cataloguePromotions } from "@/lib/product-promotion-data";
 import Link from "@/components/NavigationLink";
 import { Suspense } from "react";
 import HomepageProductsLoading from "@/components/HomepageProductsLoading";
-import MobileStorefront, { type HomepageCatalogue } from "@/components/MobileStorefront";
+import MobileStorefront, { type HomepageCatalogue, type HomepageDiscovery } from "@/components/MobileStorefront";
 
 import HeroSlider, { type HeroSlide } from "@/components/HeroSlider";
 import ProductCard from "@/components/ProductCard";
@@ -14,6 +14,7 @@ import PreorderPopup, {
 import PopularProductsRow from "@/components/PopularProductsRow";
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getHomepageData } from "@/lib/homepage-data";
+import { getStoreProducts } from "@/lib/store-catalogue";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
 
@@ -172,37 +173,33 @@ function getAvailableStock(
   );
 }
 
-export default async function Home() {
-  const homepageData = await getHomepageData();
-  const catalogue = loadHomepageCatalogue(homepageData);
-  const categories =
-    homepageData.categories as CategoryRow[];
+// Start independent work together. The mobile header and search never wait for
+// catalogue, customer discounts, banners or category requests.
+export default function Home() {
+  const homepageData = getHomepageData();
+  const productRows = getStoreProducts();
+  const catalogue = loadHomepageCatalogue(productRows);
+  return <>
+    <MobileStorefront catalogue={catalogue} discovery={homepageData.then(homepageDiscovery)} />
+    <div className="hidden sm:block">
+      <Suspense fallback={<HomepageProductsLoading />}>
+        <DesktopHomepage homepageData={homepageData} productRows={productRows} catalogue={catalogue} />
+      </Suspense>
+    </div>
+  </>;
+}
 
-  const productRows =
-    homepageData.products as ProductRow[];
-
+async function DesktopHomepage({ homepageData: presentation, productRows: rows, catalogue }: {
+  homepageData: ReturnType<typeof getHomepageData>; productRows: Promise<ProductRow[]>; catalogue: Promise<HomepageCatalogue>;
+}) {
+  const [homepageData, productRows] = await Promise.all([presentation, rows]);
+  const categories = homepageData.categories as CategoryRow[];
   const popupRow =
     homepageData.preorderPopup as PreorderPopupRow | null;
   const popupStoreProduct = popupRow?.product_id
     ? productRows.find((product) => product.id === popupRow.product_id) ?? null
     : null;
-  const now = Date.now();
-  const heroSlides: HeroSlide[] = homepageData.slides
-    .filter((slide) => {
-      const starts = slide.starts_at ? new Date(slide.starts_at).getTime() : null;
-      const ends = slide.ends_at ? new Date(slide.ends_at).getTime() : null;
-      return (starts === null || starts <= now) && (ends === null || ends > now);
-    })
-    .map((slide) => ({
-      id: slide.id,
-      eyebrow: slide.eyebrow,
-      title: slide.title,
-      description: slide.description,
-      desktopImageUrl: slide.desktop_image_url,
-      mobileImageUrl: slide.mobile_image_url,
-      buttonText: slide.button_text,
-      buttonUrl: slide.button_url,
-    }));
+  const { heroSlides } = homepageDiscovery(homepageData);
 
   const preorderPopup: PreorderPopupData | null =
     popupRow &&
@@ -233,7 +230,6 @@ export default async function Home() {
 
   return (
     <>
-    <MobileStorefront catalogue={catalogue} categories={categories} heroSlides={homepageData.sliderSettings?.is_enabled ? heroSlides : []} heroAutoplayMs={homepageData.sliderSettings?.autoplay_ms} />
     <div data-homepage-shell="desktop" className="hidden sm:block market-home min-h-screen bg-[#f3f4f6] text-[#172033]">
       {preorderPopup && (
         <PreorderPopup popup={preorderPopup} desktopOnly />
@@ -304,6 +300,29 @@ export default async function Home() {
 }
 
 
+function homepageDiscovery(homepageData: Awaited<ReturnType<typeof getHomepageData>>): HomepageDiscovery {
+  const now = Date.now();
+  const heroSlides: HeroSlide[] = homepageData.slides
+    .filter((slide) => {
+      const starts = slide.starts_at ? new Date(slide.starts_at).getTime() : null;
+      const ends = slide.ends_at ? new Date(slide.ends_at).getTime() : null;
+      return (starts === null || starts <= now) && (ends === null || ends > now);
+    })
+    .map((slide) => ({
+      id: slide.id,
+      eyebrow: slide.eyebrow,
+      title: slide.title,
+      description: slide.description,
+      desktopImageUrl: slide.desktop_image_url,
+      mobileImageUrl: slide.mobile_image_url,
+      buttonText: slide.button_text,
+      buttonUrl: slide.button_url,
+    }));
+
+  return { categories: homepageData.categories, heroSlides: homepageData.sliderSettings?.is_enabled ? heroSlides : [], heroAutoplayMs: homepageData.sliderSettings?.autoplay_ms };
+}
+
+
 function EmptySection({
   message,
 }: {
@@ -316,11 +335,10 @@ function EmptySection({
   );
 }
 
-async function loadHomepageCatalogue(homepageData: Awaited<ReturnType<typeof getHomepageData>>): Promise<HomepageCatalogue> {
-  const productRows = homepageData.products as ProductRow[];
-  const [customerDiscounts, paidProductSales, promotions] = await Promise.all([
-    getSignedInCustomerDiscounts(), getPaidProductSales(),
-    cataloguePromotions(productRows.map(product => product.id)),
+async function loadHomepageCatalogue(rows: Promise<ProductRow[]>): Promise<HomepageCatalogue> {
+  const [productRows, customerDiscounts, paidProductSales, promotions] = await Promise.all([
+    rows, getSignedInCustomerDiscounts(), getPaidProductSales(),
+    rows.then(products => cataloguePromotions(products.map(product => product.id))),
   ]);
   const products: StoreProduct[] =
     productRows

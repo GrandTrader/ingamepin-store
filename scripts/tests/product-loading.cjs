@@ -181,42 +181,47 @@ test('Large catalogue price batches run concurrently with bounded requests and k
   }
 });
 
-test('Homepage banner and categories return before delayed personal prices; prices stay behind their own boundary', async () => {
-  let release;
-  const personal = new Promise(resolve => { release = resolve; });
-  const catalogue = { products: [{ ...baseProduct, price: 50, product_type: 'GIFT_CARD', product_options: [], created_at: '2026-10-01' }],
-    categories: [{ id: 'c', public_id: 987654321, name: 'Games', slug: 'games' }],
+test('Homepage renders immediately; discovery, catalogue and private prices load independently', async () => {
+  let releasePersonal, releasePresentation, releaseProducts;
+  const personal = new Promise(resolve => { releasePersonal = resolve; });
+  const presentation = new Promise(resolve => { releasePresentation = resolve; });
+  const products = new Promise(resolve => { releaseProducts = resolve; });
+  const data = { categories: [{ id: 'c', public_id: 987654321, name: 'Games', slug: 'games' }],
     preorderPopup: null, sliderSettings: { is_enabled: true, autoplay_ms: 5000 },
     slides: [{ id: 's', title: 'Featured game', desktop_image_url: '/images/banner.webp', button_url: '/product/product' }] };
+  const rows = [{ ...baseProduct, price: 50, product_type: 'GIFT_CARD', product_options: [], created_at: '2026-10-01' }];
+  let privateStarted = false;
   const home = load('app/page.tsx', {
     '@/lib/product-delivery': { hasInstantDelivery: () => false },
     '@/lib/product-promotion-data': { cataloguePromotions: async () => new Map() },
-    '@/lib/customer-discounts': { getSignedInCustomerDiscounts: () => personal },
-    '@/lib/homepage-data': { getHomepageData: async () => catalogue },
+    '@/lib/customer-discounts': { getSignedInCustomerDiscounts: () => { privateStarted=true; return personal; } },
+    '@/lib/homepage-data': { getHomepageData: () => presentation },
+    '@/lib/store-catalogue': { getStoreProducts: () => products },
     '@/lib/product-sales': { getPaidProductSales: async () => new Map() },
     '@/lib/product-url': { getProductUrl: () => '/canonical' },
   }).default;
   try {
-    let returned = false;
-    const rendering = home().then(tree => { returned = true; return tree; });
-    await new Promise(resolve => setImmediate(resolve));
-    assert(returned, 'Homepage shell must not wait for signed-in customer discounts');
-    const tree = await rendering;
-    assert(find(tree, el => el.type?.displayName === '@/components/HeroSlider'));
+    const tree = home();
+    assert(!tree.then, 'Initial homepage must not suspend behind public or customer database reads');
+    assert(privateStarted, 'Independent customer lookup starts before catalogue returns');
     const mobile = find(tree, el => el.type?.displayName === '@/components/MobileStorefront');
-    assert.equal(mobile.props.categories.length, 1);
-    const suspense = find(tree, el => el.type === require('react').Suspense);
-    assert(suspense, 'Only the product collections wait');
+    assert(mobile);
     let productsReady = false;
-    mobile.props.catalogue.then(() => { productsReady = true; });
+    mobile.props.catalogue.then(() => { productsReady=true; });
+    releasePresentation(data);
+    const discovery = await mobile.props.discovery;
+    assert.equal(discovery.categories.length, 1);
+    assert.equal(discovery.heroSlides[0].title, 'Featured game');
+    assert.equal(productsReady, false, 'Banner and categories do not wait for catalogue');
+    releaseProducts(rows);
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(productsReady, false, 'Do not display undiscounted prices while private prices are pending');
-    release(new Map([['p', 15]]));
+    assert.equal(productsReady, false, 'Do not flash undiscounted prices while private prices are pending');
+    releasePersonal(new Map([['p',15]]));
     const ready = await mobile.props.catalogue;
-    assert.equal(ready.products[0].discountPercent, 15);
-    assert.equal(ready.products[0].price, 50);
-    assert.deepEqual(Array.from(ready.popularIds), ['p']);
-  } finally { release(new Map()); }
+    assert.equal(ready.products[0].discountPercent,15);
+    assert.equal(ready.products[0].price,50);
+    assert.deepEqual(Array.from(ready.popularIds),['p']);
+  } finally { releasePresentation(data); releaseProducts(rows); releasePersonal(new Map()); }
 });
 
 test('Repeated catalogue visits reuse public prices, expiry still applies, and invalidation refreshes edits', async () => {

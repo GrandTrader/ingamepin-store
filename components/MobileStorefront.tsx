@@ -15,7 +15,8 @@ import HeroSlider, { type HeroSlide } from "./HeroSlider";
 
 type Category = { id: string; name: string; short_name: string | null; slug: string; image_url: string | null };
 export type HomepageCatalogue = { products: BrowseProduct[]; popularIds: string[]; newestIds: string[] };
-type Props = { catalogue: Promise<HomepageCatalogue>; categories: Category[]; heroSlides?: HeroSlide[]; heroAutoplayMs?: number };
+export type HomepageDiscovery = { categories: Category[]; heroSlides: HeroSlide[]; heroAutoplayMs?: number };
+type Props = { catalogue: Promise<HomepageCatalogue>; discovery: Promise<HomepageDiscovery> };
 type IconName = "home" | "browse" | "cart" | "orders" | "account" | "bell" | "wallet" | "arrow" | "more";
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, string> = {
@@ -54,11 +55,10 @@ function MobileProduct({ product }: { product: BrowseProduct }) {
     <div className={styles.priceRow}><div><small>{language === "ru" ? "От" : "From"}</small><strong>{formatPrice(offer.price)}</strong>{discount > 0 && <del>{formatPrice(offer.regular)}</del>}</div><span className={styles.productArrow} aria-label={unavailable ? "View unavailable product" : "Choose denomination"}><Icon name="arrow" /></span></div>
   </Link>;
 }
-export default function MobileStorefront({ catalogue, categories, heroSlides = [], heroAutoplayMs }: Props) {
+export default function MobileStorefront({ catalogue, discovery }: Props) {
   const { currency, setCurrency, language, setLanguage, formatPrice } = useStorePreferences();
   const [tab, setTab] = useState("Popular");
   const [query, setQuery] = useState("");
-  const [allCategories, setAllCategories] = useState(false);
   const [wallet, setWallet] = useState<number | null>(null);
   const accountMenu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
@@ -84,11 +84,6 @@ export default function MobileStorefront({ catalogue, categories, heroSlides = [
     }).catch(() => {});
     return () => controller.abort();
   }, []);
-  const preferred = ["playstation", "apple", "steam", "xbox"];
-  const quickCategories = [...categories].sort((a, b) => {
-    const rank = (c: Category) => { const index = preferred.findIndex(key => `${c.slug} ${c.name}`.toLowerCase().includes(key)); return index < 0 ? 10 : index; };
-    return rank(a) - rank(b);
-  });
   return <div className={styles.root} data-homepage-shell="mobile">
     <header className={styles.header}>
       <div className={styles.top}><Link href="/" className={styles.brand}><span>iP</span>iNgamePIN</Link><div className={styles.topActions}><Link href="/account/notifications" aria-label="Notifications"><Icon name="bell" /></Link><details ref={accountMenu} className={styles.accountMenu}>
@@ -105,10 +100,9 @@ export default function MobileStorefront({ catalogue, categories, heroSlides = [
 
     </header>
     <div className={styles.content}>
-      {!query && <>
-        <HeroSlider slides={heroSlides} autoplayMs={heroAutoplayMs} />
-        <section id="mobile-categories"><div className={styles.sectionHeading}><h2>Browse categories</h2><button onClick={() => setAllCategories(!allCategories)} aria-expanded={allCategories}>{allCategories ? "Show less" : "See all"} ›</button></div><div className={styles.categories}>{(allCategories ? quickCategories : quickCategories.slice(0,4)).map(c => <Link key={c.id} href={`/category/${c.slug}`}><span>{c.image_url ? <ProductImage src={c.image_url} alt="" sizes="48px" width={64} height={64} /> : <Icon name="browse" />}</span><b>{/playstation/i.test(c.name) ? "PlayStation" : /apple/i.test(c.name) ? "Apple" : /steam/i.test(c.name) ? "Steam" : /xbox/i.test(c.name) ? "Xbox" : c.short_name ?? c.name}</b></Link>)}{!allCategories && <button onClick={() => setAllCategories(true)}><span><Icon name="more" /></span><b>More</b></button>}</div></section>
-      </>}
+      {!query && <Suspense fallback={<div className={styles.sectionHeading}><h2>Browse categories</h2><Link href="/products">Browse all products ›</Link></div>}>
+        <MobileDiscovery discovery={discovery} />
+      </Suspense>}
       <section><div className={styles.tabs} role="tablist" aria-label="Product collections" onKeyDown={event => {
         const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button"));
         const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
@@ -122,6 +116,20 @@ export default function MobileStorefront({ catalogue, categories, heroSlides = [
     </div>
 
   </div>;
+}
+
+function MobileDiscovery({ discovery }: { discovery: Promise<HomepageDiscovery> }) {
+  const { categories, heroSlides, heroAutoplayMs } = use(discovery);
+  const [allCategories, setAllCategories] = useState(false);
+  const preferred = ["playstation", "apple", "steam", "xbox"];
+  const quickCategories = [...categories].sort((a, b) => {
+    const rank = (c: Category) => { const index = preferred.findIndex(key => `${c.slug} ${c.name}`.toLowerCase().includes(key)); return index < 0 ? 10 : index; };
+    return rank(a) - rank(b);
+  });
+  return <>
+        <HeroSlider slides={heroSlides} autoplayMs={heroAutoplayMs} />
+        <section id="mobile-categories"><div className={styles.sectionHeading}><h2>Browse categories</h2><button onClick={() => setAllCategories(!allCategories)} aria-expanded={allCategories}>{allCategories ? "Show less" : "See all"} ›</button></div><div className={styles.categories}>{(allCategories ? quickCategories : quickCategories.slice(0,4)).map(c => <Link key={c.id} href={`/category/${c.slug}`}><span>{c.image_url ? <ProductImage src={c.image_url} alt="" sizes="48px" width={64} height={64} /> : <Icon name="browse" />}</span><b>{/playstation/i.test(c.name) ? "PlayStation" : /apple/i.test(c.name) ? "Apple" : /steam/i.test(c.name) ? "Steam" : /xbox/i.test(c.name) ? "Xbox" : c.short_name ?? c.name}</b></Link>)}{!allCategories && <button onClick={() => setAllCategories(true)}><span><Icon name="more" /></span><b>More</b></button>}</div></section>
+  </>;
 }
 
 function MobileProducts({ catalogue, query, tab }: { catalogue: Promise<HomepageCatalogue>; query: string; tab: string }) {
