@@ -1,3 +1,4 @@
+import { readPurchaseList } from "@/lib/purchase-list";
 import { getAuthorizedDeliveryReceipts } from "@/lib/delivery-receipts";
 import {
   NextRequest,
@@ -236,12 +237,6 @@ export async function GET(request: NextRequest) {
     if (blocked) return blocked;
     const page = Number(request.nextUrl.searchParams.get("page") ?? 1);
     if (!Number.isSafeInteger(page) || page < 1 || page > 10000) return privateJson({ error: "Invalid page." }, 400);
-    let query = createAdminClient().from("orders").select("order_number,status,total,currency,created_at");
-    query = identity.userId
-      ? query.or(`customer_id.eq.${identity.userId},customer_email.eq.${JSON.stringify(identity.email)}`)
-      : query.eq("customer_email", identity.email);
-    const result = await query.order("created_at", { ascending: false }).order("id", { ascending: false }).range((page - 1) * 20, page * 20);
-    if (result.error) throw Error("Unable to load purchases.");
-    return privateJson({ orders: (result.data ?? []).slice(0, 20), page, hasMore: (result.data?.length ?? 0) > 20, email: identity.email, source: identity.source });
+    return privateJson(await readPurchaseList(identity, page));
   } catch { return privateJson({ error: "Unable to load your purchases. Please try again." }, 503); }
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/admin-session";
@@ -157,6 +157,7 @@ export async function createCategory(
     );
   }
 
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/categories");
@@ -204,6 +205,7 @@ export async function updateCategory(formData: FormData) {
 
   if (result.error) fail(result.error.code === "23505" ? "A category with this name already exists." : result.error.message);
 
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/admin/categories");
   revalidatePath(`/category/${slug}`);

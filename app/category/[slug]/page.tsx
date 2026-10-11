@@ -1,5 +1,4 @@
 import { hasInstantDelivery } from "@/lib/product-delivery";
-import { cataloguePromotions } from "@/lib/product-promotion-data";
 import { redirect } from "next/navigation";
 import Link from "@/components/NavigationLink";
 import { notFound } from "next/navigation";
@@ -10,7 +9,7 @@ import ProductCard, {
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
-import { createClient } from "@/lib/supabase/server";
+import { getStoreCategories, getStoreProducts, getStoreOffers } from "@/lib/store-catalogue";
 
 export const dynamic = "force-dynamic";
 
@@ -91,71 +90,12 @@ export default async function CategoryPage({
 }: CategoryPageProps) {
   const { slug } = await params;
   if (["gaming-top-ups", "gift-cards", "subscriptions", "game-keys"].includes(slug)) redirect(`/products/${slug}`);
-  const supabase = await createClient();
-  const categoryResult = await supabase
-    .from("categories")
-    .select("id, public_id, name, short_name, description")
-    .eq("slug", slug)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (categoryResult.error) {
-    throw new Error(
-      `Unable to load category: ${categoryResult.error.message}`,
-    );
-  }
-
-  if (!categoryResult.data) {
-    notFound();
-  }
-
-  const category = categoryResult.data as CategoryRow;
-  const productResult = await supabase
-    .from("products")
-    .select(
-      `
-        id,
-        public_id,
-        name,
-        name_ru,
-        slug,
-        image_url,
-        image_url_ru,
-        price,
-        badge,
-        badge_ru,
-        region,
-        stock_quantity,
-        rating,
-        sold_count,
-        is_bulk_order,
-        delivery_type,
-        stock_source,
-        product_options (
-          selling_price,
-          stock_quantity,
-          is_active,
-          is_in_stock
-        )
-      `,
-    )
-    .eq("category_id", category.id)
-    .eq("status", "ACTIVE").eq("retail_enabled", true)
-    .eq("is_preorder_only", false)
-    .order("is_featured", { ascending: false })
-    .order("sort_order", { ascending: true });
-
-  if (productResult.error) {
-    throw new Error(
-      `Unable to load category products: ${productResult.error.message}`,
-    );
-  }
-
-  const [customerDiscounts, paidProductSales, promotions] = await Promise.all([
-    getSignedInCustomerDiscounts(),
-    getPaidProductSales(),
-    cataloguePromotions((productResult.data ?? []).map(product => product.id)),
+  const [categories, catalogue, customerDiscounts, paidProductSales, promotions] = await Promise.all([
+    getStoreCategories(), getStoreProducts(), getSignedInCustomerDiscounts(), getPaidProductSales(), getStoreOffers(),
   ]);
+  const category = categories.find(category => category.slug === slug) as CategoryRow | undefined;
+  if (!category) notFound();
+  const productResult = { data: catalogue.filter(product => product.category_id === category.id) };
   const products = ((productResult.data ?? []) as ProductRow[]).map(
     (product): ProductCardData => ({
       id: product.id,

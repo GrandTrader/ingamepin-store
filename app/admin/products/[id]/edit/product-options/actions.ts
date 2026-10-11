@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/admin-session";
@@ -123,7 +123,8 @@ export async function saveProductOptions(formData: FormData) {
     if (result.error) redirect(`${path}?error=${encodeURIComponent(result.error.message)}`);
   }
 
-  revalidatePath(path); revalidatePath(`/admin/products/${productId}/edit/stock`); revalidatePath("/");
+  revalidatePath(path); revalidatePath(`/admin/products/${productId}/edit/stock`); updateTag("homepage-store-data");
+  revalidatePath("/");
   const successMessage = preserveDiscountedPrices
     ? `Product options saved. ${adjustedDiscounts.length} customer discounts adjusted.`
     : "Product options saved.";

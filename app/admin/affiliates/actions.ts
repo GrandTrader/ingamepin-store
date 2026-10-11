@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -27,7 +27,7 @@ export async function saveDisplayedAffiliateProducts(input: unknown): Promise<{ 
   revalidatePath("/admin/products/[id]/edit/affiliate", "page");
   revalidatePath("/product/[slug]", "page");
   revalidatePath("/category/[slug]/[categoryPublicId]/subcategory/[productPublicId]", "page");
-  revalidatePath("/");
+  updateTag("homepage-store-data"); revalidatePath("/");
   return { ok: true, message: `Saved changes to ${changes.length} displayed products.` };
 }
 
@@ -144,6 +144,6 @@ export async function saveAffiliateProductSettings(formData: FormData) {
 
   revalidatePath("/admin/affiliates");
   revalidatePath("/account/affiliate");
-  revalidatePath("/");
+  updateTag("homepage-store-data"); revalidatePath("/");
   affiliateRedirect("success", `Affiliate settings saved for ${result.data.name}.`);
 }

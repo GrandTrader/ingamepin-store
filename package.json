@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "node scripts/patch-braces.cjs"
+    "postinstall": "node scripts/patch-braces.cjs",
+    "test:storefront": "node --test scripts/tests/site-loading.cjs scripts/tests/navigation-prefetch.cjs scripts/tests/navigation-warmup.cjs scripts/tests/product-loading.cjs scripts/tests/product-promotions.cjs scripts/tests/storefront-search.cjs scripts/tests/password-expiry.cjs scripts/tests/guest-purchase-security.cjs scripts/tests/security-regressions.cjs scripts/tests/admin-product-channels.cjs scripts/tests/affiliate-product-settings.cjs scripts/tests/product-editor-performance.cjs scripts/tests/bulk-product-activation.cjs scripts/tests/product-option-input.cjs scripts/tests/navigation-link.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

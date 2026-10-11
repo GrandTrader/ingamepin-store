@@ -19,6 +19,7 @@ const paging = load('lib/product-search-pages.ts');
 const productUrl = load('lib/product-url.ts');
 const productDelivery = load('lib/product-delivery.ts');
 const common = {
+  '@/lib/product-promotions': load('lib/product-promotions.ts'),
   '@/lib/storefront-search': search,
   '@/lib/product-search-pages': paging,
   '@/lib/product-url': productUrl,
@@ -67,7 +68,12 @@ function fixture(rows = catalogue, failAt = -1) {
     };
     return builder;
   }};
-  const mocks = { ...common, '@/lib/supabase/server': { createClient: async () => client } };
+  const publicData = load('lib/store-catalogue.ts', {
+    'server-only': {}, 'next/cache': { unstable_cache: fn => fn },
+    '@/lib/product-promotion-data': { cataloguePromotions: async () => new Map() },
+    '@/lib/product-search-pages': paging, '@/lib/supabase/admin': { createAdminClient: () => client },
+  });
+  const mocks = { ...common, '@/lib/store-catalogue': { ...publicData, getStoreOffers: async () => new Map() } };
   const route = load('app/api/products/search/route.ts', mocks);
   const page = load('app/products/[[...collection]]/page.tsx', {
     ...mocks,
@@ -192,5 +198,5 @@ test('database failures never masquerade as a partial or empty successful catalo
   assert.equal(response.status, 500);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.deepEqual(await response.json(), { error: 'Unable to search products.' });
-  await assert.rejects(run.page('Steam'), /Unable to load products/);
+  await assert.rejects(run.page('Steam'), /Unable to load store products/);
 });

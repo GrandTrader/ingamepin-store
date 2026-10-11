@@ -6,7 +6,7 @@ const ts = require('typescript');
 function load(file, mocks = {}) {
   const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const exports = {};
-  vm.runInNewContext(js, { exports, require: (name) => { if (name in mocks) return mocks[name]; throw Error('Unexpected dependency: '+name); }, URL, console, Buffer, setTimeout, clearTimeout }, { filename: file });
+  vm.runInNewContext(js, { exports, require: (name) => { if (name in mocks) return mocks[name]; if(name==='@/lib/purchase-list') return load('lib/purchase-list.ts',mocks); if(name==='server-only') return {}; throw Error('Unexpected dependency: '+name); }, URL, console, Buffer, setTimeout, clearTimeout }, { filename: file });
   return exports;
 }
 const {hasRequiredAdminAssurance} = load('lib/admin-assurance.ts');

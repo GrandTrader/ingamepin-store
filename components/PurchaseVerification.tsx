@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import type { PurchaseList } from "@/lib/purchase-list";
 import { useRouter } from "next/navigation";
 import { purchaseHref, validOrderReference } from "@/lib/purchase-navigation";
 import { usePurchaseNavigation } from "@/components/PurchaseNavigation";
 import { FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 type Purchase = { order_number: string; status: string; total: number; currency: string; created_at: string };
-type Props = { requestedOrder?: string; initialPage?: number };
+type Props = { requestedOrder?: string; initialPage?: number; initialPurchases?: PurchaseList | null; initialError?: string };
 
 function orderStatus(status: string) {
   if (status === "DELIVERED") return { label: "Completed", style: "track-order-status-success" };
@@ -15,12 +16,12 @@ function orderStatus(status: string) {
   return { label: status === "PENDING_PAYMENT" ? "Awaiting payment" : status.replaceAll("_", " ").toLowerCase(), style: "track-order-status-warning" };
 }
 
-export default function PurchaseVerification({ requestedOrder, initialPage = 1 }: Props) {
+export default function PurchaseVerification({ requestedOrder, initialPage = 1, initialPurchases, initialError }: Props) {
   const router = useRouter();
   const { position, setPosition } = usePurchaseNavigation();
   const sectionRef = useRef<HTMLElement>(null);
   const previousPosition = position?.page === initialPage ? position : null;
-  const [initialState, setInitialState] = useState<"loading" | "ready" | "error">("loading");
+  const [initialState, setInitialState] = useState<"loading" | "ready" | "error">(initialError ? "error" : initialPurchases !== undefined ? "ready" : "loading");
   const [retry, setRetry] = useState(0);
 
   function rememberPosition() {
@@ -32,16 +33,16 @@ export default function PurchaseVerification({ requestedOrder, initialPage = 1 }
       window.scrollTo({ top: position.scroll, behavior: "instant" });
     }
   }, [position, initialPage]);
-  const [email, setEmail] = useState("");
-  const [verified, setVerified] = useState(false);
-  const [account, setAccount] = useState(false);
+  const [email, setEmail] = useState(initialPurchases?.email ?? "");
+  const [verified, setVerified] = useState(Boolean(initialPurchases));
+  const [account, setAccount] = useState(initialPurchases?.source === "account");
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState("");
-  const [orders, setOrders] = useState<Purchase[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [busy, setBusy] = useState(true);
-  const [message, setMessage] = useState("");
+  const [orders, setOrders] = useState<Purchase[]>(initialPurchases?.orders ?? []);
+  const [page, setPage] = useState(initialPurchases?.page ?? initialPage);
+  const [hasMore, setHasMore] = useState(initialPurchases?.hasMore ?? false);
+  const [busy, setBusy] = useState(initialPurchases === undefined);
+  const [message, setMessage] = useState(initialError ?? "");
   const [cooldown, setCooldown] = useState(0);
   const [search, setSearch] = useState("");
 
@@ -59,6 +60,7 @@ export default function PurchaseVerification({ requestedOrder, initialPage = 1 }
   }, [setPosition, setVerified, setOrders, setPage, setHasMore, setEmail, setAccount]);
 
   useEffect(() => {
+    if ((initialError || initialPurchases !== undefined) && retry === 0) return;
     const controller = new AbortController();
     async function initialize() {
       try {
@@ -81,7 +83,7 @@ export default function PurchaseVerification({ requestedOrder, initialPage = 1 }
     }
     void initialize();
     return () => controller.abort();
-  }, [loadOrders, requestedOrder, initialPage, router, retry]);
+  }, [loadOrders, requestedOrder, initialPage, initialPurchases, initialError, router, retry]);
 
   useEffect(() => {
     if (cooldown <= 0) return;

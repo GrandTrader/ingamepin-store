@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -38,6 +38,7 @@ export async function syncAllDigiSellerStatistics() {
   let result: Awaited<ReturnType<typeof syncDigiSellerStatistics>>;
   try {
     result = await syncDigiSellerStatistics();
+    updateTag("homepage-store-data");
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath("/admin/products");
@@ -269,6 +270,7 @@ export async function toggleProductSales(formData: FormData) {
     );
   }
 
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
@@ -1317,6 +1319,7 @@ export async function updateProduct(
     }
   }
 
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
@@ -1449,6 +1452,7 @@ export async function deleteProduct(
     );
   }
 
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
@@ -1571,6 +1575,7 @@ export async function deleteSelectedProducts(formData: FormData) {
     );
   }
 
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
@@ -1667,6 +1672,7 @@ export async function deleteProductOption(
     productRedirect(productId, "error", deleteResult.error ? `Unable to delete option: ${deleteResult.error.message}` : "The product option could not be deleted.");
   }
 
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/products");

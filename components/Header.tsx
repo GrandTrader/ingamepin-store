@@ -2,6 +2,7 @@
 
 import Link from "@/components/NavigationLink";
 import ProductSearch from "./ProductSearch";
+import { getStoreNavigation } from "@/lib/store-navigation";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -59,59 +60,8 @@ export default function Header() {
 
   useEffect(() => {
     if (hideProductSearch) return;
-    const supabase = createClient();
     let active = true;
-
-    const loadHeaderCategories = async () => {
-      const [{ data: categoryRows }, { data: productRows }] = await Promise.all([
-        supabase
-          .from("categories")
-          .select("id, name, short_name, slug, icon")
-          .eq("is_active", true),
-        supabase
-          .from("products")
-          .select("sold_count, stock_quantity, is_bulk_order, category_id, product_options(stock_quantity, is_active, is_in_stock)")
-          .eq("status", "ACTIVE").eq("retail_enabled", true)
-          .eq("is_preorder_only", false),
-      ]);
-
-      const salesByCategory = new Map<string, number>();
-      for (const product of productRows ?? []) {
-        const optionStock = (product.product_options ?? [])
-          .filter((option) => option.is_active && option.is_in_stock !== false)
-          .reduce((total, option) => total + Number(option.stock_quantity || 0), 0);
-        const isAvailable =
-          product.is_bulk_order ||
-          Number(product.stock_quantity || 0) > 0 ||
-          optionStock > 0;
-
-        if (isAvailable && product.category_id) {
-          salesByCategory.set(
-            product.category_id,
-            (salesByCategory.get(product.category_id) ?? 0) + Number(product.sold_count || 0),
-          );
-        }
-      }
-
-      if (active) {
-        setHeaderCategories(
-          (categoryRows ?? [])
-            .filter((category) => salesByCategory.has(category.id))
-            .map((category) => ({
-              id: category.id,
-              name: category.name,
-              shortName: category.short_name,
-              slug: category.slug,
-              icon: category.icon,
-              sales: salesByCategory.get(category.id) ?? 0,
-            }))
-            .sort((a, b) => b.sales - a.sales || a.name.localeCompare(b.name))
-            .slice(0, 10),
-        );
-      }
-    };
-
-    void loadHeaderCategories();
+    void getStoreNavigation().then(data => { if (active) setHeaderCategories(data.featured); }).catch(() => {});
     return () => {
       active = false;
     };

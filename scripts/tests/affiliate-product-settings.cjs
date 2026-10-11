@@ -13,7 +13,7 @@ for(const input of [[],null,[change,change],[{...change,id:'bad'}],[{...change,e
 (async()=>{
   let loggedIn=true,isAdmin=true,rpcCalls=[];
   const actions=load('app/admin/affiliates/actions.ts',{
-    'next/cache':{revalidatePath(){}},'next/navigation':{redirect:()=>{throw Error('REDIRECT');}},
+    'next/cache':{revalidatePath(){},updateTag(tag){assert.equal(tag,'homepage-store-data');}},'next/navigation':{redirect:()=>{throw Error('REDIRECT');}},
     '@/lib/affiliate-product-settings':logic,
     '@/lib/supabase/admin-session':{createClient:async()=>({auth:{getUser:async()=>({data:{user:loggedIn?{id:'admin'}:null}})},from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:isAdmin?{user_id:'admin'}:null})})})})})},
     '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async(name,args)=>{rpcCalls.push({name,args});return{data:args.p_changes.length,error:null};}})},

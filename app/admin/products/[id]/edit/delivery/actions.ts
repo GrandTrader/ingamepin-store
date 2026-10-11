@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { isUnlimitedStock } from "@/lib/product-stock";
@@ -61,6 +61,7 @@ export async function saveDeliverySettings(formData: FormData) {
   }
 
   revalidatePath(path);
+  updateTag("homepage-store-data");
   revalidatePath("/");
   redirect(`${path}?success=${encodeURIComponent("Delivery settings saved.")}`);
 }

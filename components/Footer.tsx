@@ -3,7 +3,7 @@
 import Link from "@/components/NavigationLink";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { getStoreNavigation } from "@/lib/store-navigation";
 import { useStorePreferences } from "./StorePreferences";
 import PaymentMethodsBanner, { paymentMethods } from "./PaymentMethodsBanner";
 import ThemeModeSwitch from "./ThemeModeSwitch";
@@ -22,18 +22,8 @@ export default function Footer() {
   const footerCategories = categories.slice(0, 5);
 
   useEffect(() => {
-    const supabase = createClient();
     let active = true;
-
-    void supabase
-      .from("categories")
-      .select("id, name, slug, sort_order")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true })
-      .then(({ data }) => {
-        if (active) setCategories(data ?? []);
-      });
+    void getStoreNavigation().then(data => { if (active) setCategories(data.categories); }).catch(() => {});
 
     return () => {
       active = false;

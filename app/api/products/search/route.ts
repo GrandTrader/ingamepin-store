@@ -4,10 +4,8 @@ import {
 } from "next/server";
 
 import { matchesStorefrontProduct, storefrontSearchQuery } from "@/lib/storefront-search";
-import { cataloguePromotions } from "@/lib/product-promotion-data";
 import { cardPromotionPrice } from "@/lib/product-promotions";
-import { productSearchPages } from "@/lib/product-search-pages";
-import { createClient } from "@/lib/supabase/server";
+import { getStoreProducts, getStoreOffers } from "@/lib/store-catalogue";
 import { getProductUrl } from "@/lib/product-url";
 
 export const dynamic = "force-dynamic";
@@ -30,40 +28,8 @@ export async function GET(
     );
   }
 
-  const supabase = await createClient();
-  const result = await productSearchPages((from, to) => supabase
-    .from("products")
-    .select(
-      `
-        id,
-        public_id,
-        name,
-        name_ru,
-        slug,
-        image_url,
-        image_url_ru,
-        price,
-        badge,
-        is_bulk_order,
-        region,
-        product_options (option_name, platform, is_active),
-        categories (
-          name,
-          short_name,
-          slug,
-          public_id
-        )
-      `,
-    )
-    .eq("status", "ACTIVE").eq("retail_enabled", true)
-    .eq("is_preorder_only", false)
-    .order("is_featured", {
-      ascending: false,
-    })
-    .order("sort_order", {
-      ascending: true,
-    })
-    .order("id", { ascending: true }).range(from, to));
+  const result = await getStoreProducts().then(data => ({ data, error: null }))
+    .catch(() => ({ data: [], error: "Unable to load store products." }));
 
   if (result.error) {
     return NextResponse.json(
@@ -81,7 +47,7 @@ export async function GET(
   }
 
   const matched=(result.data??[]).filter(product=>matchesStorefrontProduct(product,query)).slice(0,6);
-  const promotions=await cataloguePromotions(matched.map(p=>p.id));
+  const promotions=await getStoreOffers();
   const products = matched.map(
     (product) => {
       const category = Array.isArray(

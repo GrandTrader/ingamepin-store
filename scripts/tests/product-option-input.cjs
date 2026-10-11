@@ -65,7 +65,7 @@ function loadSaveAction() {
     return chain;
   } };
   const dependencies = {
-    'next/cache': { revalidatePath() {} },
+    'next/cache': { revalidatePath() {}, updateTag(tag) { assert.equal(tag, 'homepage-store-data'); } },
     'next/navigation': { redirect(url) { redirects.push(url); throw new Error('REDIRECT ' + decodeURIComponent(url)); } },
     '@/lib/supabase/admin': { createAdminClient: () => admin },
     '@/lib/supabase/admin-session': { createClient: async () => session },

@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-export async function getSignedInCustomerDiscounts() {
+export const getSignedInCustomerDiscounts = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -22,4 +23,4 @@ export async function getSignedInCustomerDiscounts() {
   return new Map(
     (result.data ?? []).map((row) => [row.product_id, Number(row.discount_percent)]),
   );
-}
+});

@@ -70,7 +70,7 @@ export default function NavigationWarmup() {
       if (stopped || automaticCount >= 6) return;
       // The header can render before streamed products. Reserve background work for
       // page content; header links still prepare immediately on hover, focus or touch.
-      const anchors = document.querySelectorAll<HTMLAnchorElement>("main a[href]");
+      const anchors = document.querySelectorAll<HTMLAnchorElement>("main a[href], footer a[href]");
       for (const anchor of anchors) {
         if (!eligible(anchor) || observed.has(anchor)) continue;
         observed.add(anchor);

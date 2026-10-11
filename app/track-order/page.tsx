@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import InitialPurchases from "@/components/InitialPurchases";
 import Link from "next/link";
 import PurchaseVerification from "@/components/PurchaseVerification";
 import { purchasePage, validOrderReference } from "@/lib/purchase-navigation";
@@ -10,7 +12,10 @@ export default async function TrackOrderPage({ searchParams }: { searchParams: P
     <div className="mx-auto max-w-5xl">
       <Link href="/" className="inline-flex min-h-11 items-center text-sm font-bold text-cyan-400">← Return to store</Link>
       <div className="mb-5 mt-3"><h1 className="text-2xl font-black sm:text-3xl">Your Purchases</h1><p className="mt-2 text-sm text-slate-400">Open an order to view delivery details and copy your codes.</p></div>
-      <PurchaseVerification requestedOrder={validOrderReference(query.order)} initialPage={purchasePage(query.page)} />
+      {validOrderReference(query.order) ? <PurchaseVerification requestedOrder={validOrderReference(query.order)} initialPage={purchasePage(query.page)} /> :
+        <Suspense fallback={<div role="status" className="min-h-[420px] rounded-2xl border border-white/10 bg-slate-900 p-6">Loading purchases...</div>}>
+          <InitialPurchases page={purchasePage(query.page)} />
+        </Suspense>}
     </div>
   </main>;
 }

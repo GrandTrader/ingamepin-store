@@ -1,7 +1,6 @@
 import { matchesStorefrontProduct, storefrontSearchQuery } from "@/lib/storefront-search";
-import { productSearchPages } from "@/lib/product-search-pages";
+import { getStoreProducts, getStoreOffers } from "@/lib/store-catalogue";
 import { hasInstantDelivery } from "@/lib/product-delivery";
-import { cataloguePromotions } from "@/lib/product-promotion-data";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { portalCustomer } from "@/lib/business-portal-data";
@@ -12,7 +11,6 @@ import ProductCard, {
 import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { getProductUrl } from "@/lib/product-url";
-import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -225,63 +223,12 @@ export default async function ProductsPage({
   }
 
   const collection = requestedCollection as CollectionKey;
-  const supabase = await createClient();
-  const productResult = await productSearchPages((from, to) => supabase
-    .from("products")
-    .select(
-      `
-        id,
-        public_id,
-        name,
-        name_ru,
-        slug,
-        image_url,
-        image_url_ru,
-        price,
-        badge,
-        badge_ru,
-        region,
-        stock_quantity,
-        rating,
-        sold_count,
-        is_bulk_order,
-        delivery_type,
-        stock_source,
-        product_type,
-        categories (
-          name,
-          short_name,
-          slug,
-          public_id
-        ),
-        product_options (
-          option_name,
-          platform,
-          stock_quantity,
-          is_active,
-          is_in_stock
-        )
-      `,
-    )
-    .eq("status", "ACTIVE").eq("retail_enabled", true)
-    .eq("is_preorder_only", false)
-    .order("is_featured", { ascending: false })
-    .order("sort_order", { ascending: true })
-    .order("id", { ascending: true }).range(from, to));
-
-  if (productResult.error) {
-    throw new Error(
-      `Unable to load products: ${productResult.error.message}`,
-    );
-  }
-
+  const [catalogue, customerDiscounts, paidProductSales, promotions] = await Promise.all([
+    getStoreProducts(), getSignedInCustomerDiscounts(), getPaidProductSales(), getStoreOffers(),
+  ]);
+  const productResult = { data: catalogue };
   const matchingProducts = ((productResult.data ?? []) as ProductRow[])
     .filter(product => matchesCollection(product, collection) && matchesStorefrontProduct(product, search));
-  const [customerDiscounts, paidProductSales, promotions] = await Promise.all([
-    getSignedInCustomerDiscounts(),
-    getPaidProductSales(),
-    cataloguePromotions(matchingProducts.map(product => product.id)),
-  ]);
   const products = matchingProducts
     .map(
       (product): ProductCardData => ({

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { gameAccountDescription } from "@/lib/game-account-description";
 import { isSensitiveCustomerField } from "@/lib/sensitive-customer-fields";
 import { readWithGamingPlatforms } from "@/lib/product-platform-query";
@@ -11,7 +12,6 @@ import { hasInstantDelivery } from "@/lib/product-delivery";
 import Link from "@/components/NavigationLink";
 import { notFound, permanentRedirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ProductPurchaseForm from "./ProductPurchaseForm";
 import styles from "./ProductPage.module.css";
@@ -121,37 +121,13 @@ function getCategory(category: CategoryRelation) {
   };
 }
 
-export default async function ProductPage({
-  params,
-  searchParams,
-}: ProductPageProps) {
-  const { slug } = await params;
-  return renderProductPage({ slug, searchParams });
-}
-
-export async function renderProductPage({
-  slug,
-  publicId,
-  canonicalCategory,
-  searchParams,
-  canonicalRequest = false,
-}: {
-  slug?: string;
-  publicId?: string;
-  canonicalCategory?: { slug: string; publicId: string };
-  searchParams: ProductPageProps["searchParams"];
-  canonicalRequest?: boolean;
-}) {
-  if (!slug && !publicId) notFound();
-  const query = await searchParams;
-  const affiliateCode = Array.isArray(query.ref)
-    ? query.ref[0]?.trim()
-    : query.ref?.trim();
-  const supabase = await createClient();
+// Public display data only. Purchase submission still reads current price/stock.
+const getPublicProduct = unstable_cache(async (slug: string, publicId: string) => {
+  const supabase = createAdminClient();
 
   const productResult = await readWithGamingPlatforms(
     (fields) => supabase.from("products").select(fields)
-      .eq(publicId ? "public_id" : "slug", publicId ?? slug!)
+      .eq(publicId ? "public_id" : "slug", publicId || slug)
       .eq("status", "ACTIVE").eq("retail_enabled", true)
       .eq("is_preorder_only", false)
       .returns<ProductRow[]>()
@@ -204,6 +180,78 @@ export async function renderProductPage({
     );
   }
 
+  return productResult;
+}, ["store-product-v1"], { revalidate: 30, tags: ["homepage-store-data"] });
+
+const getPublicPurchaseData = unstable_cache(async (productId: string, affiliateEnabled: boolean) => {
+  const supabase = createAdminClient();
+  const admin = supabase;
+  const [optionResult, customerFieldResult, affiliateSettingsResult, rangeData, promotions] = await Promise.all([
+    supabase
+    .from("product_options")
+    .select(
+      `
+        id,
+        option_name,
+        platform,
+        denomination,
+        denomination_currency,
+        selling_price,
+        stock_quantity,
+        is_custom_value
+        ,minimum_quantity,
+        maximum_quantity,
+        is_in_stock
+      `,
+    )
+    .eq("product_id", productId)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true }),
+    supabase
+    .from("product_customer_fields")
+    .select("id, label, placeholder, field_type, is_required")
+    .eq("product_id", productId)
+    .order("sort_order", { ascending: true }),
+    affiliateEnabled
+      ? admin.from("affiliate_settings").select("program_enabled").eq("id", 1).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    productRanges([productId]),
+    productPromotions([productId]),
+  ]);
+  if (optionResult.error || customerFieldResult.error || affiliateSettingsResult.error) {
+    throw Error("Unable to load product purchase details.");
+  }
+  return { optionResult, customerFieldResult, affiliateSettingsResult, rangeData, promotions };
+}, ["store-product-purchase-v1"], { revalidate: 30, tags: ["homepage-store-data"] });
+
+export default async function ProductPage({
+  params,
+  searchParams,
+}: ProductPageProps) {
+  const { slug } = await params;
+  return renderProductPage({ slug, searchParams });
+}
+
+export async function renderProductPage({
+  slug,
+  publicId,
+  canonicalCategory,
+  searchParams,
+  canonicalRequest = false,
+}: {
+  slug?: string;
+  publicId?: string;
+  canonicalCategory?: { slug: string; publicId: string };
+  searchParams: ProductPageProps["searchParams"];
+  canonicalRequest?: boolean;
+}) {
+  if (!slug && !publicId) notFound();
+  const query = await searchParams;
+  const affiliateCode = Array.isArray(query.ref)
+    ? query.ref[0]?.trim()
+    : query.ref?.trim();
+  const productResult = await getPublicProduct(slug ?? "", publicId ?? "");
+
   if (!productResult.data) {
     notFound();
   }
@@ -231,51 +279,12 @@ export async function renderProductPage({
   }
 
   const admin = createAdminClient();
-  const [optionResult, customerFieldResult, paidSales, customerDiscounts, affiliateSettingsResult, rangeData, promotions] = await Promise.all([
-    supabase
-    .from("product_options")
-    .select(
-      `
-        id,
-        option_name,
-        platform,
-        denomination,
-        denomination_currency,
-        selling_price,
-        stock_quantity,
-        is_custom_value
-        ,minimum_quantity,
-        maximum_quantity,
-        is_in_stock
-      `,
-    )
-    .eq("product_id", product.id)
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true }),
-    supabase
-    .from("product_customer_fields")
-    .select("id, label, placeholder, field_type, is_required")
-    .eq("product_id", product.id)
-    .order("sort_order", { ascending: true }),
+  const [{ optionResult, customerFieldResult, affiliateSettingsResult, rangeData, promotions }, paidSales, customerDiscounts] = await Promise.all([
+    getPublicPurchaseData(product.id, product.affiliate_enabled && Number(product.affiliate_commission_percent) > 0),
     getPaidProductSalesForProduct(product.id),
     getSignedInCustomerDiscounts(),
-    product.affiliate_enabled && Number(product.affiliate_commission_percent) > 0
-      ? admin.from("affiliate_settings").select("program_enabled").eq("id", 1).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    productRanges([product.id]),
-    productPromotions([product.id]),
   ]);
   const range = rangeData.ranges.find(r => r.enabled);
-
-  if (optionResult.error) {
-    throw new Error(
-      `Unable to load product options: ${optionResult.error.message}`,
-    );
-  }
-
-  if (customerFieldResult.error) {
-    throw new Error(`Unable to load customer fields: ${customerFieldResult.error.message}`);
-  }
 
   const customerFields = (customerFieldResult.data ?? []) as ProductCustomerFieldRow[];
   const protectedFields = customerFields.some(field => isSensitiveCustomerField(field.label));

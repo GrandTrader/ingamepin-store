@@ -1,3 +1,4 @@
+import { getStoreCategories, getStoreProducts } from "@/lib/store-catalogue";
 import { unstable_cache } from "next/cache";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,40 +13,8 @@ const getCachedHomepageData = unstable_cache(
       sliderSettingsResult,
       slidesResult,
     ] = await Promise.all([
-      supabase
-        .from("categories")
-        .select("id, public_id, name, short_name, slug, description, image_url, icon")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("products")
-        .select(`
-          id,
-          public_id,
-          created_at,
-          name,
-          name_ru,
-          slug,
-          image_url,
-          image_url_ru,
-          price,
-          badge,
-          badge_ru,
-          region,
-          stock_quantity,
-          rating,
-          sold_count,
-          product_type,
-          is_featured,
-          is_bulk_order,
-          delivery_type,
-          stock_source,
-          product_options (stock_quantity, is_active, is_in_stock),
-          categories (short_name, slug, public_id)
-        `)
-        .eq("status", "ACTIVE").eq("retail_enabled", true)
-        .eq("is_preorder_only", false)
-        .order("sort_order", { ascending: true }),
+      getStoreCategories().then(data => ({ data, error: null })),
+      getStoreProducts().then(data => ({ data, error: null })),
       supabase
         .from("preorder_popup_settings")
         .select("is_enabled, product_id, game_title, image_url, launch_date, preorder_price, sold_count, bonus_text, button_text")
@@ -84,7 +53,7 @@ const getCachedHomepageData = unstable_cache(
       slides: slidesResult.data ?? [],
     };
   },
-  ["homepage-store-data-v3"],
+  ["homepage-store-data-v4"],
   { revalidate: 30, tags: ["homepage-store-data"] },
 );
 

@@ -1,5 +1,5 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/admin-session";
@@ -86,6 +86,7 @@ export async function setProductStockMode(productId: string, formData: FormData)
 
   revalidatePath(path);
   revalidatePath("/admin/products");
+  updateTag("homepage-store-data");
   revalidatePath("/");
   redirect(`${path}?success=${encodeURIComponent(mode === "UNLIMITED" ? "Unlimited stock enabled for every denomination. Delivery was set to Manual." : "Voucher/code inventory enabled and stock was synchronized from available codes.")}`);
 }
@@ -150,6 +151,7 @@ export async function deleteAllUnsoldCodes(productId: string, productOptionId: s
 
   revalidatePath(path);
   revalidatePath("/admin/products");
+  updateTag("homepage-store-data");
   revalidatePath("/");
   const deletedCount = remove.data?.length ?? 0;
   redirect(`${path}?success=${encodeURIComponent(`${deletedCount} available code(s) deleted. Sold, reserved, and disabled codes were not changed.`)}`);

@@ -1,7 +1,7 @@
 "use server";
 
 import { isGamesCategory, normalizeGamePlatforms, validGamePlatforms } from "@/lib/game-platforms";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -164,6 +164,7 @@ export async function updateProductGeneral(formData: FormData) {
   }
 
   revalidatePath(path);
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath(`/product/${productId}`);
   redirect(`${path}?success=${encodeURIComponent(digisellerProductIds.length ? "General information saved and DigiSeller name synchronized." : "General information saved.")}`);

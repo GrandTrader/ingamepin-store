@@ -1,6 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parsePromotionRules } from "@/lib/product-promotions";
@@ -16,6 +16,6 @@ export async function saveProductPromotions(form: FormData) {
  catch(e){redirect(path+"?error="+encodeURIComponent(e instanceof Error?e.message:"Invalid discounts."));}
  const result=await createAdminClient().rpc("save_product_promotions",{p_product:id,p_admin:user.id,p_revision:String(form.get("revision")??"")||null,p_rules:rules});
  if(result.error)redirect(path+"?error="+encodeURIComponent(["42883","PGRST202"].includes(result.error.code)?"Install the discount database update first.":result.error.message));
- revalidatePath("/", "layout");
+ updateTag("homepage-store-data"); revalidatePath("/", "layout");
  redirect(path+"?success="+encodeURIComponent("Discounts saved. They end automatically at the selected India time."));
 }

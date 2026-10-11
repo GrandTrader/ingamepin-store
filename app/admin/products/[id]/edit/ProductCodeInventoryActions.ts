@@ -2,7 +2,7 @@
 
 import { parsePairedVoucherPayload } from "@/lib/paired-voucher-import";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -298,6 +298,7 @@ export async function addProductCodes(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/gift-codes");
   revalidatePath(productEditPath(productId));
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/products");
 
@@ -370,6 +371,7 @@ export async function changeProductCodeStatus(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/gift-codes");
   revalidatePath(productEditPath(productId));
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/products");
 
@@ -473,6 +475,7 @@ export async function deleteProductCode(
   revalidatePath("/admin");
   revalidatePath("/admin/gift-codes");
   revalidatePath(productEditPath(productId));
+  updateTag("homepage-store-data");
   revalidatePath("/");
   revalidatePath("/products");
 

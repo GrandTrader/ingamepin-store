@@ -43,6 +43,7 @@ function productRun({ product = baseProduct, canonical = true, category = 'games
     }; return b;
   } };
   const module = load('app/product/[slug]/page.tsx', {
+    'next/cache': { unstable_cache: fn => fn },
     'next/navigation': navigation,
     '@/lib/supabase/server': { createClient: async () => client },
     '@/lib/supabase/admin': { createAdminClient: () => client },
@@ -109,6 +110,7 @@ test('Separate requests keep their own customer discount', async () => {
 test('Canonical route validates IDs and directly renders the requested public ID', async () => {
   const calls = [];
   const route = load('app/category/[slug]/[categoryPublicId]/subcategory/[productPublicId]/page.tsx', {
+    'next/cache': { unstable_cache: fn => fn },
     'next/navigation': navigation, '@/app/product/[slug]/page': { renderProductPage: args => { calls.push(args); return 'product'; } },
   }).default;
   const invoke = productPublicId => route({ params: Promise.resolve({ slug: 'games', categoryPublicId: '987654321', productPublicId }), searchParams: Promise.resolve({}) });
