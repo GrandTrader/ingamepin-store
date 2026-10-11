@@ -5,7 +5,7 @@ import { matchesStorefrontSearch } from "@/lib/storefront-search";
 import { cardPromotionPrice } from "@/lib/product-promotions";
 import { usePromotionClock } from "./usePromotionClock";
 import Link from "@/components/NavigationLink";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState } from "react";
 import type { BrowseProduct } from "./ProductBrowser";
 import CountryFlag from "./CountryFlag";
 import { countryCode } from "@/lib/country-flag";
@@ -14,7 +14,8 @@ import styles from "./MobileStorefront.module.css";
 import HeroSlider, { type HeroSlide } from "./HeroSlider";
 
 type Category = { id: string; name: string; short_name: string | null; slug: string; image_url: string | null };
-type Props = { products: BrowseProduct[]; popularIds: string[]; newestIds: string[]; categories: Category[]; heroSlides?: HeroSlide[]; heroAutoplayMs?: number };
+export type HomepageCatalogue = { products: BrowseProduct[]; popularIds: string[]; newestIds: string[] };
+type Props = { catalogue: Promise<HomepageCatalogue>; categories: Category[]; heroSlides?: HeroSlide[]; heroAutoplayMs?: number };
 type IconName = "home" | "browse" | "cart" | "orders" | "account" | "bell" | "wallet" | "arrow" | "more";
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, string> = {
@@ -53,7 +54,7 @@ function MobileProduct({ product }: { product: BrowseProduct }) {
     <div className={styles.priceRow}><div><small>{language === "ru" ? "От" : "From"}</small><strong>{formatPrice(offer.price)}</strong>{discount > 0 && <del>{formatPrice(offer.regular)}</del>}</div><span className={styles.productArrow} aria-label={unavailable ? "View unavailable product" : "Choose denomination"}><Icon name="arrow" /></span></div>
   </Link>;
 }
-export default function MobileStorefront({ products, popularIds, newestIds, categories, heroSlides = [], heroAutoplayMs }: Props) {
+export default function MobileStorefront({ catalogue, categories, heroSlides = [], heroAutoplayMs }: Props) {
   const { currency, setCurrency, language, setLanguage, formatPrice } = useStorePreferences();
   const [tab, setTab] = useState("Popular");
   const [query, setQuery] = useState("");
@@ -83,15 +84,12 @@ export default function MobileStorefront({ products, popularIds, newestIds, cate
     }).catch(() => {});
     return () => controller.abort();
   }, []);
-  const map = new Map(products.map(p => [p.id, p]));
-  const ranked = (tab === "New arrivals" ? newestIds : popularIds).map(id => map.get(id)).filter((p): p is BrowseProduct => !!p);
-  const shown = query.trim() ? products.filter(p => matchesStorefrontSearch([p.name, p.nameRu, p.category, p.region], query)) : tab === "Top-ups" ? products.filter(p => p.productType === "GAME_TOPUP") : ranked;
   const preferred = ["playstation", "apple", "steam", "xbox"];
   const quickCategories = [...categories].sort((a, b) => {
     const rank = (c: Category) => { const index = preferred.findIndex(key => `${c.slug} ${c.name}`.toLowerCase().includes(key)); return index < 0 ? 10 : index; };
     return rank(a) - rank(b);
   });
-  return <div className={styles.root}>
+  return <div className={styles.root} data-homepage-shell="mobile">
     <header className={styles.header}>
       <div className={styles.top}><Link href="/" className={styles.brand}><span>iP</span>iNgamePIN</Link><div className={styles.topActions}><Link href="/account/notifications" aria-label="Notifications"><Icon name="bell" /></Link><details ref={accountMenu} className={styles.accountMenu}>
         <summary aria-label="Account menu"><Icon name="account" /></summary>
@@ -117,10 +115,29 @@ export default function MobileStorefront({ products, popularIds, newestIds, cate
         const next = event.key === "ArrowRight" ? (index + 1) % buttons.length : event.key === "ArrowLeft" ? (index + buttons.length - 1) % buttons.length : event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : -1;
         if (next >= 0) { event.preventDefault(); buttons[next].focus(); buttons[next].click(); }
       }}>{["Popular", "New arrivals", "Top-ups"].map(label => <button key={label} role="tab" tabIndex={tab === label ? 0 : -1} aria-selected={tab === label} aria-controls="mobile-products-panel" id={`mobile-tab-${label.replaceAll(" ", "-")}`} onClick={() => {setTab(label); setQuery("");}}>{label}</button>)}</div>
-      {query && <p className={styles.resultCount}>{shown.length} results for “{query}”</p>}
-      <div id="mobile-products-panel" role="tabpanel" aria-labelledby={`mobile-tab-${tab.replaceAll(" ", "-")}`} className={styles.products}>{shown.slice(0,24).map(product => <MobileProduct key={product.id} product={product} />)}</div>{shown.length === 0 && <p className={styles.empty}>No products found. Try another search or category.</p>}<Link className={styles.viewAll} href={query.trim() ? `/products?search=${encodeURIComponent(query.trim())}` : "/products"}>{query.trim() ? "View all search results" : "View all products"} <Icon name="arrow" /></Link></section>
+      <Suspense fallback={<MobileProductsLoading />}>
+        <MobileProducts catalogue={catalogue} query={query} tab={tab} />
+      </Suspense></section>
       <footer className={styles.footer}><Link href="/about-us">About Us</Link><Link href="/contact-us">Contact Us</Link><Link href="/work-with-us">Partnerships</Link><Link href="/terms">Terms</Link><Link href="/privacy-policy">Privacy</Link><Link href="/refund-policy">Refunds &amp; cancellations</Link><Link href="/business/login">B2B Portal</Link></footer>
     </div>
 
+  </div>;
+}
+
+function MobileProducts({ catalogue, query, tab }: { catalogue: Promise<HomepageCatalogue>; query: string; tab: string }) {
+  const { products, popularIds, newestIds } = use(catalogue);
+  const map = new Map(products.map(p => [p.id, p]));
+  const ranked = (tab === "New arrivals" ? newestIds : popularIds).map(id => map.get(id)).filter((p): p is BrowseProduct => !!p);
+  const shown = query.trim() ? products.filter(p => matchesStorefrontSearch([p.name, p.nameRu, p.category, p.region], query)) : tab === "Top-ups" ? products.filter(p => p.productType === "GAME_TOPUP") : ranked;
+  return <>
+      {query && <p className={styles.resultCount}>{shown.length} results for “{query}”</p>}
+      <div id="mobile-products-panel" role="tabpanel" aria-labelledby={`mobile-tab-${tab.replaceAll(" ", "-")}`} className={styles.products}>{shown.slice(0,24).map(product => <MobileProduct key={product.id} product={product} />)}</div>{shown.length === 0 && <p className={styles.empty}>No products found. Try another search or category.</p>}<Link className={styles.viewAll} href={query.trim() ? `/products?search=${encodeURIComponent(query.trim())}` : "/products"}>{query.trim() ? "View all search results" : "View all products"} <Icon name="arrow" /></Link>  </>;
+}
+
+function MobileProductsLoading() {
+  return <div data-homepage-products-loading="mobile" className={styles.products} aria-busy="true" aria-label="Loading products">
+    {Array.from({length:6}, (_, i) => <div key={i} className={styles.card} aria-hidden="true" style={{minHeight:270}}>
+      <div className={styles.art}/><div style={{height:14, margin:'18px 6px 10px', borderRadius:6, background:'var(--mobile-line)'}}/><div style={{height:14, margin:'0 30px 35px 6px', borderRadius:6, background:'var(--mobile-line)'}}/>
+    </div>)}
   </div>;
 }

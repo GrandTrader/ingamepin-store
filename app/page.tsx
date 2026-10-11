@@ -1,7 +1,9 @@
 import { hasInstantDelivery } from "@/lib/product-delivery";
 import { cataloguePromotions } from "@/lib/product-promotion-data";
-import Link from "next/link";
-import MobileStorefront from "@/components/MobileStorefront";
+import Link from "@/components/NavigationLink";
+import { Suspense } from "react";
+import HomepageProductsLoading from "@/components/HomepageProductsLoading";
+import MobileStorefront, { type HomepageCatalogue } from "@/components/MobileStorefront";
 
 import HeroSlider, { type HeroSlide } from "@/components/HeroSlider";
 import ProductCard from "@/components/ProductCard";
@@ -171,53 +173,13 @@ function getAvailableStock(
 }
 
 export default async function Home() {
-  const homepageRequest = getHomepageData();
-  const [homepageData, customerDiscounts, paidProductSales, promotions] = await Promise.all([
-    homepageRequest,
-    getSignedInCustomerDiscounts(),
-    getPaidProductSales(),
-    homepageRequest.then(data => cataloguePromotions(data.products.map(product => product.id))),
-  ]);
-
+  const homepageData = await getHomepageData();
+  const catalogue = loadHomepageCatalogue(homepageData);
   const categories =
     homepageData.categories as CategoryRow[];
 
   const productRows =
     homepageData.products as ProductRow[];
-
-  const products: StoreProduct[] =
-    productRows
-      .map((product) => ({
-      id: product.id,
-      name: product.name,
-      nameRu: product.name_ru,
-      slug: product.slug,
-      href: getStoreProductUrl(product),
-      image: product.image_url ?? "",
-      imageRu: product.image_url_ru,
-      price: Number(product.price),
-      badge:
-        product.badge ??
-        "Digital Delivery",
-      badgeRu: product.badge_ru,
-      region: product.region,
-      stock: getAvailableStock(product),
-      rating: Number(product.rating),
-      sold: Number(product.sold_count ?? 0) + (paidProductSales.get(product.id) ?? 0),
-      category: getProductCategory(
-        product.categories,
-      ),
-      productType:
-        product.product_type,
-      isFeatured:
-        product.is_featured,
-      isBulkOrder:
-        product.is_bulk_order,
-      isInstantDelivery:
-        hasInstantDelivery(product),
-      discountPercent: customerDiscounts.get(product.id) ?? 0,
-      promotionPrices: promotions.get(product.id),
-      }));
 
   const popupRow =
     homepageData.preorderPopup as PreorderPopupRow | null;
@@ -269,29 +231,10 @@ export default async function Home() {
         }
       : null;
 
-  const productById = new Map(products.map(product => [product.id, product]));
-  const newlyAddedProducts = [...productRows]
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || a.id.localeCompare(b.id))
-    .slice(0, 24)
-    .map(product => productById.get(product.id)!);
-
-  const rankedProducts = [...products]
-    .sort((first, second) => second.sold - first.sold);
-  const purchasedProducts = rankedProducts.filter(
-    (product) => product.sold > 0,
-  );
-  const unsoldProducts = rankedProducts.filter(
-    (product) => product.sold === 0,
-  );
-  const popularProducts = [
-    ...purchasedProducts,
-    ...unsoldProducts,
-  ].slice(0, 24);
-
   return (
     <>
-    <MobileStorefront products={products} popularIds={popularProducts.map(p => p.id)} newestIds={newlyAddedProducts.map(p => p.id)} categories={categories} heroSlides={homepageData.sliderSettings?.is_enabled ? heroSlides : []} heroAutoplayMs={homepageData.sliderSettings?.autoplay_ms} />
-    <div className="hidden sm:block market-home min-h-screen bg-[#f3f4f6] text-[#172033]">
+    <MobileStorefront catalogue={catalogue} categories={categories} heroSlides={homepageData.sliderSettings?.is_enabled ? heroSlides : []} heroAutoplayMs={homepageData.sliderSettings?.autoplay_ms} />
+    <div data-homepage-shell="desktop" className="hidden sm:block market-home min-h-screen bg-[#f3f4f6] text-[#172033]">
       {preorderPopup && (
         <PreorderPopup popup={preorderPopup} desktopOnly />
       )}
@@ -304,37 +247,9 @@ export default async function Home() {
       )}
 
       <div className="mx-auto max-w-[1180px] space-y-4 px-3 py-5 sm:px-5 sm:py-8">
-        <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h1 className="text-xl font-extrabold sm:text-2xl">Popular</h1>
-            <Link href="/products" className="rounded-lg bg-[#f4f5f7] px-4 py-2 text-xs font-bold hover:bg-[#ff9418] hover:text-white">All</Link>
-          </div>
-          {popularProducts.length > 0 ? (
-            <PopularProductsRow>
-              {popularProducts.map((product) => (
-                <div key={product.id} className="w-[165px] shrink-0 snap-start sm:w-[185px] lg:w-[195px]">
-                  <ProductCard product={product} />
-                </div>
-              ))}
-            </PopularProductsRow>
-          ) : <EmptySection message="No active products are currently available." />}
-        </section>
-
-        <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-extrabold sm:text-2xl">Newly Added Products</h2>
-            <Link href="/products" className="rounded-lg bg-[#f4f5f7] px-4 py-2 text-xs font-bold hover:bg-[#ff9418] hover:text-white">All</Link>
-          </div>
-          {newlyAddedProducts.length > 0 ? (
-            <PopularProductsRow variant="new">
-              {newlyAddedProducts.map(product => (
-                <div key={product.id} className="w-[165px] shrink-0 snap-start sm:w-[185px] lg:w-[195px]">
-                  <ProductCard product={product} />
-                </div>
-              ))}
-            </PopularProductsRow>
-          ) : <EmptySection message="New products will appear here when available." />}
-        </section>
+        <Suspense fallback={<HomepageProductsLoading />}>
+          <DesktopProductCollections catalogue={catalogue} />
+        </Suspense>
 
         <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-xl font-extrabold sm:text-2xl">Product categories</h2>
@@ -399,4 +314,107 @@ function EmptySection({
       {message}
     </p>
   );
+}
+
+async function loadHomepageCatalogue(homepageData: Awaited<ReturnType<typeof getHomepageData>>): Promise<HomepageCatalogue> {
+  const productRows = homepageData.products as ProductRow[];
+  const [customerDiscounts, paidProductSales, promotions] = await Promise.all([
+    getSignedInCustomerDiscounts(), getPaidProductSales(),
+    cataloguePromotions(productRows.map(product => product.id)),
+  ]);
+  const products: StoreProduct[] =
+    productRows
+      .map((product) => ({
+      id: product.id,
+      name: product.name,
+      nameRu: product.name_ru,
+      slug: product.slug,
+      href: getStoreProductUrl(product),
+      image: product.image_url ?? "",
+      imageRu: product.image_url_ru,
+      price: Number(product.price),
+      badge:
+        product.badge ??
+        "Digital Delivery",
+      badgeRu: product.badge_ru,
+      region: product.region,
+      stock: getAvailableStock(product),
+      rating: Number(product.rating),
+      sold: Number(product.sold_count ?? 0) + (paidProductSales.get(product.id) ?? 0),
+      category: getProductCategory(
+        product.categories,
+      ),
+      productType:
+        product.product_type,
+      isFeatured:
+        product.is_featured,
+      isBulkOrder:
+        product.is_bulk_order,
+      isInstantDelivery:
+        hasInstantDelivery(product),
+      discountPercent: customerDiscounts.get(product.id) ?? 0,
+      promotionPrices: promotions.get(product.id),
+      }));
+
+  const productById = new Map(products.map(product => [product.id, product]));
+  const newlyAddedProducts = [...productRows]
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || a.id.localeCompare(b.id))
+    .slice(0, 24)
+    .map(product => productById.get(product.id)!);
+
+  const rankedProducts = [...products]
+    .sort((first, second) => second.sold - first.sold);
+  const purchasedProducts = rankedProducts.filter(
+    (product) => product.sold > 0,
+  );
+  const unsoldProducts = rankedProducts.filter(
+    (product) => product.sold === 0,
+  );
+  const popularProducts = [
+    ...purchasedProducts,
+    ...unsoldProducts,
+  ].slice(0, 24);
+
+  return { products, popularIds: popularProducts.map(product => product.id), newestIds: newlyAddedProducts.map(product => product.id) };
+}
+
+async function DesktopProductCollections({ catalogue }: { catalogue: Promise<HomepageCatalogue> }) {
+  const { products, popularIds, newestIds } = await catalogue;
+  const productById = new Map(products.map(product => [product.id, product]));
+  const popularProducts = popularIds.map(id => productById.get(id)!);
+  const newlyAddedProducts = newestIds.map(id => productById.get(id)!);
+  return <>
+        <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h1 className="text-xl font-extrabold sm:text-2xl">Popular</h1>
+            <Link href="/products" className="rounded-lg bg-[#f4f5f7] px-4 py-2 text-xs font-bold hover:bg-[#ff9418] hover:text-white">All</Link>
+          </div>
+          {popularProducts.length > 0 ? (
+            <PopularProductsRow>
+              {popularProducts.map((product) => (
+                <div key={product.id} className="w-[165px] shrink-0 snap-start sm:w-[185px] lg:w-[195px]">
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </PopularProductsRow>
+          ) : <EmptySection message="No active products are currently available." />}
+        </section>
+
+        <section className="rounded-[22px] bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-extrabold sm:text-2xl">Newly Added Products</h2>
+            <Link href="/products" className="rounded-lg bg-[#f4f5f7] px-4 py-2 text-xs font-bold hover:bg-[#ff9418] hover:text-white">All</Link>
+          </div>
+          {newlyAddedProducts.length > 0 ? (
+            <PopularProductsRow variant="new">
+              {newlyAddedProducts.map(product => (
+                <div key={product.id} className="w-[165px] shrink-0 snap-start sm:w-[185px] lg:w-[195px]">
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </PopularProductsRow>
+          ) : <EmptySection message="New products will appear here when available." />}
+        </section>
+
+  </>;
 }

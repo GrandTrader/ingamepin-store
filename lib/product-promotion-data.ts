@@ -1,15 +1,23 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activePromotion, type ProductPromotion } from "./product-promotions";
 import { productRanges } from "./product-range-data";
 import { rangePrice } from "./product-range";
 export async function productPromotions(ids: string[]) {
   const rows: ProductPromotion[] = [];
-  for (let i = 0; i < ids.length; i += 200) {
-    const result = await createAdminClient().from("product_promotions").select("product_id,revision,rules").in("product_id", ids.slice(i, i + 200));
-    if (result.error && ["42P01", "PGRST205"].includes(result.error.code)) return { ready: false, rows: [] as ProductPromotion[] };
-    if (result.error) throw Error("Unable to load current product discounts.");
-    rows.push(...(result.data as ProductPromotion[]));
+  if (!ids.length) return { ready: true, rows };
+  // Keep request URLs short while removing serial round trips for large catalogues.
+  const admin = createAdminClient();
+  for (let i = 0; i < ids.length; i += 600) {
+    const chunks = [ids.slice(i, i + 200), ids.slice(i + 200, i + 400), ids.slice(i + 400, i + 600)].filter(chunk => chunk.length);
+    const results = await Promise.all(chunks.map(chunk => admin.from("product_promotions")
+      .select("product_id,revision,rules").in("product_id", chunk)));
+    for (const result of results) {
+      if (result.error && ["42P01", "PGRST205"].includes(result.error.code)) return { ready: false, rows: [] as ProductPromotion[] };
+      if (result.error) throw Error("Unable to load current product discounts.");
+      rows.push(...(result.data as ProductPromotion[]));
+    }
   }
   return { ready: true, rows };
 }
@@ -48,7 +56,7 @@ async function cataloguePromotionBatch(batch: ProductPromotion[]): Promise<Catal
   return options;
 }
 
-export async function cataloguePromotions(ids: string[]) {
+async function readCataloguePromotions(ids: string[]) {
   const promotions = await productPromotions(ids);
   const options: CatalogueOffers = new Map();
   // Limit concurrency to two batches so larger catalogues do not flood the database.
@@ -59,4 +67,17 @@ export async function cataloguePromotions(ids: string[]) {
     for (const result of results) for (const [id, offers] of result) options.set(id, offers);
   }
   return options;
+}
+
+// Cache only public catalogue prices. Personal discounts and checkout validation stay live.
+// Admin price edits revalidate the root layout; channel/bulk edits also clear this tag.
+const getCachedCatalogueOffers = unstable_cache(async (ids: string[]) =>
+  Array.from(await readCataloguePromotions(ids)),
+  ["catalogue-promotion-prices-v1"],
+  { revalidate: 30, tags: ["homepage-store-data"] },
+);
+
+export async function cataloguePromotions(ids: string[]) {
+  if (!ids.length) return new Map() as CatalogueOffers;
+  return new Map(await getCachedCatalogueOffers([...new Set(ids)].sort()));
 }

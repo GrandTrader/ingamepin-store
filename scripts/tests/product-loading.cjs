@@ -161,7 +161,7 @@ test('Large catalogue price batches run concurrently with bounded requests and k
     }; return q;
   } };
   const data = load('lib/product-promotion-data.ts', {
-    'server-only': {}, '@/lib/supabase/admin': { createAdminClient: () => db },
+    'server-only': {}, 'next/cache': { unstable_cache: fn => fn }, '@/lib/supabase/admin': { createAdminClient: () => db },
     './product-promotions': load('lib/product-promotions.ts'), './product-range': load('lib/product-range.ts'),
     './product-range-data': { productRanges(ids) { calls.push({ table: 'ranges', ids }); return gate.then(() => ({ ranges: [] })); } },
   });
@@ -177,4 +177,78 @@ test('Large catalogue price batches run concurrently with bounded requests and k
     assert.equal(entries[0].price, 50); assert.equal(entries[0].percent, 20);
     assert.equal(entries[0].endsAt, '2099-01-01T00:00:00Z');
   }
+});
+
+test('Homepage banner and categories return before delayed personal prices; prices stay behind their own boundary', async () => {
+  let release;
+  const personal = new Promise(resolve => { release = resolve; });
+  const catalogue = { products: [{ ...baseProduct, price: 50, product_type: 'GIFT_CARD', product_options: [], created_at: '2026-10-01' }],
+    categories: [{ id: 'c', public_id: 987654321, name: 'Games', slug: 'games' }],
+    preorderPopup: null, sliderSettings: { is_enabled: true, autoplay_ms: 5000 },
+    slides: [{ id: 's', title: 'Featured game', desktop_image_url: '/images/banner.webp', button_url: '/product/product' }] };
+  const home = load('app/page.tsx', {
+    '@/lib/product-delivery': { hasInstantDelivery: () => false },
+    '@/lib/product-promotion-data': { cataloguePromotions: async () => new Map() },
+    '@/lib/customer-discounts': { getSignedInCustomerDiscounts: () => personal },
+    '@/lib/homepage-data': { getHomepageData: async () => catalogue },
+    '@/lib/product-sales': { getPaidProductSales: async () => new Map() },
+    '@/lib/product-url': { getProductUrl: () => '/canonical' },
+  }).default;
+  try {
+    let returned = false;
+    const rendering = home().then(tree => { returned = true; return tree; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert(returned, 'Homepage shell must not wait for signed-in customer discounts');
+    const tree = await rendering;
+    assert(find(tree, el => el.type?.displayName === '@/components/HeroSlider'));
+    const mobile = find(tree, el => el.type?.displayName === '@/components/MobileStorefront');
+    assert.equal(mobile.props.categories.length, 1);
+    const suspense = find(tree, el => el.type === require('react').Suspense);
+    assert(suspense, 'Only the product collections wait');
+    let productsReady = false;
+    mobile.props.catalogue.then(() => { productsReady = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(productsReady, false, 'Do not display undiscounted prices while private prices are pending');
+    release(new Map([['p', 15]]));
+    const ready = await mobile.props.catalogue;
+    assert.equal(ready.products[0].discountPercent, 15);
+    assert.equal(ready.products[0].price, 50);
+    assert.deepEqual(Array.from(ready.popularIds), ['p']);
+  } finally { release(new Map()); }
+});
+
+test('Repeated catalogue visits reuse public prices, expiry still applies, and invalidation refreshes edits', async () => {
+  const cached = new Map(), reads = []; let settings, price = 50;
+  const expiry = new Date(Date.now() + 10000).toISOString();
+  const db = { from(table) {
+    const q = {};
+    for (const method of ['select', 'eq', 'order', 'range', 'in']) q[method] = () => q;
+    q.then = resolve => {
+      reads.push(table);
+      resolve({ data: table === 'product_promotions' ? [{ product_id: 'p', rules: [{ optionId: null, percent: 20, endsAt: expiry }] }]
+        : [{ id: 'o', product_id: 'p', selling_price: price, is_custom_value: false }], error: null });
+    }; return q;
+  } };
+  const prices = load('lib/product-promotions.ts');
+  const data = load('lib/product-promotion-data.ts', {
+    'server-only': {}, '@/lib/supabase/admin': { createAdminClient: () => db },
+    './product-promotions': prices, './product-range': load('lib/product-range.ts'),
+    './product-range-data': { productRanges: async () => ({ ranges: [] }) },
+    'next/cache': { unstable_cache(fn, key, options) {
+      settings = options;
+      return async (...args) => { const id = JSON.stringify(args); if (!cached.has(id)) cached.set(id, await fn(...args)); return cached.get(id); };
+    } },
+  });
+  const first = await data.cataloguePromotions(['p']);
+  assert.equal(prices.cardPromotionPrice(first.get('p'), 50, 0).price, 40);
+  const readsBefore = reads.length;
+  const again = await data.cataloguePromotions(['p', 'p']);
+  assert.equal(reads.length, readsBefore);
+  assert.equal(prices.cardPromotionPrice(again.get('p'), 50, 0, Date.parse(expiry) + 1).price, 50, 'Cached offer stops at its actual expiry');
+  assert.equal(prices.cardPromotionPrice(again.get('p'), 50, 30).price, 35, 'Personal discount stays separate from the public cache');
+  assert.equal(settings.revalidate, 30);
+  assert(Array.from(settings.tags).includes('homepage-store-data'));
+  price = 60; cached.clear();
+  assert.equal((await data.cataloguePromotions(['p'])).get('p')[0].price, 60);
+  assert(reads.every(table => ['product_promotions', 'product_options'].includes(table)));
 });
