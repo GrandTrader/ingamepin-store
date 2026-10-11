@@ -1,4 +1,5 @@
 import Form from "next/form";
+import AdminSidebar from "../AdminSidebar";
 import { b2bFilters, b2bCatalogUrl, b2bCatalogView, type B2BFilters } from "@/lib/admin-b2b-filters";
 import Link from "next/link";
 import { requireBusinessAdmin } from "@/lib/business-verification-data";
@@ -60,7 +61,10 @@ export default async function B2BProductCatalog({searchParams}:{searchParams:Pro
   const url=(next:number)=>b2bCatalogUrl(filters,next);
   const listTitle=availability==="enabled"?(status==="ACTIVE"?"Active B2B products":"B2B-enabled products"):availability==="disabled"?"Products not enabled for B2B":"All website products";
   const views=[{key:"all" as const,label:"All website products",selected:availability==="all"&&status==="ALL"},{key:"active" as const,label:"Active B2B products",selected:availability==="enabled"&&status==="ACTIVE"},{key:"disabled" as const,label:"Not enabled for B2B",selected:availability==="disabled"&&status==="ALL"}];
-  return <main className="space-y-5">
+  return <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="mx-auto flex min-h-screen max-w-[1700px] flex-col lg:flex-row">
+      <AdminSidebar />
+      <main className="min-w-0 flex-1 space-y-5 p-4 sm:p-6">
     <div><p className="text-xs font-bold uppercase tracking-widest text-cyan-700">Catalog</p><h1 className="mt-1 text-2xl font-bold">B2B Product Catalog</h1><p className="mt-2 text-sm text-slate-600">Search all website products, manage B2B availability and set B2B discounts. Retail prices and availability stay unchanged.</p></div>
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
       <h2 className="font-bold">Choose who receives the discount</h2>
@@ -93,5 +97,7 @@ export default async function B2BProductCatalog({searchParams}:{searchParams:Pro
       <DiscountEditor key={JSON.stringify([customerId,filters,page,!!problem,data.map(p=>[p.id,p.revision,p.businessEnabled])])} products={data} email={customerEmail} customerId={customerId} canEditDiscounts={!problem}/>
       <nav aria-label="Catalog pages" className="flex items-center justify-between text-sm"><span>Page {page} of {Math.max(1,Math.ceil((products.count??0)/size))}</span><div className="flex gap-4">{page>1&&<Link href={url(page-1)}>Previous</Link>}{page*size<(products.count??0)&&<Link href={url(page+1)}>Next</Link>}</div></nav>
     </section>}
-  </main>;
+      </main>
+    </div>
+  </div>;
 }
