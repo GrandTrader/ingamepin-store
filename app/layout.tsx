@@ -19,11 +19,15 @@ import "./globals.css";
 const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  // Storefront text uses system fonts; download these only where actually used.
+  preload: false,
 });
 
 const robotoMono = Roboto_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  // Storefront text uses system fonts; download these only where actually used.
+  preload: false,
 });
 
 export const metadata: Metadata = {
