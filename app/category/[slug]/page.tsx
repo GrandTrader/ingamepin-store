@@ -1,7 +1,7 @@
 import { hasInstantDelivery } from "@/lib/product-delivery";
 import { cataloguePromotions } from "@/lib/product-promotion-data";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/NavigationLink";
 import { notFound } from "next/navigation";
 
 import ProductCard, {

@@ -128,7 +128,7 @@ export default function ProductSearch({ id, desktop = false }: { id: string; des
             {products.map((product, index) => (
               <li key={product.id} role="none">
                 <Link id={`${id}-option-${index}`} role="option" aria-selected={index === activeIndex}
-                  href={product.href} prefetch={false} onClick={close} onFocus={() => setActiveIndex(index)}
+                  href={product.href} onClick={close} onFocus={() => setActiveIndex(index)}
                   className={`flex items-center gap-3 border-b border-slate-100 p-3 transition hover:bg-cyan-50 focus:bg-cyan-50 focus:outline-none ${index === activeIndex ? "bg-cyan-50" : ""}`}>
                   <div className="flex h-14 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-cyan-50 font-black text-cyan-700">
                     {(language === "ru" && product.imageRu ? product.imageRu : product.image) ? (

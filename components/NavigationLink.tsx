@@ -9,5 +9,6 @@ function PendingHint() {
   return pending ? createPortal(<span role="status" aria-label="Opening page" className={styles.pending} />, document.body) : null;
 }
 export default function NavigationLink({ children, ...props }: ComponentProps<typeof Link>) {
-  return <Link {...props}>{children}<PendingHint /></Link>;
+  // Shared navigation prepares eligible pages in full; avoid duplicate placeholder-only requests.
+  return <Link {...props} prefetch={props.prefetch ?? false} data-store-prefetch={props.prefetch === false ? "off" : undefined}>{children}<PendingHint /></Link>;
 }

@@ -8,7 +8,7 @@ import { productRanges } from "@/lib/product-range-data";
 import { productPromotions } from "@/lib/product-promotion-data";
 import { portalCustomer } from "@/lib/business-portal-data";
 import { hasInstantDelivery } from "@/lib/product-delivery";
-import Link from "next/link";
+import Link from "@/components/NavigationLink";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
