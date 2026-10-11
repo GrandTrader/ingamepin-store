@@ -171,10 +171,12 @@ function getAvailableStock(
 }
 
 export default async function Home() {
-  const [homepageData, customerDiscounts, paidProductSales] = await Promise.all([
-    getHomepageData(),
+  const homepageRequest = getHomepageData();
+  const [homepageData, customerDiscounts, paidProductSales, promotions] = await Promise.all([
+    homepageRequest,
     getSignedInCustomerDiscounts(),
     getPaidProductSales(),
+    homepageRequest.then(data => cataloguePromotions(data.products.map(product => product.id))),
   ]);
 
   const categories =
@@ -182,7 +184,6 @@ export default async function Home() {
 
   const productRows =
     homepageData.products as ProductRow[];
-  const promotions=await cataloguePromotions(productRows.map(p=>p.id));
 
   const products: StoreProduct[] =
     productRows

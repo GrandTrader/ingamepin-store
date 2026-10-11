@@ -151,11 +151,11 @@ export default async function CategoryPage({
     );
   }
 
-  const [customerDiscounts, paidProductSales] = await Promise.all([
+  const [customerDiscounts, paidProductSales, promotions] = await Promise.all([
     getSignedInCustomerDiscounts(),
     getPaidProductSales(),
+    cataloguePromotions((productResult.data ?? []).map(product => product.id)),
   ]);
-  const promotions=await cataloguePromotions((productResult.data??[]).map(p=>p.id));
   const products = ((productResult.data ?? []) as ProductRow[]).map(
     (product): ProductCardData => ({
       id: product.id,

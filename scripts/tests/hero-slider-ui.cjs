@@ -26,7 +26,7 @@ window.renderSlides(Number(params.get('count')??4));
   await new Promise((resolve, reject) => require('next/dist/compiled/webpack/webpack').webpack({
     mode: 'development', devtool: false, entry: path.join(out, 'entry.js'), output: { path: out, filename: 'bundle.js' },
     module: { rules: [{ test: /\.css$/, type: 'javascript/auto' }] },
-    resolve: { alias: { 'next/link': path.join(out, 'link.js') } },
+    resolve: { alias: { 'next/link': path.join(out, 'link.js'), '@/components/NavigationLink': path.join(out, 'link.js') } },
   }, (error, stats) => error || stats.hasErrors() ? reject(error || Error(stats.toString({ all: false, errors: true }))) : resolve()));
   const builtCss = fs.readdirSync('.next/static', { recursive: true }).filter(p => p.endsWith('.css')).map(p => fs.readFileSync(path.join('.next/static', p), 'utf8')).join('\n');
   const html = '<!doctype html><html data-store-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>' + builtCss + '\n' + css + '\nbody{margin:0;background:#f5f7fc;font-family:Arial,sans-serif}header{height:100px;background:white;border-bottom:1px solid #ddd;padding:30px;box-sizing:border-box}header strong{color:#00798a}main{min-width:0}footer{padding:30px;max-width:1220px;margin:auto}html[data-store-theme=dark] body{background:#0f172a}@media(max-width:639px){main{padding:12px 14px 0}header{height:68px;padding:20px}}</style></head><body><header><strong>iNgamePIN</strong> · Homepage slider preview</header><main id="app"></main><footer><button id="outside">Browse products</button></footer><script src="/bundle.js"></script></body></html>';

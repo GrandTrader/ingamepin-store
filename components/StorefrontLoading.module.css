@@ -1,0 +1,24 @@
+.root { --loading-surface:#fff; --loading-block:#e7edf4; --loading-line:#dfe6ee; --loading-ink:#52657c; width:100%; min-height:70vh; padding:12px 16px 32px; margin:0 auto; background:#f6f8fb; color:var(--loading-ink); }
+.root > div,.status { max-width:1152px; margin-inline:auto; }
+.status { font-size:13px; margin-bottom:12px; }
+.bar,.cover,.option,.field,.total,.button,.square { background:var(--loading-block); border-radius:8px; }
+.bar { width:34%; height:14px; margin-bottom:12px; }
+.breadcrumb { width:180px; height:12px; margin-bottom:16px; }
+.title { width:75%; height:32px; }
+.identity { display:grid; grid-template-columns:160px 1fr; align-items:center; gap:24px; margin-bottom:20px; }
+.cover { aspect-ratio:1; }
+.panel { display:grid; grid-template-columns:1.4fr .8fr; gap:24px; padding:22px; border:1px solid var(--loading-line); border-radius:20px; background:var(--loading-surface); }
+.options { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.option { height:54px; }
+.field { height:58px; margin-top:20px; }
+.summary { padding-left:24px; border-left:1px solid var(--loading-line); }
+.total { height:108px; margin-block:24px 12px; }
+.button { height:46px; margin-top:12px; }
+.cards { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:16px; margin-top:30px; }
+.card { border:1px solid var(--loading-line); padding:10px; border-radius:12px; background:var(--loading-surface); }
+.square { aspect-ratio:1; margin-bottom:16px; }
+.card .bar { width:90%; }
+.general { background:var(--loading-surface); border:1px solid var(--loading-line); padding:24px; border-radius:20px; min-height:360px; }
+:global(html[data-store-theme="dark"]) .root { --loading-surface:#142033; --loading-block:#22344b; --loading-line:#2b3d54; --loading-ink:#afbed2; background:#0b1422; }
+@media(max-width:900px) { .cards{grid-template-columns:repeat(3,minmax(0,1fr));} .panel{grid-template-columns:1fr;} .summary{border-left:0;padding:18px 0 0;border-top:1px solid var(--loading-line);} }
+@media(max-width:700px) { .root{padding-inline:12px;} .identity{grid-template-columns:100px 1fr;gap:14px;} .title{height:26px;width:90%;} .panel{padding:16px;} .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;} }

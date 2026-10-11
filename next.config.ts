@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { productImageRemotePatterns } from "./lib/product-image";
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: "object-src 'none'; base-uri 'self'; frame-ancestors 'none'" },
@@ -31,6 +32,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: { remotePatterns: productImageRemotePatterns(), maximumRedirects: 0 },
   outputFileTracingIncludes: {
     "/admin/products": ["./node_modules/flag-icons/flags/4x3/*.svg", "./lib/assets/fonts/*"],
     "/admin/products/**": ["./node_modules/flag-icons/flags/4x3/*.svg", "./lib/assets/fonts/*"],

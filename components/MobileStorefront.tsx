@@ -1,6 +1,5 @@
 "use client";
-/* Product and category artwork use the existing store image URLs. */
-/* eslint-disable @next/next/no-img-element */
+import ProductImage from "./ProductImage";
 
 import { matchesStorefrontSearch } from "@/lib/storefront-search";
 import { cardPromotionPrice } from "@/lib/product-promotions";
@@ -43,7 +42,7 @@ function MobileProduct({ product }: { product: BrowseProduct }) {
   const discount=offer.percent;
   return <Link className={styles.card} href={product.href ?? `/product/${product.slug}`}>
     <div className={styles.art} data-unavailable={unavailable}>
-      {image && !broken ? <img src={image} alt={name} loading="lazy" onError={() => setBroken(true)} /> : <span aria-hidden="true">🎮</span>}
+      {image && !broken ? <ProductImage src={image} alt={name} sizes="50vw" onError={() => setBroken(true)} /> : <span aria-hidden="true">🎮</span>}
     </div>
     <span className={styles.delivery} data-instant={instantDelivery}>
       <span aria-hidden="true">{instantDelivery ? "⚡" : "▦"}</span>
@@ -110,7 +109,7 @@ export default function MobileStorefront({ products, popularIds, newestIds, cate
     <div className={styles.content}>
       {!query && <>
         <HeroSlider slides={heroSlides} autoplayMs={heroAutoplayMs} />
-        <section id="mobile-categories"><div className={styles.sectionHeading}><h2>Browse categories</h2><button onClick={() => setAllCategories(!allCategories)} aria-expanded={allCategories}>{allCategories ? "Show less" : "See all"} ›</button></div><div className={styles.categories}>{(allCategories ? quickCategories : quickCategories.slice(0,4)).map(c => <Link key={c.id} href={`/category/${c.slug}`}><span>{c.image_url ? <img src={c.image_url} alt="" loading="lazy" /> : <Icon name="browse" />}</span><b>{/playstation/i.test(c.name) ? "PlayStation" : /apple/i.test(c.name) ? "Apple" : /steam/i.test(c.name) ? "Steam" : /xbox/i.test(c.name) ? "Xbox" : c.short_name ?? c.name}</b></Link>)}{!allCategories && <button onClick={() => setAllCategories(true)}><span><Icon name="more" /></span><b>More</b></button>}</div></section>
+        <section id="mobile-categories"><div className={styles.sectionHeading}><h2>Browse categories</h2><button onClick={() => setAllCategories(!allCategories)} aria-expanded={allCategories}>{allCategories ? "Show less" : "See all"} ›</button></div><div className={styles.categories}>{(allCategories ? quickCategories : quickCategories.slice(0,4)).map(c => <Link key={c.id} href={`/category/${c.slug}`}><span>{c.image_url ? <ProductImage src={c.image_url} alt="" sizes="48px" width={64} height={64} /> : <Icon name="browse" />}</span><b>{/playstation/i.test(c.name) ? "PlayStation" : /apple/i.test(c.name) ? "Apple" : /steam/i.test(c.name) ? "Steam" : /xbox/i.test(c.name) ? "Xbox" : c.short_name ?? c.name}</b></Link>)}{!allCategories && <button onClick={() => setAllCategories(true)}><span><Icon name="more" /></span><b>More</b></button>}</div></section>
       </>}
       <section><div className={styles.tabs} role="tablist" aria-label="Product collections" onKeyDown={event => {
         const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button"));

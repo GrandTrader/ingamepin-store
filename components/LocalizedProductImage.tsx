@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
+import ProductImage from "./ProductImage";
 import { useStorePreferences } from "./StorePreferences";
 
 type LocalizedProductImageProps = {
@@ -11,6 +12,7 @@ type LocalizedProductImageProps = {
   altRu?: string | null;
   className: string;
   fallback: ReactNode;
+  priority?: boolean;
 };
 
 export default function LocalizedProductImage({
@@ -20,6 +22,7 @@ export default function LocalizedProductImage({
   altRu,
   className,
   fallback,
+  priority = false,
 }: LocalizedProductImageProps) {
   const { language } = useStorePreferences();
   const [failedImages, setFailedImages] = useState<string[]>([]);
@@ -34,8 +37,9 @@ export default function LocalizedProductImage({
   if (!source) return fallback;
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <ProductImage
+      priority={priority}
+      sizes="(max-width: 700px) 100px, 160px"
       src={source}
       alt={language === "ru" && altRu ? altRu : alt}
       onError={() =>

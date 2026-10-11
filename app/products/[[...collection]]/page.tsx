@@ -275,13 +275,14 @@ export default async function ProductsPage({
     );
   }
 
-  const [customerDiscounts, paidProductSales] = await Promise.all([
+  const matchingProducts = ((productResult.data ?? []) as ProductRow[])
+    .filter(product => matchesCollection(product, collection) && matchesStorefrontProduct(product, search));
+  const [customerDiscounts, paidProductSales, promotions] = await Promise.all([
     getSignedInCustomerDiscounts(),
     getPaidProductSales(),
+    cataloguePromotions(matchingProducts.map(product => product.id)),
   ]);
-  const promotions=await cataloguePromotions((productResult.data??[]).map(p=>p.id));
-  const products = ((productResult.data ?? []) as ProductRow[])
-    .filter((product) => matchesCollection(product, collection) && matchesStorefrontProduct(product, search))
+  const products = matchingProducts
     .map(
       (product): ProductCardData => ({
         id: product.id,

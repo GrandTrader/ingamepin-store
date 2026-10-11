@@ -8,7 +8,7 @@ import { productRanges } from "@/lib/product-range-data";
 import { productPromotions } from "@/lib/product-promotion-data";
 import { portalCustomer } from "@/lib/business-portal-data";
 import { hasInstantDelivery } from "@/lib/product-delivery";
-﻿import Link from "next/link";
+import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -22,6 +22,9 @@ import AffiliateReferralTracker from "@/components/AffiliateReferralTracker";
 import { isUnlimitedStock } from "@/lib/product-stock";
 import { getProductUrl } from "@/lib/product-url";
 import ProductDetailsTabs from "@/components/ProductDetailsTabs";
+import ProductInformation from "@/components/ProductInformation";
+import { Suspense } from "react";
+import { getPaidProductSalesForProduct } from "@/lib/product-sales";
 import LocalizedProductImage from "@/components/LocalizedProductImage";
 import ProductRegionBadge from "@/components/ProductRegionBadge";
 
@@ -128,13 +131,18 @@ export default async function ProductPage({
 
 export async function renderProductPage({
   slug,
+  publicId,
+  canonicalCategory,
   searchParams,
   canonicalRequest = false,
 }: {
-  slug: string;
+  slug?: string;
+  publicId?: string;
+  canonicalCategory?: { slug: string; publicId: string };
   searchParams: ProductPageProps["searchParams"];
   canonicalRequest?: boolean;
 }) {
+  if (!slug && !publicId) notFound();
   const query = await searchParams;
   const affiliateCode = Array.isArray(query.ref)
     ? query.ref[0]?.trim()
@@ -143,7 +151,7 @@ export async function renderProductPage({
 
   const productResult = await readWithGamingPlatforms(
     (fields) => supabase.from("products").select(fields)
-      .eq("slug", slug)
+      .eq(publicId ? "public_id" : "slug", publicId ?? slug!)
       .eq("status", "ACTIVE").eq("retail_enabled", true)
       .eq("is_preorder_only", false)
       .returns<ProductRow[]>()
@@ -201,10 +209,16 @@ export async function renderProductPage({
   }
 
   const product = productResult.data as ProductRow;
+  const productCategory = Array.isArray(product.categories) ? product.categories[0] : product.categories;
+  if (canonicalRequest && !productCategory) notFound();
   if (product.is_bulk_order) await portalCustomer();
   const category = getCategory(product.categories);
   const platforms = isGamesCategory(category) ? normalizeGamePlatforms(product.gaming_platforms) : [];
-  if (!canonicalRequest) {
+  if (
+    !canonicalRequest ||
+    (publicId && String(product.public_id) !== publicId) ||
+    (canonicalCategory && (canonicalCategory.slug !== category.slug || canonicalCategory.publicId !== String(category.publicId)))
+  ) {
     const canonicalUrl = getProductUrl({
       categorySlug: category.slug,
       categoryPublicId: category.publicId,
@@ -216,10 +230,8 @@ export async function renderProductPage({
     permanentRedirect(`${canonicalUrl}${referral}`);
   }
 
-  const rangeData=await productRanges([product.id]);
-  const range=rangeData.ranges.find(r=>r.enabled);
   const admin = createAdminClient();
-  const [optionResult, customerFieldResult, reviewResult, digiSellerReviewResult, salesResult, customerDiscounts, affiliateSettingsResult] = await Promise.all([
+  const [optionResult, customerFieldResult, paidSales, customerDiscounts, affiliateSettingsResult, rangeData, promotions] = await Promise.all([
     supabase
     .from("product_options")
     .select(
@@ -245,39 +257,21 @@ export async function renderProductPage({
     .select("id, label, placeholder, field_type, is_required")
     .eq("product_id", product.id)
     .order("sort_order", { ascending: true }),
-    admin.from("order_reviews")
-      .select("id, customer_email, sentiment, comment, created_at, orders!inner(order_items!inner(product_id))")
-      .eq("orders.order_items.product_id", product.id)
-      .eq("is_visible", true)
-      .order("created_at", { ascending: false }).limit(50),
-    admin
-    .from("digiseller_reviews")
-    .select("id, sentiment, comment, reviewed_at")
-    .eq("product_id", product.id)
-    .eq("is_visible", true)
-    .order("reviewed_at", { ascending: false })
-    .limit(100),
-    admin
-    .from("order_items")
-    .select("quantity, orders!inner(status)")
-    .eq("product_id", product.id)
-    .in("orders.status", ["PAID", "PROCESSING", "DELIVERED"]),
+    getPaidProductSalesForProduct(product.id),
     getSignedInCustomerDiscounts(),
     product.affiliate_enabled && Number(product.affiliate_commission_percent) > 0
       ? admin.from("affiliate_settings").select("program_enabled").eq("id", 1).maybeSingle()
-      : Promise.resolve({ data: null, error: null })
+      : Promise.resolve({ data: null, error: null }),
+    productRanges([product.id]),
+    productPromotions([product.id]),
   ]);
-
-
-
+  const range = rangeData.ranges.find(r => r.enabled);
 
   if (optionResult.error) {
     throw new Error(
       `Unable to load product options: ${optionResult.error.message}`,
     );
   }
-
-
 
   if (customerFieldResult.error) {
     throw new Error(`Unable to load customer fields: ${customerFieldResult.error.message}`);
@@ -287,72 +281,10 @@ export async function renderProductPage({
   const protectedFields = customerFields.some(field => isSensitiveCustomerField(field.label));
   const options = (optionResult.data ?? []) as ProductOptionRow[];
 
-
-
-  if (reviewResult.error) {
-    throw new Error(
-      `Unable to load product reviews: ${reviewResult.error.message}`,
-    );
-  }
-
-  const productReviews = (reviewResult.data ?? []).map((review) => {
-    const email = String(review.customer_email ?? "");
-    const [localPart = "Customer"] = email.split("@");
-    const customerLabel =
-      localPart.length > 2
-        ? `${localPart.slice(0, 2)}${"*".repeat(Math.min(localPart.length - 2, 6))}`
-        : "Verified customer";
-
-    return {
-      id: String(review.id),
-      sentiment: review.sentiment as "POSITIVE" | "NEGATIVE",
-      comment: review.comment ? String(review.comment) : null,
-      customerLabel,
-      createdAt: String(review.created_at),
-      source: "WEBSITE" as const,
-    };
-  });
-
-
-
-  if (digiSellerReviewResult.error) {
-    throw new Error(
-      `Unable to load DigiSeller reviews: ${digiSellerReviewResult.error.message}`,
-    );
-  }
-
-  const digiSellerReviews = (digiSellerReviewResult.data ?? []).map((review) => ({
-    id: `digiseller-${String(review.id)}`,
-    sentiment: review.sentiment as "POSITIVE" | "NEGATIVE",
-    comment: review.comment ? String(review.comment) : null,
-    customerLabel: "DigiSeller customer",
-    createdAt: String(review.reviewed_at),
-    source: "DIGISELLER" as const,
-  }));
-
-  const allProductReviews = [...productReviews, ...digiSellerReviews]
-    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
-    .slice(0, 100);
-  const positiveReviewCount = allProductReviews.filter(
-    (review) => review.sentiment === "POSITIVE",
-  ).length;
-  const negativeReviewCount = allProductReviews.length - positiveReviewCount;
-
-
-
-
-
-  if (salesResult.error) {
-    throw new Error(`Unable to load product sales: ${salesResult.error.message}`);
-  }
-
-  const soldCount = Number(product.sold_count ?? 0) + (salesResult.data ?? []).reduce(
-    (total, item) => total + Number(item.quantity || 0),
-    0,
-  );
+  const soldCount = Number(product.sold_count ?? 0) + paidSales;
 
   const customerDiscountPercent = customerDiscounts.get(product.id) ?? 0;
-  const promotionRules = (await productPromotions([product.id])).rows[0]?.rules ?? [];
+  const promotionRules = promotions.rows[0]?.rules ?? [];
   let affiliateCommissionPercent = 0;
   let affiliateMaximumCommissionPercent = 0;
 
@@ -476,6 +408,7 @@ export async function renderProductPage({
             <div className={`${styles.artwork} ${platforms.length ? styles.platformArtwork : ""}`}>
 
               <LocalizedProductImage
+                priority
                 imageUrl={product.image_url}
                 imageUrlRu={product.image_url_ru}
                 alt={product.name}
@@ -614,17 +547,19 @@ export async function renderProductPage({
                   </div>
                 )}
 
-              <ProductDetailsTabs
-                description={
-                  gameAccountDescription(product.description, protectedFields) ??
-                  "Product details and delivery information will be provided with your order."
-                }
+              <Suspense fallback={<ProductDetailsTabs
+                description={gameAccountDescription(product.description, protectedFields) ?? "Product details and delivery information will be provided with your order."}
                 descriptionRu={gameAccountDescription(product.description_ru, protectedFields)}
                 deliveryInstructions={product.delivery_instructions}
-                reviews={allProductReviews}
-                positiveCount={positiveReviewCount}
-                negativeCount={negativeReviewCount}
-              />
+                reviews={[]} positiveCount={0} negativeCount={0} reviewsLoading
+              />}>
+                <ProductInformation
+                  productId={product.id}
+                  description={gameAccountDescription(product.description, protectedFields) ?? "Product details and delivery information will be provided with your order."}
+                  descriptionRu={gameAccountDescription(product.description_ru, protectedFields)}
+                  deliveryInstructions={product.delivery_instructions}
+                />
+              </Suspense>
         </section>
       </div>
     </main>

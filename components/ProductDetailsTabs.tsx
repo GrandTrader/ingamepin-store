@@ -20,6 +20,8 @@ export default function ProductDetailsTabs({
   reviews,
   positiveCount,
   negativeCount,
+  reviewsLoading = false,
+  reviewsUnavailable = false,
 }: {
   description: string;
   descriptionRu?: string | null;
@@ -27,6 +29,8 @@ export default function ProductDetailsTabs({
   reviews: ProductReview[];
   positiveCount: number;
   negativeCount: number;
+  reviewsLoading?: boolean;
+  reviewsUnavailable?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"description" | "reviews">(
     "description",
@@ -52,6 +56,7 @@ export default function ProductDetailsTabs({
         </button>
         <button
           type="button"
+          disabled={reviewsLoading}
           onClick={() => setActiveTab("reviews")}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-black transition ${
             activeTab === "reviews"
@@ -61,11 +66,14 @@ export default function ProductDetailsTabs({
         >
           <LocalizedProductText english="Reviews" russian="Отзывы" />
           <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
-            {totalReviews}
+            {reviewsLoading ? "…" : totalReviews}
           </span>
         </button>
       </div>
 
+      {reviewsUnavailable && <p className="mt-3 text-sm text-slate-500" role="status">
+        <LocalizedProductText english="Some reviews are temporarily unavailable." russian="Некоторые отзывы временно недоступны." />
+      </p>}
       {activeTab === "description" ? (
         <div className="pt-5">
           <div className="whitespace-pre-line text-sm leading-6 text-slate-300 sm:text-base sm:leading-7">

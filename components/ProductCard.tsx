@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "@/components/NavigationLink";
+import ProductImage from "./ProductImage";
 import { useState } from "react";
 import { cardPromotionPrice, type PromotionPrice } from "@/lib/product-promotions";
 import { usePromotionClock } from "./usePromotionClock";
@@ -87,11 +88,10 @@ export default function ProductCard({ product }: Props) {
 
         <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-[#eef0f3]">
           {localizedImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ProductImage
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
               src={localizedImage}
               alt={localizedName}
-              loading="lazy"
               onError={() =>
                 setFailedImages((current) =>
                   current.includes(localizedImage)

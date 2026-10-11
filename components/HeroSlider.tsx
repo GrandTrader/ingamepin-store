@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/NavigationLink";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import styles from "./HeroSlider.module.css";
 
