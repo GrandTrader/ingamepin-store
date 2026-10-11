@@ -12,6 +12,7 @@ import { claimWalletRefund } from "./actions";
 
 type WalletPageProps = {
   portal?: boolean;
+  bankTransferEnabled?: boolean;
   searchParams: Promise<{ error?: string; success?: string; page?: string }>;
 };
 
@@ -30,7 +31,7 @@ function formatDate(value: string) {
 }
 
 export default async function CustomerWalletPage({
-  searchParams, portal = false,
+  searchParams, portal = false, bankTransferEnabled = false,
 }: WalletPageProps) {
   const { error, success, page } = await searchParams;
   const parsedPage = typeof page === "string" && /^\d+$/.test(page) ? Number(page) : 1;
@@ -115,7 +116,7 @@ export default async function CustomerWalletPage({
               </p>
             )}
 
-            {portal && <p className="mb-3 text-sm"><Link href="/account/business" className="font-bold text-blue-700 underline">Business account and USD bank deposits</Link></p>}
+            {portal && <p className="mb-3 text-sm"><Link href="/account/business" className="font-bold text-blue-700 underline">{bankTransferEnabled && walletEnabled ? "Direct Bank Transfer" : "Business account"}</Link></p>}
             {walletEnabled ? (
               <WalletTopupForm
                 gateways={gateways}

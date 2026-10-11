@@ -28,3 +28,22 @@ CSV exports are private uncached attachments with spreadsheet-formula escaping. 
 No real KYB approval, order, payment or wallet credit is created by these tests. Localhost currently uses the configured Supabase database, so approvals and wallet credits made manually are real database writes.
 
 All storefront B2B links lead to the protected business portal. The legacy /products/bulk route verifies approval before redirecting to the portal catalogue. Bulk-product detail pages require the same approval, including their canonical category URLs. Private bulk pages are excluded from the public sitemap. An email-verified login alone is not sufficient: admin-approved business KYB is required.
+
+## Per-customer Direct Bank Transfer
+
+Apply `supabase/migrations/20261011_160000_business_bank_customer_access.sql` before deploying this feature. Admin → B2B accounts & API requests → customer Details has an immediately saved Direct Bank Transfer switch. Existing eligibility is preserved (ON by default); approved KYB, enabled wallet and the global bank setting are still required.
+
+OFF blocks new bank invoices and deposit submissions, including stale forms and legacy invoice/deposit database functions. Historical invoices/deposits remain visible and admins can review already-submitted deposits. Customers who sent money before being disabled should contact support. This controls bank transfers into the wallet, not a new direct-order checkout method. Changes are admin-only, revision-checked and recorded in the business audit history; changing the switch never credits a wallet.
+
+Run `npm run test:business-bank` for action/access checks and isolated PostgreSQL migration tests. Run `node scripts/tests/business-bank-switch-ui.cjs` after a production build for desktop/mobile switch interactions using fake customers and actions only.
+
+
+## B2B Product Catalog discounts
+
+Admin → Catalog → B2B Product Catalog searches all website products and manages business channel availability and B2B discount percentages. The catalog shows 20 products per page and supports product name, category, region, publication status and B2B availability filters. Pagination preserves every filter and the selected customer. Bulk activation/deactivation changes only the selected products’ business channel flag; retail flags and global publication status stay unchanged. Draft and suspended products still need publishing in Products, and pre-orders are shown but cannot be enabled for B2B. These availability controls work even before the discount migration is installed. Missing discount setup never hides the product list; only discount editing is disabled. General discounts apply to all B2B customers. Loading a registered email selects that account; saving changes only the selected products, leaving its other assignments intact. Assignment uses the registered user ID, with an exact case-insensitive email lookup. No account is created by this tool.
+
+Discounts apply across denominations and custom ranges. The largest of the public promotion, existing personal discount, general B2B percentage, and selected customer's B2B percentage is used; they never stack. Setting 0 clears that rule, allowing other rules to apply. Seller-managed prices are excluded. Retail prices and existing retail customer-discount controls are unchanged. Authenticated B2B catalog, business API quotes, and wallet checkout use the same database resolution. Existing paid orders retain their price on retries.
+
+Apply `supabase/migrations/20261011_170000_business_catalog_discounts.sql` before deploying the app changes. The migration creates separate service-only B2B tables and updates only the two discount lookups in the existing portal checkout function. It creates no discounts, orders, or wallet movements. Batch saves check the administrator, registered customer, product eligibility and revisions, rolling back the whole batch if any row is stale.
+
+Validation: `npm run test:business-discounts` runs isolated admin/read tests and real database checkout tests (including retail isolation, ranges, fixed denominations, non-stacking, stale quotes, replay, permissions, and atomic batch edits). `node scripts/tests/business-catalog-discounts-ui.cjs` exercises the actual editor against fake actions at desktop and phone sizes; it changes no customer data.

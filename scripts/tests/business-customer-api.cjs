@@ -27,6 +27,8 @@ const headers={Authorization:'Bearer igp_b2b_'+'a'.repeat(43)};
  const builder={select(){return this;},eq(k,v){filters.push([k,v]);return this;},maybeSingle:async()=>({data:returnedOrder,error:null})};
  const route=load('app/api/v1/business/[...path]/route.ts',{
   '@/lib/business-api-auth':{businessApiJson:auth.businessApiJson,authorizeBusinessApi:async(req,ordering)=>{requiredPermission=ordering;return {error:null,principal:{user,ip:'203.0.113.10'}};}},
+  '@/lib/business-catalog-discounts':{businessCatalogDiscounts:async()=>({})},
+  '@/lib/product-promotion-data':{productPromotions:async()=>({rows:[]})},'@/lib/product-promotions':{},
   '@/lib/business-api-input':inputs,'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>builder})},
   '@/lib/delivered-codes':{getAllDeliveredCodes:async()=>{readCodes++;return[];}},'@/lib/product-range-data':{},
   '@/lib/order-request-handler':{handleOrder:async(request,principal,ip)=>{forwarded={body:await request.json(),principal,ip,headers:request.headers};return NextResponse.json({result:{total:10}});}},

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BankTransferSwitch from "../BankTransferSwitch";
 import AdminSidebar from "../../AdminSidebar";
 import { requireBusinessAdmin, businessApplication } from "@/lib/business-verification-data";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,6 +23,12 @@ export default async function BusinessAccountDetails({params}:{params:Promise<{i
     <Link href={`/admin/business-verification?status=${encodeURIComponent(r.status)}`} className="text-sm font-bold text-blue-700">← Back to B2B accounts</Link>
     <h1 className="text-2xl font-black">B2B account details</h1>
     <section className="space-y-5 rounded-2xl border bg-white p-5"><div><h2 className="text-xl font-black">{r.details.legal_name}</h2><p className="text-sm">{String(r.details.contact_name || customer.data.user?.user_metadata?.full_name || "")}</p><p className="break-all text-sm">{customer.data.user?.email ?? r.details.email}</p><p className="mt-1 text-xs text-slate-500">Created (IST): {new Intl.DateTimeFormat("en-GB",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Kolkata"}).format(new Date(firstEvent.data?.created_at ?? r.submitted_at))}</p><Link href={`/admin/customers/${r.user_id}`} className="text-sm text-blue-700">Customer account</Link><p className="text-sm">{r.status} · Revision {r.revision}</p></div>
+      <section className="space-y-3 rounded-xl border bg-slate-50 p-4">
+        <h2 className="font-bold">Direct Bank Transfer</h2>
+        <p className="text-sm text-slate-600">Allow this customer to generate bank invoices and submit transfer receipts to top up their B2B wallet. Changes save immediately. Existing invoices and deposits stay available for review.</p>
+        {typeof r.bank_transfer_enabled === "boolean" ? <BankTransferSwitch key={r.revision} userId={id} enabled={r.bank_transfer_enabled} revision={r.revision}/> : <p role="alert" className="text-sm text-amber-700">Install the customer bank-transfer database update to use this switch.</p>}
+        <p className="text-xs text-slate-600">The business account must be approved, the wallet enabled, and <Link href="/admin/business-verification/bank-settings" className="text-blue-700 underline">global bank transfers enabled</Link> before this method is available.</p>
+      </section>
       <section className="space-y-3 rounded-xl border bg-slate-50 p-4">
         <h2 className="font-bold">API IP approval</h2>
         <p className="text-sm text-slate-600">Only these admin-approved static server IPs can use this customer&apos;s API keys. Customers cannot change this list.</p>

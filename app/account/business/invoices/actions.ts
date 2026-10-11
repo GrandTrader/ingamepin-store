@@ -1,4 +1,5 @@
 "use server";
+import { requireBusinessBankTransfer } from "@/lib/business-bank-access";
 import { validateInvoiceBilling } from "@/lib/invoice-billing";
 import { businessSessionReady } from "@/lib/business-security";
 import { createClient } from "@/lib/supabase/server";
@@ -14,6 +15,7 @@ export async function generateBankInvoice(form: FormData) {
   const amount = bankInvoiceAmount(form.get("amount")), id = String(form.get("request_id") ?? "");
   if (amount === null || !bankInvoiceId.test(id)) return { error: "Enter USD 10–50,000 with at most two decimal places." };
   if (!(await businessSessionReady(await createClient(),user.id))) return {error:"Complete business account security verification before generating an invoice."};
+  try { await requireBusinessBankTransfer(user.id); } catch (error) { return { error: error instanceof Error ? error.message : "Unable to check bank-transfer access." }; }
   let billing;
   try { billing=validateInvoiceBilling({fullName:"Business customer",companyName:"",...Object.fromEntries(["country","addressLine1","addressLine2","city","state","postalCode","taxpayerId"].map(key=>[key,form.get(key)]))},true); }
   catch(error) { return {error:error instanceof Error?error.message:"Enter complete billing details."}; }
@@ -28,6 +30,7 @@ export async function submitInvoiceTransfer(form: FormData) {
   if (!bankInvoiceId.test(invoiceId) || reference.length < 3 || reference.length > 100) return { error: "Enter a valid invoice and bank transfer reference (3–100 characters)." };
   let path: string | null = null, attempted = false;
   try {
+    await requireBusinessBankTransfer(user.id);
     const [invoice, existing] = await Promise.all([
       db.from("business_bank_invoices").select("id").eq("id", invoiceId).eq("user_id", user.id).maybeSingle(),
       db.from("business_bank_deposits").select("id").eq("invoice_id", invoiceId).eq("user_id", user.id).maybeSingle(),

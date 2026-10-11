@@ -2,7 +2,7 @@ import { productPromotions } from "@/lib/product-promotion-data";
 import { productRanges } from "@/lib/product-range-data";
 import Link from "next/link";
 import { portalCustomer } from "@/lib/business-portal-data";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { businessCatalogDiscounts } from "@/lib/business-catalog-discounts";
 import Catalogue, { type CatalogueProduct, type CatalogueFilters } from "./Catalogue";
 import s from "../Portal.module.css";
 
@@ -18,15 +18,14 @@ export default async function NewBusinessOrder({searchParams}:{searchParams:Prom
       if(result.data.length<500)return rows;
     }
   };
-  const [products,categories,discounts,filters]=await Promise.all([
+  const [products,categories,filters]=await Promise.all([
     catalogue(),
     session.from("categories").select("id,name,image_url").eq("is_active",true).order("sort_order"),
-    createAdminClient().from("customer_product_discounts").select("product_id,discount_percent").eq("user_id",user.id).eq("is_active",true),
     searchParams,
   ]);
-  if(categories.error||discounts.error)throw Error("Unable to load the business catalogue. Please try again.");
-  const ranges=await productRanges(products.map(p=>p.id));
-  const promotions=await productPromotions(products.map(p=>p.id));
+  if(categories.error)throw Error("Unable to load the business catalogue. Please try again.");
+  const ids=products.map(p=>p.id);
+  const [ranges,promotions,discounts]=await Promise.all([productRanges(ids),productPromotions(ids),businessCatalogDiscounts(user.id,ids)]);
   for(const p of products)p.promotionRules=promotions.rows.find(r=>r.product_id===p.id)?.rules??[];
-  return <><div className={s.titleLine}><h2>New order</h2><Link className={s.button} href="/account/portal">Order history</Link></div><Catalogue ranges={ranges.ranges.filter(r=>r.enabled)} userId={user.id} products={products} categories={categories.data} discounts={Object.fromEntries(discounts.data.map(d=>[d.product_id,Number(d.discount_percent)]))} initialFilters={filters}/></>;
+  return <><div className={s.titleLine}><h2>New order</h2><Link className={s.button} href="/account/portal">Order history</Link></div><Catalogue ranges={ranges.ranges.filter(r=>r.enabled)} userId={user.id} products={products} categories={categories.data} discounts={discounts} initialFilters={filters}/></>;
 }

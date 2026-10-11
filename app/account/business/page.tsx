@@ -17,19 +17,20 @@ export default async function BusinessPage({searchParams}:{searchParams:Promise<
   ]);
   if(settings.error||deposits.error)throw Error("Unable to load business banking. Please try again.");
   const rows=(deposits.data??[]) as BusinessDeposit[];
+  const bankEnabled = app?.bank_transfer_enabled === true && settings.data?.enabled === true && user.app_metadata?.wallet_disabled !== true;
   return <CustomerAccountShell displayName={displayName}><div className="space-y-6">
     <div><h1 className="text-2xl font-black">{app?.status === "APPROVED" ? "Business account" : "B2B & API interest"}</h1><p className="mt-2 text-sm text-slate-600">{app?.status === "APPROVED" ? "Manage your business account and bank deposits." : "Interested in bulk purchases or our ordering API? Submit your interest below. Our team completes business verification by email."}</p></div>
     {app?.status === "PENDING" && <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-800">Your request is awaiting review. Please check your account email for the next steps.</p>}
     {app&&<section className="rounded-2xl border bg-white p-5"><h2 className="font-bold">{app.details.legal_name} — {app.status.replaceAll("_"," ")}</h2><p className="mt-2 text-sm">Submitted {formatCustomerDate(app.submitted_at)}</p>{app.review_note&&<p className="mt-3 whitespace-pre-wrap">Message: {app.review_note}</p>}<p className="mt-3 text-sm">Contact support if your business details change.</p></section>}
     {(!app||["REJECTED","REVOKED"].includes(app.status))&&<BusinessInterestForm details={app?.details} email={user.email ?? ""} name={displayName}/>}
     {app?.status==="APPROVED"&&<Link href="/account/portal" className="inline-flex rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">Open business portal →</Link>}
-    {app?.status==="APPROVED"&&<section className="space-y-5 rounded-2xl border bg-white p-5 sm:p-6"><h2 className="text-xl font-black">USD bank transfer to wallet</h2>
-      {!settings.data?.enabled?<p>USD bank transfers are not available yet. You can use the existing <Link href="/account/wallet" className="text-blue-700 underline">wallet payment methods</Link>.</p>:<>
+    {app?.status==="APPROVED"&&<section className="space-y-5 rounded-2xl border bg-white p-5 sm:p-6"><h2 className="text-xl font-black">Direct Bank Transfer</h2>
+      {!bankEnabled?<p>Direct Bank Transfer is currently unavailable for your account. Contact support for assistance. You can use the existing <Link href="/account/wallet" className="text-blue-700 underline">wallet payment methods</Link>.</p>:<>
         <p className="text-sm">Send the payment using these instructions. Your wallet is credited after admin confirms the bank receipt. Bank deductions and currency conversion may reduce the USD amount credited.</p>
         <dl className="grid gap-3 rounded-xl bg-slate-50 p-4 text-sm">{bankFields.map(([key,label])=><div key={key}><dt className="font-bold">{label}</dt><dd className="whitespace-pre-wrap break-words">{String(settings.data?.instructions?.[key]??"")}</dd></div>)}</dl>
         <p className="text-sm">Use your registered business account as the sender and the generated invoice number as your payment reference. If your bank needs additional purpose details, contact support before sending.</p>
-        <BankInvoicePanel details={app.details} userId={user.id} page={Math.max(1,Math.min(10000,Number.parseInt(params.invoice_page??"1")||1))}/>
       </>}
+      <BankInvoicePanel canCreate={bankEnabled} details={app.details} userId={user.id} page={Math.max(1,Math.min(10000,Number.parseInt(params.invoice_page??"1")||1))}/>
     </section>}
     {!!rows.length&&<section className="space-y-3"><h2 className="text-xl font-black">Bank deposit history</h2>{rows.slice(0,10).map(r=><article key={r.id} className="rounded-xl border bg-white p-4 text-sm"><p className="font-bold">USD {Number(r.amount_usd).toFixed(2)} — {r.status}</p><p>{formatCustomerDate(r.created_at)} · {r.customer_reference}</p>{r.credited_usd!=null&&<p>Wallet credited: USD {Number(r.credited_usd).toFixed(2)}</p>}{r.note&&<p className="mt-2 whitespace-pre-wrap">{r.note}</p>}</article>)}<div className="flex gap-5">{page>1&&<Link href={`?page=${page-1}`}>Previous</Link>}{rows.length>10&&<Link href={`?page=${page+1}`}>Next</Link>}</div></section>}
   </div></CustomerAccountShell>;

@@ -1,4 +1,5 @@
 "use server";
+import { requireBusinessBankTransfer } from "@/lib/business-bank-access";
 import { parseBusinessInterest } from "@/lib/business-interest";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
@@ -23,6 +24,7 @@ export async function submitBusinessDeposit(form:FormData) {
   const {user}=await requireCustomer();const db=createAdminClient();let path:string|null=null;let saveAttempted=false;
   try {
     const raw=String(form.get("amount")??"");if(!/^\d+(\.\d{1,2})?$/.test(raw)||Number(raw)<10||Number(raw)>50000) return {error:"Enter USD 10–50,000 with at most two decimal places."};
+    await requireBusinessBankTransfer(user.id);
     const file=await readBusinessFile(form.get("receipt"));
     const kyb=await db.from("business_kyb").select("status").eq("user_id",user.id).maybeSingle();
     if(kyb.error||kyb.data?.status!=="APPROVED")return {error:"Approved business verification is required."};

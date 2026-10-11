@@ -73,15 +73,15 @@ test('Legacy B2B catalogue checks approval before any catalogue query',async()=>
  const file='app/products/[[...collection]]/page.tsx';
  for(const approved of [false,true]){
   let checks=0,reads=0;
-  const page=load(file,pageMocks(file,{'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;if(!approved)throw Error('KYB required');}},'next/navigation':{redirect:path=>{throw Error('REDIRECT:'+path)},notFound:()=>{throw Error('Not found')}},'@/lib/supabase/server':{createClient:async()=>{reads++;throw Error('Unexpected public catalogue read')}}})).default;
+  const page=load(file,pageMocks(file,{'@/lib/storefront-search':{storefrontSearchQuery:()=>''},'@/lib/store-catalogue':{getStoreProducts:()=>{reads++;throw Error('Unexpected public catalogue read')}},'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;if(!approved)throw Error('KYB required');}},'next/navigation':{redirect:path=>{throw Error('REDIRECT:'+path)},notFound:()=>{throw Error('Not found')}},'@/lib/supabase/server':{createClient:async()=>{reads++;throw Error('Unexpected public catalogue read')}}})).default;
   await assert.rejects(page({params:Promise.resolve({collection:['bulk']})}),approved?/REDIRECT:\/account\/portal\/new/:/KYB required/);assert.equal(checks,1);assert.equal(reads,0);
  }
 });
 test('Bulk product links require KYB for both slug and canonical rendering',async()=>{
  const file='app/product/[slug]/page.tsx';
  for(const canonicalRequest of [false,true]){
-  let checks=0;const reads=[];const query={select(){return this},eq(){return this},returns(){return this},maybeSingle:async()=>({data:{id:'bulk-product',is_bulk_order:true}})};
-  const page=load(file,pageMocks(file,{'@/lib/product-platform-query':{readWithGamingPlatforms:async(query,fields)=>query(fields)},'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;throw Error('KYB required')}},'@/lib/supabase/server':{createClient:async()=>({from:table=>{reads.push(table);return query}})}}));
+  let checks=0;const reads=[];const query={select(){return this},eq(){return this},returns(){return this},maybeSingle:async()=>({data:{id:'bulk-product',is_bulk_order:true,categories:{name:'Bulk',slug:'bulk',public_id:1}}})};
+  const page=load(file,pageMocks(file,{'next/cache':{unstable_cache:f=>f},'@/lib/product-platform-query':{readWithGamingPlatforms:async(query,fields)=>query(fields)},'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;throw Error('KYB required')}},'@/lib/supabase/admin':{createAdminClient:()=>({from:table=>{reads.push(table);return query}})}}));
   await assert.rejects(page.renderProductPage({slug:'bulk-product',searchParams:Promise.resolve({}),canonicalRequest}),/KYB required/);assert.equal(checks,1);assert.deepEqual(reads,['products']);
  }
 });
@@ -135,7 +135,7 @@ test('Verified business customers can use the retail dashboard; signed-out custo
   const db={from:table=>{const q=new Proxy({}, {get:(_,name)=>name==='then'?resolve=>resolve({data:table==='customer_wallets'?{balance:71,currency:'USD'}:[],count:0,error:null}):(...args)=>{calls.push([table,name,...args]);return q;}});return q;}};
   const page=load(file,pageMocks(file,{
    'react/jsx-runtime':require('react/jsx-runtime'),
-   './Dashboard.module.css':{default:{}},
+   './Dashboard.module.css':{default:{}},'./DashboardView':{default:'main'},
    'next/navigation':{redirect:path=>{throw Error('REDIRECT:'+path)}},
    '@/lib/business-verification-data':{businessApplication:async()=>({status:'APPROVED'})},
    '@/lib/supabase/server':{createClient:async()=>({...db,auth:{getUser:async()=>({data:{user:signedIn?{id:'u1',email:'buyer@example.com',email_confirmed_at:'2026-09-01',user_metadata:{}}:null}})}})},

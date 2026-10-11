@@ -86,3 +86,19 @@ export async function approveBusinessApiIps(form:FormData) {
     return {success:ips.length?"Approved IPs saved. Keys only work from their bound IP while it remains approved.":"All IP approvals removed. Customer API access is blocked."};
   } catch(error) { return {error:error instanceof Error?error.message:"Unable to save IP approvals."}; }
 }
+
+export async function setBusinessBankTransferAccess(form: FormData) {
+  const admin = await requireBusinessAdmin();
+  const userId = String(form.get("user_id") ?? "");
+  const enabled = form.get("enabled"), revision = Number(form.get("revision"));
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(userId) || !["true", "false"].includes(String(enabled)) || !Number.isSafeInteger(revision) || revision < 1)
+    return { error: "Refresh the customer details and try again." };
+  const result = await createAdminClient().rpc("set_business_bank_transfer_access", { p_admin: admin.id, p_user: userId, p_enabled: enabled === "true", p_revision: revision });
+  if (result.error) return { error: result.error.code === "P0001" ? result.error.message : "Unable to save bank-transfer access. Check the database update is installed." };
+  revalidatePath(`/admin/business-verification/${userId}`);
+  revalidatePath("/admin/business-verification");
+  revalidatePath("/account/business", "layout");
+  revalidatePath("/account/portal/business", "layout");
+  revalidatePath("/account/portal/wallet");
+  return { success: `Direct Bank Transfer ${enabled === "true" ? "enabled" : "disabled"}.`, revision: Number(result.data) };
+}

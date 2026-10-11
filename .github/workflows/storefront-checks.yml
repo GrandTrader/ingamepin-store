@@ -17,3 +17,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:storefront
+      - run: npm run test:business-bank
+      - run: npm run test:business-discounts

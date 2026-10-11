@@ -21,6 +21,7 @@ type OrderStatusCounts = Record<(typeof orderStatuses)[number]["key"], number>;
 const links = [
   { label: "Overview", href: "/admin", icon: "OV" },
   { label: "Products", href: "/admin/products", icon: "PR" },
+  { label: "B2B Product Catalog", href: "/admin/b2b-products", icon: "B2B" },
   { label: "Bulk Product Import", href: "/admin/products/bulk-import", icon: "BI" },
   { label: "Sellers", href: "/admin/sellers", icon: "SE" },
   { label: "Definite Play", href: "/admin/definiteplay", icon: "DP" },
@@ -52,6 +53,7 @@ const menuGroups = [
     "paths": [
       "/admin/products",
       "/admin/products/bulk-import",
+      "/admin/b2b-products",
       "/admin/categories",
       "/admin/definiteplay",
     ]

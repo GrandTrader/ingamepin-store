@@ -28,7 +28,7 @@ export const bankFields = [
   ["branch_address", "Branch name and full address"], ["ifsc", "IFSC"], ["swift", "SWIFT / BIC"],
   ["routing_instructions", "SBI-confirmed USD correspondent bank / routing instructions"],
 ] as const;
-export type BusinessApplication = { user_id: string; status: string; details: Record<string,string>; documents: Record<string,string>; revision: number; review_note: string | null; submitted_at: string };
+export type BusinessApplication = { user_id: string; status: string; details: Record<string,string>; documents: Record<string,string>; revision: number; bank_transfer_enabled?: boolean; review_note: string | null; submitted_at: string };
 export type BusinessDeposit = { id: string; user_id: string; amount_usd: number; sender_name: string; customer_reference: string; receipt_path: string; status: string; credited_usd: number | null; note: string | null; created_at: string; invoice_id?: string | null };
 export function parseBusinessDetails(form: FormData) {
   const details: Record<string,string> = {};

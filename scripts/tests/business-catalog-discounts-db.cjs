@@ -1,0 +1,90 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const {PGlite}=require('@electric-sql/pglite');
+(async()=>{const db=new PGlite();try{
+ const source=fs.readFileSync('scripts/tests/portal-wallet-db.cjs','utf8');
+ const start=source.indexOf(' const fixture='),end=source.indexOf(' const before=await counts();const quote=');
+ assert(start>0&&end>start);
+ const run=new (Object.getPrototypeOf(async function(){}).constructor)('db','fs','assert','version',source.slice(start,end)+String.raw`
+ {
+  const one=async(sql,args=[]) => (await db.query(sql,args)).rows[0];
+  await db.exec('alter table products add is_preorder_only boolean not null default false;alter table auth.users add deleted_at timestamptz;');
+  await db.exec(fs.readFileSync('supabase/migrations/20261009_010000_expiring_product_discounts.sql','utf8'));
+  const migration=fs.readFileSync('supabase/migrations/20261011_170000_business_catalog_discounts.sql','utf8');
+  const baseline=await counts();
+  const retailDefinition=(await one("select pg_get_functiondef('create_store_order(text,text,text,text,jsonb,text)'::regprocedure) src")).src;
+  await db.exec(migration);await db.exec(migration);
+  assert.deepEqual(await counts(),baseline,'Installation does not create purchases or change wallets');
+  assert.equal((await one("select pg_get_functiondef('create_store_order(text,text,text,text,jsonb,text)'::regprocedure) src")).src,retailDefinition,'Retail checkout definition is untouched');
+  const find=async(email,admin=buyer)=>(await db.query('select * from find_business_discount_customer($1,$2)',[admin,email])).rows;
+  assert.equal((await find(' BUYER@EXAMPLE.COM '))[0].user_id,buyer);
+  assert.equal((await find('absent@example.com')).length,0);
+  await assert.rejects(find('buyer@example.com',other),/Administrator/);
+  const save=async(changes,email='',customer=null,admin=buyer)=>db.query('select save_business_catalog_discounts($1,$2,$3,$4) result',[admin,email,customer,JSON.stringify(changes)]);
+  const change=(percent,revision=null,productId=product)=>({productId,percent,revision});
+  const revision=async(customer=null,p=product)=>(await one(customer?'select revision from business_customer_product_discounts where product_id=$1 and user_id=$2':'select revision from business_product_discounts where product_id=$1',customer?[p,customer]:[p]))?.revision??null;
+  const pct=async(user=buyer,p=product)=>Number((await one('select business_discount_percent($1,$2) pct',[p,user])).pct);
+  assert.equal(await pct(),10,'Existing personal discount still applies');
+  await assert.rejects(save([change(20)],'',null,other),/Administrator/);
+  for(const value of [-1,100,1.234,null,'20'])await assert.rejects(save([change(value)]),/Discount/);
+  await assert.rejects(save([]),/Select/);
+  await assert.rejects(save([change(20),change(30)]),/Duplicate/);
+  await assert.rejects(save([change(20)],'missing@example.com',buyer),/not registered/);
+  await assert.rejects(save([change(20)],'buyer@example.com',other),/account changed/);
+  await assert.rejects(save([change(20)],'',buyer),/Load/);
+  await save([change(20)]);assert.equal(await pct(),20);assert.equal(await pct(other),20);
+  await assert.rejects(save([change(25)]),/settings changed/);
+  await save([change(30)],' BUYER@EXAMPLE.COM ',buyer);
+  assert.equal(await pct(),30);assert.equal(await pct(other),20,'No customer discount leaks to other users');
+  const mapped=(await db.query('select * from get_business_customer_discounts($1,$2)',[buyer,[product]])).rows;
+  assert.equal(Number(mapped[0].discount_percent),30);
+  assert.equal(Number((await call('quote')).total),16.12,'Range quotes use 30% plus the existing wallet fee');
+  assert.deepEqual(await counts(),baseline,'Quotes do not reserve stock or debit');
+  const customerRevision=await revision(buyer);
+  await save([change(0,customerRevision)],'buyer@example.com',buyer);
+  assert.equal(await pct(),20,'Clearing customer rule falls back to general B2B rule');
+  await db.query('update customer_product_discounts set discount_percent=35');assert.equal(await pct(),35,'Larger existing personal discount is preserved');
+  await db.query('update customer_product_discounts set discount_percent=10');
+  await db.query('select save_product_promotions($1,$2,null,$3)',[product,buyer,JSON.stringify([{optionId:null,percent:40,endsAt:new Date(Date.now()+86400000).toISOString()}])]);
+  assert.equal(Number((await call('quote')).total),13.96,'40% sale wins over 20% B2B; no stacking');
+  await save([change(50,await revision(buyer))],'buyer@example.com',buyer);
+  const quote=await call('quote');assert.equal(Number(quote.total),11.8,'50% B2B wins over 40% sale; no stacking');
+  assert.equal(Number(quote.items[0].lineTotal),10.8);assert.equal(Number(quote.items[0].unitPrice),5.4);
+  // A separately selected product is not altered by later saves to another product.
+  const p2=id(100);
+  await db.query("insert into products(id,name,status,is_bulk_order,minimum_quantity,maximum_quantity,business_enabled,retail_enabled) values($1,'Second card','ACTIVE',false,1,10,true,true)",[p2]);
+  await save([change(12,null,p2)],'buyer@example.com',buyer);
+  await save([change(45,await revision(buyer))],'buyer@example.com',buyer);
+  assert.equal(await pct(buyer,p2),12);
+  const rev1=await revision(buyer),rev2=await revision(buyer,p2);
+  await assert.rejects(save([change(5,rev1),change(5,null,p2)],'buyer@example.com',buyer),/settings changed/);
+  assert.equal(await pct(),45,'Later error rolls back whole batch');assert.equal(await revision(buyer),rev1);assert.equal(await revision(buyer,p2),rev2);
+  await assert.rejects(call('confirm',33,quote.total),/price changed/);
+  assert.deepEqual(await counts(),baseline,'Changed-price confirmation cannot charge a wallet');
+  const current=await call('quote');const paid=await call('confirm',34,current.total);
+  assert.equal(Number(current.total),12.88);assert.equal(Number((await counts()).balance),87.12);
+  assert.equal((await one('select sales_channel from orders where id=$1',[paid.orderId])).sales_channel,'BUSINESS');
+  await save([change(0,await revision(buyer))],'buyer@example.com',buyer);
+  assert.equal((await call('confirm',34,current.total)).orderId,paid.orderId,'Paid replay preserves original discount');
+  // Fixed options receive exactly the same discount treatment as range options.
+  await db.query("insert into gift_card_codes(product_id,product_option_id,code,status,denomination) values($1,$2,'B2B-DISCOUNT-A','AVAILABLE',10),($1,$2,'B2B-DISCOUNT-B','AVAILABLE',10)",[product,id(2)]);
+  await save([change(50,await revision(buyer))],'buyer@example.com',buyer);
+  assert.equal(Number((await call('quote',35,null,[{productOptionId:id(2),quantity:2}])).total),11);
+  assert.equal(Number((await one('select selling_price from product_options where id=$1',[id(2)])).selling_price),10);
+  await db.exec('begin');
+  const retail=(await one("select create_business_checked_order('Buyer','buyer@example.com','','wallet',$1,null,$2) result",[JSON.stringify([{productOptionId:option,quantity:2,customValue:1000}]),buyer])).result;
+  assert.equal(Number((await one('select total from orders where id=$1',[retail.id])).total),12.96,'Retail gets only its public sale, not the B2B percentage');
+  await db.exec('rollback');
+  await db.query('update products set business_enabled=false where id=$1',[p2]);await assert.rejects(save([change(5,rev2,p2)],'buyer@example.com',buyer),/unavailable/);
+  await db.query('update products set business_enabled=true,is_preorder_only=true where id=$1',[p2]);await assert.rejects(save([change(5,rev2,p2)],'buyer@example.com',buyer),/unavailable/);
+  await db.query('insert into seller_product_submissions values($1)',[product]);assert.equal(await pct(),0);await assert.rejects(save([change(5,await revision())]),/Seller-managed/);
+  for(const role of ['anon','authenticated']){
+    for(const table of ['business_product_discounts','business_customer_product_discounts'])assert.equal((await one('select has_table_privilege($1,$2,\'SELECT\') allowed',[role,table])).allowed,false);
+    for(const sig of ['save_business_catalog_discounts(uuid,text,uuid,jsonb)','find_business_discount_customer(uuid,text)','get_business_customer_discounts(uuid,uuid[])','business_discount_percent(uuid,uuid)'])assert.equal((await one('select has_function_privilege($1,$2,\'EXECUTE\') allowed',[role,sig])).allowed,false);
+  }
+  const installed=(await one("select pg_get_functiondef('portal_wallet_checkout(uuid,uuid,text,jsonb,text,numeric,text)'::regprocedure) src")).src;
+  assert.equal(installed.split('/* business-catalog-discounts-v1 */').length,3);
+  console.log('PASS: general/email-selected discounts; exact registered identity; non-stacking; retail isolation; fixed/range quotes and payment; stale quote rollback; paid replay; stale batch rollback; permissions; migration idempotence.');
+ }
+ `);
+ await run(db,fs,assert,'seller');
+}finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

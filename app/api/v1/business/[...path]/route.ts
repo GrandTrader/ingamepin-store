@@ -1,3 +1,4 @@
+import { businessCatalogDiscounts } from "@/lib/business-catalog-discounts";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
 import { authorizeBusinessApi, businessApiJson } from "@/lib/business-api-auth";
@@ -33,17 +34,14 @@ export async function GET(request: NextRequest, context: Context) {
       let query = db.from("products").select("id,name,region,currency,image_url,delivery_type,minimum_quantity,maximum_quantity,is_bulk_order,product_type,allows_player_id_topup,product_customer_fields(id,label,placeholder,field_type,is_required,sort_order),product_options(id,option_name,denomination,denomination_currency,selling_price,is_active,is_in_stock,is_custom_value,minimum_quantity,maximum_quantity)",{count:"exact"}).eq("status","ACTIVE").eq("business_enabled",true).eq("is_preorder_only",false);
       const region = request.nextUrl.searchParams.get("region");
       if (region) query = query.eq("region",region.slice(0,100));
-      const [products,discounts] = await Promise.all([
-        query.order("id").range((page-1)*20,page*20-1),
-        db.from("customer_product_discounts").select("product_id,discount_percent").eq("user_id",user.id).eq("is_active",true),
-      ]);
-      if (products.error || discounts.error) throw Error("Catalogue unavailable.");
-      const ranges = await productRanges(products.data.map(p=>p.id));
-      const promotions=await productPromotions(products.data.map(p=>p.id));
+      const products = await query.order("id").range((page-1)*20,page*20-1);
+      if (products.error) throw Error("Catalogue unavailable.");
+      const ids=products.data.map(p=>p.id);
+      const [ranges,promotions,discounts]=await Promise.all([productRanges(ids),productPromotions(ids),businessCatalogDiscounts(user.id,ids)]);
       if (!ranges.ready) throw Error("Product ranges unavailable.");
       const data = products.data.map(product=>{
         const { product_options, product_customer_fields, ...details } = product;
-        const discountPercent = Math.max(0,Math.min(100,Number(discounts.data.find(d=>d.product_id===product.id)?.discount_percent ?? 0)));
+        const discountPercent = Math.max(0,Math.min(100,Number(discounts[product.id] ?? 0)));
         const saleFor=(optionId:string)=>activePromotion(promotions.rows.find(p=>p.product_id===product.id)?.rules,optionId);
         return { ...details, customerFields:product_customer_fields.slice().sort((a,b)=>a.sort_order-b.sort_order), requiresDeliveryDetails: product_customer_fields.length>0 || product.allows_player_id_topup || product.product_type==="GAME_TOPUP", priceCurrency:"USD", discountPercent,
           options:product_options.filter(o=>o.is_active).map(option=>({ ...option, unitPrice:Number(option.selling_price), salePercent:saleFor(option.id)?.percent??0, saleEndsAt:saleFor(option.id)?.endsAt??null, effectiveDiscountPercent:Math.max(saleFor(option.id)?.percent??0,discountPercent), payableUnitPrice:option.is_custom_value?null:promotionLineTotal(Number(option.selling_price),saleFor(option.id)?.percent??0,discountPercent), range:ranges.ranges.find(r=>r.enabled&&r.option_id===option.id) ? (()=>{const r=ranges.ranges.find(r=>r.enabled&&r.option_id===option.id)!;return {currency:r.currency,minimum:r.minimum,maximum:r.maximum,step:r.step,priceBasis:r.price_basis,priceUsd:r.price_usd,rounding:r.price_rounding??"NEAREST"};})() : null })),
