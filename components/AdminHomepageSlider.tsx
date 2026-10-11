@@ -153,7 +153,7 @@ export default function AdminHomepageSlider({
                   <img
                     src={slide.desktop_image_url}
                     alt=""
-                    className="aspect-[1920/700] w-28 rounded-lg bg-slate-100 object-fill"
+                    className="aspect-[1920/700] w-28 rounded-lg bg-slate-100 object-contain"
                   />
 
                   <span className="min-w-0">
@@ -233,8 +233,8 @@ export default function AdminHomepageSlider({
             {draft.id ? "Edit slide" : "Add new slide"}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Desktop image and Buy Now button only. Images automatically fill
-            the fixed slider frame.
+            The selected banner appears in the centre, with the previous and next
+            banners visible on each side. The whole banner opens its product link.
           </p>
 
           <form action={saveSlide} className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -267,6 +267,7 @@ export default function AdminHomepageSlider({
               fileName="desktop_image_file"
               defaultValue={draft.desktop_image_url}
               variant="slide"
+              helpText="Use a wide banner, ideally 1920 × 700 pixels. Your full image is displayed without stretching. Uploaded images must be smaller than 10 MB."
               required
             />
 
@@ -318,7 +319,7 @@ export default function AdminHomepageSlider({
 
             <div className="sm:col-span-2">
               <p className="mb-2 text-sm font-bold text-slate-700">
-                Fixed desktop frame preview
+                Centre banner preview
               </p>
               <div className="relative aspect-[1920/700] w-full overflow-hidden rounded-2xl bg-slate-900">
                 {draft.desktop_image_url ? (
@@ -326,7 +327,7 @@ export default function AdminHomepageSlider({
                   <img
                     src={draft.desktop_image_url}
                     alt=""
-                    className="absolute inset-0 h-full w-full object-fill"
+                    className="absolute inset-0 h-full w-full object-contain"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-slate-400">

@@ -289,7 +289,7 @@ export default async function Home() {
 
   return (
     <>
-    <MobileStorefront products={products} popularIds={popularProducts.map(p => p.id)} newestIds={newlyAddedProducts.map(p => p.id)} categories={categories} />
+    <MobileStorefront products={products} popularIds={popularProducts.map(p => p.id)} newestIds={newlyAddedProducts.map(p => p.id)} categories={categories} heroSlides={homepageData.sliderSettings?.is_enabled ? heroSlides : []} heroAutoplayMs={homepageData.sliderSettings?.autoplay_ms} />
     <div className="hidden sm:block market-home min-h-screen bg-[#f3f4f6] text-[#172033]">
       {preorderPopup && (
         <PreorderPopup popup={preorderPopup} desktopOnly />

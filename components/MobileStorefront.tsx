@@ -12,9 +12,10 @@ import CountryFlag from "./CountryFlag";
 import { countryCode } from "@/lib/country-flag";
 import { useStorePreferences, type StoreCurrency, type StoreLanguage } from "./StorePreferences";
 import styles from "./MobileStorefront.module.css";
+import HeroSlider, { type HeroSlide } from "./HeroSlider";
 
 type Category = { id: string; name: string; short_name: string | null; slug: string; image_url: string | null };
-type Props = { products: BrowseProduct[]; popularIds: string[]; newestIds: string[]; categories: Category[] };
+type Props = { products: BrowseProduct[]; popularIds: string[]; newestIds: string[]; categories: Category[]; heroSlides?: HeroSlide[]; heroAutoplayMs?: number };
 type IconName = "home" | "browse" | "cart" | "orders" | "account" | "bell" | "wallet" | "arrow" | "more";
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, string> = {
@@ -53,7 +54,7 @@ function MobileProduct({ product }: { product: BrowseProduct }) {
     <div className={styles.priceRow}><div><small>{language === "ru" ? "От" : "From"}</small><strong>{formatPrice(offer.price)}</strong>{discount > 0 && <del>{formatPrice(offer.regular)}</del>}</div><span className={styles.productArrow} aria-label={unavailable ? "View unavailable product" : "Choose denomination"}><Icon name="arrow" /></span></div>
   </Link>;
 }
-export default function MobileStorefront({ products, popularIds, newestIds, categories }: Props) {
+export default function MobileStorefront({ products, popularIds, newestIds, categories, heroSlides = [], heroAutoplayMs }: Props) {
   const { currency, setCurrency, language, setLanguage, formatPrice } = useStorePreferences();
   const [tab, setTab] = useState("Popular");
   const [query, setQuery] = useState("");
@@ -108,6 +109,7 @@ export default function MobileStorefront({ products, popularIds, newestIds, cate
     </header>
     <div className={styles.content}>
       {!query && <>
+        <HeroSlider slides={heroSlides} autoplayMs={heroAutoplayMs} />
         <section id="mobile-categories"><div className={styles.sectionHeading}><h2>Browse categories</h2><button onClick={() => setAllCategories(!allCategories)} aria-expanded={allCategories}>{allCategories ? "Show less" : "See all"} ›</button></div><div className={styles.categories}>{(allCategories ? quickCategories : quickCategories.slice(0,4)).map(c => <Link key={c.id} href={`/category/${c.slug}`}><span>{c.image_url ? <img src={c.image_url} alt="" loading="lazy" /> : <Icon name="browse" />}</span><b>{/playstation/i.test(c.name) ? "PlayStation" : /apple/i.test(c.name) ? "Apple" : /steam/i.test(c.name) ? "Steam" : /xbox/i.test(c.name) ? "Xbox" : c.short_name ?? c.name}</b></Link>)}{!allCategories && <button onClick={() => setAllCategories(true)}><span><Icon name="more" /></span><b>More</b></button>}</div></section>
       </>}
       <section><div className={styles.tabs} role="tablist" aria-label="Product collections" onKeyDown={event => {
