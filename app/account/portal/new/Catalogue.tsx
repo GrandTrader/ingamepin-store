@@ -1,6 +1,8 @@
 "use client";
 import type {ProductRange} from "@/lib/product-range";
 import Image from "next/image";
+import CountryFlag from "@/components/CountryFlag";
+import { businessCatalogueRows } from "@/lib/business-catalogue-rows";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { portalPage, type PortalProduct } from "@/lib/business-portal";
 import ProductTable from "./ProductTable";
@@ -9,7 +11,6 @@ import s from "../Portal.module.css";
 export type CatalogueProduct=PortalProduct & {category_id:string|null};
 export type CatalogueFilters={q?:string;region?:string;category?:string;page?:string;popular?:string};
 type Category={id:string;name:string;image_url:string|null};
-const regionFlags:Record<string,string>={"United States":"us","United States of America":"us",USA:"us",US:"us","United Kingdom":"gb",UK:"gb",India:"in",Canada:"ca",Australia:"au",Germany:"de",France:"fr",Japan:"jp","Saudi Arabia":"sa","United Arab Emirates":"ae",UAE:"ae",Turkey:"tr","Türkiye":"tr","European Union":"eu",Europe:"eu",EU:"eu","Hong Kong":"hk",Italy:"it",Spain:"es",Singapore:"sg"};
 function filterUrl(filters:CatalogueFilters){
   const params=new URLSearchParams();
   for(const [key,value] of Object.entries(filters))if(value)params.set(key,value);
@@ -53,10 +54,11 @@ export default function Catalogue({userId,products,categories,discounts,initialF
     if(filters.popular==="yes")rows.sort((a,b)=>(b.sold_count??0)-(a.sold_count??0));
     return rows;
   },[products,filters]);
-  const totalPages=Math.max(1,Math.ceil(matching.length/20)),page=Math.min(portalPage(filters.page),totalPages);
-  const visible=useMemo(()=>matching.slice((page-1)*20,page*20),[matching,page]);
+  const rows=useMemo(()=>businessCatalogueRows(matching,ranges),[matching,ranges]);
+  const totalPages=Math.max(1,Math.ceil(rows.length/20)),page=Math.min(portalPage(filters.page),totalPages);
+  const visible=useMemo(()=>rows.slice((page-1)*20,page*20),[rows,page]);
   return <div ref={container} className={s.catalogueStable} style={{minHeight:minimumHeight||undefined}}>
-    <ProductTable userId={userId} products={visible} ranges={ranges} stockProducts={products} discounts={discounts} filters={<>
+    <ProductTable userId={userId} products={matching} rows={visible} ranges={ranges} stockProducts={products} discounts={discounts} filters={<>
       <div className={`${s.filterGroup} ${s.catalogueTabs}`}>
         <button type="button" className={s.filterChoice} aria-pressed={filters.popular!=="yes"} onClick={()=>change({popular:""})}>All products</button>
         <button type="button" className={s.filterChoice} aria-pressed={filters.popular==="yes"} onClick={()=>change({popular:"yes"})}>Popular products</button>
@@ -65,7 +67,7 @@ export default function Catalogue({userId,products,categories,discounts,initialF
         <p className={s.eyebrow}>Region</p>
         <div className={`${s.filterGroup} ${s.regionChoices}`}>
           <button type="button" className={s.filterChoice} aria-pressed={!filters.region} onClick={()=>change({region:""})}>All regions</button>
-          {regions.map(region=><button type="button" className={s.filterChoice} key={region} aria-pressed={filters.region===region} onClick={()=>change({region})}>{regionFlags[region]&&<Image className={s.flag} src={`/images/business-flags/${regionFlags[region]}.svg`} alt="" width={40} height={30}/>}<span>{region}</span></button>)}
+          {regions.map(region=><button type="button" className={s.filterChoice} key={region} aria-pressed={filters.region===region} onClick={()=>change({region})}><CountryFlag region={region} className={s.flag}/><span>{region}</span></button>)}
         </div>
         <p className={s.eyebrow}>Brand / category</p>
         <div className={`${s.filterGroup} ${s.brandChoices}`}>
@@ -80,6 +82,6 @@ export default function Catalogue({userId,products,categories,discounts,initialF
         <button className={s.button} type="submit">Search</button><button className={s.button} type="button" onClick={()=>change({},true)}>Reset</button>
       </form>
     </>}/>
-    <div className={s.pagination}><span>{matching.length} records · Page {page} of {totalPages}</span><div className={s.actions}>{page>1&&<button className={s.button} onClick={()=>change({page:String(page-1)})}>← Previous</button>}{page<totalPages&&<button className={s.button} onClick={()=>change({page:String(page+1)})}>Next →</button>}</div></div>
+    <div className={s.pagination}><span>{rows.length} options · Page {page} of {totalPages}</span><div className={s.actions}>{page>1&&<button className={s.button} onClick={()=>change({page:String(page-1)})}>← Previous</button>}{page<totalPages&&<button className={s.button} onClick={()=>change({page:String(page+1)})}>Next →</button>}</div></div>
   </div>;
 }
