@@ -5,11 +5,12 @@ const ts=require("typescript");
 const vm=require("node:vm");
 const product="11111111-1111-4111-8111-111111111111";
 const option="22222222-2222-4222-8222-222222222222";
-function setup({denied=false,exists=true,enabled=false}={}) {
+function setup({denied=false,exists=true,enabled=false,fkwallet=false,lookupFailed=false}={}) {
   const calls=[];
   const chain={select(){return this;},eq(k,v){calls.push([k,v]);return this;},async maybeSingle(){return {data:exists?{id:option}:null};}};
   const exports={};
   const dependencies={
+    "@/lib/fkwallet-product-supplier":{getFKWalletProductImport:async()=>{calls.push(["supplier-check"]);if(lookupFailed)throw Error("Supplier lookup failed");return fkwallet?{product_id:product}:null;}},
     "@/lib/definiteplay-fulfillment":{supplierProductIds:async()=>new Set(enabled?[product]:[])},
     "next/cache":{revalidatePath:p=>calls.push(["revalidate",p])},
     "@/lib/definiteplay-admin":{
@@ -56,4 +57,12 @@ test("enabled supplier links cannot be changed",async()=>{
   const {api,calls}=setup({enabled:true});
   assert.ok((await api.saveDefinitePlayMapping(product,option,"APPLE")).error);
   assert.equal(calls.filter(c=>c[0]==="relay").length,0);
+});
+test("FKWallet imports cannot be linked to Definite Play even by a direct action call",async()=>{
+  for(const config of [{fkwallet:true},{lookupFailed:true}]) {
+    const {api,calls}=setup(config);
+    assert.ok((await api.saveDefinitePlayMapping(product,option,"APPLE")).error);
+    assert.ok((await api.saveDefinitePlayMapping(product,option,null)).error);
+    assert.equal(calls.filter(c=>c[0]==="relay").length,0);
+  }
 });

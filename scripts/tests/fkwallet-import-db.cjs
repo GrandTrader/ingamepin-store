@@ -1,0 +1,54 @@
+const {PGlite}=require('@electric-sql/pglite'),fs=require('node:fs'),assert=require('node:assert/strict');
+(async()=>{
+ const db=new PGlite();
+ const admin='11111111-1111-4111-8111-111111111111',category='33333333-3333-4333-8333-333333333333',id='22222222-2222-4222-8222-222222222222',second='44444444-4444-4444-8444-444444444444';
+ await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);insert into auth.users values('${admin}');create table admin_users(user_id uuid primary key references auth.users);insert into admin_users values('${admin}');
+ create table categories(id uuid primary key,name text,category_type text,is_active boolean);insert into categories values('${category}','Apple','GIFT_CARD',true);
+ create table products(id uuid primary key,slug text unique,category_id uuid,name text,name_ru text,description text,description_ru text,region text,product_type text,delivery_type text,is_bulk_order boolean,currency text,price numeric,stock_quantity integer,status text,is_featured boolean,allows_fixed_values boolean,allows_custom_value boolean,allows_player_id_topup boolean,allows_gaming_voucher boolean,minimum_quantity integer,maximum_quantity integer,sold_count integer);
+ create table product_options(id uuid primary key,product_id uuid references products on delete cascade,category_id uuid,option_type text,option_name text,denomination numeric,denomination_currency text,selling_price numeric,stock_quantity integer,is_active boolean,is_in_stock boolean,is_custom_value boolean,sort_order integer);
+ create table product_customer_fields(id uuid primary key default gen_random_uuid(),product_id uuid references products on delete cascade,label text,placeholder text,field_type text,is_required boolean,sort_order integer);
+ create function fixture_fields() returns trigger language plpgsql as $$begin insert into product_customer_fields(product_id,label) values(NEW.id,'Login Password');return NEW;end$$;
+ create trigger fixture_fields after insert on products for each row execute function fixture_fields();`);
+ await db.exec(fs.readFileSync('supabase/migrations/20261013_150000_fkwallet_import.sql','utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20261013_160000_fkwallet_customer_fields.sql','utf8'));
+ const option={supplierId:17,name:'Apple 500 RUB',denomination:'500',currency:'RUB',optionType:'CURRENCY',price:'8.19',supplierCost:'624',supplierCurrency:'RUB',supplierSnapshot:{priceType:'FIXED',productType:'DEFAULT',fields:[]}};
+ const draft={title:'Apple — Russia',titleRu:'',description:'Test only',descriptionRu:'',region:'Russia',markup:'10',exchangeRate:'83.76',options:[option]};
+ const call=(productId=id,value=draft)=>db.query('select import_fkwallet_draft($1,$2,$3,3,$4,$5::jsonb) result',[productId,category,'a'.repeat(64),admin,JSON.stringify(value)]);
+ await db.exec('set role service_role');
+ assert.equal((await call()).rows[0].result.replayed,false);
+ assert.equal((await call()).rows[0].result.replayed,true);
+ await assert.rejects(call(second),/unique/);
+ // A new option inserted before the duplicate must also roll back.
+ await assert.rejects(call(second,{...draft,options:[{...option,supplierId:18},option]}),/unique/);
+ await assert.rejects(call(second,{...draft,options:[{...option,supplierId:19,price:'NaN'}]}));
+ await assert.rejects(call(second,{...draft,options:[{...option,supplierId:19,supplierSnapshot:{fields:[{key:'Input1'}]}}]}));
+ await db.exec('reset role');
+ const products=(await db.query('select * from products')).rows;assert.equal(products.length,1);assert.equal(products[0].status,'DRAFT');assert.equal(products[0].stock_quantity,0);assert.equal(products[0].delivery_type,'MANUAL');assert.equal(products[0].price,'8.19');
+ assert.equal((await db.query('select * from product_options')).rows.length,1);
+ assert.equal((await db.query('select * from fkwallet_product_links')).rows.length,1);
+ assert.equal((await db.query('select * from product_customer_fields')).rows.length,0,'digital codes never inherit account credential fields');
+ const username={key:'Input1',label:'Username',placeholder:'@vanya777',fieldType:'TEXT',isRequired:true};
+ const telegram={...draft,title:'Telegram Premium',region:'Global',customerFields:[username],options:[9,10,11].map(supplierId=>({...option,supplierId,name:'Telegram plan '+supplierId,optionType:'OTHER',denomination:'1',currency:'USD',supplierSnapshot:{priceType:'FIXED',productType:'DEFAULT',fields:[{key:'Input1',label:'Username',type:'text',values:[],hasChoices:false}]}}))};
+ await db.exec('set role service_role');
+ await assert.rejects(call(second,{...telegram,customerFields:[]}),/Invalid supplier option/);
+ await assert.rejects(call(second,{...telegram,customerFields:[{...username,key:'WrongKey'}]}),/Unsupported supplier customer field/);
+ await assert.rejects(call(second,{...telegram,customerFields:[username,username]}),/Duplicate customer fields/);
+ await assert.rejects(call(second,{...telegram,customerFields:[{...username,isRequired:false}]}),/Invalid customer field/);
+ assert.equal((await call(second,telegram)).rows[0].result.replayed,false);
+ assert.equal((await call(second,telegram)).rows[0].result.replayed,true);
+ await db.exec('reset role');
+ const fields=(await db.query('select * from product_customer_fields where product_id=$1',[second])).rows;
+ assert.equal(fields.length,1);assert.equal(fields[0].label,'Username');assert.equal(fields[0].is_required,true);assert.equal(fields[0].placeholder,'@vanya777');assert.equal(fields[0].field_type,'TEXT');
+ const mapping=(await db.query('select customer_fields from fkwallet_imports where product_id=$1',[second])).rows[0].customer_fields;
+ assert.equal(mapping.length,1);assert.equal(mapping[0].key,'Input1');assert.equal(mapping[0].fieldId,fields[0].id);
+ assert.equal((await db.query('select count(*)::int n from product_options where product_id=$1',[second])).rows[0].n,3);
+ assert.equal((await db.query('select count(*)::int n from fkwallet_product_links where product_id=$1',[second])).rows[0].n,3);
+ for(const role of ['anon','authenticated']){
+  await db.exec('set role '+role);
+  await assert.rejects(call(second),/permission denied/);
+  for(const table of ['fkwallet_imports','fkwallet_product_links'])await assert.rejects(db.query('select * from '+table),/permission denied/);
+  await db.exec('reset role');
+ }
+ assert.equal((await db.query("select count(*)::int n from pg_class where relname in ('fkwallet_imports','fkwallet_product_links') and relrowsecurity")).rows[0].n,2);
+ await db.close();console.log('PASS: Telegram plans and recipient mapping, schema validation, atomic drafts, duplicate/retry protection, rollback, zero stock, private supplier links and RPC');
+})().catch(e=>{console.error(e);process.exitCode=1});

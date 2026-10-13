@@ -4,12 +4,14 @@ import { requireDefinitePlayAdmin, validProductId } from "@/lib/definiteplay-adm
 import { createAdminClient } from "@/lib/supabase/admin";
 import { supplierDeliveryEnabled } from "@/lib/definiteplay-fulfillment";
 import { getDefinitePlayMappings, getDefinitePlayStatus } from "@/lib/definiteplay-relay";
+import { getFKWalletProductImport } from "@/lib/fkwallet-product-supplier";
 
 export async function configureSupplierDelivery(productId: string, enabled: boolean): Promise<{error?: string; success?: boolean}> {
   await requireDefinitePlayAdmin();
   if (!validProductId(productId) || typeof enabled !== "boolean") return {error:"Invalid product."};
   if (enabled && !supplierDeliveryEnabled()) return {error:"Supplier delivery setup must be completed first."};
   try {
+    if (await getFKWalletProductImport(productId)) return {error:"This product is linked to FKWallet. Definite Play delivery cannot be enabled for it."};
     const mappings = enabled ? (await getDefinitePlayMappings(productId)).mappings : [];
     if (enabled) {
       const status = await getDefinitePlayStatus();

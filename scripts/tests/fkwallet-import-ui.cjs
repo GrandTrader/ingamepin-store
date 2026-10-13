@@ -1,0 +1,50 @@
+// Real import component with fake actions. No live products or supplier purchases.
+const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict'),ts=require('typescript');
+const out=path.join(process.cwd(),'tmp/fkwallet-import-ui');fs.mkdirSync(out,{recursive:true});
+const write=(file,text)=>fs.writeFileSync(path.join(out,file),text);
+for(const [file,source] of [['Form.js','app/admin/fkwallet/import/FKImportForm.tsx'],['helper.js','lib/fkwallet-import.ts']])write(file,ts.transpileModule(fs.readFileSync(source,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText);
+write('actions.js',`exports.importFKProduct=async input=>{window.calls.push(input);await new Promise(r=>setTimeout(r,100));return window.failImport?{error:'A supplier price changed. Reload the import page and review the new price.'}:{productId:input.requestId}};`);
+write('Link.js',`module.exports=({children,...props})=>require('react').createElement('a',props,children);`);
+write('entry.js',`const React=require('react'),{createRoot}=require('react-dom/client'),Form=require('./Form').default;window.calls=[];const ready=new URLSearchParams(location.search).get('ready')!=='0';createRoot(document.getElementById('app')).render(React.createElement('main',{className:'mx-auto max-w-6xl p-4'},React.createElement('h1',{className:'text-3xl font-black'},'Import FKWallet product'),React.createElement(Form,{requestId:'22222222-2222-4222-8222-222222222222',connectionId:'a'.repeat(64),supplierCategoryId:3,databaseReady:ready,categories:[{id:'33333333-3333-4333-8333-333333333333',name:'Apple Store iTunes'}],items:new URLSearchParams(location.search).has('telegram')?[3,6,12].map((months,i)=>({id:9+i,name:'Telegram Premium for '+months+' months',price:1108+i*500,currency:'RUB',description:'Telegram subscription.',help:'Enter your Telegram nickname.',fields:[{key:'Input1',label:'Username',placeholder:'@vanya777',type:'text',values:[],info:[]}],params:[]})):[{id:17,name:'Apple 500 RUB',nameRu:'Apple 500 рублей',price:624,currency:'RUB',description:'<div>Digital voucher.<br>Check your account region.</div>',descriptionRu:'Цифровой код.',help:'Redeem on your own account.',fields:[],params:[]},{id:18,name:'Apple 700 RUB',price:944,currency:'RUB',description:'',help:'',fields:[],params:[]}]})));`);
+(async()=>{
+ await new Promise((resolve,reject)=>require('next/dist/compiled/webpack/webpack').webpack({mode:'development',devtool:false,entry:path.join(out,'entry.js'),resolve:{alias:{'@/lib/fkwallet-import':path.join(out,'helper.js'),'next/link':path.join(out,'Link.js')}},output:{path:out,filename:'bundle.js'}},(err,stats)=>err||stats.hasErrors()?reject(err||Error(stats.toString({all:false,errors:true}))):resolve()));
+ const cssRoot=fs.existsSync('.next/static')?'.next/static':'.next/dev/static';const css=fs.readdirSync(cssRoot,{recursive:true}).filter(p=>p.endsWith('.css')).map(p=>fs.readFileSync(path.join(cssRoot,p),'utf8')).join('\n');
+ const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'body{margin:0;font-family:Arial;background:#f8fafc}</style></head><body><div id="app"></div><script src="/bundle.js"></script></body></html>';
+ const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/bundle.js'?'text/javascript; charset=utf-8':'text/html; charset=utf-8');res.end(req.url==='/bundle.js'?fs.readFileSync(path.join(out,'bundle.js')):html)});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'C:/Users/amans/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');const browser=await chromium.launch({channel:'chrome',headless:true});
+ try{for(const width of [1280,390]){
+  const page=await browser.newPage({viewport:{width,height:1050}}),errors=[];page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));const url='http://127.0.0.1:'+server.address().port;
+  await page.goto(url);await page.getByLabel('Markup (%)',{exact:true}).waitFor();
+  assert.equal(await page.getByLabel('Markup (%)',{exact:true}).inputValue(),'');assert.equal(await page.getByRole('button',{name:'Create draft product'}).isDisabled(),true);
+  await page.getByLabel('Website category').selectOption('33333333-3333-4333-8333-333333333333');await page.getByLabel('Region',{exact:true}).fill('Russia');
+  await page.getByLabel('Product title (English)',{exact:true}).fill('Apple Wallet — Russia');
+  await page.getByLabel('1 USD = how many RUB?',{exact:true}).fill('83.76');await page.getByLabel('Markup (%)',{exact:true}).fill('10');
+  const price=page.getByLabel('Selling price for Apple 500 RUB',{exact:true});assert.equal(await price.inputValue(),'8.19');
+  await price.fill('7.99');await page.getByLabel('Markup (%)',{exact:true}).fill('20');assert.equal(await price.inputValue(),'7.99');
+  await page.getByRole('button',{name:'Apply markup to all prices'}).click();assert.equal(await price.inputValue(),'8.94');
+  await page.getByLabel('Option type',{exact:true}).first().selectOption('CURRENCY');await page.getByLabel('Card value',{exact:true}).fill('500');await page.getByLabel('Card currency',{exact:true}).fill('RUB');
+  assert(!await page.getByLabel('Description (English)',{exact:true}).inputValue().then(t=>t.includes('<div>')));
+  assert.equal(await page.getByLabel('Description (Russian, optional)',{exact:true}).inputValue(),'Цифровой код.');
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'form has no overflow at '+width);
+  await page.screenshot({path:path.join(out,'form-'+width+'.png'),fullPage:true});
+  await page.evaluate(()=>window.failImport=true);await page.getByRole('button',{name:'Create draft product'}).click();await page.getByRole('alert').waitFor();assert.equal(await price.inputValue(),'8.94');
+  await page.evaluate(()=>window.failImport=false);await page.getByRole('button',{name:'Create draft product'}).click();await page.getByRole('region',{name:'Draft created'}).waitFor();
+  const calls=await page.evaluate(()=>window.calls);assert.equal(calls.length,2);assert.equal(calls[0].requestId,calls[1].requestId);assert.equal(calls[1].options[0].denomination,'500');assert.equal(calls[1].options[0].currency,'RUB');
+  assert.match(await page.getByRole('link',{name:'Review draft'}).getAttribute('href'),/22222222-2222-4222-8222-222222222222/);
+  await page.goto(url+'?ready=0');await page.getByText('Preview is available.',{exact:false}).waitFor();await page.getByLabel('Markup (%)',{exact:true}).fill('10');await page.getByLabel('1 USD = how many RUB?',{exact:true}).fill('83.76');assert.equal(await page.getByRole('button',{name:'Create draft product'}).isDisabled(),true);
+  await page.goto(url+'?telegram=1');
+  await page.getByRole('region',{name:'Customer information for delivery'}).waitFor();
+  assert.equal(await page.getByRole('region',{name:'Customer information for delivery'}).getByText('Username',{exact:true}).count(),1);
+  await page.getByText('3 denominations selected',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Clear selection',exact:true}).click();await page.getByText('0 denominations selected',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Create draft product'}).isDisabled(),true);
+  await page.getByRole('button',{name:'Select all',exact:true}).click();
+  await page.getByLabel('Website category').selectOption('33333333-3333-4333-8333-333333333333');await page.getByLabel('Region',{exact:true}).fill('Global');
+  await page.getByLabel('Markup (%)',{exact:true}).fill('10');await page.getByLabel('1 USD = how many RUB?',{exact:true}).fill('83.76');
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Telegram form has no overflow at '+width);
+  await page.screenshot({path:path.join(out,'telegram-'+width+'.png'),fullPage:true});
+  await page.getByRole('button',{name:'Create draft product'}).click();await page.getByRole('region',{name:'Draft created'}).waitFor();
+  const telegramCall=await page.evaluate(()=>window.calls[0]);assert.equal(telegramCall.options.length,3);assert.equal(telegramCall.region,'Global');
+  assert.deepEqual(errors,[]);await page.close();console.log('PASS '+width+'px: manual markup/rate, price preview/override, denomination, safe descriptions, retries, setup gate and no overflow');
+ }}finally{await browser.close();server.close();}
+})().catch(e=>{console.error(e);process.exitCode=1});

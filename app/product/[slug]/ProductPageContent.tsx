@@ -1,0 +1,559 @@
+import { unstable_cache } from "next/cache";
+import { gameAccountDescription } from "@/lib/game-account-description";
+import { isSensitiveCustomerField } from "@/lib/sensitive-customer-fields";
+import { readWithGamingPlatforms } from "@/lib/product-platform-query";
+import ProductPlatformBadges from "@/components/ProductPlatformBadges";
+import { isGamesCategory, normalizeGamePlatforms } from "@/lib/game-platforms";
+import RangePurchaseForm from "@/components/RangePurchaseForm";
+import { productRanges } from "@/lib/product-range-data";
+import { productPromotions } from "@/lib/product-promotion-data";
+import { portalCustomer } from "@/lib/business-portal-data";
+import { hasInstantDelivery } from "@/lib/product-delivery";
+import Link from "@/components/NavigationLink";
+import { notFound, permanentRedirect } from "next/navigation";
+
+import { createAdminClient } from "@/lib/supabase/admin";
+import ProductPurchaseForm from "./ProductPurchaseForm";
+import styles from "./ProductPage.module.css";
+import { getSignedInCustomerDiscounts } from "@/lib/customer-discounts";
+import LocalizedProductText from "@/components/LocalizedProductText";
+import ProductViewTracker from "@/components/ProductViewTracker";
+import AffiliateReferralTracker from "@/components/AffiliateReferralTracker";
+import { isUnlimitedStock } from "@/lib/product-stock";
+import { getProductUrl } from "@/lib/product-url";
+import ProductDetailsTabs from "@/components/ProductDetailsTabs";
+import ProductInformation from "@/components/ProductInformation";
+import { Suspense } from "react";
+import { getPaidProductSalesForProduct } from "@/lib/product-sales";
+import LocalizedProductImage from "@/components/LocalizedProductImage";
+import ProductRegionBadge from "@/components/ProductRegionBadge";
+
+type ProductSearchParams = Promise<{ ref?: string | string[] }>;
+
+type CategoryRelation =
+  | {
+      name: string;
+      slug: string;
+      public_id: number | string;
+    }
+  | {
+      name: string;
+      slug: string;
+      public_id: number | string;
+    }[]
+  | null;
+
+type ProductRow = {
+  id: string;
+  public_id: number | string;
+  name: string;
+  name_ru: string | null;
+  slug: string;
+  description: string | null;
+  description_ru: string | null;
+  image_url: string | null;
+  image_url_ru: string | null;
+  region: string;
+  gaming_platforms?: string[];
+  currency: string;
+  badge: string | null;
+  badge_ru: string | null;
+  is_bulk_order: boolean;
+  bulk_delivery_instructions: string | null;
+  product_type: string;
+  delivery_type: string;
+  stock_source: string | null;
+  delivery_instructions: string | null;
+  allows_fixed_values: boolean;
+  allows_custom_value: boolean;
+  minimum_custom_value: number | string | null;
+  maximum_custom_value: number | string | null;
+  allows_player_id_topup: boolean;
+  allows_gaming_voucher: boolean;
+  player_id_label: string | null;
+  minimum_quantity: number;
+  maximum_quantity: number;
+  stock_quantity: number;
+  sold_count: number;
+  affiliate_enabled: boolean;
+  affiliate_commission_percent: number | string;
+  categories: CategoryRelation;
+};
+
+type ProductCustomerFieldRow = {
+  id: string;
+  label: string;
+  placeholder: string | null;
+  field_type: "TEXT" | "EMAIL" | "NUMBER" | "TEXTAREA";
+  is_required: boolean;
+};
+
+type ProductOptionRow = {
+  id: string;
+  option_name: string;
+  platform: string | null;
+  denomination: number | string | null;
+  denomination_currency: string | null;
+  selling_price: number | string;
+  stock_quantity: number;
+  is_custom_value: boolean;
+  minimum_quantity: number | null;
+  maximum_quantity: number | null;
+  is_in_stock: boolean;
+};
+
+function getCategory(category: CategoryRelation) {
+  const value = Array.isArray(category) ? category[0] : category;
+
+  return {
+    name: value?.name ?? "Digital Products",
+    slug: value?.slug ?? "all-products",
+    publicId: value?.public_id ?? 0,
+  };
+}
+
+// Public display data only. Purchase submission still reads current price/stock.
+const getPublicProduct = unstable_cache(async (slug: string, publicId: string) => {
+  const supabase = createAdminClient();
+
+  const productResult = await readWithGamingPlatforms(
+    (fields) => supabase.from("products").select(fields)
+      .eq(publicId ? "public_id" : "slug", publicId || slug)
+      .eq("status", "ACTIVE").eq("retail_enabled", true)
+      .eq("is_preorder_only", false)
+      .returns<ProductRow[]>()
+      .maybeSingle(),
+      `
+        id,
+        public_id,
+        name,
+        name_ru,
+        slug,
+        description,
+        description_ru,
+        image_url,
+        image_url_ru,
+        region,
+        gaming_platforms,
+        currency,
+        badge,
+        badge_ru,
+        is_bulk_order,
+        bulk_delivery_instructions,
+        product_type,
+        delivery_type,
+        stock_source,
+        delivery_instructions,
+        allows_fixed_values,
+        allows_custom_value,
+        minimum_custom_value,
+        maximum_custom_value,
+        allows_player_id_topup,
+        allows_gaming_voucher,
+        player_id_label,
+        minimum_quantity,
+        maximum_quantity,
+        stock_quantity,
+        sold_count,
+        affiliate_enabled,
+        affiliate_commission_percent,
+        categories (
+          name,
+          slug,
+          public_id
+        )
+      `,
+    );
+
+  if (productResult.error) {
+    throw new Error(
+      `Unable to load product: ${productResult.error.message}`,
+    );
+  }
+
+  return productResult;
+}, ["store-product-v1"], { revalidate: 30, tags: ["homepage-store-data"] });
+
+const getPublicPurchaseData = unstable_cache(async (productId: string, affiliateEnabled: boolean) => {
+  const supabase = createAdminClient();
+  const admin = supabase;
+  const [optionResult, customerFieldResult, affiliateSettingsResult, rangeData, promotions] = await Promise.all([
+    supabase
+    .from("product_options")
+    .select(
+      `
+        id,
+        option_name,
+        platform,
+        denomination,
+        denomination_currency,
+        selling_price,
+        stock_quantity,
+        is_custom_value
+        ,minimum_quantity,
+        maximum_quantity,
+        is_in_stock
+      `,
+    )
+    .eq("product_id", productId)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true }),
+    supabase
+    .from("product_customer_fields")
+    .select("id, label, placeholder, field_type, is_required")
+    .eq("product_id", productId)
+    .order("sort_order", { ascending: true }),
+    affiliateEnabled
+      ? admin.from("affiliate_settings").select("program_enabled").eq("id", 1).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    productRanges([productId]),
+    productPromotions([productId]),
+  ]);
+  if (optionResult.error || customerFieldResult.error || affiliateSettingsResult.error) {
+    throw Error("Unable to load product purchase details.");
+  }
+  return { optionResult, customerFieldResult, affiliateSettingsResult, rangeData, promotions };
+}, ["store-product-purchase-v1"], { revalidate: 30, tags: ["homepage-store-data"] });
+
+export async function renderProductPage({
+  slug,
+  publicId,
+  canonicalCategory,
+  searchParams,
+  canonicalRequest = false,
+}: {
+  slug?: string;
+  publicId?: string;
+  canonicalCategory?: { slug: string; publicId: string };
+  searchParams: ProductSearchParams;
+  canonicalRequest?: boolean;
+}) {
+  if (!slug && !publicId) notFound();
+  const query = await searchParams;
+  const affiliateCode = Array.isArray(query.ref)
+    ? query.ref[0]?.trim()
+    : query.ref?.trim();
+  const productResult = await getPublicProduct(slug ?? "", publicId ?? "");
+
+  if (!productResult.data) {
+    notFound();
+  }
+
+  const product = productResult.data as ProductRow;
+  const productCategory = Array.isArray(product.categories) ? product.categories[0] : product.categories;
+  if (canonicalRequest && !productCategory) notFound();
+  if (product.is_bulk_order) await portalCustomer();
+  const category = getCategory(product.categories);
+  const platforms = isGamesCategory(category) ? normalizeGamePlatforms(product.gaming_platforms) : [];
+  if (
+    !canonicalRequest ||
+    (publicId && String(product.public_id) !== publicId) ||
+    (canonicalCategory && (canonicalCategory.slug !== category.slug || canonicalCategory.publicId !== String(category.publicId)))
+  ) {
+    const canonicalUrl = getProductUrl({
+      categorySlug: category.slug,
+      categoryPublicId: category.publicId,
+      productPublicId: product.public_id,
+    });
+    const referral = affiliateCode
+      ? `?ref=${encodeURIComponent(affiliateCode)}`
+      : "";
+    permanentRedirect(`${canonicalUrl}${referral}`);
+  }
+
+  const admin = createAdminClient();
+  const [{ optionResult, customerFieldResult, affiliateSettingsResult, rangeData, promotions }, paidSales, customerDiscounts] = await Promise.all([
+    getPublicPurchaseData(product.id, product.affiliate_enabled && Number(product.affiliate_commission_percent) > 0),
+    getPaidProductSalesForProduct(product.id),
+    getSignedInCustomerDiscounts(),
+  ]);
+  const range = rangeData.ranges.find(r => r.enabled);
+
+  const customerFields = (customerFieldResult.data ?? []) as ProductCustomerFieldRow[];
+  const protectedFields = customerFields.some(field => isSensitiveCustomerField(field.label));
+  const options = (optionResult.data ?? []) as ProductOptionRow[];
+
+  const soldCount = Number(product.sold_count ?? 0) + paidSales;
+
+  const customerDiscountPercent = customerDiscounts.get(product.id) ?? 0;
+  const promotionRules = promotions.rows[0]?.rules ?? [];
+  let affiliateCommissionPercent = 0;
+  let affiliateMaximumCommissionPercent = 0;
+
+  const configuredAffiliateMaximum = Number(
+    product.affiliate_commission_percent,
+  );
+
+  if (
+    product.affiliate_enabled &&
+    Number.isFinite(configuredAffiliateMaximum) &&
+    configuredAffiliateMaximum > 0
+  ) {
+    const settingsResult = affiliateSettingsResult;
+
+    if (settingsResult.data?.program_enabled) {
+      affiliateMaximumCommissionPercent = configuredAffiliateMaximum;
+    }
+
+    if (affiliateCode && settingsResult.data?.program_enabled) {
+      const affiliateResult = await admin
+        .from("affiliate_accounts")
+        .select("id, commission_override_percent")
+        .eq("affiliate_code", affiliateCode.toUpperCase())
+        .eq("status", "APPROVED")
+        .maybeSingle();
+      const affiliate = affiliateResult.data;
+
+      if (!affiliate) {
+        affiliateMaximumCommissionPercent = configuredAffiliateMaximum;
+      } else {
+        const selectedRateResult = await admin
+          .from("affiliate_product_rates")
+          .select("commission_percent")
+          .eq("affiliate_id", affiliate.id)
+          .eq("product_id", product.id)
+          .maybeSingle();
+        const maximumRate = Number(
+          affiliate.commission_override_percent ??
+            product.affiliate_commission_percent,
+        );
+        const selectedRate = Number(
+          selectedRateResult.data?.commission_percent ?? maximumRate,
+        );
+
+        if (
+          Number.isFinite(maximumRate) &&
+          Number.isFinite(selectedRate) &&
+          maximumRate > 0
+        ) {
+          affiliateCommissionPercent = Math.min(
+            Math.max(selectedRate, 0),
+            maximumRate,
+          );
+        }
+      }
+    }
+  }
+
+  return (
+    <main className={styles.page}>
+      <ProductViewTracker productId={product.id} />
+      {affiliateCode && (
+        <AffiliateReferralTracker
+          affiliateCode={affiliateCode}
+          productId={product.id}
+        />
+      )}
+      <div className={styles.container}>
+        <nav className="flex flex-nowrap items-center gap-1.5 overflow-hidden text-xs text-slate-400 sm:flex-wrap sm:gap-2 sm:text-sm">
+          <Link href="/" className="transition hover:text-cyan-400">
+            Home
+          </Link>
+          <span>/</span>
+          <Link
+            href={`/category/${category.slug}`}
+            className="transition hover:text-cyan-400"
+          >
+            {category.name}
+          </Link>
+          <span>/</span>
+          <span className="truncate text-white">
+            <LocalizedProductText
+              english={product.name}
+              russian={product.name_ru}
+            />
+          </span>
+        </nav>
+
+        <section className={`${styles.panel} ${styles.compact}`} aria-label="Product and purchase options">
+          <header className={styles.heading}>
+            <div className={styles.identity}>
+              <div className={styles.categoryRow}>
+                <p className={styles.category}>{category.name}</p>
+                <ProductPlatformBadges platforms={platforms} />
+              </div>
+
+              <h1 className={styles.title}>
+                <LocalizedProductText
+                  english={product.name}
+                  russian={product.name_ru}
+                />
+              </h1>
+
+            </div>
+              <div className={styles.badges}>
+                <ProductRegionBadge region={product.region} placement="inline" />
+                <span className={styles.badge}>
+                  {hasInstantDelivery(product) && <span aria-hidden="true" className="mr-1">⚡</span>}
+                  <LocalizedProductText
+                    english={hasInstantDelivery(product) ? "Instant Delivery" : "Digital Delivery"}
+                    russian={hasInstantDelivery(product) ? "Мгновенная доставка" : "Цифровая доставка"}
+                  />
+                </span>
+                <span className={styles.badge}>
+                  <LocalizedProductText english={`${soldCount} Sold`} russian={`Продано: ${soldCount}`} />
+                </span>
+              </div>
+
+          </header>
+          <div className={styles.media}>
+            <div className={`${styles.artwork} ${platforms.length ? styles.platformArtwork : ""}`}>
+
+              <LocalizedProductImage
+                priority
+                imageUrl={product.image_url}
+                imageUrlRu={product.image_url_ru}
+                alt={product.name}
+                altRu={product.name_ru}
+                className="block aspect-square w-full object-contain"
+                fallback={
+                  <div className="flex aspect-square items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 text-7xl font-black">
+                    {product.name.charAt(0).toUpperCase()}
+                  </div>
+                }
+              />
+              <ProductPlatformBadges platforms={platforms} placement="cover" />
+            </div>
+            <p className={styles.delivery}>
+              <span aria-hidden="true">◆</span>
+              <LocalizedProductText
+                english={hasInstantDelivery(product) ? "Instant delivery after payment confirmation" : "Digital delivery after payment confirmation"}
+                russian={hasInstantDelivery(product) ? "Мгновенная доставка после подтверждения оплаты" : "Цифровая доставка после подтверждения оплаты"}
+              />
+            </p>
+            <div className={styles.assurance}>
+              <span><LocalizedProductText english="Secure checkout" russian="Безопасное оформление" /></span>
+              <span><LocalizedProductText english="Digital products" russian="Цифровые товары" /></span>
+            </div>
+          </div>
+          <aside className={styles.purchase} aria-label="Purchase options">
+            {range && <RangePurchaseForm range={range} product={product} fields={customerFields} affiliatePercent={affiliateCommissionPercent} discountPercent={customerDiscounts.get(product.id)??0} promotionRules={promotionRules}/>}
+            {(!range||options.some(option=>option.id!==range.option_id)) && <ProductPurchaseForm
+              product={{
+                id: product.id,
+                slug: product.slug,
+                categorySlug: category.slug,
+                name: product.name,
+                nameRu: product.name_ru,
+                imageUrl: product.image_url,
+                imageUrlRu: product.image_url_ru,
+                currency: product.currency,
+                productType: product.product_type,
+                deliveryType: product.delivery_type,
+                allowsFixedValues: product.allows_fixed_values,
+                allowsCustomValue: product.allows_custom_value,
+                minimumCustomValue:
+                  product.minimum_custom_value === null
+                    ? null
+                    : Number(product.minimum_custom_value),
+                maximumCustomValue:
+                  product.maximum_custom_value === null
+                    ? null
+                    : Number(product.maximum_custom_value),
+                allowsPlayerIdTopup:
+                  product.allows_player_id_topup,
+                allowsGamingVoucher:
+                  product.allows_gaming_voucher,
+                playerIdLabel:
+                  product.player_id_label,
+                customerDiscountPercent,
+                promotionRules,
+                affiliateCommissionPercent,
+                affiliateMaximumCommissionPercent,
+                isBulkOrder: product.is_bulk_order,
+                bulkDeliveryInstructions: product.bulk_delivery_instructions,
+                minimumQuantity: product.minimum_quantity,
+                maximumQuantity: product.maximum_quantity,
+                isUnlimitedStock: isUnlimitedStock(product.stock_quantity),
+              }}
+              customerFields={customerFields.map((field) => ({
+                id: field.id,
+                label: field.label,
+                placeholder: field.placeholder,
+                fieldType: field.field_type,
+                isRequired: field.is_required,
+              }))}
+              options={options.filter(option=>option.id!==range?.option_id).map((option) => ({
+                id: option.id,
+                optionName: option.option_name,
+                platform: option.platform,
+                denomination:
+                  option.denomination === null
+                    ? null
+                    : Number(option.denomination),
+                denominationCurrency: option.denomination_currency ?? product.currency,
+                sellingPrice: Number(option.selling_price),
+                stockQuantity: option.stock_quantity,
+                isCustomValue: option.is_custom_value,
+                minimumQuantity: option.minimum_quantity,
+                maximumQuantity: option.maximum_quantity,
+                isInStock: option.is_in_stock !== false,
+              }))}
+            />}
+          </aside>
+        </section>
+        <section className={styles.details} aria-label="Product information and reviews">
+
+              {!hasInstantDelivery(product) && !product.is_bulk_order && (
+                <div className="mt-3 rounded-xl border border-cyan-300 bg-cyan-50 px-3 py-2 sm:mt-4 sm:py-3">
+                  <div className="flex items-start gap-2">
+                    <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-cyan-400 font-black text-slate-950">◆</span>
+                    <span>
+                      <span className="block text-xs font-bold text-cyan-950 sm:text-sm">
+                        <LocalizedProductText english="Digital delivery information" russian="Информация о цифровой доставке" />
+                      </span>
+                      <span className="mt-0.5 block whitespace-pre-line text-xs font-normal leading-4 sm:text-sm sm:leading-5 text-slate-800">
+                        {product.delivery_instructions || (
+                          <LocalizedProductText
+                            english="Digital delivery is completed by the admin after successful payment confirmation."
+                            russian="Цифровая доставка выполняется администратором после успешного подтверждения оплаты."
+                          />
+                        )}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {product.is_bulk_order && !hasInstantDelivery(product) && (
+                  <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 sm:mt-4 sm:py-3">
+                    <div className="flex items-start gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-amber-300 font-black text-slate-950"
+                      >
+                        ◆
+                      </span>
+                      <span>
+                        <span className="block text-xs font-bold text-amber-950 sm:text-sm">
+                          <LocalizedProductText
+                            english="Digital delivery information"
+                            russian="Информация о цифровой доставке"
+                          />
+                        </span>
+                        <span className="mt-0.5 block whitespace-pre-line text-xs font-normal leading-4 sm:text-sm sm:leading-5 text-slate-800">
+                          {product.bulk_delivery_instructions || "Digital Delivery Time: 1-15 Working Days"}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+              <Suspense fallback={<ProductDetailsTabs
+                description={gameAccountDescription(product.description, protectedFields) ?? "Product details and delivery information will be provided with your order."}
+                descriptionRu={gameAccountDescription(product.description_ru, protectedFields)}
+                deliveryInstructions={product.delivery_instructions}
+                reviews={[]} positiveCount={0} negativeCount={0} reviewsLoading
+              />}>
+                <ProductInformation
+                  productId={product.id}
+                  description={gameAccountDescription(product.description, protectedFields) ?? "Product details and delivery information will be provided with your order."}
+                  descriptionRu={gameAccountDescription(product.description_ru, protectedFields)}
+                  deliveryInstructions={product.delivery_instructions}
+                />
+              </Suspense>
+        </section>
+      </div>
+    </main>
+  );
+}

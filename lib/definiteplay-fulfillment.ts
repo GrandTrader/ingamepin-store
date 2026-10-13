@@ -14,7 +14,7 @@ export async function supplierProductIds(ids: string[]): Promise<Set<string>> {
   if ((result.data ?? []).some(p => p.stock_source === "GIFTPORT")) {
     throw new Error("This supplier is disconnected. Remove the unavailable product from your cart.");
   }
-  return new Set((result.data ?? []).filter(p => p.stock_source === "DEFINITEPLAY").map(p => p.id));
+  return new Set((result.data ?? []).filter(p => p.stock_source === "DEFINITEPLAY" || p.stock_source === "FKWALLET").map(p => p.id));
 }
 
 export async function supplierAvailableQuantity(optionId: string): Promise<number> {

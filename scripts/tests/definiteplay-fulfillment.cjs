@@ -40,10 +40,11 @@ test("manual preparation never releases supplier codes or reopens a completed su
  assert.equal(calls.length,0);
 });
 test("admin activation requires authorization and healthy worker before any database mutation",async()=>{
- let denied=true,ready=false,enabled=true;
+ let denied=true,ready=false,enabled=true,fkwallet=false;
  const calls=[];
  const deps={
    "next/cache":{revalidatePath(){}},
+   "@/lib/fkwallet-product-supplier":{getFKWalletProductImport:async()=>fkwallet?{product_id:"product"}:null},
    "@/lib/definiteplay-admin":{requireDefinitePlayAdmin:async()=>{if(denied)throw Error("denied");},validProductId:()=>true},
    "@/lib/definiteplay-fulfillment":{supplierDeliveryEnabled:()=>enabled},
    "@/lib/definiteplay-relay":{getDefinitePlayMappings:async()=>({mappings:[{option_id:"o",sku:"sku",supplier:{currency:"USD"}}]}),getDefinitePlayStatus:async()=>({fulfillmentReady:ready,stale:false})},
@@ -58,6 +59,10 @@ test("admin activation requires authorization and healthy worker before any data
  ready=true;
  assert.equal((await api.configureSupplierDelivery("product",true)).success,true);
  assert.equal(calls.length,1);
+ fkwallet=true;
+ assert.match((await api.configureSupplierDelivery("product",true)).error,/FKWallet/);
+ assert.equal(calls.length,1,"FKWallet imports never reach Definite Play activation");
+ fkwallet=false;
  enabled=false;
  assert.ok((await api.configureSupplierDelivery("product",true)).error);
  assert.equal(calls.length,1);
@@ -75,6 +80,7 @@ test("cart quantity check uses fresh supplier availability and preserves owned i
   return chain;
  }};
  const api=load("app/api/products/quantity-limits/route.ts",{
+  "@/lib/definiteplay-range-stock":{supplierRangeLimits:async()=>new Map()},
   "@/lib/product-range-data":{productRanges:async()=>({ready:true,ranges})},
   "next/server":{NextResponse:{json:(body,options)=>({body,...options})}},
   "@/lib/product-stock":{UNLIMITED_STOCK_QUANTITY:2147483647},

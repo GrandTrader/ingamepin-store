@@ -78,7 +78,7 @@ test('Legacy B2B catalogue checks approval before any catalogue query',async()=>
  }
 });
 test('Bulk product links require KYB for both slug and canonical rendering',async()=>{
- const file='app/product/[slug]/page.tsx';
+ const file='app/product/[slug]/ProductPageContent.tsx';
  for(const canonicalRequest of [false,true]){
   let checks=0;const reads=[];const query={select(){return this},eq(){return this},returns(){return this},maybeSingle:async()=>({data:{id:'bulk-product',is_bulk_order:true,categories:{name:'Bulk',slug:'bulk',public_id:1}}})};
   const page=load(file,pageMocks(file,{'next/cache':{unstable_cache:f=>f},'@/lib/product-platform-query':{readWithGamingPlatforms:async(query,fields)=>query(fields)},'@/lib/business-portal-data':{portalCustomer:async()=>{checks++;throw Error('KYB required')}},'@/lib/supabase/admin':{createAdminClient:()=>({from:table=>{reads.push(table);return query}})}}));

@@ -42,7 +42,7 @@ function productRun({ product = baseProduct, canonical = true, category = 'games
       return (table === 'products' ? Promise.resolve() : gate).then(() => ({ data, error: null })).then(yes, no);
     }; return b;
   } };
-  const module = load('app/product/[slug]/page.tsx', {
+  const module = load('app/product/[slug]/ProductPageContent.tsx', {
     'next/cache': { unstable_cache: fn => fn },
     'next/navigation': navigation,
     '@/lib/supabase/server': { createClient: async () => client },
@@ -111,11 +111,21 @@ test('Canonical route validates IDs and directly renders the requested public ID
   const calls = [];
   const route = load('app/category/[slug]/[categoryPublicId]/subcategory/[productPublicId]/page.tsx', {
     'next/cache': { unstable_cache: fn => fn },
-    'next/navigation': navigation, '@/app/product/[slug]/page': { renderProductPage: args => { calls.push(args); return 'product'; } },
+    'next/navigation': navigation, '@/app/product/[slug]/ProductPageContent': { renderProductPage: args => { calls.push(args); return 'product'; } },
   }).default;
   const invoke = productPublicId => route({ params: Promise.resolve({ slug: 'games', categoryPublicId: '987654321', productPublicId }), searchParams: Promise.resolve({}) });
   await assert.rejects(invoke('invalid'), /NOT_FOUND/); assert.equal(calls.length, 0);
   assert.equal(await invoke('123456789'), 'product'); assert.equal(calls[0].publicId, '123456789');
+});
+test('Legacy product route forwards the requested slug and referral to the shared renderer', async () => {
+  const calls = [];
+  const page = load('app/product/[slug]/page.tsx', {
+    './ProductPageContent': { renderProductPage: args => { calls.push(args); return 'product'; } },
+  });
+  const searchParams = Promise.resolve({ ref: 'CUSTOMER-REFERRAL' });
+  assert.equal(await page.default({ params: Promise.resolve({ slug: 'gift-card' }), searchParams }), 'product');
+  assert.equal(calls[0].slug, 'gift-card');
+  assert.equal(calls[0].searchParams, searchParams);
 });
 test('Reviews stay bounded, product-scoped and masked; one failed source does not hide the product', async () => {
   for (const unavailable of [false, true]) {

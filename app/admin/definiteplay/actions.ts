@@ -4,6 +4,7 @@ import { requireDefinitePlayAdmin, validProductId } from "@/lib/definiteplay-adm
 import { definitePlayRequest, getDefinitePlayCatalogue } from "@/lib/definiteplay-relay";
 import { supplierProductIds } from "@/lib/definiteplay-fulfillment";
 import type { DefinitePlayItem } from "@/lib/definiteplay-types";
+import { getFKWalletProductImport } from "@/lib/fkwallet-product-supplier";
 
 export async function refreshDefinitePlay(): Promise<{error?: string; success?: boolean}> {
   await requireDefinitePlayAdmin();
@@ -31,6 +32,7 @@ export async function saveDefinitePlayMapping(productId:string,optionId:string,s
   const option=await session.from("product_options").select("id,product_id").eq("id",optionId).eq("product_id",productId).maybeSingle();
   if (option.error || !option.data) return {error:"This product option could not be found."};
   try {
+    if (await getFKWalletProductImport(productId)) return {error:"This product is linked to FKWallet. Open its Supplier tab to review the saved FKWallet links."};
     if ((await supplierProductIds([productId])).has(productId)) return {error:"Switch to uploaded stock before changing supplier links. Existing supplier orders must be resolved first."};
     await definitePlayRequest("mapping",{
       method:sku === null ? "DELETE" : "PUT",body:{productId,optionId,...(sku === null ? {} : {sku})},
