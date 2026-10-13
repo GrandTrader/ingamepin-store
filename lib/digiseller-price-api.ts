@@ -46,9 +46,16 @@ async function setEnabled(id: number, enabled: boolean) {
   await request(`/api/product/edit/base/${id}`,{enabled});
 }
 
-async function writeSnapshot(snapshot: PriceSnapshot, deadline: number) {
+async function writeSnapshot(snapshot: PriceSnapshot, deadline: number, zeroModifierFirst = true) {
   await request(`/api/product/edit/base/${snapshot.id}`,{price:{price:snapshot.base,currency:snapshot.currency}});
   for (const p of snapshot.parameters) {
+    // Install the replacement before hiding DigiSeller's last zero modifier.
+    if (zeroModifierFirst) {
+      const zero = p.variants.find(v => v.visible && v.rate === 0);
+      if (zero) await request(`/api/products/options/${p.id}/variants/${zero.variant_id}`, {
+        name:zero.name,type:zero.type,rate:zero.rate,default:zero.is_default,visible:true,order:zero.order,
+      });
+    }
     // Moving a variant shifts neighbouring positions. Apply the desired order
     // from first to last so later writes cannot displace an earlier position.
     for (const v of [...p.variants].sort((a,b)=>a.order-b.order)) {
@@ -85,7 +92,7 @@ function modifier(price:number,base:number) {
   return {type:delta<0?'priceminus':'priceplus',rate:Math.abs(delta)/100};
 }
 
-export async function writePriceSnapshots(snapshots: PriceSnapshot[], options?: {restore?:boolean;beforeEnable?:()=>Promise<void>}) {
+export async function writePriceSnapshots(snapshots: PriceSnapshot[], options?: {restore?:boolean;beforeEnable?:()=>Promise<void>;zeroModifierFirst?:boolean}) {
   const deadline = Date.now() + 90000;
   // Pause sales until all base prices and modifiers have been verified together.
   for (const s of snapshots) await setEnabled(s.id,false);
@@ -100,7 +107,7 @@ export async function writePriceSnapshots(snapshots: PriceSnapshot[], options?: 
       return {...p,variants:[...p.variants,...extras.map((v,i)=>({...v,...modifier(variantPrice(live!.base,v),s.base),visible:false,is_default:false,order:lastOrder+i+1}))]};
     })}));
   }
-  for (const s of snapshots) await writeSnapshot(s,deadline);
+  for (const s of snapshots) await writeSnapshot(s,deadline,options?.zeroModifierFirst);
   let difference:string|null=null;
   for (const delay of [0,500,1500]) {
     if (delay) await new Promise(resolve=>setTimeout(resolve,delay));

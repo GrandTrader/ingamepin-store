@@ -74,7 +74,8 @@ export function buildPricePlan(options: PriceOption[], snapshots: PriceSnapshot[
         next:adjustedPrice(o.price,percent), productId:id, optionId:o.optionId, variantId:o.variantId };
     });
     rows.push(...group);
-    products.push({ before, base:Math.min(...group.map(r => r.next)), rows:group });
+    const visible = parameter ? group.filter(r => parameter.variants.some(v => v.variant_id === r.variantId && v.visible)) : group;
+    products.push({ before, base:Math.min(...(visible.length ? visible : group).map(r => r.next)), rows:group });
   }
   return {percent,rows,products};
 }
