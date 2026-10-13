@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function BusinessSetupPage() {
   const client = await createClient();
   const { data: { user }, error } = await client.auth.getUser();
-  if (error || !user?.email_confirmed_at) redirect("/account?error=Sign%20in%20to%20set%20up%20your%20business%20account.");
+  if (error || !user?.email_confirmed_at) redirect("/business/login?error=Sign%20in%20to%20continue%20your%20B2B%20account%20setup.");
   const security = await businessSecurity(user.id);
   if (!security.approved) redirect("/account/business");
   const mfa = await businessMfaState(client);

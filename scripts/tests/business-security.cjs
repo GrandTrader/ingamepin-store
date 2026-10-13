@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
-function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>n==='server-only'?{}:n in mocks?mocks[n]:require(n),FormData,URL,URLSearchParams,process,console});return exports;}
+function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:n=>n==='server-only'?{}:n in mocks?mocks[n]:require(n),FormData,URL,URLSearchParams,process,console});return exports;}
 const ready={approved:true,password_ready:true,totp_ready:true};
 function session({level='aal2',methods=[{method:'totp'}],factor=true,error=null}={}){return {auth:{mfa:{listFactors:async()=>({data:{totp:factor?[{id:'factor',status:'verified'}]:[]},error}),getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:level,currentAuthenticationMethods:methods},error})}}};}
 test('Portal access requires approved account, completed password, and current TOTP-verified session',async()=>{
@@ -36,4 +36,25 @@ test('Password setup cannot bypass an existing factor; MFA verifies only a facto
  form.set('factor_id','forged');form.set('code','123456');assert((await actions.verifyBusinessAuthenticator(form)).error);assert.equal(challenge,0);
  form.set('factor_id','own');assert((await actions.verifyBusinessAuthenticator(form)).success);assert((await actions.setBusinessPassword(form)).success);assert.equal(writes,1);
  approved=false;assert((await actions.setBusinessPassword(form)).error);assert.equal(writes,1);
+});
+
+function setupPage({user={id:'own',email:'own@example.invalid',email_confirmed_at:'yes'},error=null,security={...ready,totp_ready:false},mfa={factors:[],verified:false}}={}){
+ const element=(type,props)=>({type,props});
+ return load('app/account/business/setup/page.tsx',{
+  'react/jsx-runtime':{jsx:element,jsxs:element},'next/link':{default:'a'},'next/navigation':{redirect:url=>{throw Error('redirect:'+url)}},
+  '@/lib/supabase/auth-server':{createClient:async()=>({auth:{getUser:async()=>({data:{user},error})}})},
+  '@/lib/business-security':{businessSecurity:async id=>{assert.equal(id,'own');return security;},businessMfaState:async()=>mfa},
+  '@/lib/password-expiry':{},'@/components/BusinessActionForm':{default:'action-form'},'@/components/PasswordInput':{default:'password'},
+  './BusinessAuthenticator':{default:'authenticator-setup'},'./actions':{}
+ }).default();
+}
+test('Reopened setup pages require a verified session and approved business account',async()=>{
+ for(const options of [{user:null},{user:{id:'own'}},{error:{message:'invalid session'}}])await assert.rejects(setupPage(options),/redirect:\/business\/login\?error=/);
+ await assert.rejects(setupPage({security:{...ready,approved:false}}),/^Error: redirect:\/account\/business$/);
+});
+test('Approved customers with a saved password resume authenticator setup without reusing email tokens',async()=>{
+ const page=JSON.stringify(await setupPage());assert.match(page,/Set up Google Authenticator/);assert.match(page,/authenticator-setup/);assert.doesNotMatch(page,/Create your business password/);
+ const password=JSON.stringify(await setupPage({security:{...ready,password_ready:false,totp_ready:false}}));assert.match(password,/Create your business password/);
+ const verify=JSON.stringify(await setupPage({security:ready,mfa:{factors:[{id:'own-factor'}],verified:false}}));assert.match(verify,/Verify Google Authenticator/);assert.doesNotMatch(verify,/authenticator-setup/);
+ await assert.rejects(setupPage({security:ready,mfa:{factors:[{id:'own-factor'}],verified:true}}),/^Error: redirect:\/account\/portal$/);
 });
