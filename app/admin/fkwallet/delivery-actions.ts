@@ -23,7 +23,22 @@ export async function configureFKDelivery(productId: string, enabled: boolean, k
       })) throw new FKError("A supplier product or price changed. Review the imported options before enabling delivery.");
     }
     const result = await db.rpc("configure_fkwallet_product", { p_product_id: productId, p_enabled: enabled, p_kind: kind, p_connection: connectionId(credentials) });
-    if (result.error) throw new FKError("Delivery could not be changed. Install the database update, start the worker, and check for outstanding supplier orders or changed customer fields.");
+    if (result.error) {
+      const messages: Record<string, string> = {
+        "Restore the imported customer fields first": "The customer fields no longer match the FKWallet import. Restore their delivery links before enabling automatic delivery.",
+        "Start the FKWallet delivery worker first": "The delivery worker has not checked in recently. Wait a minute and try again.",
+        "Resolve existing supplier orders first": "Finish or review the outstanding supplier orders before changing delivery settings.",
+        "Link every fixed option first": "Link every active product option to FKWallet before enabling automatic delivery.",
+        "Account delivery requires recipient fields": "Account activation needs the imported recipient fields, such as Username.",
+        "Use a separate supplier product": "This product has available or reserved codes. Use a separate product for FKWallet delivery.",
+        "Invalid delivery setup": "Check the original FKWallet account and selected delivery method.",
+        "Fixed imported options only": "Automatic delivery requires fixed imported options. Turn off custom values and player-ID top-up mode first.",
+      };
+      const missingUpdate = ["PGRST202", "42883", "42P01"].includes(result.error.code);
+      throw new FKError(messages[result.error.message] ?? (missingUpdate
+        ? "Install the FKWallet automatic delivery database update first."
+        : "Delivery settings could not be saved. Refresh and try again."));
+    }
     if (enabled) await syncFKProductStock(db, credentials, productId);
     revalidatePath(`/admin/products/${productId}/edit/supplier`);
     revalidatePath(`/admin/products/${productId}/edit/stock`);

@@ -8,6 +8,7 @@ import { uploadDigiSellerProductImage } from "@/lib/digiseller-api";
 import { syncDigiSellerStatistics } from "@/lib/digiseller-stat-sync";
 import { uploadStoreImage } from "@/lib/store-image-upload";
 import { createClient } from "@/lib/supabase/admin-session";
+import { prepareCustomerFieldsSave, readCustomerFields } from "@/lib/product-customer-fields-save";
 
 const allowedProductTypes = [
   "GAME_TOPUP",
@@ -48,8 +49,6 @@ export async function syncAllDigiSellerStatistics() {
   redirect(`${path}?success=${encodeURIComponent(`DigiSeller statistics synced: ${result.productsUpdated} website products, ${result.connectedDigiSellerProducts} DigiSeller products, ${result.reviews} review records, ${result.positiveReviews} positive reviews, ${result.negativeReviews} negative reviews and ${result.totalReturns} returns.`)}`);
 }
 
-
-const allowedCustomerFieldTypes = ["TEXT", "EMAIL", "NUMBER", "TEXTAREA"] as const;
 
 export async function syncAllProductImagesToDigiSeller() {
   const path = "/admin/products";
@@ -92,40 +91,6 @@ export async function syncAllProductImagesToDigiSeller() {
     redirect(`${path}?error=${encodeURIComponent(`${synced} synced; ${failures.length} failed. ${failures.slice(0, 2).join(" | ")}`)}`);
   }
   redirect(`${path}?success=${encodeURIComponent(`${synced} DigiSeller product image${synced === 1 ? "" : "s"} synced.`)}`);
-}
-
-function readCustomerFields(formData: FormData) {
-  const ids = formData.getAll("customer_field_id").map((value) => String(value).trim());
-  const labels = formData.getAll("customer_field_label").map((value) => String(value).trim());
-  const placeholders = formData.getAll("customer_field_placeholder").map((value) => String(value).trim());
-  const types = formData.getAll("customer_field_type").map((value) => String(value).trim());
-  const requiredIndexes = new Set(
-    formData.getAll("customer_field_required").map((value) => Number(value)),
-  );
-
-  if (labels.length > 20 || placeholders.length !== labels.length || types.length !== labels.length) {
-    throw new Error("Customer information fields are invalid.");
-  }
-
-  return labels.map((label, index) => {
-    if (label.length < 1 || label.length > 80) {
-      throw new Error("Every customer field needs a name of 1 to 80 characters.");
-    }
-    if (placeholders[index].length > 150) {
-      throw new Error("A customer field placeholder is too long.");
-    }
-    if (!allowedCustomerFieldTypes.includes(types[index] as (typeof allowedCustomerFieldTypes)[number])) {
-      throw new Error("A customer field type is invalid.");
-    }
-    return {
-      id: ids[index] || null,
-      label,
-      placeholder: placeholders[index] || null,
-      field_type: types[index],
-      is_required: requiredIndexes.has(index),
-      sort_order: index,
-    };
-  });
 }
 
 const allowedOptionTypes = [
@@ -1126,6 +1091,13 @@ export async function updateProduct(
     }
   }
 
+  let saveCustomerFields;
+  try {
+    saveCustomerFields = await prepareCustomerFieldsSave(admin, id, readCustomerFields(formData));
+  } catch (error) {
+    productRedirect(id, "error", error instanceof Error ? error.message : "Customer fields are invalid.");
+  }
+
   try {
     imageUrl =
       (await uploadStoreImage(
@@ -1296,27 +1268,10 @@ export async function updateProduct(
     }
   }
 
-  let customerFields;
   try {
-    customerFields = readCustomerFields(formData);
+    await saveCustomerFields();
   } catch (error) {
-    productRedirect(id, "error", error instanceof Error ? error.message : "Customer fields are invalid.");
-  }
-
-  const deleteFieldsResult = await admin
-    .from("product_customer_fields")
-    .delete()
-    .eq("product_id", id);
-  if (deleteFieldsResult.error) {
-    productRedirect(id, "error", `Unable to update customer fields: ${deleteFieldsResult.error.message}`);
-  }
-  if (customerFields.length > 0) {
-    const insertFieldsResult = await admin.from("product_customer_fields").insert(
-      customerFields.map(({ id: _fieldId, ...field }) => ({ ...field, product_id: id })),
-    );
-    if (insertFieldsResult.error) {
-      productRedirect(id, "error", `Unable to save customer fields: ${insertFieldsResult.error.message}`);
-    }
+    productRedirect(id, "error", error instanceof Error ? error.message : "Customer fields could not be saved.");
   }
 
   updateTag("homepage-store-data");

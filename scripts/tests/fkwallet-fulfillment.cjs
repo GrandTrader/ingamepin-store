@@ -84,3 +84,23 @@ test('the automatic worker endpoint rejects missing and wrong credentials before
  for(const token of ['', 'Bearer wrong', 'Bearer '+secret+'extra'])assert.equal((await route.GET({headers:new Headers({authorization:token})})).status,401);
  assert.equal(calls,0);assert.equal((await route.GET({headers:new Headers({authorization:'Bearer '+secret})})).status,200);assert.equal(calls,1);
 });
+
+test('activation explains the actual configuration failure without exposing raw database details',async()=>{
+ for(const [message,expected] of [
+  ['Restore the imported customer fields first',/customer fields no longer match/],
+  ['Start the FKWallet delivery worker first',/worker has not checked in/],
+  ['Resolve existing supplier orders first',/outstanding supplier orders/],
+  ['internal database detail secret',/Refresh and try again/],
+ ]){
+  let synced=false;
+  const db={from(table){const q={select(){return q},eq(){return q},single(){return q},then(resolve){return Promise.resolve(resolve({data:table==='fkwallet_imports'?{connection_id:api.connectionId(creds),supplier_category_id:2}:[{supplier_product_id:9,supplier_cost:1108,supplier_currency:'RUB'}]}))}};return q},rpc:async()=>({error:{code:'P0001',message}})};
+  const actions=load('app/admin/fkwallet/delivery-actions.ts',{
+   'next/cache':{revalidatePath(){}},'@/lib/fkwallet-admin':{requireFKAdmin:async()=>({db})},
+   '@/lib/fkwallet-api':{...api,fkRequest:async()=>[{...product,name_en:'Telegram'}]},
+   '@/lib/fkwallet-fulfillment':{fkDeliveryEnabled:()=>true,syncFKProductStock:async()=>{synced=true}},
+   '@/lib/fkwallet-import':imports,'@/lib/fkwallet-storage':{requireCredentials:async()=>creds},
+  });
+  const result=await actions.configureFKDelivery('84c8e8cd-7753-4cbc-b9c6-844f51e48779',true,'ACCOUNT');
+  assert.match(result.error,expected);assert(!result.error.includes('secret'));assert.equal(synced,false);
+ }
+});
