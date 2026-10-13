@@ -55,18 +55,10 @@
   .mobileTable .actions>.link{display:inline-flex;align-items:center;min-height:44px;padding:6px 2px}
   .historyTable tbody{border:1px solid #e2daee;border-radius:10px;overflow:hidden;margin-bottom:12px;background:white}
   .historyTable tr{border:0;border-radius:0;margin:0}
-  .historyTable .orderRow{background:#f6f2fc;gap:4px 10px}
-  .historyTable .orderRow td:first-child::before,.historyTable .orderRow td:nth-child(2)::before{display:none}
-  .historyTable .orderRow td:nth-child(2){align-self:center;color:#758599}
-  .historyTable .orderRow td:nth-child(3){text-align:right}
-  .historyTable .orderRow td:nth-child(3)::before,.historyTable .orderRow td:last-child::before{display:none}
-  .historyTable .orderRow td:last-child{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .historyTable .historyItem{border-top:1px solid #e8e2ef;gap:8px}
-  .historyTable .historyItem td:nth-child(2){grid-column:1/-1}
-  .historyTable .historyItem td:nth-child(2)::before,.historyTable .historyItem td:last-child::before{display:none}
-  .historyTable .historyItem td:nth-child(3){align-self:center}
-  .historyTable .historyItem td:nth-child(3)::before{display:inline;margin-right:6px}
-  .historyTable .historyItem td:last-child{justify-self:end}
+  .historyTable .historyEntry+.historyEntry{border-top:1px solid #e8e2ef}
+  .historyTable .historyReference{background:#faf8fd;margin:-12px -12px 0;padding:12px}
+  .historyTable .historyReference::before{display:none}
+  .historyTable .historyProduct,.historyTable .historyActionCell{grid-column:1/-1}
   .quantityControl{width:100%;max-width:152px;border-radius:8px}
   .quantityControl button{width:44px;min-width:40px;min-height:44px;flex:1}
   .portal .quantityControl .qty{min-height:44px;font-size:16px;width:44px!important}
@@ -186,6 +178,23 @@
 .apiKey .button{display:flex;margin-top:10px}
 
 .rangeNotice{margin:4px 0 0;font-size:12px;line-height:1.4;color:#52657a;white-space:normal}
+
+/* Order details and per-denomination downloads share one row on desktop. */
+.historyActions{display:flex;align-items:center;flex-wrap:nowrap;gap:6px}
+.historyActions .button{padding:8px 10px;min-height:36px}
+.historyActions .invoiceButton{background:#f1ebfa;border-color:#bda9d8;font-weight:800}
+.historyActions .invoiceButton[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.historyReference{white-space:nowrap}
+.historyProduct{min-width:200px;line-height:1.5}
+.historyTable tbody+tbody .historyEntry:first-child td{border-top-color:#d8cde9}
+@media(min-width:901px){
+  .historyTable th,.historyTable td{padding:14px 12px}
+  .historyTable .historyActionCell{width:1%;white-space:nowrap}
+}
+@media(max-width:900px){
+  .historyTable .historyProduct{min-width:0}
+  .historyActions .button{min-height:44px;padding:9px 12px}
+}
 
 /* Each denomination has its own compact order row. */
 .catalogueTable .product{min-width:200px;gap:14px}
