@@ -1,6 +1,27 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
 function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:n=>n==='server-only'?{}:n in mocks?mocks[n]:require(n),FormData,URL,URLSearchParams,process,console});return exports;}
 const ready={approved:true,password_ready:true,totp_ready:true};
+test('Authenticator failures distinguish code, setup, session, network and service errors without exposing secrets',()=>{
+ const {businessMfaError}=load('lib/business-mfa-error.ts');
+ const cases=[
+  [{code:'mfa_verification_failed'},/does not match this setup/],
+  [{code:'mfa_verification_rejected'},/does not match this setup/],
+  [{code:'mfa_factor_not_found'},/setup is no longer active/],
+  [{code:'mfa_challenge_expired'},/verification request expired/],
+  [{code:'mfa_ip_address_mismatch'},/network connection changed/],
+  [{code:'session_expired'},/sign-in session has expired/],
+  [{status:401},/sign-in session has expired/],
+  [{code:'over_request_rate_limit'},/Too many verification attempts/],
+  [{status:429},/Too many verification attempts/],
+  [{code:'mfa_totp_verify_not_enabled'},/unavailable on the website/],
+  [{code:'mfa_totp_enroll_not_enabled'},/unavailable on the website/],
+  [{name:'AuthRetryableFetchError'},/service could not be reached/],
+  [{status:503},/service could not be reached/],
+  [{code:'unknown'},/Unable to verify/],
+ ];
+ for(const [error,expected] of cases){const message=businessMfaError({...error,message:'SECRET:code=123456 token=private setup-key=private'});assert.match(message,expected);assert.doesNotMatch(message,/SECRET|123456|token=|setup-key=/);}
+ for(const error of [null,undefined,'private error',new Error('private error')])assert.match(businessMfaError(error),/^Unable to verify/);
+});
 function session({level='aal2',methods=[{method:'totp'}],factor=true,error=null}={}){return {auth:{mfa:{listFactors:async()=>({data:{totp:factor?[{id:'factor',status:'verified'}]:[]},error}),getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:level,currentAuthenticationMethods:methods},error})}}};}
 test('Portal access requires approved account, completed password, and current TOTP-verified session',async()=>{
  let state=ready;
