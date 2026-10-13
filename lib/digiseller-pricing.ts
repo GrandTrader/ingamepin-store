@@ -13,6 +13,15 @@ export type PriceSnapshot = {
 export type PriceRow = { id: string; name: string; website: number; current: number; next: number; productId: number; optionId: number | null; variantId: number | null; change?: 'Add' | 'Rename' | 'Show' | 'Update' | 'Hide'; previousName?: string };
 export type PricePlan = { percent: number; rows: PriceRow[]; products: Array<{ before: PriceSnapshot; base: number; rows: PriceRow[] }>; mode?: 'denominations'; websiteOptions?: PriceOption[] };
 
+// Recipient text inputs do not affect price and must remain untouched by sync.
+export function denominationParameter(snapshot: PriceSnapshot) {
+  const parameters = snapshot.parameters.filter(parameter => !(['text', 'textarea'].includes(parameter.type) && parameter.variants.length === 0));
+  if (parameters.length > 1) throw new Error(`Product ${snapshot.id} has additional price parameters. Only one denomination selector is supported.`);
+  const parameter = parameters[0];
+  if (parameter && (!['radio', 'select'].includes(parameter.type) || !parameter.required)) throw new Error(`Product ${snapshot.id} must use one required denomination selector.`);
+  return parameter;
+}
+
 export function parsePriceAdjustment(value: string) {
   if (!/^[+-]?\d{1,4}(\.\d{1,2})?$/.test(value.trim())) throw new Error("Enter a percentage with up to two decimal places.");
   const percent = Number(value);
@@ -54,10 +63,7 @@ export function buildPricePlan(options: PriceOption[], snapshots: PriceSnapshot[
     const before = snapshots.find(s => s.id === id);
     if (!before || before.currency !== "USD" || cents(before.base) < 1) throw new Error(`DigiSeller product ${id} must have a valid USD base price.`);
     const mapped = options.filter(o => o.productId === id);
-    const parameters = before.parameters;
-    if (parameters.length > 1) throw new Error(`Product ${id} has additional parameters. Only a single denomination parameter is supported.`);
-    const parameter = parameters[0];
-    if (parameter && (!['radio','select'].includes(parameter.type) || !parameter.required)) throw new Error(`Product ${id} must use one required denomination selector.`);
+    const parameter = denominationParameter(before);
     if (!parameter && (mapped.length !== 1 || mapped[0].optionId || mapped[0].variantId)) throw new Error(`Check the denomination matches for product ${id}.`);
     if (parameter && (mapped.length !== parameter.variants.filter(v=>v.visible).length || new Set(mapped.map(o => o.variantId)).size !== mapped.length)) throw new Error(`Every visible DigiSeller denomination of product ${id} must be matched exactly once. Use denomination sync after changing the options.`);
     const group = mapped.map(o => {
@@ -77,8 +83,8 @@ export function buildDenominationPlan(options: PriceOption[], before: PriceSnaps
   const percent=parsePriceAdjustment(rawPercent);
   if (!options.length || options.length>100) throw new Error('Keep between 1 and 100 active website denominations.');
   if (before.currency!=='USD' || cents(before.base)<1) throw new Error('The DigiSeller listing must use a USD base price.');
-  const parameter=before.parameters[0];
-  if (before.parameters.length!==1 || !parameter.required || !['radio','select'].includes(parameter.type)) throw new Error('Connect a DigiSeller listing with one required denomination selector first.');
+  const parameter=denominationParameter(before);
+  if (!parameter) throw new Error('Connect a DigiSeller listing with one required denomination selector first.');
   const label=(v:PriceVariant)=>v.name.find(n=>n.locale==='en-US')?.value||v.name[0]?.value||'';
   const normalize=(s:string)=>s.trim().toLowerCase();
   if (options.some(o=>!o.name.trim()) || new Set(options.map(o=>normalize(o.name))).size!==options.length) throw new Error('Give each website denomination a different name.');

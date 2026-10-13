@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/admin-session";
 import { createDigiSellerFormProduct, listDigiSellerVariants, parseDigiSellerCategoryUrl } from "@/lib/digiseller-api";
+import { getDigiSellerRecipientFields, syncDigiSellerRecipientFields } from "@/lib/digiseller-field-sync";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -20,10 +21,13 @@ export async function saveDigiSellerMapping(productId: string, formData: FormDat
   await requireAdmin();
 
   const admin = createAdminClient();
-  const options = await admin.from("product_options").select("id, option_name, denomination").eq("product_id", productId).eq("is_custom_value", false);
+  try { await getDigiSellerRecipientFields(admin, productId); }
+  catch (error) { redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Customer information could not be checked.")}`); }
+  const options = await admin.from("product_options").select("id, option_name, denomination").eq("product_id", productId).eq("is_active", true).eq("is_custom_value", false);
   if (options.error) redirect(`${path}?error=${encodeURIComponent(options.error.message)}`);
 
   const variantsByProduct = new Map<number, Awaited<ReturnType<typeof listDigiSellerVariants>>>();
+  const changes: { id: string; productId: number | null; optionId: number | null; variantId: number | null }[] = [];
 
   for (const option of options.data ?? []) {
     const raw = String(formData.get(`digiseller_${option.id}`) ?? "").trim();
@@ -33,7 +37,7 @@ export async function saveDigiSellerMapping(productId: string, formData: FormDat
       redirect(`${path}?error=${encodeURIComponent("Invalid DigiSeller product selected.")}`);
     }
     let [optionPart, variantPart] = variantRaw ? variantRaw.split(":") : [];
-    if (digisellerProductId && !variantRaw) {
+    if (digisellerProductId) {
       let variants = variantsByProduct.get(digisellerProductId);
       if (!variants) {
         try {
@@ -43,22 +47,38 @@ export async function saveDigiSellerMapping(productId: string, formData: FormDat
           redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Unable to load DigiSeller denominations.")}`);
         }
       }
-      const denomination = Number(option.denomination);
-      const numberPattern = new RegExp(`(^|\\D)${denomination}(\\D|$)`);
-      const match = variants.find((variant) => Number.isFinite(denomination) && numberPattern.test(variant.name));
-      if (match) {
-        optionPart = String(match.optionId);
-        variantPart = String(match.variantId);
-      } else if (variants.length > 0) {
-        redirect(`${path}?error=${encodeURIComponent(`Choose a DigiSeller denomination for ${option.option_name}.`)}`);
+      if (variantRaw) {
+        if (!variants.some(variant => variant.optionId === Number(optionPart) && variant.variantId === Number(variantPart))) {
+          redirect(`${path}?error=${encodeURIComponent(`Choose a valid DigiSeller denomination for ${option.option_name}.`)}`);
+        }
+      } else {
+        const exact = variants.filter(variant => variant.name.trim().toLowerCase() === option.option_name.trim().toLowerCase());
+        const denomination = Number(option.denomination);
+        const numberPattern = new RegExp(`(^|\\D)${denomination}(\\D|$)`);
+        const uniqueValue = (options.data ?? []).filter(row => Number(row.denomination) === denomination).length === 1;
+        const matches = exact.length ? exact : uniqueValue ? variants.filter(variant => Number.isFinite(denomination) && numberPattern.test(variant.name)) : [];
+        if (matches.length === 1) {
+          optionPart = String(matches[0].optionId);
+          variantPart = String(matches[0].variantId);
+        } else if (variants.length > 0) {
+          redirect(`${path}?error=${encodeURIComponent(`Choose a DigiSeller denomination for ${option.option_name}.`)}`);
+        }
       }
     }
     const digisellerOptionId = optionPart ? Number(optionPart) : null;
     const digisellerVariantId = variantPart ? Number(variantPart) : null;
     if (digisellerProductId !== null && variantRaw && (!Number.isSafeInteger(digisellerOptionId) || !Number.isSafeInteger(digisellerVariantId))) redirect(`${path}?error=${encodeURIComponent("Invalid DigiSeller denomination selected.")}`);
-    const update = await admin.from("product_options").update({ digiseller_product_id: digisellerProductId, digiseller_option_id: digisellerProductId ? digisellerOptionId : null, digiseller_variant_id: digisellerProductId ? digisellerVariantId : null, updated_at: new Date().toISOString() }).eq("id", option.id).eq("product_id", productId);
+    if (digisellerProductId && changes.some(change => change.productId === digisellerProductId && change.optionId === digisellerOptionId && change.variantId === digisellerVariantId)) {
+      redirect(`${path}?error=${encodeURIComponent("Each website option must match a different DigiSeller denomination.")}`);
+    }
+    changes.push({ id: option.id, productId: digisellerProductId, optionId: digisellerOptionId, variantId: digisellerVariantId });
+  }
+  for (const change of changes) {
+    const update = await admin.from("product_options").update({ digiseller_product_id: change.productId, digiseller_option_id: change.productId ? change.optionId : null, digiseller_variant_id: change.productId ? change.variantId : null, updated_at: new Date().toISOString() }).eq("id", change.id).eq("product_id", productId);
     if (update.error) redirect(`${path}?error=${encodeURIComponent(update.error.message)}`);
   }
+  try { if (changes.some(change => change.productId !== null)) await syncDigiSellerRecipientFields(admin, productId); }
+  catch (error) { redirect(`${path}?error=${encodeURIComponent(`Product matches saved. ${error instanceof Error ? error.message : "Customer fields could not be synced."}`)}`); }
   revalidatePath(path);
   redirect(`${path}?success=${encodeURIComponent("DigiSeller product matches saved.")}`);
 }
@@ -66,10 +86,11 @@ export async function saveDigiSellerMapping(productId: string, formData: FormDat
 export async function createDigiSellerProduct(productId: string, formData: FormData) {
   const path = `/admin/products/${productId}/edit/digiseller`;
   await requireAdmin();
-  let createdProductId: number;
+  let createdProductId: number | null = null;
   try {
     const category = parseDigiSellerCategoryUrl(String(formData.get("category_url") ?? "").trim());
     const admin = createAdminClient();
+    await getDigiSellerRecipientFields(admin, productId);
     const [productResult, optionsResult] = await Promise.all([
       admin.from("products").select("name, name_ru, description, description_ru").eq("id", productId).single(),
       admin.from("product_options").select("id, option_name, selling_price").eq("product_id", productId).eq("is_active", true).eq("is_custom_value", false).order("sort_order"),
@@ -88,9 +109,11 @@ export async function createDigiSellerProduct(productId: string, formData: FormD
       category,
       variants: options.map((option) => ({ name: option.option_name, price: option.price })),
     });
+    createdProductId = created.productId;
     for (const option of options) {
-      const denomination = Number.parseFloat(option.option_name);
-      const match = created.variants.find((variant) => Number.isFinite(denomination) && new RegExp(`(^|\\D)${denomination}(\\D|$)`).test(variant.name));
+      const matches = created.variants.filter(variant => variant.name.trim() === option.option_name.trim());
+      if (matches.length !== 1) throw new Error(`DigiSeller product ${created.productId} was created. Match its denominations before syncing customer fields.`);
+      const match = matches[0];
       const update = await admin.from("product_options").update({
         digiseller_product_id: created.productId,
         digiseller_option_id: match?.optionId ?? null,
@@ -99,10 +122,20 @@ export async function createDigiSellerProduct(productId: string, formData: FormD
       }).eq("id", option.id).eq("product_id", productId);
       if (update.error) throw new Error(update.error.message);
     }
-    createdProductId = created.productId;
+    await syncDigiSellerRecipientFields(admin, productId);
   } catch (error) {
-    redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Unable to create DigiSeller product.")}`);
+    const message = error instanceof Error ? error.message : "Unable to create DigiSeller product.";
+    redirect(`${path}?error=${encodeURIComponent(createdProductId ? `DigiSeller product ${createdProductId} was created. ${message} Use its existing product match and sync again.` : message)}`);
   }
   revalidatePath(path);
   redirect(`${path}?success=${encodeURIComponent(`Hidden DigiSeller product ${createdProductId} created and connected.`)}`);
+}
+
+export async function syncDigiSellerCustomerFields(productId: string) {
+  await requireAdmin();
+  const path = `/admin/products/${productId}/edit/digiseller`;
+  try { await syncDigiSellerRecipientFields(createAdminClient(), productId); }
+  catch (error) { redirect(`${path}?error=${encodeURIComponent(error instanceof Error ? error.message : "Customer fields could not be synced.")}`); }
+  revalidatePath(path);
+  redirect(`${path}?success=${encodeURIComponent("Customer fields and FKWallet delivery connected to DigiSeller.")}`);
 }

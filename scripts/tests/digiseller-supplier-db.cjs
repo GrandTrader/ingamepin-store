@@ -1,5 +1,5 @@
-const fs=require('fs'),path=require('path'),assert=require('node:assert/strict');
-const {PGlite}=require(path.join(process.env.TEMP,'igp-dp-postgres-test/node_modules/@electric-sql/pglite'));
+const fs=require('fs'),assert=require('node:assert/strict');
+const {PGlite}=require('@electric-sql/pglite');
 (async()=>{const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role;
 create table products(id uuid primary key,stock_source text);
 create table product_options(id uuid primary key,product_id uuid, digiseller_product_id bigint,is_active boolean);

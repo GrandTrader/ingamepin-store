@@ -1,12 +1,13 @@
 const fs=require('fs'),ts=require('typescript'),vm=require('vm'),assert=require('node:assert/strict'),crypto=require('crypto');
 (async()=>{
- let source='DEFINITEPLAY',stock=1000,stockError=null,purchaseCalls=0,rpcs=[],goods=null;
+ let source='DEFINITEPLAY',stock=1000,stockError=null,purchaseCalls=0,rpcs=[],goods=null,fkCalls=0,existingFK=null;
  let purchase={productId:6203684,invoiceState:3,quantity:2,amount:5,amountUsd:5,profit:4.5,options:[{id:6600439,user_data_id:34383429}]};
- const option={id:'option2',product_id:'product'};
- const db={from(table){let variant=[];const q={select(){return q},eq(){return q},is(){return q},in(name,values){if(name==='digiseller_variant_id')variant=values;return q},single:async()=>({data:{stock_source:source}}),maybeSingle:async()=>table==='digiseller_supplier_jobs'?{data:null}:{data:variant.includes(34383429)?option:null},then(resolve){resolve(table==='gift_card_codes'?{count:3}:{data:[option]})}};return q;},rpc:async(name,args)=>{rpcs.push({name,args});if(name==='digiseller_supplier_available')return {data:stock,error:stockError};if(name==='queue_digiseller_supplier_order')return {data:goods};if(name==='fulfill_digiseller_order')return {data:[{goods:'owned-code'}]};throw Error(name)}};
+ const option={id:'option2',product_id:'product',digiseller_option_id:6600439,digiseller_variant_id:34383429};
+ const db={from(table){let variant=[];const q={select(){return q},eq(){return q},is(){return q},in(name,values){if(name==='digiseller_variant_id')variant=values;return q},single:async()=>({data:{stock_source:source}}),maybeSingle:async()=>table==='digiseller_supplier_jobs'?{data:null}:{data:variant.includes(34383429)?option:null},then(resolve){resolve(table==='gift_card_codes'?{count:3}:{data:[option]})}};return q;},rpc:async(name,args)=>{rpcs.push({name,args});if(['digiseller_supplier_available','digiseller_fkwallet_available'].includes(name))return {data:stock,error:stockError};if(name==='queue_digiseller_supplier_order')return {data:goods};if(name==='fulfill_digiseller_order')return {data:[{goods:'owned-code'}]};throw Error(name)}};
+ const helper={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/digiseller-customer-information.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:helper});
  const exports={};const code=ts.transpileModule(fs.readFileSync('app/api/digiseller/supplier/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  vm.runInNewContext(code,{exports,Buffer,process:{env:{DIGISELLER_API_KEY:'test-key'}},require:name=>({
- 'node:crypto':crypto,'next/server':{NextResponse:{json:body=>body}},'@/lib/supabase/admin':{createAdminClient:()=>db},'@/lib/digiseller-api':{getDigiSellerPurchaseSelection:async()=>{purchaseCalls++;return purchase}}
+ 'node:crypto':crypto,'next/server':{NextResponse:{json:body=>body}},'@/lib/supabase/admin':{createAdminClient:()=>db},'@/lib/digiseller-api':{getDigiSellerPurchaseSelection:async()=>{purchaseCalls++;return purchase}},'@/lib/digiseller-customer-information':helper,'@/lib/digiseller-fkwallet-fulfillment':{readDigiFKJob:async()=>existingFK,queueDigiFKPurchase:async(database,invoice,verified,selected,existing)=>{fkCalls++;assert.equal(invoice,123);assert.equal(verified,purchase);assert.equal(selected.id,existing?'previous-option':'option2');return goods}}
  }[name])});const post=body=>exports.POST({json:async()=>body});
  const quantity={product_id:6203684,count:1,options:[{id:6600439,user_data_id:34383429}]};
  assert.equal((await post(quantity)).count,1000);assert.equal(purchaseCalls,0);assert(rpcs.every(x=>x.name==='digiseller_supplier_available'));
@@ -18,5 +19,9 @@ const fs=require('fs'),ts=require('typescript'),vm=require('vm'),assert=require(
  goods='code-a\n\ncode-b';assert.equal((await post(body)).goods,goods);
  const legacy={...body,sign2:undefined,sign:crypto.createHash('md5').update('6203684:123:test-key').digest('hex')};assert.equal((await post(legacy)).goods,goods);
  source='OWNED';assert.equal((await post(body)).goods,'owned-code');assert.equal((await post(null)).count,0);
+ source='FKWALLET';rpcs=[];goods=null;assert.equal((await post(quantity)).count,1000);assert.equal(rpcs[0].name,'digiseller_fkwallet_available');
+ assert.equal((await post(body)).goods,undefined);assert.equal(fkCalls,1);
+ goods='Successful account delivery';assert.equal((await post(body)).goods,goods);assert.equal(fkCalls,2);
+ existingFK={option_id:'previous-option'};source='OWNED';assert.equal((await post(body)).goods,goods);assert.equal(fkCalls,3,'existing FK invoice uses its original snapshot');
  console.log('PASS: quantity-source routing, closed on failure, SHA256/MD5 verification, authoritative options/quantity/payment, pending and completed delivery, owned-stock compatibility.');
 })().catch(e=>{console.error(e);process.exit(1)});

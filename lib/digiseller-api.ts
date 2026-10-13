@@ -235,14 +235,14 @@ function digiSellerErrorText(value: unknown): string {
   return "";
 }
 
-async function postDigiSeller(path: string, body: unknown, accessToken?: string, signal?: AbortSignal): Promise<DigiSellerApiResult> {
+export async function postDigiSeller(path: string, body: unknown, accessToken?: string, signal?: AbortSignal): Promise<DigiSellerApiResult> {
   const token = accessToken || (await getDigiSellerToken(signal)).token;
   const response = await fetch(`https://api.digiseller.com${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify(body),
     cache: "no-store",
-    signal,
+    signal: signal ?? AbortSignal.timeout(15000),
   });
   const result = await response.json().catch(() => null) as DigiSellerApiResult | null;
   const details = digiSellerErrorText(result?.errors) || digiSellerErrorText(result?.retdesc);

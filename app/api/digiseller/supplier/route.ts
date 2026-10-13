@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 import { getDigiSellerPurchaseSelection } from "@/lib/digiseller-api";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveDigiSelection } from "@/lib/digiseller-customer-information";
+import { queueDigiFKPurchase, readDigiFKJob } from "@/lib/digiseller-fkwallet-fulfillment";
 
 export const dynamic = "force-dynamic";
 
@@ -47,37 +49,17 @@ function positiveInteger(value: unknown) {
 }
 
 async function resolveWebsiteOption(admin: ReturnType<typeof createAdminClient>, productId: number, options: SupplierRequest["options"]) {
-  const selections = options ?? [];
-  const variantIds = selections
-    .map((option) => positiveInteger(option.user_data_id) ?? positiveInteger(option.user_data))
-    .filter((value): value is number => value !== null);
-  const query = admin.from("product_options").select("id, product_id").eq("digiseller_product_id", productId).eq("is_active", true);
-  if (variantIds.length === 0) return query.is("digiseller_variant_id", null).maybeSingle();
-
-  const variantMatch = await query.in("digiseller_variant_id", variantIds).maybeSingle();
-  if (variantMatch.error || variantMatch.data) return variantMatch;
-
-  const denominations = selections
-    .map((option) => Number(option.user_data))
-    .filter((value) => Number.isFinite(value) && value > 0);
-  let denominationQuery = admin
-    .from("product_options")
-    .select("id, product_id")
-    .eq("digiseller_product_id", productId)
-    .eq("is_active", true)
-    .in("denomination", denominations);
-  const optionIds = selections
-    .map((option) => positiveInteger(option.id))
-    .filter((value): value is number => value !== null);
-  if (optionIds.length > 0) {
-    denominationQuery = denominationQuery.in("digiseller_option_id", optionIds);
-  }
-  return denominationQuery.maybeSingle();
+  const result = await admin.from("product_options").select("id,product_id,digiseller_option_id,digiseller_variant_id,denomination").eq("digiseller_product_id", productId).eq("is_active", true);
+  return { error: result.error, data: result.error ? null : resolveDigiSelection(result.data ?? [], options) };
 }
 
 async function availableQuantity(admin: ReturnType<typeof createAdminClient>, option: { id: string; product_id: string }) {
   const product = await admin.from("products").select("stock_source").eq("id", option.product_id).single();
   if (product.error) return 0;
+  if (product.data.stock_source === "FKWALLET") {
+    const result = await admin.rpc("digiseller_fkwallet_available", { p_option_id: option.id });
+    return result.error ? 0 : Math.max(0, Math.min(1000, Number(result.data) || 0));
+  }
   if (product.data.stock_source === "DEFINITEPLAY") {
     const result = await admin.rpc("digiseller_supplier_available", { p_option_id: option.id });
     return result.error ? 0 : Math.max(0, Math.min(1000, Number(result.data) || 0));
@@ -134,10 +116,23 @@ export async function POST(request: Request) {
   if (purchase.productId !== productId || purchase.invoiceState !== 3 || !Number.isSafeInteger(purchase.quantity) || purchase.quantity < 1 || purchase.quantity > 1000) {
     return json({ id: String(productId), inv: invoiceId });
   }
+  try {
+    const existing = await readDigiFKJob(admin, invoiceId);
+    if (existing) {
+      const goods = await queueDigiFKPurchase(admin, invoiceId, purchase, { id: existing.option_id, product_id: "snapshot" }, existing);
+      return json({ id: String(productId), inv: invoiceId, ...(goods ? { goods, error: "" } : {}) });
+    }
+  } catch { return json({ id: String(productId), inv: invoiceId }); }
   const option = await resolveWebsiteOption(admin, productId, purchase.options);
   if (option.error || !option.data) return json({ id: String(productId), inv: invoiceId });
   const product = await admin.from("products").select("stock_source").eq("id", option.data.product_id).single();
   if (product.error) return json({ id: String(productId), inv: invoiceId });
+  if (product.data.stock_source === "FKWALLET") {
+    try {
+      const goods = await queueDigiFKPurchase(admin, invoiceId, purchase, option.data);
+      return json({ id: String(productId), inv: invoiceId, ...(goods ? { goods, error: "" } : {}) });
+    } catch { return json({ id: String(productId), inv: invoiceId }); }
+  }
   const existingJob = await admin.from("digiseller_supplier_jobs").select("invoice_id").eq("invoice_id", invoiceId).maybeSingle();
   if (existingJob.error && product.data.stock_source === "DEFINITEPLAY") return json({ id: String(productId), inv: invoiceId });
   if (product.data.stock_source === "DEFINITEPLAY" || existingJob.data) {

@@ -64,3 +64,40 @@ Database tests run against isolated PGlite. Browser tests mock supplier actions.
 No live purchase is needed for these checks. A read-only comparison on the
 connected account verified that a completed digital purchase's history ID matches
 `/op/status/{id}` and returns the documented named success status.
+
+## DigiSeller recipient fields and delivery
+
+Install `supabase/migrations/20261013_190000_digiseller_fkwallet_delivery.sql`
+after the existing FKWallet and DigiSeller supplier migrations, then deploy the
+matching application version. The migration creates a private delivery queue;
+it does not publish products or purchase anything.
+
+On an imported product's DigiSeller tab, use **Sync customer fields** for an
+existing listing. Creating or saving a DigiSeller product match also performs
+the sync automatically. Every imported recipient field is required on DigiSeller.
+Text, email and numeric inputs use text controls to preserve leading zeros;
+multiline fields use a textarea. Values are validated before purchase.
+Products with different supplier forms must remain separate imports.
+
+The product must be active, linked to DigiSeller and have FKWallet automatic
+delivery enabled. All active options must have the correct denomination mapping.
+Stock closes while fields are being connected and if the worker or stock data
+is stale. Sync verifies the remote fields before marking the connection ready.
+Price and denomination sync leave these recipient inputs unchanged.
+
+The supplier callback independently loads the paid DigiSeller invoice and uses
+its selection, quantity, recipient details and net proceeds, never callback
+values. These are snapshotted when queued. The Vercel cron processes the separate
+DigiSeller queue using the same FKWallet purchase engine as website orders and
+rechecks the invoice before each run. A changed recipient, refund or changed
+selection holds the job for review. One invoice cannot be fulfilled through two
+stock sources. Pending responses omit goods; later DigiSeller retries receive
+actual codes or an account-delivery confirmation only after every unit succeeds.
+
+Recent invoices and review reasons appear in the DigiSeller tab. A review hold
+requires reconciling the supplier purchase and invoice before any manual action.
+Never reset a submission marker to retry an uncertain purchase.
+
+Run `npm run test:digiseller-fkwallet` for isolated recipient mapping, pricing
+compatibility, callback, database and simulated delivery checks. These tests do
+not submit real supplier purchases.

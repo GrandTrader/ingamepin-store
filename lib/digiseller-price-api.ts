@@ -1,6 +1,6 @@
 import "server-only";
 import { getDigiSellerToken, listDigiSellerProducts } from "./digiseller-api";
-import { cents, variantPrice, type PriceSnapshot, type PriceParameter, type PricePlan, type PriceRow, type PriceVariant } from "./digiseller-pricing";
+import { cents, denominationParameter, variantPrice, type PriceSnapshot, type PriceParameter, type PricePlan, type PriceRow, type PriceVariant } from "./digiseller-pricing";
 
 async function request(path: string, body?: unknown) {
   const {token} = await getDigiSellerToken(AbortSignal.timeout(10000));
@@ -29,8 +29,10 @@ export async function readPriceSnapshots(ids: number[]): Promise<PriceSnapshot[]
     const parameters: PriceParameter[] = await Promise.all(list.content.map(async (p: { id: number }) => {
       const result = await request(`/api/products/options/${p.id}`);
       const value = result.content;
-      if (!value || Number(value.id) !== Number(p.id) || !Array.isArray(value.variants)) throw new Error("Incomplete DigiSeller denomination details.");
-      return {id:Number(value.id),type:value.type,required:value.required === true,variants:value.variants.map((v: PriceParameter['variants'][number]) => ({
+      if (!value || Number(value.id) !== Number(p.id)) throw new Error("Incomplete DigiSeller denomination details.");
+      const variants = value.variants ?? (['text','textarea'].includes(value.type) ? [] : null);
+      if (!Array.isArray(variants)) throw new Error("Incomplete DigiSeller denomination details.");
+      return {id:Number(value.id),type:value.type,required:value.required === true,variants:variants.map((v: PriceParameter['variants'][number]) => ({
         variant_id:Number(v.variant_id),name:v.name,type:v.type,rate:Number(v.rate),is_default:v.is_default,visible:v.visible,order:Number(v.order),
       }))};
     }));
@@ -133,7 +135,8 @@ export function targetPriceSnapshots(plan: PricePlan): PriceSnapshot[] {
 export async function writeDenominationPlan(plan:PricePlan, saveMappings:(rows:PriceRow[])=>Promise<void>) {
   if (plan.mode!=='denominations' || plan.products.length!==1) throw new Error('Invalid denomination sync.');
   const group=structuredClone(plan.products[0]);
-  const parameter=group.before.parameters[0];
+  const parameter=denominationParameter(group.before);
+  if (!parameter) throw new Error('The denomination selector is missing.');
   const deadline=Date.now()+90000;
   await setEnabled(group.before.id,false);
   for (const row of group.rows) {

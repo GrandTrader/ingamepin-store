@@ -1,4 +1,4 @@
-const fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),assert=require('node:assert/strict');
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
 function load(file,imports={}){const exports={};const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;new Function('require','exports',code)(name=>name in imports?imports[name]:require(name),exports);return exports;}
 (async()=>{
  const pricing=load('lib/digiseller-pricing.ts');
@@ -83,7 +83,7 @@ function load(file,imports={}){const exports={};const code=ts.transpileModule(fs
  const hiddenTarget=api.targetPriceSnapshots(hiddenPlan)[0];assert.deepEqual(hiddenTarget.parameters[0].variants.map(v=>v.order),[2,1,3],'retired variants go after active variants without colliding');
  await api.writePriceSnapshots([hiddenTarget]);assert.equal(remote.enabled,true);
  global.fetch=oldFetch;
- const {PGlite}=require(path.join(process.env.TEMP,'igp-dp-postgres-test/node_modules/@electric-sql/pglite'));
+ const {PGlite}=require('@electric-sql/pglite');
  const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role;create table public.products(id uuid primary key);');
  await db.exec(fs.readFileSync('supabase/migrations/20261003_030000_digiseller_price_settings.sql','utf8'));
  const id='00000000-0000-4000-8000-000000000001';await db.query('insert into products values($1)',[id]);

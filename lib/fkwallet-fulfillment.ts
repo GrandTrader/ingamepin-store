@@ -12,7 +12,7 @@ export type FKDeliveryPayload = {
   fieldMap: { key: string; fieldId: string; fieldType: string }[];
   customerInformation: { fieldId: string; value: string }[];
 };
-type Job = { item_id: string; order_id: string; lease_token: string; quantity: number; created_at: string; supplier_payload: FKDeliveryPayload };
+export type FKDeliveryJob = { item_id: string; order_id: string; lease_token: string; quantity: number; created_at: string; supplier_payload: FKDeliveryPayload };
 type Unit = { ordinal: number; request_key: string; submitted_at: string | null; provider_id: string | null; provider_status: string | null; result_ciphertext: string | null };
 export const fkDeliveryEnabled = () => process.env.FKWALLET_FULFILLMENT_ENABLED?.trim() === "true";
 const binding = (id: string, ordinal: number) => `fkwallet:auto:${id}:${ordinal}`;
@@ -35,18 +35,39 @@ export function fkDeliveryFields(payload: FKDeliveryPayload, product: FKProduct)
   });
 }
 
-async function hold(db: DB, job: Job, state: string, issue: string) {
+async function hold(db: DB, job: FKDeliveryJob, state: string, issue: string) {
   await rpc(db, "update_definiteplay_job", { p_item_id: job.item_id, p_token: job.lease_token, p_state: state, p_issue: issue });
 }
 
 // Each tick handles one unit. The database records intent before POST, and an
 // ambiguous request is never POSTed again, even with the same idempotence key.
-export async function processFKDelivery(db: DB, credentials: FKCredentials, job: Job): Promise<string> {
+export type FKPurchaseStore = {
+  units(): Promise<Unit[]>;
+  hold(state: string, issue: string): Promise<void>;
+  mark(ordinal: number, request: string): Promise<void>;
+  record(ordinal: number, providerId: string, status: string, amount: number | null, result: string): Promise<void>;
+  complete(codes: string[]): Promise<void>;
+};
+export async function processFKDelivery(db: DB, credentials: FKCredentials, job: FKDeliveryJob): Promise<string> {
+  const args = { p_item_id: job.item_id, p_token: job.lease_token };
+  return processFKPurchase(credentials, job, {
+    async units() {
+      const read = await db.from("fkwallet_units").select("ordinal,request_key,submitted_at,provider_id,provider_status,result_ciphertext").eq("item_id", job.item_id).order("ordinal");
+      if (read.error) throw new FKError("Supplier purchase records are incomplete.");
+      return (read.data ?? []) as Unit[];
+    },
+    hold: (state, issue) => hold(db, job, state, issue),
+    async mark(ordinal, request) { await rpc(db, "mark_fkwallet_unit_submitted", { ...args, p_ordinal: ordinal, p_request: request }); },
+    async record(ordinal, providerId, status, amount, result) { await rpc(db, "record_fkwallet_unit", { ...args, p_ordinal: ordinal, p_provider_id: providerId, p_status: status, p_amount: amount, p_result: result }); },
+    async complete(codes) { await rpc(db, "complete_fkwallet_job", { ...args, p_codes: codes }); },
+  });
+}
+
+export async function processFKPurchase(credentials: FKCredentials, job: FKDeliveryJob, store: FKPurchaseStore): Promise<string> {
   const payload = job.supplier_payload;
-  if (payload.connectionId !== connectionId(credentials)) { await hold(db, job, "REVIEW", "FKWallet account changed. Reconcile this order using its original account."); return "review"; }
-  const read = await db.from("fkwallet_units").select("ordinal,request_key,submitted_at,provider_id,provider_status,result_ciphertext").eq("item_id", job.item_id).order("ordinal");
-  if (read.error || read.data?.length !== job.quantity) throw new FKError("Supplier purchase records are incomplete.");
-  const units = read.data as Unit[];
+  if (payload.connectionId !== connectionId(credentials)) { await store.hold( "REVIEW", "FKWallet account changed. Reconcile this order using its original account."); return "review"; }
+  const units = await store.units();
+  if (units.length !== job.quantity) throw new FKError("Supplier purchase records are incomplete.");
   const unit = units.find(row => row.provider_status !== "success");
   if (!unit) {
     const codes = payload.deliveryKind === "CODE" ? units.map(row => {
@@ -55,7 +76,7 @@ export async function processFKDelivery(db: DB, credentials: FKCredentials, job:
       if (!result.couponCode?.trim() || result.id !== row.provider_id) throw new FKError("A delivered code is missing. Review this order.");
       return result.couponCode.trim();
     }) : [];
-    await rpc(db, "complete_fkwallet_job", { p_item_id: job.item_id, p_token: job.lease_token, p_codes: codes });
+    await store.complete(codes);
     return "delivered";
   }
   if (!unit.submitted_at) {
@@ -75,43 +96,41 @@ export async function processFKDelivery(db: DB, credentials: FKCredentials, job:
       if (balance.value < product.price) throw new FKError("Supplier balance is insufficient. Delivery will retry after FKWallet is topped up.");
       const body = { online_product_id: product.id, currency_id: currency.id, fields, idempotence_key: unit.request_key };
       await fkRequest(credentials, "op/validate", { ...body, idempotence_key: `check-${unit.request_key}` });
-      await rpc(db, "mark_fkwallet_unit_submitted", { p_item_id: job.item_id, p_token: job.lease_token, p_ordinal: unit.ordinal, p_request: seal(body, `${binding(job.item_id, unit.ordinal)}:request`) });
+      await store.mark(unit.ordinal, seal(body, `${binding(job.item_id, unit.ordinal)}:request`));
       attempted = true;
       const result = parseResult(await fkRequest(credentials, "op/create", body));
-      await rpc(db, "record_fkwallet_unit", { p_item_id: job.item_id, p_token: job.lease_token, p_ordinal: unit.ordinal,
-        p_provider_id: result.id, p_status: "unknown", p_amount: null, p_result: seal(result, binding(job.item_id, unit.ordinal)) });
-      await hold(db, job, "WAITING", "Purchase submitted. Waiting for FKWallet delivery confirmation.");
+      await store.record(unit.ordinal, result.id, "unknown", null, seal(result, binding(job.item_id, unit.ordinal)));
+      await store.hold( "WAITING", "Purchase submitted. Waiting for FKWallet delivery confirmation.");
       return "submitted";
     } catch (error) {
       const message = error instanceof FKError ? error.message : "Supplier preflight failed. Review before purchasing.";
       const retryCheck = !attempted && /balance is insufficient|could not be reached|request failed \(HTTP (429|5\d\d)\)/.test(message);
-      await hold(db, job, retryCheck ? "WAITING" : "REVIEW", attempted ? "Supplier submission outcome is unconfirmed. Check FKWallet; do not buy again." : message);
+      await store.hold( retryCheck ? "WAITING" : "REVIEW", attempted ? "Supplier submission outcome is unconfirmed. Check FKWallet; do not buy again." : message);
       return retryCheck ? "waiting" : "review";
     }
   }
   if (!unit.provider_id) {
-    await hold(db, job, "REVIEW", "No supplier order ID was saved. Reconcile the original request in FKWallet; do not submit again."); return "review";
+    await store.hold( "REVIEW", "No supplier order ID was saved. Reconcile the original request in FKWallet; do not submit again."); return "review";
   }
   const history = await findFKOrderHistory(credentials, unit.provider_id, unit.submitted_at);
   if (!history || history.status === "in_process" || history.status === "unknown") {
-    await hold(db, job, Date.now() - Date.parse(unit.submitted_at) > 86400000 ? "REVIEW" : "WAITING", "Awaiting a confirmed status from FKWallet purchase history."); return "waiting";
+    await store.hold( Date.now() - Date.parse(unit.submitted_at) > 86400000 ? "REVIEW" : "WAITING", "Awaiting a confirmed status from FKWallet purchase history."); return "waiting";
   }
   if (history.status !== "success") {
-    await hold(db, job, "REVIEW", `FKWallet reports ${history.status}. Review the supplier charge and customer refund.`); return "review";
+    await store.hold( "REVIEW", `FKWallet reports ${history.status}. Review the supplier charge and customer refund.`); return "review";
   }
   if (history.currency !== payload.currency || history.amount > Number(payload.supplierCost)) {
-    await hold(db, job, "REVIEW", "Supplier charge or currency does not match the approved purchase."); return "review";
+    await store.hold( "REVIEW", "Supplier charge or currency does not match the approved purchase."); return "review";
   }
   const result = parseResult(await fkRequest(credentials, `op/status/${unit.provider_id}`));
   if (result.id !== unit.provider_id) throw new FKError("Supplier returned a different order.");
   if (payload.deliveryKind === "CODE" && !result.couponCode?.trim()) {
-    await hold(db, job, "REVIEW", "FKWallet confirmed the purchase but returned no code. Check the supplier result."); return "review";
+    await store.hold( "REVIEW", "FKWallet confirmed the purchase but returned no code. Check the supplier result."); return "review";
   }
-  await rpc(db, "record_fkwallet_unit", { p_item_id: job.item_id, p_token: job.lease_token, p_ordinal: unit.ordinal,
-    p_provider_id: result.id, p_status: "success", p_amount: history.amount, p_result: seal(result, binding(job.item_id, unit.ordinal)) });
+  await store.record(unit.ordinal, result.id, "success", history.amount, seal(result, binding(job.item_id, unit.ordinal)));
   // Complete immediately if this is the last unit; otherwise release the lease.
-  if (units.every(row => row.ordinal === unit.ordinal || row.provider_status === "success")) return processFKDelivery(db, credentials, job);
-  await hold(db, job, "WAITING", "Unit delivered. Remaining units are queued."); return "waiting";
+  if (units.every(row => row.ordinal === unit.ordinal || row.provider_status === "success")) return processFKPurchase(credentials, job, store);
+  await store.hold( "WAITING", "Unit delivered. Remaining units are queued."); return "waiting";
 }
 
 export async function syncFKProductStock(db: DB, credentials: FKCredentials, productId: string) {
@@ -150,7 +169,7 @@ export async function runFKDeliveryTick() {
   parseBalances(await fkRequest(credentials, "balance"));
   const heartbeat = await db.from("fkwallet_worker_state").upsert({ id: true, connection_id: connectionId(credentials), seen_at: new Date().toISOString() });
   if (heartbeat.error) throw new FKError("Install the FKWallet delivery database update first.");
-  const job = await rpc(db, "claim_supplier_job", { p_provider: "FKWALLET" }) as Job | null;
+  const job = await rpc(db, "claim_supplier_job", { p_provider: "FKWALLET" }) as FKDeliveryJob | null;
   let state = "idle";
   if (job) {
     try { state = await processFKDelivery(db, credentials, job); }
