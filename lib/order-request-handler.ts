@@ -9,6 +9,7 @@ import { requestLimit, sameOrigin, privateJson } from "@/lib/request-security";
 import type { User } from "@supabase/supabase-js";
 import { purchaseLimitSince, purchaseLimitMessage } from "@/lib/purchase-restriction";
 import { exemptPurchaseProducts } from "@/lib/purchase-restriction-exemptions";
+import { assertDenominationPurchaseLimit } from "@/lib/denomination-purchase-limit";
 import {notifyPortalOrder} from "@/lib/portal-order-notifications";
 import {portalCheckoutInput,type PortalCheckoutInput} from "@/lib/portal-checkout";
 import { productRanges } from "@/lib/product-range-data";
@@ -259,6 +260,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       }
     }
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
+    let requiresDenominationGuard = false;
     if (optionIds.length) {
       const optionsResult = await admin.from("product_options").select("id, product_id, denomination, denomination_currency, is_custom_value, selling_price, stock_quantity, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
       if (optionsResult.error) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
@@ -336,8 +338,9 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
           );
         }
       }
-      const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("product_id, weekly_limit, limit_currency, identity_mode, reset_mode, notification_message").in("product_id", productIds).eq("is_enabled", true) : { data: [], error: null };
+      const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("*").in("product_id", productIds).eq("is_enabled", true) : { data: [], error: null };
       if (restrictionsResult.error) return NextResponse.json({ error: "Unable to verify purchase limits. Please retry." }, { status: 503 });
+      requiresDenominationGuard = (restrictionsResult.data ?? []).some(rule => rule.one_per_denomination === true);
       let exemptProducts: Set<string>;
       try {
         exemptProducts = await exemptPurchaseProducts(admin, signedInUser?.id, (restrictionsResult.data ?? []).map(rule => rule.product_id));
@@ -345,7 +348,9 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
         return NextResponse.json({ error: "Unable to verify customer purchase restrictions. Please retry." }, { status: 503 });
       }
       for (const rule of restrictionsResult.data ?? []) {
-        if (exemptProducts.has(rule.product_id)) continue;
+        const onePerDenomination = rule.one_per_denomination === true;
+        const valueExempt = exemptProducts.has(rule.product_id);
+        if (valueExempt && !onePerDenomination) continue;
         let currentValue: number;
         try {
           currentValue = regionalFaceValue(submittedItems.flatMap(item => {
@@ -357,23 +362,32 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
         } catch (error) {
           return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to verify purchase limits." }, { status: 409 });
         }
-        if (currentValue === 0) continue;
+        if (currentValue === 0 && !onePerDenomination) continue;
         if (rule.identity_mode !== "ACCOUNT_EMAIL" && !customerIp) return NextResponse.json({ error: "Unable to verify the purchase limit. Please retry." }, { status: 503 });
         const since = purchaseLimitSince(rule.reset_mode);
         const orderIds = new Set<string>();
         const identityQueries = [];
-        if (rule.identity_mode !== "IP") identityQueries.push(admin.from("orders").select("id").eq("customer_email", customerEmailForLimit).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
-        if (rule.identity_mode !== "IP" && signedInUser) identityQueries.push(admin.from("orders").select("id").eq("customer_id", signedInUser.id).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
-        if (rule.identity_mode !== "ACCOUNT_EMAIL" && customerIp) identityQueries.push(admin.from("orders").select("id").eq("customer_ip", customerIp).gte("created_at", since.toISOString()).in("status", ["PAID", "PROCESSING", "DELIVERED"]));
+        const historyQuery = () => {
+          const query = admin.from("orders").select("id").in("status", onePerDenomination
+            ? ["PENDING_PAYMENT", "PAID", "PROCESSING", "DELIVERED"] : ["PAID", "PROCESSING", "DELIVERED"]);
+          return onePerDenomination
+            ? query.or(`paid_at.gte.${since.toISOString()},and(paid_at.is.null,created_at.gte.${since.toISOString()})`)
+            : query.gte("created_at", since.toISOString());
+        };
+        if (rule.identity_mode !== "IP") identityQueries.push(historyQuery().eq("customer_email", customerEmailForLimit));
+        if (rule.identity_mode !== "IP" && signedInUser) identityQueries.push(historyQuery().eq("customer_id", signedInUser.id));
+        if (rule.identity_mode !== "ACCOUNT_EMAIL" && customerIp) identityQueries.push(historyQuery().eq("customer_ip", customerIp));
         for (const query of await Promise.all(identityQueries)) {
           if (query.error || (query.data?.length ?? 0) >= 1000) return NextResponse.json({ error: "Unable to verify complete purchase history. Please contact support." }, { status: 503 });
           for (const order of query.data ?? []) orderIds.add(order.id);
         }
         let previousValue = 0;
+        const previousDenominations: Array<{ optionId: string | null; customValue: unknown; quantity: unknown }> = [];
         if (orderIds.size) {
-          const previous = await admin.from("order_items").select("denomination, custom_value, quantity, product_options(denomination_currency)").eq("product_id", rule.product_id).in("order_id", [...orderIds]);
+          const previous = await admin.from("order_items").select("product_option_id, denomination, custom_value, quantity, product_options(denomination_currency)").eq("product_id", rule.product_id).in("order_id", [...orderIds]);
           if (previous.error || (previous.data?.length ?? 0) >= 1000) return NextResponse.json({ error: "Unable to verify complete purchase history. Please contact support." }, { status: 503 });
           try {
+            previousDenominations.push(...(previous.data ?? []).map(item => ({ optionId: item.product_option_id, customValue: item.custom_value, quantity: item.quantity })));
             previousValue = regionalFaceValue((previous.data ?? []).map(item => {
               const option = Array.isArray(item.product_options) ? item.product_options[0] : item.product_options;
               return { denomination: item.custom_value ?? item.denomination, quantity: item.quantity, currency: option?.denomination_currency };
@@ -382,7 +396,17 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
             return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to verify purchase history." }, { status: 409 });
           }
         }
-        const limit = Number(rule.weekly_limit); if (exceedsRegionalLimit(previousValue, currentValue, limit)) return NextResponse.json({ error: rule.notification_message || purchaseLimitMessage, weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
+        if (onePerDenomination) {
+          try {
+            assertDenominationPurchaseLimit(submittedItems.flatMap(item => {
+              const option = options.find(entry => entry.id === item.productOptionId && entry.product_id === rule.product_id);
+              return option ? [{ optionId: option.id, customValue: option.is_custom_value ? item.customValue : null, quantity: item.quantity ?? 1 }] : [];
+            }), previousDenominations);
+          } catch (error) {
+            return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to verify denomination limits." }, { status: 409 });
+          }
+        }
+        const limit = Number(rule.weekly_limit); if (!valueExempt && exceedsRegionalLimit(previousValue, currentValue, limit)) return NextResponse.json({ error: rule.notification_message || purchaseLimitMessage, weeklyLimit: limit, remaining: Math.max(0, limit - previousValue), currency: rule.limit_currency }, { status: 409 });
       }
     }
     if(portal){
@@ -392,7 +416,8 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       if(checkout.data?.orderId&&!checkout.data?.replayed){try{await notifyPortalOrder(checkout.data);}catch(error){console.error("Portal order notification failed",error);}}
       return NextResponse.json({result:checkout.data},{headers:{"Cache-Control":"no-store"}});
     }
-    const orderResult = await admin.rpc("create_business_checked_order", {
+    const orderResult = await admin.rpc(requiresDenominationGuard ? "create_purchase_checked_order" : "create_business_checked_order", {
+      ...(requiresDenominationGuard ? { p_ip: customerIp } : {}),
       p_user: signedInUser?.id ?? null,
       p_customer_name: customerName.length >= 2 ? customerName : "Customer",
       p_customer_email: String(customer.email ?? ""),

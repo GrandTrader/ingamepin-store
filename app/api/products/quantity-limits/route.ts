@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       ),
     ];
     const admin = createAdminClient();
-    const [productsResult, optionsResult] = await Promise.all([
+    const [productsResult, optionsResult, restrictionsResult] = await Promise.all([
       admin
         .from("products")
         .select("id, currency, minimum_quantity, maximum_quantity, is_bulk_order, stock_quantity, status")
@@ -48,9 +48,10 @@ export async function POST(request: NextRequest) {
             .select("id, product_id, denomination_currency, minimum_quantity, maximum_quantity, is_active, is_in_stock")
             .in("id", optionIds)
         : Promise.resolve({ data: [], error: null }),
+      admin.from("product_purchase_restrictions").select("*").in("product_id", productIds).eq("is_enabled", true),
     ]);
 
-    if (productsResult.error || optionsResult.error) {
+    if (productsResult.error || optionsResult.error || restrictionsResult.error) {
       throw new Error("Unable to load product quantity settings.");
     }
 
@@ -75,7 +76,8 @@ export async function POST(request: NextRequest) {
         Number(option?.minimum_quantity ?? 1),
       );
       const storedMaximum = Number(option?.maximum_quantity ?? product.maximum_quantity);
-      const maximumQuantity =
+      const onePerDenomination = (restrictionsResult.data ?? []).some(rule => rule.product_id === product.id && rule.one_per_denomination === true);
+      const maximumQuantity = onePerDenomination ? 1 :
         product.is_bulk_order ||
         (option?.maximum_quantity == null && storedMaximum >= UNLIMITED_STOCK_QUANTITY)
           ? null
@@ -102,6 +104,7 @@ export async function POST(request: NextRequest) {
         productOptionId: item.productOptionId,
         minimumQuantity,
         maximumQuantity,
+        onePerDenomination,
       };
     }));
 

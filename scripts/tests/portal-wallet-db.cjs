@@ -145,6 +145,27 @@ const {PGlite}=require(process.env.PGLITE_PATH||'@electric-sql/pglite');
  assert.equal((await db.query('select sales_channel from orders where id=$1',[retailOrder])).rows[0].sales_channel,'RETAIL');
  await db.query('insert into bulk_api_requests values($1)',[retailOrder]);await db.exec(orderChannelMigration);
  assert.equal((await db.query('select sales_channel from orders where id=$1',[retailOrder])).rows[0].sales_channel,'BUSINESS');
+ await db.exec('rollback');
+ // Exercise the new restriction with the real portal wallet transaction. A
+ // rejected confirmation must undo its order, debit, and delivery reservations.
+ await db.exec(ipRepair);
+ for(const file of ['20260801_100000_add_product_purchase_restrictions.sql','20261002_010000_purchase_restriction_periods_and_exemptions.sql','20261013_190000_denomination_purchase_limits.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20261013_190000_denomination_purchase_limits.sql','utf8'));
+ await db.query("insert into product_purchase_restrictions(product_id,is_enabled,weekly_limit,limit_currency,identity_mode,one_per_denomination) values($1,true,10000,'INR','ACCOUNT_EMAIL',true)",[product]);
+ const limitedBefore=await counts();
+ const unique=[{productOptionId:option,customValue:100,quantity:1},{productOptionId:option,customValue:200,quantity:1}];
+ const limitedQuote=await call('quote',90,null,unique);
+ assert.deepEqual(await counts(),limitedBefore,'Quote leaves no denomination reservation');
+ await assert.rejects(call('quote',91,null,[unique[0],unique[0]]),/Only one of each/);
+ await assert.rejects(call('confirm',91,10,[unique[0],unique[0]]),/Only one of each/);
+ assert.deepEqual(await counts(),limitedBefore,'Duplicate lines never charge the wallet');
+ const limitedPaid=await call('confirm',90,limitedQuote.total,unique);
+ const limitedAfter=await counts();assert.equal(limitedAfter.debits,limitedBefore.debits+1);
+ await assert.rejects(call('confirm',92,limitedQuote.total,unique),/Only one of each/);
+ assert.deepEqual(await counts(),limitedAfter,'Repeat purchase leaves the wallet and inventory unchanged');
+ assert.equal((await call('confirm',90,limitedQuote.total,unique)).orderId,limitedPaid.orderId,'Recovery bypasses new-purchase checks');
+ assert.deepEqual(await counts(),limitedAfter);
+ console.log('PASS: denomination limits on real portal quotes and confirmation, distinct custom values, no wallet debit on duplicates, unchanged idempotent recovery.');
  console.log('PASS: persisted order channels and backfill preserve the universal wallet.');
  console.log('PASS: restricted-role installation, repair of stored forbidden SET, repeat migration, retail/business channel matrix, channel scope isolation, stale-cart rejection, replay after disable, portal quote rollback, authoritative pricing, KYB, wallet restrictions, atomic manual/automatic delivery, payment/stock rollback, B2B numbers, unchanged retail generator and replay protection.');
 }finally{await db.close();}}})().catch(e=>{console.error(e);process.exitCode=1;});

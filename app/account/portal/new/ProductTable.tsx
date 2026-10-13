@@ -12,7 +12,7 @@ import { rangePrice, type ProductRange } from "@/lib/product-range";
 import s from "../Portal.module.css";
 type DraftItem=ReturnType<typeof portalCartItem> & {customValue?:number};
 const draftKey=(item:DraftItem)=>item.productOptionId+(item.customValue===undefined?"":":"+item.customValue);
-type Limit={denominationCurrency?:string;productOptionId:string;availableQuantity:number|null;minimumQuantity:number;maximumQuantity:number|null};
+type Limit={denominationCurrency?:string;productOptionId:string;availableQuantity:number|null;minimumQuantity:number;maximumQuantity:number|null;onePerDenomination?:boolean};
 export default function ProductTable({userId,products,discounts,filters,stockProducts=products,ranges=[],rows}:{rows?:CatalogueRow[];ranges?:ProductRange[];userId:string;products:PortalProduct[];stockProducts?:PortalProduct[];discounts:Record<string,number>;filters:React.ReactNode}) {
   const key="business-order-draft:"+userId;
   const promotionNow=usePromotionClock(stockProducts.flatMap(p=>(p.promotionRules??[]).map(r=>r.endsAt)));
@@ -52,7 +52,8 @@ export default function ProductTable({userId,products,discounts,filters,stockPro
       if(!Number.isSafeInteger(quantity)||quantity<minimum)throw Error(`Minimum quantity is ${minimum}.`);
       const limit=limits[option.id];if(!limit)throw Error("Wait for the stock check to finish.");
       if(limit.availableQuantity!==null&&optionQuantity>limit.availableQuantity)throw Error(`Only ${limit.availableQuantity} available. Your draft already has ${existing?.quantity??0}.`);
-      if(combined<limit.minimumQuantity||(limit.maximumQuantity!==null&&optionQuantity>limit.maximumQuantity))throw Error("The requested quantity is outside the current purchase limits.");
+      const limitedQuantity=limit.onePerDenomination?combined:optionQuantity;
+      if(combined<limit.minimumQuantity||(limit.maximumQuantity!==null&&limitedQuantity>limit.maximumQuantity))throw Error(limit.onePerDenomination?"Only one of each denomination is allowed until your purchase limit resets.":"The requested quantity is outside the current purchase limits.");
       const item:DraftItem=portalCartItem(product,range?{...option,is_custom_value:false,selling_price:unitPrice}:option,combined);
       if(range){item.denominationCurrency=range.currency;item.customValue=value;item.denomination=value!;item.amount=value!;item.editionName=`${value} ${range.currency}`;item.deliveryType="MANUAL";item.id=draftKey(item);item.cartId=item.id;}
       if(!existing&&draft.length>=100)throw Error("Use up to 100 options in one draft.");

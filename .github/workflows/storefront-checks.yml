@@ -19,5 +19,6 @@ jobs:
       - run: npm run test:storefront
       - run: npm run test:business-bank
       - run: npm run test:business-discounts
+      - run: npm run test:purchase-restrictions
       - run: npm run test:fkwallet
       - run: npm run test:digiseller-fkwallet

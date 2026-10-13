@@ -1,4 +1,6 @@
-type StockItem = { productId?: string; productOptionId?: string; quantity: number };
+import { assertDenominationPurchaseLimit } from "@/lib/denomination-purchase-limit";
+
+type StockItem = { productId?: string; productOptionId?: string; quantity: number; customValue?: number };
 export function quantityForOption(items: StockItem[], optionId: string) {
   return items.filter(item => item.productOptionId === optionId).reduce((sum, item) => sum + Number(item.quantity), 0);
 }
@@ -13,6 +15,10 @@ export async function validateCartStock(items: StockItem[], signal?: AbortSignal
     const limit = result.limits.find((entry: { productOptionId: string }) => entry.productOptionId === item.productOptionId);
     if (!limit) throw new Error('Unable to check stock. Please try again.');
     const total = quantityForOption(items, item.productOptionId!);
+    if (limit.onePerDenomination) assertDenominationPurchaseLimit(
+      items.filter(entry => entry.productOptionId === item.productOptionId).map(entry => ({ optionId: entry.productOptionId!, customValue: entry.customValue, quantity: entry.quantity })),
+      [],
+    );
     if (limit.availableQuantity != null && total > limit.availableQuantity) throw new Error('Only ' + limit.availableQuantity + ' code(s) are available for this denomination. Your selected total is ' + total + '.');
   }
 }

@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { authorizeBulkApi, bulkApiNoStore } from "@/lib/bulk-api-auth";
 import { MANUAL_USDT_NETWORKS } from "@/lib/manual-usdt";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { trustedClientIp } from "@/lib/trusted-client-ip";
 
 export const runtime = "nodejs";
 
@@ -74,7 +75,19 @@ export async function POST(request: NextRequest) {
       return bulkApiNoStore({ error: "Only active manual Bulk Delivery products enabled for business are allowed." }, { status: 403 });
     }
 
-    const orderResult = await admin.rpc("create_business_checked_order", {
+    const productIds = options.map(option => {
+      const product = Array.isArray(option.products) ? option.products[0] : option.products;
+      return product!.id;
+    });
+    const restrictions = await admin.from("product_purchase_restrictions").select("*").in("product_id", productIds).eq("is_enabled", true);
+    if (restrictions.error) {
+      await admin.from("bulk_api_requests").update({ status: "FAILED", response_body: { error: "Unable to verify purchase limits." } })
+        .eq("client_id", auth.principal.clientId).eq("idempotency_key", idempotencyKey);
+      return bulkApiNoStore({ error: "Unable to verify purchase limits." }, { status: 503 });
+    }
+    const restricted = (restrictions.data ?? []).some(rule => rule.one_per_denomination === true);
+    const orderResult = await admin.rpc(restricted ? "create_purchase_checked_order" : "create_business_checked_order", {
+      ...(restricted ? { p_ip: trustedClientIp(request.headers) } : {}),
       p_bulk_client: auth.principal.clientId,
       p_customer_name: name,
       p_customer_email: email,

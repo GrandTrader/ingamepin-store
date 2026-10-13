@@ -110,8 +110,19 @@ export async function saveProductRestriction(formData: FormData) {
 
   const limitCurrency = String(formData.get("limit_currency") ?? "INR").trim().toUpperCase();
   const enabled = formData.get("is_enabled") === "on";
+  const onePerDenomination = formData.get("one_per_denomination") === "on";
+  if (onePerDenomination && !enabled) redirect(path + "?error=Turn on Purchase restriction to use the one-per-denomination limit.");
   if (!isRestrictionCurrency(limitCurrency)) redirect(`${path}?error=${encodeURIComponent("Select a supported limit currency.")}`);
   const admin = createAdminClient();
+  const denominationSchema = await admin.from("product_purchase_restrictions").select("one_per_denomination").limit(0);
+  if (denominationSchema.error && onePerDenomination) redirect(path + "?error=Install the denomination purchase limit database update first.");
+  if (onePerDenomination) {
+    const quantities = await admin.from("product_options").select("minimum_quantity").eq("product_id", id).eq("is_active", true);
+    if (quantities.error) redirect(path + "?error=Unable to verify denomination quantities. Please retry.");
+    if (minimumQuantity > 1 || quantities.data?.some(option => Number(option.minimum_quantity ?? 1) > 1)) {
+      redirect(path + "?error=Set the minimum quantity to 1 for the product and its denominations before enabling this limit.");
+    }
+  }
   if (resetMode === "ROLLING_1_DAY" || resetMode === "ROLLING_30_DAYS") {
     const schema = await admin.from("product_purchase_restriction_exemptions").select("user_id").limit(0);
     if (schema.error) redirect(path + "?error=Apply the purchase restriction database migration before using this reset period.");
@@ -145,6 +156,7 @@ export async function saveProductRestriction(formData: FormData) {
   const restrictionResult = await admin.from("product_purchase_restrictions").upsert({
     product_id: id,
     is_enabled: enabled,
+    ...(!denominationSchema.error ? { one_per_denomination: onePerDenomination } : {}),
     weekly_limit: weeklyLimit,
     limit_currency: limitCurrency,
     identity_mode: identityMode,
