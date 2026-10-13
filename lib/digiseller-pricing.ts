@@ -65,10 +65,10 @@ export function buildPricePlan(options: PriceOption[], snapshots: PriceSnapshot[
     const mapped = options.filter(o => o.productId === id);
     const parameter = denominationParameter(before);
     if (!parameter && (mapped.length !== 1 || mapped[0].optionId || mapped[0].variantId)) throw new Error(`Check the denomination matches for product ${id}.`);
-    if (parameter && (mapped.length !== parameter.variants.filter(v=>v.visible).length || new Set(mapped.map(o => o.variantId)).size !== mapped.length)) throw new Error(`Every visible DigiSeller denomination of product ${id} must be matched exactly once. Use denomination sync after changing the options.`);
+    if (parameter && (parameter.variants.some(v=>v.visible && !mapped.some(o=>o.variantId===v.variant_id)) || new Set(mapped.map(o => o.variantId)).size !== mapped.length)) throw new Error(`Every visible DigiSeller denomination of product ${id} must be matched exactly once. Use denomination sync after changing the options.`);
     const group = mapped.map(o => {
       const variant = parameter?.variants.find(v => v.variant_id === o.variantId);
-      if (parameter && (!variant || !variant.visible || parameter.id !== o.optionId)) throw new Error(`Sync the DigiSeller denomination for ${o.name} first.`);
+      if (parameter && (!variant || parameter.id !== o.optionId)) throw new Error(`Sync the DigiSeller denomination for ${o.name} first.`);
       if (!Number.isFinite(o.price) || o.price <= 0) throw new Error(`Set a selling price for ${o.name}.`);
       return { id:o.id, name:o.name, website:o.price, current:variant ? variantPrice(before.base,variant) : before.base,
         next:adjustedPrice(o.price,percent), productId:id, optionId:o.optionId, variantId:o.variantId };
