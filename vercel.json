@@ -1,8 +1,15 @@
 {
+  "env": {
+    "FKWALLET_FULFILLMENT_ENABLED": "true"
+  },
   "crons": [
     {
       "path": "/api/cron/digiseller-reviews",
       "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/fkwallet",
+      "schedule": "* * * * *"
     }
   ]
 }

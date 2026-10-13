@@ -15,11 +15,16 @@ Set `FKWALLET_FULFILLMENT_ENABLED=true` on the website server. Set a matching
 FKWallet keys in their current encrypted storage or supported server environment.
 Restart the website after changing its environment.
 
-Run `node scripts/fkwallet-worker.cjs` from this checkout with `FKWALLET_WORKER_URL`
-pointing to the intended website origin. It defaults to `http://localhost:3000`
-for local review. A production scheduler must run continuously on an always-on
-server. Alternatively call `/api/cron/fkwallet` regularly with the same bearer
-secret. There is no Vercel cron entry added automatically.
+Production uses Vercel Cron every minute at `/api/cron/fkwallet`, configured in
+`vercel.json`. Vercel sends its existing `CRON_SECRET` as the authorization header;
+no secrets are copied to another server. The configuration also sets the
+non-secret runtime flag `FKWALLET_FULFILLMENT_ENABLED=true`. To disable the
+deployment-level worker, change that flag in `vercel.json` and redeploy. Each
+product remains disabled until an administrator enables it in its Supplier tab.
+
+For local review, run `node scripts/fkwallet-worker.cjs` from this checkout with
+`FKWALLET_WORKER_URL=http://localhost:3000` (the default). Stop the local scheduler
+after verifying production readiness when both environments share a database.
 
 The Supplier tab requires a heartbeat less than three minutes old before enabling
 delivery. Select **Activation on the customer's account** for Telegram Premium;
