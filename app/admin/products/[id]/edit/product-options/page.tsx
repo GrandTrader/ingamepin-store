@@ -1,4 +1,5 @@
 import { productRanges, rangeMarkupForAdmin } from "@/lib/product-range-data";
+import { manualCodeRangeDefaults } from "@/lib/manual-code-range";
 import RangeOptionEditor from "./RangeOptionEditor";
 import { saveRangeOption } from "./range-actions";
 import ProductSettingsActions from "@/components/ProductSettingsActions";
@@ -41,7 +42,7 @@ export default async function ProductOptionsPage({
   if (!access.data) redirect("/admin/login?error=Access denied");
 
   const [productResult, optionsResult] = await Promise.all([
-    supabase.from("products").select("id, name, slug, currency, minimum_custom_value").eq("id", id).maybeSingle(),
+    supabase.from("products").select("id, name, slug, currency, minimum_custom_value, product_type, stock_source, delivery_type").eq("id", id).maybeSingle(),
     supabase
       .from("product_options")
       .select("id, option_name, denomination, denomination_currency, selling_price, is_active, is_in_stock, is_custom_value")
@@ -86,7 +87,7 @@ export default async function ProductOptionsPage({
               ...rangeData.ranges.map(r=>({id:r.option_id,name:`Custom range (${r.currency})`,price:Number(r.price_usd),priceLabel:`Normal price for ${r.price_basis} ${r.currency}`})),
             ]}/>
 
-          <form action={saveRangeOption} className="mt-6"><input type="hidden" name="id" value={id}/><RangeOptionEditor initialMarkup={rangeMarkup} productCurrency={productCurrency} ready={rangeData.ready} range={rangeData.ranges[0]??null}/></form>
+          <form action={saveRangeOption} className="mt-6"><input type="hidden" name="id" value={id}/><RangeOptionEditor manualDefaults={manualCodeRangeDefaults(product, optionsResult.data??[])} initialMarkup={rangeMarkup} productCurrency={productCurrency} ready={rangeData.ready} range={rangeData.ranges[0]??null}/></form>
           <form action={saveProductOptions} className="mt-6 grid gap-6">
             <input type="hidden" name="id" value={id} />
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

@@ -417,8 +417,8 @@ export async function renderProductPage({
             <p className={styles.delivery}>
               <span aria-hidden="true">◆</span>
               <LocalizedProductText
-                english={hasInstantDelivery(product) ? "Instant delivery after payment confirmation" : "Digital delivery after payment confirmation"}
-                russian={hasInstantDelivery(product) ? "Мгновенная доставка после подтверждения оплаты" : "Цифровая доставка после подтверждения оплаты"}
+                english={hasInstantDelivery(product) ? (range?.delivery_mode==="MANUAL"?"Fixed denominations: instant delivery. Custom amounts: manual delivery.":"Instant delivery after payment confirmation") : "Digital delivery after payment confirmation"}
+                russian={hasInstantDelivery(product) ? (range?.delivery_mode==="MANUAL"?"Фиксированные номиналы: мгновенная доставка. Своя сумма: ручная доставка.":"Мгновенная доставка после подтверждения оплаты") : "Цифровая доставка после подтверждения оплаты"}
               />
             </p>
             <div className={styles.assurance}>

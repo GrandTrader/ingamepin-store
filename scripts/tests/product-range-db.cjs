@@ -66,6 +66,19 @@ const {PGlite}=require(process.env.PGLITE_PATH||'@electric-sql/pglite');
   assert.equal((await db.query("select status from gift_card_codes where code='FIXED-B'")).rows[0].status,'SOLD');
  }
  assert.equal((await db.query("select count(*)::int as n from gift_card_codes where order_item_id=$1 and status='SOLD'",[normalItem])).rows[0].n,1);
+ // The same instant product can contain fixed codes and a manual custom amount.
+ await save({...config,minimum:100,maximum:5000,price_basis:100,price_usd:1.08});
+ await db.query("insert into gift_card_codes(product_id,product_option_id,code,status) values($1,$2,'MIXED-FIXED','AVAILABLE')",[product,fixed]);
+ const mixed=(await db.query("select create_store_order('Buyer','buyer@example.com','','wallet',$1,null) as result",[JSON.stringify([{productOptionId:fixed,quantity:1},{productOptionId:option,customValue:650,quantity:1,unitPrice:.01}])])).rows[0].result;
+ await db.query("update orders set status='PAID' where id=$1",[mixed.id]);
+ assert.equal((await db.query('select fulfill_instant_items($1) as manual',[mixed.id])).rows[0].manual,true);
+ const mixedItems=(await db.query('select * from order_items where order_id=$1',[mixed.id])).rows;
+ const manualItem=mixedItems.find(i=>i.product_option_id===option);
+ assert.equal(manualItem.fulfillment_mode,'RANGE_MANUAL');assert.equal(Number(manualItem.unit_price),7.02);
+ assert.equal((await db.query("select count(*)::int as n from gift_card_codes where order_item_id=$1",[manualItem.id])).rows[0].n,0,'Custom amount must not consume fixed code inventory');
+ assert.equal((await db.query("select count(*)::int as n from gift_card_codes where order_item_id=$1 and status='SOLD'",[mixedItems.find(i=>i.product_option_id===fixed).id])).rows[0].n,1);
+ await db.query('select deliver_manual_codes_batch($1,$2,$3,$4)',[mixed.id,manualItem.id,admin,['MANUAL-650']]);
+ assert.equal((await db.query("select count(*)::int as n from gift_card_codes where order_item_id=$1 and status='SOLD'",[manualItem.id])).rows[0].n,1);
  // An unknown function must fail and roll back the migration, never replace custom logic.
  const unknown=original.replaceAll("'MANUAL'","'CUSTOM'");await db.exec(unknown);
  await assert.rejects(db.exec(sql),/Unrecognised instant fulfillment/);await db.exec('rollback');

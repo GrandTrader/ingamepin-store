@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:manual-code-ranges": "node scripts/tests/manual-code-range.cjs && node scripts/tests/product-range-db.cjs",
     "test:digiseller-stock": "node scripts/tests/digiseller-stock.cjs",
     "test:purchase-restrictions": "node --test scripts/tests/denomination-purchase-limits.cjs scripts/tests/purchase-restriction.cjs scripts/tests/regional-purchase-limit.cjs && node scripts/tests/cart-stock.cjs && node scripts/tests/purchase-restriction-db.cjs && node scripts/tests/denomination-purchase-limits-db.cjs && node scripts/tests/portal-wallet-db.cjs",
     "test:digiseller-fkwallet": "node --test scripts/tests/digiseller-fkwallet.cjs && node scripts/tests/digiseller-fkwallet-db.cjs && node scripts/tests/digiseller-supplier-route.cjs && node scripts/tests/digiseller-supplier-db.cjs && node scripts/tests/digiseller-pricing.cjs && node scripts/tests/digiseller-pricing-actions.cjs",

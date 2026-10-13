@@ -4,20 +4,22 @@ import RangeSupplierImport from "./RangeSupplierImport";
 import { restrictionCurrencies } from "@/lib/purchase-restriction-currencies";
 import { rangePrice, type ProductRange } from "@/lib/product-range";
 import { parseRangeMarkup, supplierRangeRate, type RangeMarkup } from "@/lib/range-markup";
+import type { ManualCodeRangeDefaults } from "@/lib/manual-code-range";
 
-export default function RangeOptionEditor({ range, ready, productCurrency = "USD", initialMarkup = null }: {
+export default function RangeOptionEditor({ range, ready, productCurrency = "USD", initialMarkup = null, manualDefaults = null }: {
   range: ProductRange | null; ready: boolean; productCurrency?: string; initialMarkup?: RangeMarkup | null;
+  manualDefaults?: ManualCodeRangeDefaults | null;
 }) {
   const [enabled, setEnabled] = useState(range?.enabled ?? false);
   const [mode, setMode] = useState(range?.delivery_mode ?? "MANUAL");
-  const [manualOpen, setManualOpen] = useState(!!range && range.delivery_mode === "MANUAL");
-  const [currencyChoice, setCurrencyChoice] = useState(range?.currency ?? "PRODUCT");
+  const [manualOpen, setManualOpen] = useState(range ? range.delivery_mode === "MANUAL" : !!manualDefaults);
+  const [currencyChoice, setCurrencyChoice] = useState(range?.currency ?? manualDefaults?.currency ?? "PRODUCT");
   const currency = currencyChoice === "PRODUCT" ? productCurrency : currencyChoice;
-  const [minimum, setMinimum] = useState(String(range?.minimum ?? 2));
-  const [maximum, setMaximum] = useState(String(range?.maximum ?? 500));
-  const [step, setStep] = useState(String(range?.step ?? 1));
-  const [basis, setBasis] = useState(String(range?.price_basis ?? 100));
-  const [price, setPrice] = useState(String(range?.price_usd ?? ""));
+  const [minimum, setMinimum] = useState(String(range?.minimum ?? manualDefaults?.minimum ?? 2));
+  const [maximum, setMaximum] = useState(String(range?.maximum ?? manualDefaults?.maximum ?? 500));
+  const [step, setStep] = useState(String(range?.step ?? manualDefaults?.step ?? 1));
+  const [basis, setBasis] = useState(String(range?.price_basis ?? manualDefaults?.price_basis ?? 100));
+  const [price, setPrice] = useState(String(range?.price_usd ?? manualDefaults?.price_usd ?? ""));
   const [supplierReference, setSupplierReference] = useState(range?.supplier_reference ?? "");
   const [supplierName, setSupplierName] = useState("Definite Play");
   const [discount, setDiscount] = useState<number | null>(initialMarkup?.discount ?? null);
@@ -46,10 +48,11 @@ export default function RangeOptionEditor({ range, ready, productCurrency = "USD
 
   return <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h2 className="text-lg font-black">Custom card value</h2><p className="mt-1 text-sm text-slate-500">Import a supplier range and set your markup.</p></div>
+      <div><h2 className="text-lg font-black">Custom card value</h2><p className="mt-1 text-sm text-slate-500">{manualDefaults ? "Customers can enter a custom denomination for manual delivery. Fixed denominations keep instant delivery." : "Set up a manual range or import a supplier range."}</p></div>
       <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="enabled" checked={enabled} onChange={e => setEnabled(e.target.checked)} disabled={unsupportedCurrency} />Enable range</label>
     </div>
     {!ready && <p role="status" className="mt-3 text-sm text-amber-800">The range database update must be installed before saving.</p>}
+    {!range && manualDefaults && <p className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-900">Suggested values use your active denominations. Price: {money(manualDefaults.price_usd)} per {manualDefaults.price_basis} {manualDefaults.currency}. Review the settings, enable the range and save.</p>}
     <RangeSupplierImport onImport={item => {
       setCurrencyChoice(item.currency); setMinimum(item.minimum); setMaximum(item.maximum); setStep(item.increment);
       setSupplierReference(item.sku); setSupplierName(`${item.name} · ${item.region}`); setDiscount(item.discountPercent);

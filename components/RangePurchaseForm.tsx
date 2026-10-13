@@ -4,6 +4,7 @@ import {captureProtectedDetails,ACCOUNT_PURCHASE_CONSENT} from "@/lib/protected-
 import {useRef,useState} from "react";
 import styles from "./RangePurchaseForm.module.css";
 import LocalizedProductImage from "@/components/LocalizedProductImage";
+import LocalizedProductText from "@/components/LocalizedProductText";
 import {useStorePreferences} from "@/components/StorePreferences";
 import {useRouter} from "next/navigation";
 import {rangePrice,type ProductRange} from "@/lib/product-range";
@@ -55,6 +56,7 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
  }
  if(!range.enabled)return null;
  return <section className={styles.form} aria-label={`Range purchase for ${product.name}`}>
+  <p className="mb-3 text-sm font-bold"><LocalizedProductText english={range.delivery_mode==="MANUAL"?"Custom denomination · Manual delivery":"Custom denomination · Automatic delivery"} russian={range.delivery_mode==="MANUAL"?"Своя сумма · Ручная доставка":"Своя сумма · Автоматическая доставка"}/></p>
   <div className={styles.controls}>
    <LocalizedProductImage imageUrl={product.image_url??null} imageUrlRu={product.image_url_ru} alt={product.name} altRu={product.name_ru} className={styles.productIcon} fallback={<span className={styles.productIconFallback} aria-hidden="true">{product.name.charAt(0).toUpperCase()}</span>}/>
    <label className={styles.label}>Denomination ({range.currency})<input className={styles.denomination} aria-label={`Denomination for ${product.name}`} type="number" inputMode="decimal" placeholder={rangePlaceholder} title={`Allowed range: ${range.minimum}–${range.maximum} ${range.currency}; increments of ${range.step}`} min={range.minimum} max={range.maximum} step={range.step} value={value} onChange={e=>{setValue(e.target.value);setError("");}}/></label>
@@ -63,7 +65,7 @@ export default function RangePurchaseForm({range,product,discountPercent=0,affil
    <button type="button" disabled={busy} className={styles.addButton} onClick={()=>purchase(false)}>Add to cart</button>
    <button type="button" disabled={busy} className={styles.buyButton} onClick={()=>purchase(true)}>Buy now</button>
   </div>
-  <p className={styles.hint}>Manual Delivery will take Few Minutes.</p>
+  <p className={styles.hint}><LocalizedProductText english={range.delivery_mode==="MANUAL"?(product.is_bulk_order?"Delivered manually after payment. Timing depends on stock availability.":"Delivered manually after payment, usually within 10 minutes–1 hour; maximum 24 hours."):"Delivered automatically after payment and supplier confirmation."} russian={range.delivery_mode==="MANUAL"?(product.is_bulk_order?"Ручная доставка после оплаты. Срок зависит от наличия.":"Ручная доставка после оплаты, обычно от 10 минут до 1 часа; максимум 24 часа."):"Автоматическая доставка после оплаты и подтверждения поставщика."}/></p>
   {sale&&sale.percent>=discountPercent&&<p className={styles.saleOffer}><SaleBadge percent={sale.percent}/><span>Ends <time dateTime={sale.endsAt!}>{promotionExpiryLabel(sale.endsAt!)}</time></span></p>}
   {range.step>1&&<p className={styles.hint}>Increments of {range.step} {range.currency}</p>}
   {fields.length>0&&Array.from({length:Math.min(30,Math.max(1,Number(quantity)||1))},(_,index)=><div key={index} className="mt-3 grid gap-2"><p className="font-bold">Code {index+1} details</p>{fields.map(field=><label key={field.id} className={styles.label}>{field.label}{field.is_required?" *":""}<input className={styles.detailInput} type={isSensitiveCustomerField(field.label)?"password":field.field_type==="EMAIL"?"email":"text"} autoComplete={isSensitiveCustomerField(field.label)?"off":undefined} spellCheck={isSensitiveCustomerField(field.label)?false:undefined} maxLength={500} placeholder={field.placeholder??""} value={answers[`${index}:${field.id}`]??""} onChange={e=>setAnswers({...answers,[`${index}:${field.id}`]:e.target.value})}/></label>)}</div>)}
