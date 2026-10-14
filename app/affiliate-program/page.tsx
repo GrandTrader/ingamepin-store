@@ -129,7 +129,7 @@ export default async function AffiliateProgramPage() {
 
           <div className="mt-8 grid gap-9 text-sm leading-7 text-slate-300">
             <Term title="1. Agreement and operator">
-              The InGamePin Affiliate Program is operated by AMAN G. By applying,
+              The InGamePin Affiliate Program is operated by TEJARA GLOBAL. By applying,
               participating, creating an affiliate link or requesting a payout,
               you agree to these Terms &amp; Conditions and all applicable laws.
             </Term>

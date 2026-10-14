@@ -21,7 +21,7 @@ export default function ShreeBanglaPanchangPrivacyPage() {
           content: (
             <>
               <p><strong>Effective date:</strong> {EFFECTIVE_DATE}</p>
-              <p>Shree Bangla Panchang is operated by AMAN G under the InGamePin website. Privacy questions may be sent to <a href="mailto:support@ingamepin.com">support@ingamepin.com</a>.</p>
+              <p>Shree Bangla Panchang is operated by TEJARA GLOBAL under the InGamePin website. Privacy questions may be sent to <a href="mailto:support@ingamepin.com">support@ingamepin.com</a>.</p>
             </>
           ),
         },

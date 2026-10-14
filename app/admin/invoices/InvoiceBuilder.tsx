@@ -904,7 +904,7 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceData }) {
                 IP
               </div>
               <div>
-                <p className="text-2xl font-black text-slate-950">AMAN G</p>
+                <p className="text-2xl font-black text-slate-950">TEJARA GLOBAL</p>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
                   InGamePIN Digital Game Store
                 </p>

@@ -583,10 +583,10 @@ const russianText: Record<string, string> = {
   "Apple & App Store": "Apple и App Store",
   "Legal": "Правовая информация",
   "Your Privacy": "Ваша конфиденциальность",
-  "These terms govern access to InGamePin and purchases of gaming top-ups, gift cards, subscriptions and game keys. InGamePin is operated by AMAN G.":
-    "Настоящие условия регулируют доступ к InGamePin и покупку игровых пополнений, подарочных карт, подписок и игровых ключей. Сервис InGamePin управляется AMAN G.",
-  "This policy explains how InGamePin, operated by AMAN G, collects, uses, shares and protects personal information.":
-    "Эта политика объясняет, как InGamePin под управлением AMAN G собирает, использует, передаёт и защищает персональную информацию.",
+  "These terms govern access to InGamePin and purchases of gaming top-ups, gift cards, subscriptions and game keys. InGamePin is operated by TEJARA GLOBAL.":
+    "Настоящие условия регулируют доступ к InGamePin и покупку игровых пополнений, подарочных карт, подписок и игровых ключей. Сервис InGamePin управляется TEJARA GLOBAL.",
+  "This policy explains how InGamePin, operated by TEJARA GLOBAL, collects, uses, shares and protects personal information.":
+    "Эта политика объясняет, как InGamePin под управлением TEJARA GLOBAL собирает, использует, передаёт и защищает персональную информацию.",
   "Effective date and acceptance": "Дата вступления в силу и принятие условий",
   "Business identity": "Сведения о компании",
   "Eligibility and account responsibility": "Право на использование и ответственность за аккаунт",
@@ -612,8 +612,8 @@ const russianText: Record<string, string> = {
   "Updates and privacy contact": "Обновления и контакты по вопросам конфиденциальности",
   "By accessing InGamePin, creating an account or placing an order, you agree to these Terms & Conditions and the policies linked on this website. If you do not agree, do not use the service.":
     "Получая доступ к InGamePin, создавая аккаунт или размещая заказ, вы соглашаетесь с настоящими Условиями использования и политиками, опубликованными на сайте. Если вы не согласны, не используйте сервис.",
-  "References to “InGamePin”, “we”, “us” and “our” mean the InGamePin business operated by AMAN G.":
-    "Упоминания «InGamePin», «мы», «нас» и «наш» означают сервис InGamePin, управляемый AMAN G.",
+  "References to “InGamePin”, “we”, “us” and “our” mean the InGamePin business operated by TEJARA GLOBAL.":
+    "Упоминания «InGamePin», «мы», «нас» и «наш» означают сервис InGamePin, управляемый TEJARA GLOBAL.",
   "You must be legally capable of entering a contract under applicable law. If you are a minor, a parent or legal guardian must make or authorize the purchase.":
     "Вы должны иметь законное право заключать договор согласно применимому законодательству. Если вы несовершеннолетний, покупку должен совершить или разрешить родитель либо законный опекун.",
   "You are responsible for providing accurate order information, safeguarding login credentials and activity performed through your account. Notify us promptly if you suspect unauthorized access.":
@@ -657,8 +657,8 @@ const russianText: Record<string, string> = {
     "Свяжитесь с нами до начала официального разбирательства, чтобы мы могли попытаться урегулировать вопрос.",
   "Please include your order number and account email when contacting us about a purchase.":
     "При обращении по вопросу покупки укажите номер заказа и адрес электронной почты аккаунта.",
-  "InGamePin is operated by AMAN G, GSTIN 19CMAPG4174K1ZV, at Chandpur Leningarh, near Jagorani Sangha Club, South Jogendra Nagar, Kolkata, West Bengal 700110, India. Privacy requests may be sent to":
-    "Сервис InGamePin управляется AMAN G, GSTIN 19CMAPG4174K1ZV, по адресу: Chandpur Leningarh, near Jagorani Sangha Club, South Jogendra Nagar, Kolkata, West Bengal 700110, India. Запросы по вопросам конфиденциальности можно направлять на",
+  "InGamePin is operated by TEJARA GLOBAL, GSTIN 19CMAPG4174K1ZV, at Chandpur Leningarh, near Jagorani Sangha Club, South Jogendra Nagar, Kolkata, West Bengal 700110, India. Privacy requests may be sent to":
+    "Сервис InGamePin управляется TEJARA GLOBAL, GSTIN 19CMAPG4174K1ZV, по адресу: Chandpur Leningarh, near Jagorani Sangha Club, South Jogendra Nagar, Kolkata, West Bengal 700110, India. Запросы по вопросам конфиденциальности можно направлять на",
   "Identity and contact information supplied by you, such as name, email address, phone number, address and tax identification details.": "Предоставленные вами идентификационные и контактные данные: имя, электронная почта, телефон, адрес и налоговые сведения.",
   "Account, authentication, security-setting and customer-preference information.": "Данные аккаунта, аутентификации, настроек безопасности и предпочтений покупателя.",
   "Order data, including products, player ID, server or zone, platform, region, delivery status and delivered-content records.": "Данные заказа, включая товары, ID игрока, сервер или зону, платформу, регион, статус доставки и записи о доставленном содержимом.",
@@ -683,7 +683,7 @@ const russianText: Record<string, string> = {
   "InGamePin is not intended for children who cannot legally consent to data processing or enter a contract. A parent or guardian should supervise purchases by minors. Contact us if you believe a child supplied information without proper authorization.": "InGamePin не предназначен для детей, которые не могут законно согласиться на обработку данных или заключить договор. Покупки несовершеннолетних должен контролировать родитель или опекун. Свяжитесь с нами, если ребёнок предоставил данные без надлежащего разрешения.",
   "We may update this policy prospectively to reflect legal, service or operational changes. The effective date above will be updated when material changes are published.": "Мы можем обновлять эту политику с учётом правовых, сервисных или операционных изменений. При публикации существенных изменений дата вступления в силу будет обновлена.",
   "Customer Policy": "Политика для покупателей",
-  "This policy explains cancellations, replacements and refunds for digital products purchased from InGamePin, operated by AMAN G.": "Эта политика объясняет порядок отмены, замены и возврата средств за цифровые товары, приобретённые в InGamePin под управлением AMAN G.",
+  "This policy explains cancellations, replacements and refunds for digital products purchased from InGamePin, operated by TEJARA GLOBAL.": "Эта политика объясняет порядок отмены, замены и возврата средств за цифровые товары, приобретённые в InGamePin под управлением TEJARA GLOBAL.",
   "Effective date": "Дата вступления в силу",
   "Digital-product policy": "Политика в отношении цифровых товаров",
   "When a remedy may be available": "Когда возможно возмещение",
@@ -740,7 +740,7 @@ const russianText: Record<string, string> = {
   "10. Taxes and legal responsibility": "10. Налоги и юридическая ответственность",
   "11. Suspension and termination": "11. Приостановление и прекращение",
   "12. Program changes and contact": "12. Изменения программы и контакты",
-  "The InGamePin Affiliate Program is operated by AMAN G. By applying, participating, creating an affiliate link or requesting a payout, you agree to these Terms & Conditions and all applicable laws.": "Партнёрская программа InGamePin управляется AMAN G. Подавая заявку, участвуя, создавая партнёрскую ссылку или запрашивая выплату, вы соглашаетесь с настоящими условиями и применимыми законами.",
+  "The InGamePin Affiliate Program is operated by TEJARA GLOBAL. By applying, participating, creating an affiliate link or requesting a payout, you agree to these Terms & Conditions and all applicable laws.": "Партнёрская программа InGamePin управляется TEJARA GLOBAL. Подавая заявку, участвуя, создавая партнёрскую ссылку или запрашивая выплату, вы соглашаетесь с настоящими условиями и применимыми законами.",
   "You must provide complete and accurate application information and use only one affiliate account unless written permission is given. Applications may be approved, rejected, suspended or reviewed at InGamePin's discretion. Approval does not create employment, agency, franchise or partnership.": "Вы должны предоставить полные и точные сведения и использовать только один партнёрский аккаунт, если письменное разрешение не предусматривает иное. InGamePin может одобрить, отклонить, приостановить или пересмотреть заявку. Одобрение не создаёт трудовых, агентских, франчайзинговых или партнёрских отношений.",
   "You must provide complete and accurate application information and use only one affiliate account unless written permission is given. Applications may be approved, rejected, suspended or reviewed at InGamePin’s discretion. Approval does not create employment, agency, franchise or partnership.": "Вы должны предоставить полные и точные сведения и использовать только один партнёрский аккаунт, если письменное разрешение не предусматривает иное. InGamePin может одобрить, отклонить, приостановить или пересмотреть заявку. Одобрение не создаёт трудовых, агентских, франчайзинговых или партнёрских отношений.",
   "You may select a commission rate only within the limit configured for each eligible product. The selected affiliate commission is added to the product price and the customer sees the final price before payment. Commission is calculated from the rate recorded when the order is created. Rates, eligible products and limits may change.": "Вы можете выбрать ставку комиссии только в пределах лимита, установленного для подходящего товара. Партнёрская комиссия добавляется к цене товара, и покупатель видит итоговую цену до оплаты. Комиссия рассчитывается по ставке на момент создания заказа. Ставки, товары и лимиты могут изменяться.",

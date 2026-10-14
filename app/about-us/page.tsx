@@ -5,7 +5,7 @@ import styles from "@/components/StoreInformation.module.css";
 
 export const metadata: Metadata = {
   title: "About Us",
-  description: "Learn about InGamePin, a digital gaming store operated by AMAN G in Kolkata, India.",
+  description: "Learn about InGamePin, a digital gaming store operated by TEJARA GLOBAL in Kolkata, India.",
   alternates: { canonical: "https://www.ingamepin.com/about-us" },
 };
 
@@ -16,7 +16,7 @@ export default function AboutPage() {
         <div className="mx-auto max-w-5xl px-5 py-12 sm:py-16">
           <p className="text-xs font-bold uppercase tracking-widest text-cyan-400">iNgamePIN · Digital game store</p>
           <h1 className="mt-3 text-4xl font-black sm:text-5xl">About Us</h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">InGamePin is a digital gaming store operated by AMAN G in Kolkata, India. We help customers purchase gaming top-ups, gift cards, subscriptions and game keys.</p>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">InGamePin is a digital gaming store operated by TEJARA GLOBAL in Kolkata, India. We help customers purchase gaming top-ups, gift cards, subscriptions and game keys.</p>
         </div>
       </header>
       <div className="mx-auto grid max-w-5xl gap-6 px-5 py-10 lg:grid-cols-[1.2fr_1fr]">
