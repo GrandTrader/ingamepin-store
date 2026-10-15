@@ -1,7 +1,8 @@
-import { getProductPaypalychRestriction } from "@/lib/paypalych-product-policy-server";
+import { getProductEditorPaypalychWarning } from "@/lib/paypalych-product-policy-server";
 import PaypalychProductWarning from "./PaypalychProductWarning";
-import ProductEditorWarmup from "./ProductEditorWarmup";
+import { Suspense } from "react";
 import Link from "@/components/ProductEditorLink";
+import ProductEditorTabBar from "@/components/ProductEditorTabBar";
 
 const tabs = [
   ["general", "General"],
@@ -19,17 +20,19 @@ const tabs = [
   ["affiliate", "Affiliate"],
 ] as const;
 
-export default async function ProductEditPageTabs({
+// Prepare lightweight local tabs; customer history and supplier lookups wait for intent.
+const quickTabs = new Set(["general", "gallery", "delivery", "product-options", "stock", "digiseller", "customer-information", "visibility"]);
+
+export default function ProductEditPageTabs({
   productId,
   current,
 }: {
   productId: string;
   current: string;
 }) {
-  const blockedBrand = await getProductPaypalychRestriction(productId);
   return (
     <>
-    <ProductEditorWarmup hrefs={["general", "product-options", "stock"].filter((id) => id !== current).map((id) => `/admin/products/${productId}/edit/${id}`)} />
+    <ProductEditorTabBar productId={productId}>
     <nav data-product-edit-tabs aria-label="Product settings tabs" className="overflow-x-auto border border-slate-300 bg-slate-100 p-1 shadow-sm">
       <div className="flex min-w-max gap-px">
         {tabs.map(([id, label]) => (
@@ -37,7 +40,7 @@ export default async function ProductEditPageTabs({
             key={id}
             href={`/admin/products/${productId}/edit/${id}`}
             scroll={false}
-            warm="intent"
+            warm={id !== current && quickTabs.has(id) ? "visible" : "intent"}
             aria-current={current === id ? "page" : undefined}
             className={`border border-slate-300 px-4 py-3 text-sm font-bold transition ${
               current === id
@@ -50,7 +53,13 @@ export default async function ProductEditPageTabs({
         ))}
       </div>
     </nav>
-    <PaypalychProductWarning brand={blockedBrand} />
+    </ProductEditorTabBar>
+    <Suspense fallback={null}><ProductPaymentWarning productId={productId} /></Suspense>
     </>
   );
+}
+
+async function ProductPaymentWarning({ productId }: { productId: string }) {
+  const brand = await getProductEditorPaypalychWarning(productId);
+  return <PaypalychProductWarning brand={brand} />;
 }

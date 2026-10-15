@@ -198,7 +198,7 @@ export async function createDraftProduct() {
   redirect(`/admin/products/${result.data.id}/edit/general`);
 }
 
-export async function toggleProductSales(formData: FormData) {
+export async function toggleProductSales(formData: FormData): Promise<{ error?: string }> {
   await getAdminClient();
 
   const productId = String(formData.get("product_id") ?? "").trim();
@@ -207,11 +207,11 @@ export async function toggleProductSales(formData: FormData) {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   if (!uuidPattern.test(productId)) {
-    redirect("/admin/products?error=Product%20information%20is%20invalid");
+    return { error: "Product information is invalid." };
   }
 
   if (currentStatus !== "ACTIVE" && currentStatus !== "INACTIVE") {
-    redirect("/admin/products?error=Draft%20products%20must%20be%20completed%20before%20sales%20can%20be%20enabled");
+    return { error: "Complete draft products before enabling sales." };
   }
 
   const nextStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
@@ -227,26 +227,21 @@ export async function toggleProductSales(formData: FormData) {
     .select("name")
     .maybeSingle();
 
-  if (updateResult.error || !updateResult.data) {
-    redirect(
-      `/admin/products?error=${encodeURIComponent(
-        updateResult.error?.message ?? "The product status changed before it could be updated.",
-      )}`,
-    );
+  if (updateResult.error) {
+    return { error: "Unable to save product sales. Please try again." };
+  }
+  if (!updateResult.data) {
+    return { error: "The product status changed before it could be updated. Refresh and try again." };
   }
 
   updateTag("homepage-store-data");
+  updateTag("business-catalogue");
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
 
-  redirect(
-    `/admin/products?success=${encodeURIComponent(
-      nextStatus === "ACTIVE"
-        ? `Sales enabled for ${updateResult.data.name}`
-        : `Sales suspended for ${updateResult.data.name}`,
-    )}`,
-  );
+  // Refresh this list in place without replacing its filters, page or history.
+  return {};
 }
 
 export async function cloneProduct(formData: FormData) {

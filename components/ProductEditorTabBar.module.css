@@ -1,0 +1,11 @@
+.dock { flex: none; min-width: 0; padding: 8px 20px; border-bottom: 1px solid #e2e8f0; background: #fff; z-index: 1; }
+.dock:empty { display: none; }
+.bar { min-width: 0; }
+.bar :global([data-product-edit-tabs]) { border-radius: 10px; scrollbar-width: thin; }
+.bar :global([data-product-edit-tabs] a) { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 12px; font-size: 13px; border-radius: 7px; white-space: nowrap; }
+@media (max-width: 640px) {
+  .dock { padding: 6px 12px; }
+}
+@media print {
+  .dock { display: none; }
+}

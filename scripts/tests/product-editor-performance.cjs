@@ -25,3 +25,36 @@ function fixture(kind,{oldName='Game',oldImage='https://example.test/a.png',fail
 test('unchanged names and images save locally without supplier lookups or uploads',async()=>{for(const kind of ['general','gallery']){const f=fixture(kind);await assert.rejects(f.save(),/success=/);assert.equal(f.writes.length,1);assert.equal(f.external.length,0);assert.ok(!f.reads.includes('product_options'));}});
 test('changed content and explicit failure retries still update all linked products',async()=>{for(const kind of ['general','gallery'])for(const opts of [{oldName:'Old name',oldImage:'https://example.test/old.png'},{retry:true}]){const f=fixture(kind,opts);await assert.rejects(f.save(),/success=/);assert.deepEqual(f.external.sort(),[123,456]);}});
 test('sync failure reports saved-but-not-synced, and unauthorized saves cannot write',async()=>{for(const kind of ['general','gallery']){const failed=fixture(kind,{retry:true,fail:true});await assert.rejects(failed.save(),/error=/);assert.equal(failed.writes.length,1);for(const opts of [{admin:false},{signedIn:false}]){const denied=fixture(kind,opts);await assert.rejects(denied.save(),/admin\/login/);assert.equal(denied.writes.length,0);assert.equal(denied.external.length,0);}}});
+
+test('editor payment advisory is cached per product while enforcement reads remain live',async()=>{
+  let reads=0,brand='Blocked';const caches=[],values=new Map();
+  const api=load('lib/paypalych-product-policy-server.ts',{
+    'server-only':{},'react':{cache:fn=>fn},
+    'next/cache':{unstable_cache:(fn,key,options)=>{caches.push({key,options});return async id=>{if(!values.has(id))values.set(id,await fn(id));return values.get(id)}}},
+    '@/lib/supabase/admin':{createAdminClient:()=>({from:()=>({select(){return this},async in(_,ids){reads++;return {data:ids.map(id=>({id,name:brand,categories:null,product_options:[]})),error:null}}})})},
+    './paypalych-product-policy':{paypalychBlockedBrand:name=>name==='Blocked'?'Blocked':null},
+  });
+  assert.equal(await api.getProductEditorPaypalychWarning('one'),'Blocked');
+  assert.equal(await api.getProductEditorPaypalychWarning('one'),'Blocked');assert.equal(reads,1);
+  await api.getProductEditorPaypalychWarning('two');assert.equal(reads,2);
+  brand='Allowed';
+  assert.equal(await api.getProductPaypalychRestriction('one'),null);
+  assert.equal(await api.getProductPaypalychRestriction('one'),null);assert.equal(reads,4,'Enforcement never uses the advisory cache');
+  assert.equal(caches[0].options.revalidate,30);assert(caches[0].options.tags.includes('homepage-store-data'));
+  values.clear();assert.equal(await api.getProductEditorPaypalychWarning('one'),null);
+});
+
+test('discount tab reads only assigned customer IDs, including accounts beyond the first 1000',async()=>{
+  const {getProductDiscountCustomers}=load('lib/admin-product-discount-customers.ts',{'server-only':{}});
+  let active=0,max=0;const calls=[];
+  const admin={auth:{admin:{getUserById:async id=>{
+    calls.push(id);active++;max=Math.max(max,active);await new Promise(r=>setTimeout(r,2));active--;
+    return {data:{user:id==='deleted'?null:{id,email:id+'@example.test'}},error:id==='deleted'?{status:404}:null};
+  }}}};
+  assert.equal((await getProductDiscountCustomers(admin,[])).size,0);assert.equal(calls.length,0);
+  const ids=Array.from({length:14},(_,i)=>'customer-'+(2000+i));
+  const result=await getProductDiscountCustomers(admin,[...ids,ids[0],'deleted']);
+  assert.equal(result.size,14);assert.equal(calls.length,15);assert(max<=6);
+  assert.equal(result.get('customer-2013').email,'customer-2013@example.test');
+  await assert.rejects(getProductDiscountCustomers({auth:{admin:{getUserById:async()=>({data:{user:null},error:{status:503}})}}},['one']),/Unable to load discounted customer details/);
+});

@@ -1,5 +1,6 @@
 import Form from "next/form";
 import ProductChannelSwitches from "./ProductChannelSwitches";
+import ProductSalesSwitch from "./ProductSalesSwitch";
 import {adminProductPageUrl as buildPageUrl,matchesAdminProduct} from "@/lib/admin-product-filters";
 import Link from "next/link";
 import ProductEditorLink from "@/components/ProductEditorLink";
@@ -22,7 +23,6 @@ import {
   deleteSelectedProducts,
   syncAllProductImagesToDigiSeller,
   syncAllDigiSellerStatistics,
-  toggleProductSales,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -434,18 +434,7 @@ export default async function AdminProductsPage({
                           {isDraft ? (
                             <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-700">DRAFT</span>
                           ) : (
-                            <form action={toggleProductSales}>
-                              <input type="hidden" name="product_id" value={product.id} />
-                              <input type="hidden" name="current_status" value={product.status} />
-                              <button
-                                type="submit"
-                                title={isActive ? "Suspend product sales" : "Enable product sales"}
-                                className={`relative h-6 w-12 rounded-full transition ${isActive ? "bg-emerald-500" : "bg-red-500"}`}
-                              >
-                                <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition ${isActive ? "left-7" : "left-1"}`} />
-                                <span className="sr-only">{isActive ? "Turn sales off" : "Turn sales on"}</span>
-                              </button>
-                            </form>
+                            <ProductSalesSwitch id={product.id} name={product.name} active={isActive} />
                           )}
                         </td>
 

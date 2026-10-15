@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { paypalychBlockedBrand } from "./paypalych-product-policy";
 
@@ -19,3 +20,10 @@ export async function getPaypalychRestrictions(admin: ReturnType<typeof createAd
 
 export const getProductPaypalychRestriction = cache(async (id: string) =>
   (await getPaypalychRestrictions(createAdminClient(), [id])).get(id) ?? null);
+
+// Only the editor advisory is cached. Restrictions saves and checkout stay live.
+export const getProductEditorPaypalychWarning = unstable_cache(async (id: string) =>
+  (await getPaypalychRestrictions(createAdminClient(), [id])).get(id) ?? null,
+  ["product-editor-payment-warning-v1"],
+  { revalidate: 30, tags: ["homepage-store-data"] },
+);

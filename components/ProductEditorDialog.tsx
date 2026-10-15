@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useProductEditorNavigation } from "./ProductEditorNavigation";
 import styles from "./ProductEditorDialog.module.css";
+import { ProductEditorTabsHost } from "./ProductEditorTabBar";
 
 function isBackdrop(event: { target: EventTarget; currentTarget: HTMLDialogElement; clientX: number; clientY: number }) {
   if (event.target !== event.currentTarget) return false;
@@ -16,9 +17,8 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
   const content = useRef<HTMLDivElement>(null);
   const backdropPress = useRef(false);
   const pathname = usePathname();
-  const positions = useRef(new Map<string, { top: number; tabs: number }>());
+  const positions = useRef(new Map<string, number>());
   const activePath = useRef(pathname);
-  const lastTabs = useRef(0);
   const restoring = useRef(false);
   const { close } = useProductEditorNavigation();
 
@@ -35,9 +35,7 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
 
   function rememberPosition() {
     if (!content.current || restoring.current) return;
-    const tabs = content.current.querySelector<HTMLElement>("[data-product-edit-tabs]");
-    lastTabs.current = tabs?.scrollLeft ?? lastTabs.current;
-    positions.current.set(activePath.current, { top: content.current.scrollTop, tabs: lastTabs.current });
+    positions.current.set(activePath.current, content.current.scrollTop);
   }
 
   useLayoutEffect(() => {
@@ -46,9 +44,7 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
     restoring.current = true;
     const position = positions.current.get(pathname);
     activePath.current = pathname;
-    element.scrollTo({ top: position?.top ?? 0, behavior: "instant" });
-    const tabs = element.querySelector<HTMLElement>("[data-product-edit-tabs]");
-    if (tabs) tabs.scrollLeft = lastTabs.current;
+    element.scrollTo({ top: position ?? 0, behavior: "instant" });
     restoring.current = false;
   }, [pathname, children]);
 
@@ -68,7 +64,9 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
           <span>Close</span><span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <div ref={content} className={styles.content} onScrollCapture={rememberPosition} onClickCapture={rememberPosition} onSubmitCapture={rememberPosition}>{children}</div>
+      <ProductEditorTabsHost>
+        <div ref={content} className={styles.content} onScrollCapture={rememberPosition} onClickCapture={rememberPosition} onSubmitCapture={rememberPosition}>{children}</div>
+      </ProductEditorTabsHost>
     </dialog>
   );
 }

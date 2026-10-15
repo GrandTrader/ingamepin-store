@@ -28,7 +28,7 @@ function fakeDb(tables){return {from(table){
   maybeSingle(){return Promise.resolve(tables[table]??{data:null,error:null});}};return chain;
 }};}
 function server(db){return load("lib/paypalych-product-policy-server.ts",{
- react:{cache:f=>f},"@/lib/supabase/admin":{createAdminClient:()=>db},"./paypalych-product-policy":policy
+ react:{cache:f=>f},"next/cache":{unstable_cache:f=>f},"@/lib/supabase/admin":{createAdminClient:()=>db},"./paypalych-product-policy":policy
  });}
 test("server checks persisted Russian names, category and denominations, fails closed on missing data",async()=>{
  const rows=[{id:"a",name:"Digital Code",name_ru:"Тиндер Голд",categories:[],product_options:[]},

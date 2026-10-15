@@ -6,7 +6,7 @@ function PendingTab() {
   const { pending } = useLinkStatus();
   return pending ? <span role="status" aria-label="Opening tab" className="ml-1 inline-block h-2 w-2 rounded-full bg-current" /> : null;
 }
-import { useState, type ComponentProps } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 
 type Props = ComponentProps<typeof Link> & { warm?: "visible" | "intent" };
 
@@ -16,10 +16,30 @@ type Props = ComponentProps<typeof Link> & { warm?: "visible" | "intent" };
 export default function ProductEditorLink({
   warm = "intent", onMouseEnter, onFocus, onTouchStart, children, ...props
 }: Props) {
+  const element = useRef<HTMLAnchorElement>(null);
+  const [visible, setVisible] = useState(false);
   const [intent, setIntent] = useState(false);
+  const [automatic, setAutomatic] = useState(false);
+  useEffect(() => {
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    setAutomatic(!connection?.saveData && !/(^|-)2g$/.test(connection?.effectiveType ?? ""));
+  }, []);
+  useEffect(() => {
+    if (warm !== "visible" || !automatic || !element.current) return;
+    // Observe the actual clipped tab, without Next's wider prefetch margin.
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(element.current);
+    return () => observer.disconnect();
+  }, [warm, automatic]);
   return <Link
     {...props}
-    prefetch={warm === "visible" || intent}
+    ref={element}
+    prefetch={(warm === "visible" && automatic && visible) || intent}
     onMouseEnter={(event) => { setIntent(true); onMouseEnter?.(event); }}
     onFocus={(event) => { setIntent(true); onFocus?.(event); }}
     onTouchStart={(event) => { setIntent(true); onTouchStart?.(event); }}

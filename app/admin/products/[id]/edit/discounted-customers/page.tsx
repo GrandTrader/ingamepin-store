@@ -1,3 +1,4 @@
+import { getProductDiscountCustomers } from "@/lib/admin-product-discount-customers";
 import ProductSettingsActions from "@/components/ProductSettingsActions";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -28,19 +29,18 @@ export default async function DiscountedCustomersPage({ params, searchParams }: 
   if (!access.data) redirect("/admin/login?error=Access denied");
 
   const admin = createAdminClient();
-  const [productResult, discountsResult, usersResult] = await Promise.all([
+  const [productResult, discountsResult] = await Promise.all([
     admin.from("products").select("id,name,slug").eq("id", id).maybeSingle(),
     admin.from("customer_product_discounts").select("id,user_id,discount_percent,updated_at").eq("product_id", id).eq("is_active", true).order("updated_at", { ascending: false }),
-    admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
   ]);
 
   if (!productResult.data) notFound();
-  if (discountsResult.error || usersResult.error) {
-    throw new Error(discountsResult.error?.message ?? usersResult.error?.message ?? "Unable to load discounted customers.");
+  if (discountsResult.error) {
+    throw new Error(discountsResult.error?.message ?? "Unable to load discounted customers.");
   }
 
-  const users = new Map(usersResult.data.users.map((customer) => [customer.id, customer]));
   const discounts = discountsResult.data ?? [];
+  const users = await getProductDiscountCustomers(admin, discounts.map(discount => discount.user_id));
 
   return (
     <div className="min-h-screen bg-white text-slate-900">

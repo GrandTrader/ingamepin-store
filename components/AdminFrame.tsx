@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import AdminSidebar from "@/app/admin/AdminSidebar";
 import { AdminFrameContext } from "./AdminFrameContext";
+import { ProductEditorTabsHost } from "./ProductEditorTabBar";
 import styles from "./AdminFrame.module.css";
 
 export default function AdminFrame({ children }: { children: ReactNode }) {
@@ -23,7 +24,11 @@ export default function AdminFrame({ children }: { children: ReactNode }) {
     <div className={styles.frame + " admin-responsive-shell"} data-admin-frame>
       <a className={styles.skip} href="#admin-page-content">Skip to content</a>
       <AdminSidebar persistent walletCount={walletCount} />
-      <div ref={scroll} id="admin-page-content" data-admin-scroll tabIndex={-1} className={styles.content}>{children}</div>
+      <div className={styles.workspace}>
+        <ProductEditorTabsHost>
+          <div ref={scroll} id="admin-page-content" data-admin-scroll tabIndex={-1} className={styles.content}>{children}</div>
+        </ProductEditorTabsHost>
+      </div>
     </div>
   </AdminFrameContext.Provider>;
 }
