@@ -27,7 +27,7 @@ export default function ProductEditorNavigation({ children }: { children: ReactN
         const { scroll, trigger } = returnPosition.current;
         const link = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]")).find((element) => element.getAttribute("href") === trigger);
         link?.focus({ preventScroll: true });
-        window.scrollTo({ top: scroll, behavior: "instant" });
+        (document.querySelector<HTMLElement>("[data-admin-scroll]") ?? window).scrollTo({ top: scroll, behavior: "instant" });
       }
     });
     return () => cancelAnimationFrame(frame);
@@ -39,7 +39,7 @@ export default function ProductEditorNavigation({ children }: { children: ReactN
         if (pathname !== "/admin/products" || !(event.target instanceof Element)) return;
         const link = event.target.closest<HTMLAnchorElement>("a[href]");
         if (!link || !/^\/admin\/products\/[^/]+\/edit(?:\/|$)/.test(link.getAttribute("href") ?? "")) return;
-        returnPosition.current = { url: window.location.pathname + window.location.search, scroll: window.scrollY, trigger: link.getAttribute("href") };
+        returnPosition.current = { url: window.location.pathname + window.location.search, scroll: document.querySelector<HTMLElement>("[data-admin-scroll]")?.scrollTop ?? window.scrollY, trigger: link.getAttribute("href") };
       }}>{children}</div>
     </EditorNavigation.Provider>
   );

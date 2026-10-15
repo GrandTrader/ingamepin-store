@@ -7,7 +7,7 @@ function decodeKey(value: string) {
   return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
 }
 
-export default function AdminPwaRegister() {
+export default function AdminPwaRegister({ compact = false }: { compact?: boolean }) {
   const [available, setAvailable] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [working, setWorking] = useState(false);
@@ -16,7 +16,7 @@ export default function AdminPwaRegister() {
     setAvailable(true);
     navigator.serviceWorker.register("/admin-sw.js", { scope: "/admin" }).then(async (registration) => {
       setEnabled(Boolean(await registration.pushManager.getSubscription()));
-    });
+    }).catch(() => setAvailable(false));
   }, []);
 
   async function enableNotifications() {
@@ -48,5 +48,5 @@ export default function AdminPwaRegister() {
   }
 
   if (!available) return null;
-  return <button type="button" onClick={enabled ? testNotification : enableNotifications} disabled={working} className="fixed bottom-5 right-5 z-[100] rounded-full bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-xl disabled:opacity-60">{working ? "Sending..." : enabled ? "🔔 Test notification" : "🔔 Enable notifications"}</button>;
+  return <button type="button" onClick={enabled ? testNotification : enableNotifications} disabled={working} className={compact ? "w-full min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 disabled:opacity-60" : "fixed bottom-5 right-5 z-[100] rounded-full bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-xl disabled:opacity-60"}>{working ? "Sending..." : enabled ? "🔔 Test notification" : "🔔 Enable notifications"}</button>;
 }

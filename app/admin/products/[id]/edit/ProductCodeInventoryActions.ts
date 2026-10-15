@@ -16,14 +16,15 @@ function redirectWithMessage(
   productId: string,
   type: "error" | "success",
   message: string,
+  optionId?: string,
 ): never {
   redirect(
-    `${productEditPath(productId)}?${type}=${encodeURIComponent(message)}`,
+    `${productEditPath(productId)}?${type}=${encodeURIComponent(message)}${optionId ? `&optionId=${encodeURIComponent(optionId)}` : ""}`,
   );
 }
 
 async function requireAdmin() {
-  const supabase = await createClient();
+  const supabase = await createClient({ reuseVerifiedUser: true });
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -107,6 +108,7 @@ export async function addProductCodes(formData: FormData) {
   const productOptionId = String(
     formData.get("product_option_id") ?? "",
   ).trim();
+  function finishUpload(id: string, type: "error" | "success", message: string): never { return redirectWithMessage(id, type, message, productOptionId); }
   const note = String(formData.get("note") ?? "").trim();
   const rawCodes = String(formData.get("codes") ?? "");
   const usesRecordSeparator =
@@ -117,7 +119,7 @@ export async function addProductCodes(formData: FormData) {
   }
 
   if (!productOptionId) {
-    redirectWithMessage(productId, "error", "Please select a product option.");
+    finishUpload(productId, "error", "Please select a product option.");
   }
 
   const productResult = await admin
@@ -127,7 +129,7 @@ export async function addProductCodes(formData: FormData) {
     .maybeSingle();
 
   if (productResult.error || !productResult.data) {
-    redirectWithMessage(productId, "error", "The selected product was not found.");
+    finishUpload(productId, "error", "The selected product was not found.");
   }
 
   const optionResult = await admin
@@ -139,7 +141,7 @@ export async function addProductCodes(formData: FormData) {
     .maybeSingle();
 
   if (optionResult.error || !optionResult.data) {
-    redirectWithMessage(
+    finishUpload(
       productId,
       "error",
       "The selected product option is invalid or inactive.",
@@ -153,7 +155,7 @@ export async function addProductCodes(formData: FormData) {
     try {
       uniqueCodes = parsePairedVoucherPayload(rawCodes);
     } catch (error) {
-      redirectWithMessage(productId, "error", error instanceof Error ? error.message : "Invalid card number and PIN list.");
+      finishUpload(productId, "error", error instanceof Error ? error.message : "Invalid card number and PIN list.");
     }
   } else {
     uniqueCodes = Array.from(new Set(rawCodes
@@ -162,11 +164,11 @@ export async function addProductCodes(formData: FormData) {
   }
 
   if (uniqueCodes.length === 0) {
-    redirectWithMessage(productId, "error", "Enter at least one voucher code.");
+    finishUpload(productId, "error", "Enter at least one voucher code.");
   }
 
   if (uniqueCodes.length > 10000) {
-    redirectWithMessage(
+    finishUpload(
       productId,
       "error",
       "You can upload a maximum of 10,000 codes at once.",
@@ -174,7 +176,7 @@ export async function addProductCodes(formData: FormData) {
   }
 
   if (uniqueCodes.some((code) => code.length < 4 || code.length > 500)) {
-    redirectWithMessage(
+    finishUpload(
       productId,
       "error",
       "Every code must contain between 4 and 500 characters.",
@@ -188,16 +190,17 @@ export async function addProductCodes(formData: FormData) {
     product_option_id: string | null;
     status: string;
     note: string | null;
+    denomination: number | null;
   };
   const existingCodes: ExistingCode[] = [];
   for (let index = 0; index < uniqueCodes.length; index += 250) {
     const existingResult = await admin
       .from("gift_card_codes")
-      .select("id, code, product_id, product_option_id, status, note")
+      .select("id, code, product_id, product_option_id, status, note, denomination")
       .in("code", uniqueCodes.slice(index, index + 250));
 
     if (existingResult.error) {
-      redirectWithMessage(
+      finishUpload(
         productId,
         "error",
         `Unable to check existing codes: ${existingResult.error.message}`,
@@ -212,7 +215,7 @@ export async function addProductCodes(formData: FormData) {
   );
 
   if (blockedExisting) {
-    redirectWithMessage(
+    finishUpload(
       productId,
       "error",
       blockedExisting.product_id !== productId
@@ -246,37 +249,32 @@ export async function addProductCodes(formData: FormData) {
         insertResult.error.code === "23505"
           ? "One or more codes already exist. The remaining codes were not uploaded."
           : `Unable to upload codes: ${insertResult.error.message}`;
-      redirectWithMessage(productId, "error", message);
+      finishUpload(productId, "error", message);
     }
   }
 
   const previousOptionIds = new Set<string>();
 
+  // A restored backup usually contains codes already linked correctly. Skip
+  // those rows; batch changed links by note instead of one network call per code.
+  const updates = new Map<string | null, string[]>();
   for (const existingCode of existingCodes) {
-    if (
-      existingCode.product_option_id &&
-      existingCode.product_option_id !== verifiedOption.id
-    ) {
-      previousOptionIds.add(existingCode.product_option_id);
-    }
-
-    const updateResult = await admin
-      .from("gift_card_codes")
-      .update({
-        product_option_id: verifiedOption.id,
-        denomination: verifiedOption.denomination ?? null,
-        note: note || existingCode.note || null,
-      })
-      .eq("id", existingCode.id)
-      .eq("product_id", productId)
-      .in("status", ["AVAILABLE", "DISABLED"]);
-
-    if (updateResult.error) {
-      redirectWithMessage(
-        productId,
-        "error",
-        `Unable to attach an existing code: ${updateResult.error.message}`,
-      );
+    const nextNote = note || existingCode.note || null;
+    if (existingCode.product_option_id === verifiedOption.id &&
+        existingCode.denomination === (verifiedOption.denomination ?? null) &&
+        existingCode.note === nextNote) continue;
+    if (existingCode.product_option_id && existingCode.product_option_id !== verifiedOption.id) previousOptionIds.add(existingCode.product_option_id);
+    const ids = updates.get(nextNote) ?? [];
+    ids.push(existingCode.id);
+    updates.set(nextNote, ids);
+  }
+  for (const [nextNote, ids] of updates) {
+    for (let index = 0; index < ids.length; index += 250) {
+      const updateResult = await admin.from("gift_card_codes")
+        .update({ product_option_id: verifiedOption.id, denomination: verifiedOption.denomination ?? null, note: nextNote })
+        .in("id", ids.slice(index, index + 250)).eq("product_id", productId)
+        .in("status", ["AVAILABLE", "DISABLED"]);
+      if (updateResult.error) finishUpload(productId, "error", "Unable to attach existing codes. Please retry the upload.");
     }
   }
 
@@ -286,7 +284,7 @@ export async function addProductCodes(formData: FormData) {
       await syncAvailableCodeStock(admin, productId, previousOptionId);
     }
   } catch (error) {
-    redirectWithMessage(
+    finishUpload(
       productId,
       "error",
       error instanceof Error
@@ -302,7 +300,7 @@ export async function addProductCodes(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/products");
 
-  redirectWithMessage(
+  finishUpload(
     productId,
     "success",
     existingCodes.length > 0
@@ -375,7 +373,7 @@ export async function changeProductCodeStatus(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/products");
 
-  redirectWithMessage(productId, "success", "Voucher code status updated.");
+  redirectWithMessage(productId, "success", "Voucher code status updated.", codeResult.data.product_option_id);
 }
 
 export async function addCodesForOption(
@@ -479,5 +477,5 @@ export async function deleteProductCode(
   revalidatePath("/");
   revalidatePath("/products");
 
-  redirectWithMessage(productId, "success", "Voucher code deleted permanently.");
+  redirectWithMessage(productId, "success", "Voucher code deleted permanently.", codeResult.data.product_option_id);
 }

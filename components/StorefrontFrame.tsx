@@ -20,6 +20,7 @@ export default function StorefrontFrame({ children, header, footer, extras }: {
   children: ReactNode; header: ReactNode; footer: ReactNode; extras: ReactNode;
 }) {
   const pathname = usePathname();
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return <>{children}</>;
   const business = isBusinessPortalPath(pathname);
   if (pathname === "/business/login") return <main className="flex min-h-dvh flex-1 flex-col bg-[#f1eee9]">{children}</main>;
   if (business) return <BusinessFrame>{children}</BusinessFrame>;

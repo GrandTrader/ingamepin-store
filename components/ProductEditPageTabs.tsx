@@ -29,7 +29,7 @@ export default async function ProductEditPageTabs({
   const blockedBrand = await getProductPaypalychRestriction(productId);
   return (
     <>
-    <ProductEditorWarmup hrefs={tabs.map(([id]) => `/admin/products/${productId}/edit/${id}`)} />
+    <ProductEditorWarmup hrefs={["general", "product-options", "stock"].filter((id) => id !== current).map((id) => `/admin/products/${productId}/edit/${id}`)} />
     <nav data-product-edit-tabs aria-label="Product settings tabs" className="overflow-x-auto border border-slate-300 bg-slate-100 p-1 shadow-sm">
       <div className="flex min-w-max gap-px">
         {tabs.map(([id, label]) => (
@@ -37,7 +37,7 @@ export default async function ProductEditPageTabs({
             key={id}
             href={`/admin/products/${productId}/edit/${id}`}
             scroll={false}
-            warm="visible"
+            warm="intent"
             aria-current={current === id ? "page" : undefined}
             className={`border border-slate-300 px-4 py-3 text-sm font-bold transition ${
               current === id

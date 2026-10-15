@@ -4,7 +4,11 @@ import Link from "@/components/NavigationLink";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useState } from "react";
 
+import { useAdminFrame } from "@/components/AdminFrameContext";
+import AdminPwaRegister from "@/components/AdminPwaRegister";
+
 type AdminSidebarProps = {
+  persistent?: boolean;
   orderCount?: number;
   walletCount?: number;
 };
@@ -121,6 +125,13 @@ const menuGroups = [
 ];
 
 export default function AdminSidebar(props: AdminSidebarProps) {
+  const frame = useAdminFrame();
+  const setWalletCount = frame?.setWalletCount;
+  useEffect(() => {
+    if (!props.persistent && props.walletCount !== undefined) setWalletCount?.(props.walletCount);
+  }, [props.persistent, props.walletCount, setWalletCount]);
+  // Page components retain their existing server data; only the layout owns navigation.
+  if (frame && !props.persistent) return null;
   return <Suspense><AdminSidebarContent {...props} /></Suspense>;
 }
 
@@ -189,6 +200,12 @@ function AdminSidebarContent({
     };
   }, []);
 
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setMobileOpen(false); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, []);
+
   function isActive(href: string) {
     return href === "/admin"
       ? pathname === "/admin"
@@ -249,9 +266,9 @@ function AdminSidebarContent({
 
   return (
     <aside data-admin-sidebar className="shrink-0 border-b border-slate-200 bg-slate-50 lg:min-h-screen lg:w-60 lg:border-b-0 lg:border-r">
-      <div className="flex items-center justify-between gap-3 px-4 py-4 lg:px-5 lg:py-6">
+      <div className="flex items-center justify-between gap-3 px-3 py-2 lg:px-4 lg:py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500 font-black text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500 font-black text-white">
             IP
           </div>
           <div>
@@ -264,12 +281,14 @@ function AdminSidebarContent({
           onClick={() => setMobileOpen((value) => !value)}
           className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 lg:hidden"
           aria-expanded={mobileOpen}
+          aria-controls="admin-menu"
         >
           {mobileOpen ? "Close" : "Menu"}
         </button>
       </div>
 
       <nav
+        id="admin-menu"
         aria-label="Admin navigation"
         className={`gap-2 px-3 pb-4 ${
           mobileOpen ? "grid" : "hidden"
@@ -333,7 +352,8 @@ function AdminSidebarContent({
         })}
       </nav>
 
-      <div className={`${mobileOpen ? "block" : "hidden"} px-3 pb-5 lg:block`}>
+      <div className={`${mobileOpen ? "block" : "hidden"} px-3 pb-3 lg:block`}>
+        <AdminPwaRegister compact />
         <Link
           href="/"
           className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"

@@ -43,12 +43,12 @@ function actions({ authenticated = true, allowed = true, existing = [], validOpt
   const writes = [], invalidations = [];
   const session = { auth: { getUser: async () => ({ data: { user: authenticated ? { id: 'admin' } : null } }) }, from: () => ({ select(){return this},eq(){return this},maybeSingle:async()=>({data:allowed?{role:'ADMIN'}:null}) }) };
   const db = { from(table) {
-    const query = { kind: 'select', select(_fields, options){this.options=options;return this},eq(){return this},in(){return this},update(value){this.kind='update';writes.push({table,value});return this},insert(value){this.kind='insert';writes.push({table,value});return this},maybeSingle:async()=>({data:table==='products'?{id:'product'}:validOption?{id:'option',product_id:'product',denomination:15}:null}),then(resolve,reject){return Promise.resolve({data:this.kind!=='select'?null:table==='gift_card_codes'?existing:table==='product_options'?[{stock_quantity:2}]:[],count:this.options?.head?2:undefined}).then(resolve,reject)} };
+    const query = { kind: 'select', select(_fields, options){this.options=options;return this},eq(){return this},in(field,values){this.filters ??= {};this.filters[field]=values;return this},update(value){this.kind='update';this.filters ??= {};writes.push({table,value,filters:this.filters});return this},insert(value){this.kind='insert';writes.push({table,value});return this},maybeSingle:async()=>({data:table==='products'?{id:'product'}:validOption?{id:'option',product_id:'product',denomination:15}:null}),then(resolve,reject){return Promise.resolve({data:this.kind!=='select'?null:table==='gift_card_codes'?existing.filter(row=>!this.filters?.code||this.filters.code.includes(row.code)):table==='product_options'?[{stock_quantity:2}]:[],count:this.options?.head?2:undefined}).then(resolve,reject)} };
     return query;
   } };
   const api = load('app/admin/products/[id]/edit/ProductCodeInventoryActions.ts', {
     '@/lib/paired-voucher-import':lib,
-    'next/cache':{revalidatePath:path=>invalidations.push(path)},
+    'next/cache':{revalidatePath:path=>invalidations.push(path),updateTag:tag=>invalidations.push(tag)},
     'next/navigation':{redirect:path=>{throw Error('REDIRECT '+decodeURIComponent(path))}},
     '@/lib/supabase/admin':{createAdminClient:()=>db},
     '@/lib/supabase/admin-session':{createClient:async()=>session},
@@ -86,4 +86,22 @@ test('pasted text accepts twenty headerless pairs without changing identifiers',
 test('pasted text rejects invalid pairs and duplicates as a whole batch', () => {
   for (const raw of ['', '123', '123,', '123,456,789', '123,456\n123,789', 'card_number,pin\n123,', '1.23e+17,123456']) assert.throws(()=>lib.parsePairedVoucherText(raw));
   assert.deepEqual(lib.parsePairedVoucherText('\n00123456789012345678,001234\n\n'),[pair]);
+});
+
+
+test('restoring 1000 unchanged vouchers avoids 1000 row updates and keeps the selected denomination',async()=>{
+ const existing=Array.from({length:1000},(_,i)=>({id:'id-'+i,code:'CODE-'+i,product_id:'product',product_option_id:'option',status:'AVAILABLE',note:null,denomination:15}));
+ const {api,writes}=actions({existing});const f=new FormData();f.set('codes_option',existing.map(x=>x.code).join('\n'));
+ await assert.rejects(api.addCodesForOption('product','option','option',f),/success=.*optionId=option/);
+ assert.equal(writes.filter(x=>x.table==='gift_card_codes').length,0);
+ assert(writes.some(x=>x.table==='product_options'),'Stock totals are still reconciled');
+});
+
+test('relinking 1000 vouchers uses four bounded updates and retains status and product guards',async()=>{
+ const existing=Array.from({length:1000},(_,i)=>({id:'id-'+i,code:'CODE-'+i,product_id:'product',product_option_id:'old-option',status:i%2?'AVAILABLE':'DISABLED',note:null,denomination:10}));
+ const {api,writes}=actions({existing});const f=new FormData();f.set('codes_option',existing.map(x=>x.code).join('\n'));
+ await assert.rejects(api.addCodesForOption('product','option','option',f),/success=/);
+ const updates=writes.filter(x=>x.table==='gift_card_codes');assert.equal(updates.length,4);
+ assert.equal(updates.flatMap(x=>x.filters.id).length,1000);
+ for(const update of updates){assert.equal(update.value.product_option_id,'option');assert(!('status' in update.value));assert.deepEqual(update.filters.status,['AVAILABLE','DISABLED']);}
 });

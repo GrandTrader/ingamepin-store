@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import AdminPwaRegister from "@/components/AdminPwaRegister";
+import AdminFrame from "@/components/AdminFrame";
 
 export const metadata: Metadata = {
   applicationName: "InGamePin Admin",
@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#0f172a" };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  return <><AdminPwaRegister /><div className="admin-responsive-shell w-full min-w-0 max-w-full overflow-x-hidden">{children}</div></>;
+  return <AdminFrame>{children}</AdminFrame>;
 }
