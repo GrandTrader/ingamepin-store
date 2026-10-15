@@ -17,6 +17,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:storefront
+      - run: npm run test:audit-fixes
       - run: npm run test:business-bank
       - run: npm run test:business-discounts
       - run: npm run test:purchase-restrictions

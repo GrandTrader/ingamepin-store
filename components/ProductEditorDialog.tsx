@@ -20,9 +20,10 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
   const positions = useRef(new Map<string, number>());
   const activePath = useRef(pathname);
   const restoring = useRef(false);
-  const { close } = useProductEditorNavigation();
+  const { close, modal } = useProductEditorNavigation();
 
   useEffect(() => {
+    if (!modal) return;
     const element = dialog.current;
     const previousOverflow = document.documentElement.style.overflow;
     element?.showModal();
@@ -31,7 +32,7 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
       element?.close();
       document.documentElement.style.overflow = previousOverflow;
     };
-  }, []);
+  }, [modal]);
 
   function rememberPosition() {
     if (!content.current || restoring.current) return;
@@ -47,6 +48,8 @@ export default function ProductEditorDialog({ children }: { children: ReactNode 
     element.scrollTo({ top: position ?? 0, behavior: "instant" });
     restoring.current = false;
   }, [pathname, children]);
+
+  if (!modal) return children;
 
   return (
     <dialog ref={dialog} className={styles.dialog} aria-labelledby="product-editor-title"

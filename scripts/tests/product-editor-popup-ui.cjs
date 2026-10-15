@@ -44,10 +44,11 @@ for(const [tab] of tabs){
  const browser=await chromium.launch({channel:'chrome',headless:true});
  try{
   let ready=false;for(let i=0;i<60;i++){try{const r=await fetch('http://localhost:3011/admin/products');if(r.ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,500));}assert(ready,logs.join('').slice(-3000));
-  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  let page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const list='http://localhost:3011/admin/products?category=games&page=2';
   if(production){
    for(const width of [390,1440]){
+   await page.close();page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
    await page.setViewportSize({width,height:850});
    await page.goto(list);
    const warmed=[];
@@ -112,6 +113,28 @@ for(const [tab] of tabs){
    await saverPage.getByRole('heading',{name:'gallery',exact:true}).waitFor();
    console.log('PASS Data Saver: automatic prefetch stays off and intentional navigation works.');
    await saver.close();
+   for(const width of [320,390,1440]) {
+    await page.setViewportSize({width,height:850});
+    await page.goto('http://localhost:3011/admin/products/test/edit/general');
+    await page.getByRole('heading',{name:'general',exact:true}).waitFor();
+    for(const tab of ['Gallery','General','Stock']) {
+      await page.getByRole('link',{name:tab,exact:true}).click();
+      await page.getByRole('heading',{name:tab.toLowerCase(),exact:true}).waitFor();
+      assert.equal(await page.getByRole('dialog').count(),0,'Direct editor tabs must remain inline');
+      assert.equal(await page.locator('[data-product-edit-tabs]').count(),1,'Direct editor must have exactly one toolbar');
+      assert.equal(await page.getByRole('textbox',{name:'Product name'}).count(),1,'Only one product form may be mounted');
+    }
+    await page.getByRole('textbox',{name:'Product name'}).fill('Direct save '+width);
+    await page.getByRole('button',{name:'Save changes'}).click();
+    await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
+    assert.equal(await page.getByRole('dialog').count(),0,'Direct saves must remain inline');
+    await page.getByRole('link',{name:'Gallery',exact:true}).click();await page.getByRole('heading',{name:'gallery',exact:true}).waitFor();
+    await page.goBack();await page.getByRole('heading',{name:'stock',exact:true}).waitFor();
+    assert.equal(await page.getByRole('dialog').count(),0,'Back navigation must remain inline');
+    await page.reload();await page.getByRole('heading',{name:'stock',exact:true}).waitFor();
+    assert.equal(await page.locator('[data-product-edit-tabs]').count(),1);
+    console.log('PASS '+width+'px direct editor: tab switches, save, history and refresh keep a single inline editor.');
+   }
    return;
   }
   for(const width of [320,390,1440]){

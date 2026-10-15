@@ -6,6 +6,9 @@ import { UNLIMITED_STOCK_QUANTITY } from "@/lib/product-stock";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { supplierProductIds, supplierAvailableQuantity } from "@/lib/definiteplay-fulfillment";
 
+import { privateJson, requestLimit, sameOrigin } from "@/lib/request-security";
+import { readJsonBody, RequestBodyError } from "@/lib/read-json-body";
+
 type QuantityRequestItem = {
   productId?: unknown;
   productOptionId?: unknown;
@@ -13,16 +16,20 @@ type QuantityRequestItem = {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as { items?: unknown };
-    const items = Array.isArray(body.items)
-      ? body.items.slice(0, 100).map((value) => value as QuantityRequestItem)
-      : [];
+    if (!sameOrigin(request)) return privateJson({ error: "Invalid request origin." }, 403);
+    const limited = await requestLimit(request, "product-stock", 120, 60);
+    if (limited) return limited;
+    const body = (await readJsonBody(request, 128 * 1024)) as { items?: unknown } | null;
+    if (!Array.isArray(body?.items) || body.items.length > 100 || body.items.some(item => !item || typeof item !== "object")) {
+      return privateJson({ error: "Send between 1 and 100 cart products." }, 400);
+    }
+    const items = body.items as QuantityRequestItem[];
     const normalizedItems = items
       .map((item) => ({
         productId: String(item.productId ?? "").trim(),
         productOptionId: String(item.productOptionId ?? "").trim() || null,
       }))
-      .filter((item) => item.productId);
+      .filter((item) => item.productId && item.productId.length <= 128 && (item.productOptionId?.length ?? 0) <= 128);
 
     if (normalizedItems.length === 0 || normalizedItems.length !== items.length) {
       return NextResponse.json({ error: "The cart products are invalid." }, { status: 400 });
@@ -64,7 +71,8 @@ export async function POST(request: NextRequest) {
     const supplierProducts = await supplierProductIds(productIds);
     const rangeData=await productRanges(productIds);
     const rangeLimits=await supplierRangeLimits(rangeData.ranges.filter(r=>r.enabled&&r.delivery_mode==="SUPPLIER").map(r=>r.option_id));
-    const limits = await Promise.all(normalizedItems.map(async (item) => {
+    const uniqueItems = [...new Map(normalizedItems.map(item => [JSON.stringify([item.productId, item.productOptionId]), item])).values()];
+    const resolveLimit = async (item: (typeof normalizedItems)[number]) => {
       const product = products.get(item.productId)!;
       const option = item.productOptionId ? options.get(item.productOptionId) : null;
       if (option && option.product_id !== product.id) {
@@ -106,10 +114,15 @@ export async function POST(request: NextRequest) {
         maximumQuantity,
         onePerDenomination,
       };
-    }));
+    };
+    const limits: Awaited<ReturnType<typeof resolveLimit>>[] = [];
+    for (let offset = 0; offset < uniqueItems.length; offset += 5) {
+      limits.push(...await Promise.all(uniqueItems.slice(offset, offset + 5).map(resolveLimit)));
+    }
 
     return NextResponse.json({ limits }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (error instanceof RequestBodyError) return privateJson({ error: error.message }, error.status);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to load quantity settings." },
       { status: 500 },

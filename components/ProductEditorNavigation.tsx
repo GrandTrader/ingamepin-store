@@ -1,13 +1,17 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSelectedLayoutSegment, useSelectedLayoutSegments } from "next/navigation";
 
 type ReturnPosition = { url: string; scroll: number; trigger: string | null };
-const EditorNavigation = createContext<{ close: () => void }>({ close: () => {} });
+const EditorNavigation = createContext<{ close: () => void; modal: boolean }>({ close: () => {}, modal: false });
 export function useProductEditorNavigation() { return useContext(EditorNavigation); }
 
-export default function ProductEditorNavigation({ children }: { children: ReactNode }) {
+export default function ProductEditorNavigation({ children, editor }: { children: ReactNode; editor: ReactNode }) {
+  const backgroundSegment = useSelectedLayoutSegment();
+  const editorSegments = useSelectedLayoutSegments("editor").filter(segment => !segment.startsWith("("));
+  const modal = backgroundSegment === null;
+  const intercepted = editorSegments.length > 1 && editorSegments[1] === "edit";
   const pathname = usePathname();
   const router = useRouter();
   const returnPosition = useRef<ReturnPosition>({ url: "/admin/products", scroll: 0, trigger: null });
@@ -34,13 +38,13 @@ export default function ProductEditorNavigation({ children }: { children: ReactN
   }, [pathname, router]);
 
   return (
-    <EditorNavigation.Provider value={{ close }}>
+    <EditorNavigation.Provider value={{ close, modal }}>
       <div onClickCapture={(event) => {
         if (pathname !== "/admin/products" || !(event.target instanceof Element)) return;
         const link = event.target.closest<HTMLAnchorElement>("a[href]");
         if (!link || !/^\/admin\/products\/[^/]+\/edit(?:\/|$)/.test(link.getAttribute("href") ?? "")) return;
         returnPosition.current = { url: window.location.pathname + window.location.search, scroll: document.querySelector<HTMLElement>("[data-admin-scroll]")?.scrollTop ?? window.scrollY, trigger: link.getAttribute("href") };
-      }}>{children}</div>
+      }}>{!modal && intercepted ? editor : <>{children}{editor}</>}</div>
     </EditorNavigation.Provider>
   );
 }

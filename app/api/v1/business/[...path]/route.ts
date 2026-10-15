@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, context: Context) {
       const options = await db.from("product_options").select("id,product_id,products!inner(status,business_enabled,is_preorder_only)").in("id",ids).eq("is_active",true).eq("products.status","ACTIVE").eq("products.business_enabled",true).eq("products.is_preorder_only",false);
       if (options.error) throw Error("Stock unavailable.");
       if (options.data.length!==ids.length) return businessApiJson({error:"One or more options are unavailable in the business catalogue."},404);
-      const result = await quantityLimits(new NextRequest(new URL("/api/products/quantity-limits",request.url),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items:options.data.map(o=>({productId:o.product_id,productOptionId:o.id}))})}));
+      const result = await quantityLimits(new NextRequest(new URL("/api/products/quantity-limits",request.url),{method:"POST",headers:{"Content-Type":"application/json","x-vercel-forwarded-for":auth.principal.ip},body:JSON.stringify({items:options.data.map(o=>({productId:o.product_id,productOptionId:o.id}))})}));
       result.headers.set("Cache-Control","private, no-store");
       return result;
     }

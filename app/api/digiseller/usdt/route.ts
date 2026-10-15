@@ -18,6 +18,7 @@ import {
 import { createUsdtInvoice, getUsdtInvoice } from "@/lib/usdt-gateway";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createFreeKassaApiOrder } from "@/lib/freekassa";
+import { freeKassaCheckoutRedirect } from "@/lib/freekassa-return";
 
 export const runtime = "nodejs";
 
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
 
     if (paymentKind === "FREEKASSA_FPS") {
       if (existingResult.data?.checkout_url) {
-        return NextResponse.redirect(existingResult.data.checkout_url, 303);
+        return freeKassaCheckoutRedirect(existingResult.data.checkout_url, invoiceId, publicToken);
       }
 
       const gatewayOrderId = `DS-${invoiceId}`;
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest) {
       });
       if (insertResult.error) throw insertResult.error;
 
-      return NextResponse.redirect(checkoutUrl, 303);
+      return freeKassaCheckoutRedirect(checkoutUrl, invoiceId, publicToken);
     }
 
     if (paymentKind === "BINANCE_PAY") {

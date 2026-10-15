@@ -80,6 +80,8 @@ test("cart quantity check uses fresh supplier availability and preserves owned i
   return chain;
  }};
  const api=load("app/api/products/quantity-limits/route.ts",{
+  "@/lib/request-security":{sameOrigin:()=>true,requestLimit:async()=>null},
+  "@/lib/read-json-body":{readJsonBody:request=>request.json(),RequestBodyError:class extends Error{}},
   "@/lib/definiteplay-range-stock":{supplierRangeLimits:async()=>new Map()},
   "@/lib/product-range-data":{productRanges:async()=>({ready:true,ranges})},
   "next/server":{NextResponse:{json:(body,options)=>({body,...options})}},

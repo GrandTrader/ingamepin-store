@@ -23,8 +23,8 @@ const headers={Authorization:'Bearer igp_b2b_'+'a'.repeat(43)};
  rpcResult={data:null,error:null};assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}))).error.status,403);
  rpcResult={data:null,error:{message:'business_api_rate_limit'}};const limit=await auth.authorizeBusinessApi(new Request('http://test',{headers}));assert.equal(limit.error.status,429);assert.equal(limit.error.headers.get('Retry-After'),'60');
  rpcResult={data:null,error:{message:'database unavailable'}};assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}))).error.status,503);
- let requiredPermission,forwarded,filters=[],returnedOrder=null,readCodes=0;
- const builder={select(){return this;},eq(k,v){filters.push([k,v]);return this;},maybeSingle:async()=>({data:returnedOrder,error:null})};
+ let requiredPermission,forwarded,filters=[],returnedOrder=null,readCodes=0,stockRequest;
+ const builder={in(){return this;},then(resolve){resolve({data:[{id:"123e4567-e89b-42d3-a456-426614174000",product_id:"product"}],error:null});},select(){return this;},eq(k,v){filters.push([k,v]);return this;},maybeSingle:async()=>({data:returnedOrder,error:null})};
  const route=load('app/api/v1/business/[...path]/route.ts',{
   '@/lib/business-api-auth':{businessApiJson:auth.businessApiJson,authorizeBusinessApi:async(req,ordering)=>{requiredPermission=ordering;return {error:null,principal:{user,ip:'203.0.113.10'}};}},
   '@/lib/business-catalog-discounts':{businessCatalogDiscounts:async()=>({})},
@@ -32,12 +32,13 @@ const headers={Authorization:'Bearer igp_b2b_'+'a'.repeat(43)};
   '@/lib/business-api-input':inputs,'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>builder})},
   '@/lib/delivered-codes':{getAllDeliveredCodes:async()=>{readCodes++;return[];}},'@/lib/product-range-data':{},
   '@/lib/order-request-handler':{handleOrder:async(request,principal,ip)=>{forwarded={body:await request.json(),principal,ip,headers:request.headers};return NextResponse.json({result:{total:10}});}},
-  '@/app/api/products/quantity-limits/route':{},
+  '@/app/api/products/quantity-limits/route':{POST:async r=>{stockRequest=r;return NextResponse.json({limits:[]});}},
  });
  const context=path=>({params:Promise.resolve({path})});
  const id='123e4567-e89b-42d3-a456-426614174000';
  const request=(key,body)=>new NextRequest('http://test/api/v1/business/orders',{method:'POST',headers:{...headers,...(key?{'Idempotency-Key':key}:{}),'cf-connecting-ip':'bad','Content-Type':'application/json'},body:JSON.stringify(body)});
  assert.equal((await route.POST(request(null,{}),context(['orders']))).status,400);
+ const stock=await route.GET(new NextRequest('http://test/api/v1/business/stock?optionIds='+id,{headers:{'x-forwarded-for':'forged'}}),context(['stock']));assert.equal(stock.status,200);assert.equal(stockRequest.headers.get('x-vercel-forwarded-for'),'203.0.113.10');assert.equal(stockRequest.headers.get('x-forwarded-for'),null);
  const body={items:[{productOptionId:id,quantity:2}],reference:'MY-ORDER',expectedTotal:10,customer:{email:'victim@example.invalid'},paymentMethod:'binance',action:'quote'};
  const response=await route.POST(request(id,body),context(['orders']));assert.equal(response.status,200);assert.equal(requiredPermission,true);assert.equal(forwarded.principal.id,user.id);assert.equal(forwarded.body.action,'confirm');assert.equal(forwarded.body.paymentMethod,'wallet');assert.equal(forwarded.body.customer,undefined);assert.equal(forwarded.body.requestId,id);assert.equal(forwarded.headers.get('cf-connecting-ip'),null);assert.equal(forwarded.ip,'203.0.113.10');assert.equal(forwarded.headers.get('authorization'),null);assert.equal(response.headers.get('Cache-Control'),'private, no-store');
  await route.POST(request(null,body),context(['orders','quote']));assert.equal(requiredPermission,false);assert.equal(forwarded.body.action,'quote');

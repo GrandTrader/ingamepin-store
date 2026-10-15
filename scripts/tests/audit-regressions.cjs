@@ -61,6 +61,6 @@ test('legacy checkout uses the same handler, without a second path around purcha
  const handler=()=>{};const route=load('app/api/binance-pay/orders/route.ts',{'@/app/api/orders/route':{POST:handler}});assert.equal(route.POST,handler);
 });
 test('private APIs receive explicit non-cacheable response headers',async()=>{
- const config=load('next.config.ts').default;const rules=await config.headers();
+ const config=load('next.config.ts',{'./lib/product-image':{productImageRemotePatterns:()=>[]}}).default;const rules=await config.headers();
  for(const source of ['/api/customer-discounts','/api/wallet/:path*','/api/orders/:path*','/api/support/chat','/api/admin/:path*'])assert.ok(rules.some(r=>r.source===source&&r.headers.some(h=>h.key==='Cache-Control'&&h.value==='private, no-store')));
 });
