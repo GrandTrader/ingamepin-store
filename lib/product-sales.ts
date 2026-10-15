@@ -51,6 +51,7 @@ const getCachedPaidProductSales = unstable_cache(async () => {
         `,
       )
       .in("orders.status", ["PAID", "PROCESSING", "DELIVERED"])
+      .order("id")
       .range(from, from + pageSize - 1);
 
     if (result.error) {
