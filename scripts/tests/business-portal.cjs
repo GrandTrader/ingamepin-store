@@ -119,11 +119,12 @@ test('Wallet gateway returns stay in the originating portal without crediting fu
   const file=`app/api/${gateway}/${outcome}/route.ts`;
   const handler=load(file,pageMocks(file,{
    'node:crypto':require('node:crypto'),
-   'next/server':{NextResponse:{redirect:(url,status)=>({url:String(url),status})}},
+   'next/server':{NextResponse:{redirect:(url,status)=>({url:String(url),status,headers:new Headers()})}},
    '@/lib/pally':{getPallyApiToken:()=>token},
    '@/lib/supabase/admin':{createAdminClient:()=>({from:table=>{assert.equal(table,'wallet_topup_requests');return query;}})},
   }));
-  const result=await handler.POST({url:'https://test.invalid/return',formData:async()=>form});
+  let result=await handler.POST({url:'https://test.invalid/return',formData:async()=>form});
+  if(gateway==='freekassa'&&outcome==='success'){assert.equal(new URL(result.url).pathname,'/api/freekassa/success');result=await handler.GET({url:result.url,nextUrl:new URL(result.url)});}
   assert.equal(result.status,303);assert(new URL(result.url).pathname.startsWith(business?'/account/portal/wallet':'/account/wallet'));
  }
 });
