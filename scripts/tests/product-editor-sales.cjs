@@ -8,13 +8,16 @@ const moduleExports = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/product-sales.ts', 'utf8'), {
   compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022},
 }).outputText, {exports: moduleExports, require(name) {
+  if (name === './product-statistics-imports') return {
+    productStatisticsImports: [], statisticsProductIds: id => [id], mergeImportedProductSales: sales => sales,
+  };
   if (name === 'next/cache') return {unstable_cache(fn, key, options) {caches.push({key, options}); return fn;}};
   if (name === '@/lib/supabase/admin') return {createAdminClient() {return {from(table) {
     const query = {table}; queries.push(query);
     return {
       select(columns) {query.columns = columns; return this;},
       eq(field, value) {query.filter = [field, value]; return this;},
-      in(field, values) {query.statuses = [field, [...values]]; return this;},
+      in(field, values) {if (field === 'product_id') query.filter = [field, values[0]]; else query.statuses = [field, [...values]]; return this;},
       order(field) {query.order = field; return this;},
       async range(from, to) {
         query.range = [from, to];

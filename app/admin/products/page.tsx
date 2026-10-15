@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { getProductUrl } from "@/lib/product-url";
 import { getPaidProductSales } from "@/lib/product-sales";
 import { isUnlimitedStock } from "@/lib/product-stock";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getProductVisitorCounts } from "@/lib/product-views";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
 import {
@@ -48,10 +48,6 @@ type ProductOptionRow = {
   stock_quantity: number;
   is_active: boolean;
   is_custom_value: boolean;
-};
-
-type ProductViewRow = {
-  product_id: string;
 };
 
 type ProductRow = {
@@ -248,31 +244,10 @@ export default async function AdminProductsPage({
   const allProducts = (productResult.data ?? []) as ProductRow[];
   const categoryChoices=[...new Map(allProducts.filter(p=>p.category_id).map(p=>[p.category_id!,getCategoryName(p)])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
   const regionChoices=[...new Set(allProducts.map(p=>p.region||"Global"))].sort();
-  const admin = createAdminClient();
-  const twentyFourHoursAgo = new Date(
-    Date.now() - 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const [viewsResult, paidProductSales] = await Promise.all([
-    admin
-      .from("product_views")
-      .select("product_id")
-      .gte("last_viewed_at", twentyFourHoursAgo),
+  const [viewsByProduct, paidProductSales] = await Promise.all([
+    getProductVisitorCounts(),
     getPaidProductSales(),
   ]);
-
-  if (viewsResult.error) {
-    throw new Error(
-      `Unable to load product visitors: ${viewsResult.error.message}`,
-    );
-  }
-
-  const viewsByProduct = new Map<string, number>();
-  for (const row of (viewsResult.data ?? []) as ProductViewRow[]) {
-    viewsByProduct.set(
-      row.product_id,
-      (viewsByProduct.get(row.product_id) ?? 0) + 1,
-    );
-  }
   const getTotalSold = (product: ProductRow) =>
     Number(product.sold_count ?? 0) + (paidProductSales.get(product.id) ?? 0);
   const normalizedSearch = search.toLocaleLowerCase();

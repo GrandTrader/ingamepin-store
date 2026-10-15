@@ -1,5 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unstable_cache } from "next/cache";
+import { mergeImportedProductSales, productStatisticsImports, statisticsProductIds } from "./product-statistics-imports";
+
+async function importedExternalSales(productId?: string) {
+  const ids = [...new Set(productStatisticsImports
+    .filter(link => !productId || link.targetId === productId).map(link => link.sourceId))];
+  if (!ids.length) return new Map<string, number>();
+  const result = await createAdminClient().from("products").select("id,sold_count").in("id", ids);
+  if (result.error) throw new Error("Unable to load imported product sales: " + result.error.message);
+  return new Map<string, number>((result.data ?? []).map(row => [row.id, Number(row.sold_count ?? 0)]));
+}
 
 type OrderItemSaleRow = {
   product_id: string;
@@ -73,8 +83,8 @@ const getCachedPaidProductSales = unstable_cache(async () => {
     from += pageSize;
   }
 
-  return Array.from(sales.entries());
-}, ["paid-product-sales-v1"], {
+  return Array.from(mergeImportedProductSales(sales, await importedExternalSales()).entries());
+}, ["paid-product-sales-v2", JSON.stringify(productStatisticsImports)], {
   revalidate: 30,
   tags: ["paid-product-sales"],
 });
@@ -91,7 +101,7 @@ export const getPaidProductSalesForProduct = unstable_cache(async (productId: st
   for (let from = 0; ; from += pageSize) {
     const result = await admin.from("order_items")
       .select("product_id, quantity, orders!inner(status)")
-      .eq("product_id", productId)
+      .in("product_id", statisticsProductIds(productId))
       .in("orders.status", ["PAID", "PROCESSING", "DELIVERED"])
       .order("id")
       .range(from, from + pageSize - 1);
@@ -104,9 +114,12 @@ export const getPaidProductSalesForProduct = unstable_cache(async (productId: st
         total += Number(row.quantity || 0);
       }
     }
-    if (rows.length < pageSize) return total;
+    if (rows.length < pageSize) {
+      const imported = await importedExternalSales(productId);
+      return total + [...imported.values()].reduce((sum, count) => sum + count, 0);
+    }
   }
-}, ["paid-product-sales-by-product-v1"], {
+}, ["paid-product-sales-by-product-v2", JSON.stringify(productStatisticsImports)], {
   revalidate: 30,
   tags: ["paid-product-sales"],
 });

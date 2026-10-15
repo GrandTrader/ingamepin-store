@@ -132,13 +132,14 @@ test('Reviews stay bounded, product-scoped and masked; one failed source does no
     const calls = [];
     const admin = { from(table) {
       const q = { table, filters: [] }, b = {};
-      for (const method of ['select', 'eq', 'order', 'limit']) b[method] = (...args) => { q.filters.push([method, ...args]); return b; };
+      for (const method of ['select', 'eq', 'in', 'order', 'limit']) b[method] = (...args) => { q.filters.push([method, ...args]); return b; };
       b.then = resolve => { calls.push(q); resolve(table === 'order_reviews'
         ? { error: unavailable ? { message: 'unavailable' } : null, data: [{ id: 1, customer_email: 'private@example.test', sentiment: 'POSITIVE', comment: 'Good', created_at: '2026-10-10' }] }
         : { error: null, data: [{ id: 2, sentiment: 'NEGATIVE', comment: 'Late', reviewed_at: '2026-10-09' }] }); };
       return b;
     } };
     const info = load('components/ProductInformation.tsx', {
+      '@/lib/product-statistics-imports': load('lib/product-statistics-imports.ts'),
       '@/lib/supabase/admin': { createAdminClient: () => admin }, './ProductDetailsTabs': { __esModule: true, default: () => null },
     }).default;
     const result = await info({ productId: 'p', description: 'Product details' });
@@ -147,7 +148,7 @@ test('Reviews stay bounded, product-scoped and masked; one failed source does no
     assert(!JSON.stringify(result.props).includes('private@example.test'));
     for (const query of calls) {
       assert(query.filters.some(f => f[0] === 'eq' && f[1] === 'is_visible' && f[2] === true));
-      assert(query.filters.some(f => f[0] === 'eq' && f[1].endsWith('product_id') && f[2] === 'p'));
+      assert(query.filters.some(f => f[0] === 'in' && f[1].endsWith('product_id') && f[2].length === 1 && f[2][0] === 'p'));
       assert(query.filters.some(f => f[0] === 'limit' && f[1] <= 100));
     }
   }

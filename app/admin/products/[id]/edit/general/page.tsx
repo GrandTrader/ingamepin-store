@@ -12,6 +12,7 @@ import ResponsiveImageField from "@/components/ResponsiveImageField";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaidProductSalesForProduct } from "@/lib/product-sales";
+import { getProductVisitorCounts } from "@/lib/product-views";
 import { updateProductGeneral } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -49,28 +50,20 @@ export default async function ProductGeneralPage({
   if (!access.data) redirect("/admin/login?error=Access denied");
 
   const admin = createAdminClient();
-  const twentyFourHoursAgo = new Date(
-    Date.now() - 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const [result, categoriesResult, popupResult, viewsResult, paidProductSales] = await Promise.all([
+  const [result, categoriesResult, popupResult, visitorCounts, paidProductSales] = await Promise.all([
     readWithGamingPlatforms((fields) => supabase.from("products").select(fields).eq("id", id).returns<GeneralProductRow[]>().maybeSingle(), "id, category_id, name, name_ru, slug, description, description_ru, region, gaming_platforms, sold_count, review_reward_enabled, review_reward_percent"),
     supabase.from("categories").select("id, name, slug").eq("is_active", true).order("sort_order"),
     admin.from("preorder_popup_settings").select("product_id, is_enabled, image_url").eq("id", true).maybeSingle(),
-    admin
-      .from("product_views")
-      .select("id", { count: "exact", head: true })
-      .eq("product_id", id)
-      .gte("last_viewed_at", twentyFourHoursAgo),
+    getProductVisitorCounts(id),
     getPaidProductSalesForProduct(id),
   ]);
 
   if (result.error) throw new Error(`Unable to load product: ${result.error.message}`);
-  if (viewsResult.error) throw new Error(`Unable to load product visitors: ${viewsResult.error.message}`);
   if (!result.data) notFound();
   const product = result.data;
   const totalSold =
     Number(product.sold_count ?? 0) + paidProductSales;
-  const visitorsLast24Hours = viewsResult.count ?? 0;
+  const visitorsLast24Hours = visitorCounts.get(id) ?? 0;
   const isPopupProduct = popupResult.data?.is_enabled === true && popupResult.data.product_id === id;
   const popupImageUrl = popupResult.data?.product_id === id ? popupResult.data.image_url : null;
 

@@ -11,6 +11,7 @@ type ProductReview = {
   customerLabel: string;
   createdAt: string;
   source?: "WEBSITE" | "DIGISELLER";
+  originalProductName?: string;
 };
 
 export default function ProductDetailsTabs({
@@ -161,6 +162,12 @@ export default function ProductDetailsTabs({
                         }).format(new Date(review.createdAt))}
                       </time>
                     </div>
+                    {review.originalProductName && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        <LocalizedProductText english={"Originally purchased from: " + review.originalProductName}
+                          russian={"Первоначальная покупка: " + review.originalProductName} />
+                      </p>
+                    )}
                     {review.comment && (
                       <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-300">
                         {review.comment}
