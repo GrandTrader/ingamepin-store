@@ -28,6 +28,9 @@ export async function saveProductOptions(formData: FormData) {
   const admin = createAdminClient();
   const product = await admin.from("products").select("category_id, stock_quantity, stock_source").eq("id", productId).maybeSingle();
   if (!product.data) redirect(`${path}?error=${encodeURIComponent("Product not found.")}`);
+  const pricing = await admin.from("product_range_settings").select("link_fixed_prices").eq("product_id", productId).maybeSingle();
+  if (pricing.error && !["42703","PGRST204","42P01","PGRST205"].includes(pricing.error.code)) redirect(`${path}?error=${encodeURIComponent("Unable to verify product pricing.")}`);
+  if (pricing.data?.link_fixed_prices && preserveDiscountedPrices) redirect(`${path}?error=${encodeURIComponent("Manage linked prices with Save all prices. Customer discount percentages apply separately.")}`);
 
   const submittedIds = options.map((option) => option.id).filter(Boolean);
   const existingResult = await admin.from("product_options").select("id, selling_price, is_active").eq("product_id", productId).eq("is_custom_value", false);

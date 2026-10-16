@@ -1,12 +1,16 @@
 "use client";
 import { isValidProductDenomination } from "@/lib/product-option-input";
+import type { ProductRange } from "@/lib/product-range";
+import { linkedDenominationPrice, linkedSupplierPrice } from "@/lib/linked-range-pricing";
 
 import { useState, type ChangeEvent } from "react";
 
 type Option = { id: string; name: string; denomination: number | string; currency: string; sellingPrice: number | string; isActive: boolean; isInStock: boolean };
 const currencies = ["INR", "USD", "EUR", "GBP", "TRY", "AED", "SAR", "CAD", "AUD", "JPY", "SGD"];
 
-export default function ProductOptionsEditor({ initialOptions, productName }: { initialOptions: Option[]; productName: string }) {
+export default function ProductOptionsEditor({ initialOptions, productName, pricesReadOnly = false, linkedPricing }: { initialOptions: Option[]; productName: string; pricesReadOnly?: boolean;
+  linkedPricing?: {range:ProductRange;supplierMarkup:number|null;supplierFixed:boolean;costs:Record<string,number|null>};
+}) {
   const [options, setOptions] = useState(initialOptions);
   const [selected, setSelected] = useState(0);
   const [dragging, setDragging] = useState<number | null>(null);
@@ -15,8 +19,18 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
   const [priceChangeDirection, setPriceChangeDirection] = useState<"decrease" | "increase">("decrease");
   const [importCurrency, setImportCurrency] = useState("TRY");
   const [importMessage, setImportMessage] = useState("");
-  function update(index: number, values: Partial<Option>) { setOptions((current) => current.map((option, itemIndex) => itemIndex === index ? { ...option, ...values } : option)); }
-  function add() { setOptions((current) => [...current, { id: "", name: "", denomination: 1, currency: "INR", sellingPrice: 0, isActive: true, isInStock: true }]); setSelected(options.length); }
+  function reprice(option: Option): Option {
+    if(!linkedPricing || option.currency!==linkedPricing.range.currency) return option;
+    try {
+      const {range,supplierFixed,supplierMarkup,costs}=linkedPricing;
+      const sellingPrice=range.delivery_mode==="SUPPLIER"&&supplierFixed&&supplierMarkup!==null
+        ? costs[option.id] ? linkedSupplierPrice(costs[option.id]!,supplierMarkup) : option.sellingPrice
+        : linkedDenominationPrice(Number(option.denomination),Number(range.price_basis),Number(range.price_usd));
+      return {...option,sellingPrice};
+    } catch { return option; }
+  }
+  function update(index: number, values: Partial<Option>) { setOptions((current) => current.map((option, itemIndex) => itemIndex === index ? reprice({ ...option, ...values }) : option)); }
+  function add() { setOptions((current) => [...current, reprice({ id: "", name: "", denomination: 1, currency: linkedPricing?.range.currency??"INR", sellingPrice: 0, isActive: true, isInStock: true })]); setSelected(options.length); }
   function remove(index: number) { if (options.length > 1) { setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index)); setSelected(0); } }
   function drop(targetIndex: number) { if (dragging === null || dragging === targetIndex) return; setOptions((current) => { const next = [...current]; const [moved] = next.splice(dragging, 1); next.splice(targetIndex, 0, moved); return next; }); setSelected(targetIndex); setDragging(null); }
   function applyPriceReduction() {
@@ -75,7 +89,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
       if (imported.length > 50) throw new Error("A product can have a maximum of 50 options.");
       if (new Set(imported.map((option) => option.denomination)).size !== imported.length) throw new Error("Duplicate denominations are not allowed.");
 
-      setOptions(imported);
+      setOptions(imported.map(reprice));
       setSelected(0);
       setImportMessage(`${imported.length} options imported. Click Save changes to confirm.`);
     } catch (error) {
@@ -88,7 +102,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
       <aside className="rounded-xl border border-slate-200 bg-slate-50 p-2"><p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">Options</p><div className="grid gap-1">{options.map((option, index) => <button key={option.id || `new-${index}`} type="button" onClick={() => setSelected(index)} className={`rounded-lg px-3 py-3 text-left text-sm font-bold ${selected === index ? "bg-blue-600 text-white" : "bg-white text-slate-700"}`}>{option.name || `New option ${index + 1}`}</button>)}</div><button type="button" onClick={add} className="mt-3 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 font-bold text-blue-600">+ Add option</button></aside>
 
       <section className="min-w-0"><div className="mb-5"><h2 className="text-xl font-black">Denomination options</h2><p className="mt-1 text-sm text-slate-500">Edit the customer-visible options and selling prices.</p></div>
-        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        {pricesReadOnly ? <p className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">Prices are managed by Product pricing above. Use Save all prices to update the range and denominations together.</p> : <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
           <p className="font-black text-slate-900">Change the whole product price</p>
           <p className="mt-1 text-sm text-slate-600">Increase or decrease every option price by one percentage.</p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -103,7 +117,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
             <button type="button" onClick={applyPriceReduction} className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-black text-slate-950 hover:bg-amber-400">Apply to all prices</button>
             <button type="button" onClick={restoreOriginalPrices} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-50">Restore original prices</button>
           </div>
-        </div>
+        </div>}
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
           <p className="font-black text-slate-900">Import denomination CSV</p>
           <p className="mt-1 text-sm text-slate-600">Upload a file with <strong>name,denomination,price</strong> columns. Name is optional and price must be in USD. Importing replaces the current option list.</p>
@@ -120,7 +134,7 @@ export default function ProductOptionsEditor({ initialOptions, productName }: { 
           <input value={option.name} onChange={(event) => update(index, { name: event.target.value })} placeholder="1000 Rupees" className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
           <input type="number" min="0.0001" max="2147483647" step="0.0001" value={option.denomination} onChange={(event) => update(index, { denomination: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
           <select value={option.currency} onChange={(event) => update(index, { currency: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2">{currencies.map((currency) => <option key={currency}>{currency}</option>)}</select>
-          <input type="number" min="0" step="0.01" required value={option.sellingPrice} onChange={(event) => update(index, { sellingPrice: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2" />
+          <input type="number" min="0" step="0.01" required readOnly={pricesReadOnly} aria-label={`Price for ${option.name}`} value={option.sellingPrice} onChange={(event) => update(index, { sellingPrice: event.target.value })} className="rounded-lg border border-slate-200 bg-white px-3 py-2 read-only:bg-slate-50 read-only:text-slate-500" />
           <div className="flex items-center justify-center"><input type="radio" name="default_preview" checked={selected === index} onChange={() => setSelected(index)} aria-label={`Preview ${option.name}`} /></div>
           <label title={option.isInStock ? "In stock" : "Out of stock"} className="flex cursor-pointer items-center justify-center" onClick={(event) => event.stopPropagation()}>
             <input type="checkbox" checked={option.isInStock} onChange={(event) => update(index, { isInStock: event.target.checked })} className="peer sr-only" />

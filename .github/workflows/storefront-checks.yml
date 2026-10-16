@@ -25,3 +25,4 @@ jobs:
       - run: npm run test:digiseller-fkwallet
       - run: npm run test:digiseller-stock
       - run: npm run test:manual-code-ranges
+      - run: npm run test:linked-range-pricing

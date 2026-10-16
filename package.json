@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:linked-range-pricing": "node --test scripts/tests/definiteplay-range-actions.cjs && node scripts/tests/definiteplay-range-db.cjs && node scripts/tests/supplier-auto-pricing-db.cjs",
     "test:manual-code-ranges": "node scripts/tests/manual-code-range.cjs && node scripts/tests/product-range-db.cjs",
     "test:digiseller-stock": "node scripts/tests/digiseller-stock.cjs",
     "test:purchase-restrictions": "node --test scripts/tests/denomination-purchase-limits.cjs scripts/tests/purchase-restriction.cjs scripts/tests/regional-purchase-limit.cjs && node scripts/tests/cart-stock.cjs && node scripts/tests/purchase-restriction-db.cjs && node scripts/tests/denomination-purchase-limits-db.cjs && node scripts/tests/portal-wallet-db.cjs",

@@ -1,6 +1,6 @@
-import { productRanges, rangeMarkupForAdmin } from "@/lib/product-range-data";
+import { productRanges, rangeMarkupForAdmin, linkedRangePricingForAdmin, fixedSupplierCostsForAdmin } from "@/lib/product-range-data";
 import { manualCodeRangeDefaults } from "@/lib/manual-code-range";
-import RangeOptionEditor from "./RangeOptionEditor";
+import LinkedRangeOptionEditor from "./LinkedRangeOptionEditor";
 import { saveRangeOption } from "./range-actions";
 import ProductSettingsActions from "@/components/ProductSettingsActions";
 import Link from "next/link";
@@ -60,6 +60,12 @@ export default async function ProductOptionsPage({
   const rangeMarkup=rangeData.ranges[0]?.delivery_mode==="SUPPLIER"?await rangeMarkupForAdmin(id):null;
   const optionCurrencies=[...new Set(fixedOptions.map(o=>o.denomination_currency).filter((value):value is string=>typeof value==="string"&&/^[A-Z]{3}$/.test(value)))];
   const productCurrency=optionCurrencies.length===1?optionCurrencies[0]:product.currency||"USD";
+  const [linked, supplierCosts] = await Promise.all([
+    linkedRangePricingForAdmin(id),
+    product.stock_source === "DEFINITEPLAY" ? fixedSupplierCostsForAdmin(id) : Promise.resolve({} as Record<string, number|null>),
+  ]);
+  const range = rangeData.ranges[0] ?? null;
+  const pricingKey = JSON.stringify([range, rangeMarkup, linked.pricing, fixedOptions, supplierCosts]);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -87,11 +93,18 @@ export default async function ProductOptionsPage({
               ...rangeData.ranges.map(r=>({id:r.option_id,name:`Custom range (${r.currency})`,price:Number(r.price_usd),priceLabel:`Normal price for ${r.price_basis} ${r.currency}`})),
             ]}/>
 
-          <form action={saveRangeOption} className="mt-6"><input type="hidden" name="id" value={id}/><RangeOptionEditor manualDefaults={manualCodeRangeDefaults(product, optionsResult.data??[])} initialMarkup={rangeMarkup} productCurrency={productCurrency} ready={rangeData.ready} range={rangeData.ranges[0]??null}/></form>
+          <form action={saveRangeOption} className="mt-6" key={pricingKey}><input type="hidden" name="id" value={id}/><LinkedRangeOptionEditor
+            manualDefaults={manualCodeRangeDefaults(product, optionsResult.data??[])} initialMarkup={rangeMarkup} productCurrency={productCurrency}
+            ready={rangeData.ready && linked.ready} range={range} linkedPricing={linked.pricing} supplierFixedPricing={product.stock_source === "DEFINITEPLAY"}
+            options={fixedOptions.map(o => ({id:o.id,name:o.option_name,denomination:Number(o.denomination),currency:o.denomination_currency??productCurrency,sellingPrice:Number(o.selling_price),supplierCost:supplierCosts[o.id]??null}))}
+          /></form>
           <form action={saveProductOptions} className="mt-6 grid gap-6">
             <input type="hidden" name="id" value={id} />
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <ProductOptionsEditor
+                key={pricingKey}
+                pricesReadOnly={!!range && linked.ready}
+                linkedPricing={range && linked.pricing.linked ? {range, supplierMarkup:rangeMarkup?.markup??null, supplierFixed:product.stock_source==="DEFINITEPLAY", costs:supplierCosts} : undefined}
                 productName={product.name}
                 initialOptions={fixedOptions.map((option) => ({
                   id: option.id,
@@ -104,7 +117,7 @@ export default async function ProductOptionsPage({
                 }))}
               />
             </section>
-            <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            {!range && <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
               <input
                 type="checkbox"
                 name="preserve_discounted_prices"
@@ -117,7 +130,7 @@ export default async function ProductOptionsPage({
                   Existing discounts are adjusted automatically. If the new public price is lower, that customer&apos;s discount becomes 0%.
                 </span>
               </span>
-            </label>
+            </label>}
             <div className="flex justify-end">
               <button className="rounded-xl bg-slate-900 px-7 py-3 font-black text-white">Save Product Options</button>
             </div>
