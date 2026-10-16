@@ -29,9 +29,12 @@ export default function ProductDiscountEditor({options,rules,ready,productId,rev
   // Keep controlled selections visible until the server redirects with saved settings.
   startTransition(async()=>{await action(form);});
  }
- return <form onSubmit={validate} className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+ return <details className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+ <summary className="cursor-pointer rounded-lg py-1 text-slate-900 marker:text-blue-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600">
+  <h2 className="inline text-xl font-black">Sale discounts</h2>
+ </summary>
+ <form onSubmit={validate} className="mt-3">
  <input type="hidden" name="id" value={productId}/><input type="hidden" name="revision" value={revision}/>
- <h2 className="text-xl font-black">Sale discounts</h2>
  <p className="mt-1 text-sm text-slate-600">Set a product discount or a different discount for each denomination. Normal prices are kept. The larger of the sale and personal customer discounts applies.</p>
  <p className="mt-2 text-sm font-bold text-blue-700">Expiry date and time: India (IST, UTC+05:30)</p>
  <input type="hidden" name="rules" value={JSON.stringify(payload)}/>
@@ -57,5 +60,6 @@ export default function ProductDiscountEditor({options,rules,ready,productId,rev
  })}</div>
  {error&&<p role="alert" className="mt-3 text-sm font-bold text-red-700">{error}</p>}
  <div className="mt-4 flex justify-end"><button disabled={!ready||pending} className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white disabled:opacity-50">{pending?"Saving…":"Save discounts"}</button></div>
- </form>;
+ </form>
+ </details>;
 }
