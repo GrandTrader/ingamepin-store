@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 type OrderItemRow = {
   product_id: string;
   product_option_id: string | null;
+  fulfillment_mode: string | null;
 };
 
 type ProductOptionRow = {
@@ -65,7 +66,7 @@ export async function notifySoldOutInstantOptions(orderId: string) {
     const admin = createAdminClient();
     const itemResult = await admin
       .from("order_items")
-      .select("product_id, product_option_id")
+      .select("product_id, product_option_id, fulfillment_mode")
       .eq("order_id", orderId);
 
     if (itemResult.error) throw itemResult.error;
@@ -74,6 +75,8 @@ export async function notifySoldOutInstantOptions(orderId: string) {
     const optionIds = Array.from(
       new Set(
         items
+          // Range orders do not consume fixed-denomination voucher inventory.
+          .filter((item) => item.fulfillment_mode !== "RANGE_MANUAL" && item.fulfillment_mode !== "RANGE_SUPPLIER")
           .map((item) => item.product_option_id)
           .filter((id): id is string => Boolean(id)),
       ),
@@ -85,6 +88,9 @@ export async function notifySoldOutInstantOptions(orderId: string) {
       .from("product_options")
       .select("id, product_id, option_name, denomination, stock_quantity")
       .in("id", optionIds)
+      // Also cover older orders without a range fulfillment snapshot.
+      .eq("is_custom_value", false)
+      .neq("option_type", "RANGE")
       .lte("stock_quantity", 0);
 
     if (optionResult.error) throw optionResult.error;
