@@ -74,7 +74,7 @@ export default function FKImportForm({ items, categories, requestId, connectionI
           <label className="text-sm font-bold">Markup (%)<input required type="number" min="0" max="1000" step="0.01" placeholder="Enter your markup" className={input} value={markup} onChange={e => setMarkup(e.target.value)} /></label>
           <label className="text-sm font-bold">1 USD = how many {items[0].currency}?<input required type="number" readOnly={items[0].currency === "USD"} min="0.00000001" max="100000000" step="0.00000001" placeholder="Enter your exchange rate" className={input} value={rate} onChange={e => setRate(e.target.value)} /></label>
         </div>
-        <p className="mt-3 text-xs text-slate-500">You can override each selling price below. Manual prices stay fixed when markup changes.</p>
+        <p className="mt-3 text-xs text-slate-500">You can override each selling price below. The automatic supplier refresh will recalculate prices using the saved markup and exchange rate.</p>
         <button type="button" onClick={() => setPrices({})} className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">Apply markup to all prices</button>
         {pricingError && <p role="alert" className="mt-3 text-sm text-red-700">{pricingError}</p>}
       </section>

@@ -18,13 +18,13 @@ function fixture(config = {}) {
   const query = {select(){return query},eq(key,value){if(key==='product_id')productId=value;return query},lt(){return query},order(){return query},limit(){return query},single(){return query},
    async upsert(){return {error:null}},then(resolve,reject){
     const row = products.find(p=>p.id===productId);
-    const data = table==='fkwallet_delivery_settings'?products.map(p=>({product_id:p.id}))
-     :table==='fkwallet_imports'?{connection_id:config.connection??api.connectionId(credentials),supplier_category_id:row.category,customer_fields:[{key:'Input1',fieldType:'TEXT'}]}
+    const data = table==='fkwallet_imports'&&!productId?products.map(p=>({product_id:p.id}))
+     :table==='fkwallet_imports'?{connection_id:config.connection??api.connectionId(credentials),supplier_category_id:row.category,customer_fields:[{key:'Input1',fieldType:'TEXT'}],markup_percent:5,exchange_rate:88}
      :table==='fkwallet_product_links'?[{option_id:productId+'-option',supplier_product_id:9,supplier_currency:'RUB',supplier_cost:10}]:null;
     return Promise.resolve({data,error:null}).then(resolve,reject);
    }}; return query;
  },async rpc(name,args){
-  assert(['claim_supplier_job','sync_fkwallet_stock'].includes(name),'Stock refresh cannot submit a purchase');
+  assert(['claim_supplier_job','sync_fkwallet_catalogue'].includes(name),'Stock refresh cannot submit a purchase');
   if(name==='claim_supplier_job')return {data:null,error:null};
   writes.push(clone(args));return {data:null,error:config.saveError?{}:null};
  }};
@@ -88,8 +88,8 @@ test('authentication failures, malformed data and long cooldowns are not retried
  const result=await malformed.run();assert.equal(result.stockFailed,3);assert.equal(malformed.waits.length,0);
 });
 
-test('real unavailability, insufficient funds, price increases and changed fields still close stock',async()=>{
- for(const config of [{catalogue:[]},{balances:[{currency_code:'RUB',value:5}]},{catalogue:[{...supplier,price:11}]},{catalogue:[{...supplier,currency:'USD'}]},{catalogue:[{...supplier,fields:[]}]},{catalogue:[{...supplier,fields:[{...field,key:'Different'}]}]}]) {
+test('real unavailability, insufficient funds, and changed fields still close stock',async()=>{
+ for(const config of [{catalogue:[]},{balances:[{currency_code:'RUB',value:5}]},{catalogue:[{...supplier,currency:'USD'}]},{catalogue:[{...supplier,fields:[]}]},{catalogue:[{...supplier,fields:[{...field,key:'Different'}]}]}]) {
   const f=fixture(config);const result=await f.run();assert.equal(result.stockFailed,0);
   assert(f.writes.every(w=>w.p_rows[0].quantity===0),JSON.stringify(config));
  }
@@ -120,4 +120,12 @@ test('scheduler reports partial refresh failure instead of a misleading success'
   const response=await route.GET({headers:new Headers({authorization:'Bearer '+secret})});
   assert.equal(response.status,stockFailed?503:200);assert.equal((await response.json()).ok,stockFailed===0);
  }
+});
+
+test('supplier increases and decreases refresh pricing facts without closing funded stock',async()=>{
+ for(const price of [11,9]){const f=fixture({catalogue:[{...supplier,price}]});const result=await f.run();assert.equal(result.stockFailed,0);assert(f.writes.every(w=>w.p_rows[0].supplierCost===String(price)&&w.p_rows[0].supplierId===9&&w.p_rows[0].supplierCurrency==='RUB'&&w.p_rows[0].quantity>0));assert(f.writes.every(w=>Number.isFinite(Date.parse(w.p_synced_at))));}
+});
+test('insufficient funds still updates cost facts; invalid products never update prices',async()=>{
+ const f=fixture({balances:[]});await f.run();assert(f.writes.every(w=>w.p_rows[0].quantity===0&&w.p_rows[0].supplierCost==='10'));
+ for(const catalogue of [[{...supplier,currency:'USD'}],[{...supplier,fields:[]}],[{...supplier,price:0}],[]]){const bad=fixture({catalogue});await bad.run();assert(bad.writes.every(w=>w.p_rows.every(row=>row.quantity===0&&!('supplierCost' in row))));}
 });

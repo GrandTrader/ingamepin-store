@@ -2,7 +2,7 @@ import "server-only";
 import { setTimeout as delay } from "node:timers/promises";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { connectionId, FKError, fkRequest, findFKOrderHistory, parseBalances, parseCurrencies, parseProducts, parseResult, type FKCredentials } from "./fkwallet-api";
-import { fkCustomerFields, fkImportIssue } from "./fkwallet-import";
+import { fkCustomerFields, fkImportIssue, fkSellingPrice } from "./fkwallet-import";
 import { requireCredentials, seal, unseal } from "./fkwallet-storage";
 import type { FKBalance, FKProduct, FKResult } from "./fkwallet-types";
 
@@ -155,6 +155,7 @@ export function createFKStockReader(credentials: FKCredentials) {
   }
   return {
     connection: connectionId(credentials),
+    syncedAt: new Date().toISOString(),
     balances: () => balances ??= read("balance").then(parseBalances),
     products(categoryId: number) {
       if (!Number.isSafeInteger(categoryId) || categoryId <= 0) throw new FKError("Supplier category is invalid.");
@@ -171,14 +172,14 @@ export function createFKStockReader(credentials: FKCredentials) {
 export async function syncFKProductStock(db: DB, credentials: FKCredentials, productId: string,
   reader = createFKStockReader(credentials)) {
   const [imported, links] = await Promise.all([
-    db.from("fkwallet_imports").select("connection_id,supplier_category_id,customer_fields").eq("product_id", productId).single(),
+    db.from("fkwallet_imports").select("connection_id,supplier_category_id,customer_fields,markup_percent,exchange_rate").eq("product_id", productId).single(),
     db.from("fkwallet_product_links").select("option_id,supplier_product_id,supplier_cost,supplier_currency").eq("product_id", productId),
   ]);
   if (imported.error || links.error) throw new FKError("Supplier links are unavailable.");
   const imp = imported.data;
   if (imp.connection_id !== connectionId(credentials)) throw new FKError("The FKWallet connection has changed.");
   if (reader.connection !== imp.connection_id) throw new FKError("The FKWallet connection has changed.");
-  let stock: { optionId: string; quantity: number }[] = [];
+  let stock: { optionId: string; quantity: number; supplierId?: number; supplierCost?: string; supplierCurrency?: string }[] = [];
   let failure: unknown;
   try {
     const [products, balances] = await Promise.all([
@@ -187,18 +188,26 @@ export async function syncFKProductStock(db: DB, credentials: FKCredentials, pro
     ]);
     stock = (links.data ?? []).map(link => {
       const product = products.find(row => row.id === Number(link.supplier_product_id));
-      let valid = !!product && !fkImportIssue(product) && product.currency === link.supplier_currency && product.price <= Number(link.supplier_cost);
+      let valid = !!product && !fkImportIssue(product) && product.currency === link.supplier_currency;
       if (valid && product) {
         const fields = fkCustomerFields(product);
         valid = fields.length === imp.customer_fields.length && fields.every(field => imp.customer_fields.some((saved: { key: string; fieldType: string }) => saved.key === field.key && saved.fieldType === field.fieldType));
       }
+      if (valid && product) {
+        try { fkSellingPrice(String(product.price), String(imp.exchange_rate), String(imp.markup_percent)); }
+        catch { valid = false; }
+      }
       const funds = product ? balances.find(row => row.currency === product.currency)?.value ?? 0 : 0;
       // This is funded order capacity, not a count of codes held in stock.
-      return { optionId: link.option_id, quantity: valid && product ? Math.max(0, Math.min(1000, Math.floor(funds / product.price))) : 0 };
+      return valid && product
+        ? { optionId: link.option_id, supplierId: product.id, supplierCost: String(product.price), supplierCurrency: product.currency,
+          quantity: Math.max(0, Math.min(1000, Math.floor(funds / product.price))) }
+        : { optionId: link.option_id, quantity: 0 };
     });
   } catch (error) { failure = error; }
   // Unknown availability stays closed, but it must not be reported as a successful refresh.
-  await rpc(db, "sync_fkwallet_stock", { p_product_id: productId, p_connection: imp.connection_id, p_rows: stock });
+  await rpc(db, "sync_fkwallet_catalogue", { p_product_id: productId, p_connection: imp.connection_id,
+    p_rows: stock, p_synced_at: reader.syncedAt });
   if (failure) throw failure;
 }
 
@@ -218,7 +227,7 @@ export async function runFKDeliveryTick() {
   }
   // A delivery may have spent funds: do not reuse the pre-delivery balance then.
   if (job) stockReader = createFKStockReader(credentials);
-  const settings = await db.from("fkwallet_delivery_settings").select("product_id").lt("stock_synced_at", new Date(Date.now() - 5 * 60000).toISOString()).order("stock_synced_at").limit(20);
+  const settings = await db.from("fkwallet_imports").select("product_id").eq("connection_id", connectionId(credentials)).lt("pricing_synced_at", new Date(Date.now() - 5 * 60000).toISOString()).order("pricing_synced_at").limit(20);
   if (settings.error) throw new FKError("Supplier stock settings could not be read.");
   const stock = await Promise.allSettled((settings.data ?? []).map(row => syncFKProductStock(db, credentials, row.product_id, stockReader)));
   stock.forEach((result, index) => {

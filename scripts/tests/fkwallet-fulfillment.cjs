@@ -97,10 +97,10 @@ test('activation explains the actual configuration failure without exposing raw 
   const actions=load('app/admin/fkwallet/delivery-actions.ts',{
    'next/cache':{revalidatePath(){}},'@/lib/fkwallet-admin':{requireFKAdmin:async()=>({db})},
    '@/lib/fkwallet-api':{...api,fkRequest:async()=>[{...product,name_en:'Telegram'}]},
-   '@/lib/fkwallet-fulfillment':{fkDeliveryEnabled:()=>true,syncFKProductStock:async()=>{synced=true}},
+   '@/lib/fkwallet-fulfillment':{fkDeliveryEnabled:()=>true,createFKStockReader:()=>({}),syncFKProductStock:async()=>{synced=true}},
    '@/lib/fkwallet-import':imports,'@/lib/fkwallet-storage':{requireCredentials:async()=>creds},
   });
   const result=await actions.configureFKDelivery('84c8e8cd-7753-4cbc-b9c6-844f51e48779',true,'ACCOUNT');
-  assert.match(result.error,expected);assert(!result.error.includes('secret'));assert.equal(synced,false);
+  assert.match(result.error,expected);assert(!result.error.includes('secret'));assert.equal(synced,true);
  }
 });

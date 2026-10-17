@@ -1,9 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { requireFKAdmin } from "@/lib/fkwallet-admin";
-import { connectionId, FKError, fkRequest, parseProducts } from "@/lib/fkwallet-api";
-import { fkDeliveryEnabled, syncFKProductStock } from "@/lib/fkwallet-fulfillment";
-import { fkImportIssue, fkUuid } from "@/lib/fkwallet-import";
+import { connectionId, FKError } from "@/lib/fkwallet-api";
+import { createFKStockReader, fkDeliveryEnabled, syncFKProductStock } from "@/lib/fkwallet-fulfillment";
+import { fkUuid } from "@/lib/fkwallet-import";
 import { requireCredentials } from "@/lib/fkwallet-storage";
 
 export async function configureFKDelivery(productId: string, enabled: boolean, kind: string): Promise<{ error?: string; success?: boolean }> {
@@ -12,16 +12,9 @@ export async function configureFKDelivery(productId: string, enabled: boolean, k
   try {
     if (enabled && !fkDeliveryEnabled()) throw new FKError("The automatic delivery worker must be set up first.");
     const credentials = await requireCredentials();
-    if (enabled) {
-      const imp = await db.from("fkwallet_imports").select("connection_id,supplier_category_id").eq("product_id", productId).single();
-      const links = await db.from("fkwallet_product_links").select("supplier_product_id,supplier_cost,supplier_currency").eq("product_id", productId);
-      if (imp.error || links.error || imp.data.connection_id !== connectionId(credentials)) throw new FKError("Check the original FKWallet account and saved links.");
-      const catalogue = parseProducts(await fkRequest(credentials, `op/categories/${imp.data.supplier_category_id}/products`));
-      if (!links.data?.length || links.data.some(link => {
-        const item = catalogue.find(row => row.id === Number(link.supplier_product_id));
-        return !item || fkImportIssue(item) || item.currency !== link.supplier_currency || item.price > Number(link.supplier_cost);
-      })) throw new FKError("A supplier product or price changed. Review the imported options before enabling delivery.");
-    }
+    const reader = createFKStockReader(credentials);
+    // Refresh prices before enabling delivery; disabled products keep their stock.
+    if (enabled) await syncFKProductStock(db, credentials, productId, reader);
     const result = await db.rpc("configure_fkwallet_product", { p_product_id: productId, p_enabled: enabled, p_kind: kind, p_connection: connectionId(credentials) });
     if (result.error) {
       const messages: Record<string, string> = {
@@ -39,7 +32,7 @@ export async function configureFKDelivery(productId: string, enabled: boolean, k
         ? "Install the FKWallet automatic delivery database update first."
         : "Delivery settings could not be saved. Refresh and try again."));
     }
-    if (enabled) await syncFKProductStock(db, credentials, productId);
+    if (enabled) await syncFKProductStock(db, credentials, productId, reader);
     revalidatePath(`/admin/products/${productId}/edit/supplier`);
     revalidatePath(`/admin/products/${productId}/edit/stock`);
     return { success: true };
