@@ -2,16 +2,33 @@ export type DigiPurchaseOption = { id?: string | number; user_data?: string | nu
 export type DigiFieldLink = { fieldId: string; optionId: number; fieldType: string };
 export type DigiMappedOption = { id: string; product_id: string; digiseller_option_id: number | null; digiseller_variant_id: number | null; denomination?: number | null };
 
-// Numeric user/server IDs are text fields, never denomination selections.
-export function resolveDigiSelection(rows: DigiMappedOption[], selections: DigiPurchaseOption[] = []) {
-  if (!Array.isArray(selections)) return null;
+function positiveSelectionId(value: unknown) {
+  if (typeof value !== "number" && (typeof value !== "string" || !/^\d+$/.test(value.trim()))) return null;
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+// Quantity callbacks put the variant ID in user_data. Purchase API responses
+// use user_data_id, with a legacy denomination value in user_data as fallback.
+// Match the denomination parameter first so numeric customer IDs stay separate.
+export function resolveDigiSelection(
+  rows: DigiMappedOption[], selections: DigiPurchaseOption[] = [],
+  format: "purchase" | "quantity" = "purchase",
+) {
+  if (!Array.isArray(selections) || selections.some(value => !value || typeof value !== "object" || Array.isArray(value))) return null;
   const matches = rows.filter(row => {
     if (row.digiseller_option_id == null && row.digiseller_variant_id == null) return rows.length === 1;
-    const values = selections.filter(value => Number(value.id) === Number(row.digiseller_option_id));
+    const parameterId = positiveSelectionId(row.digiseller_option_id);
+    if (parameterId === null) return false;
+    const values = selections.filter(value => positiveSelectionId(value.id) === parameterId);
     if (values.length !== 1) return false;
     const value = values[0];
-    if (value.user_data_id != null) return Number(value.user_data_id) === Number(row.digiseller_variant_id);
-    return row.denomination != null && String(value.user_data).trim() === String(row.denomination);
+    if (value.user_data_id != null || format === "quantity") {
+      const variantId = positiveSelectionId(row.digiseller_variant_id);
+      return variantId !== null && positiveSelectionId(value.user_data_id ?? value.user_data) === variantId;
+    }
+    return row.denomination != null && (typeof value.user_data === "string" || typeof value.user_data === "number")
+      && String(value.user_data).trim() === String(row.denomination);
   });
   return matches.length === 1 ? matches[0] : null;
 }

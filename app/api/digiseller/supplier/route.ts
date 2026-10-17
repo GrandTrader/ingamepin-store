@@ -48,9 +48,9 @@ function positiveInteger(value: unknown) {
   return Number.isSafeInteger(number) && number > 0 ? number : null;
 }
 
-async function resolveWebsiteOption(admin: ReturnType<typeof createAdminClient>, productId: number, options: SupplierRequest["options"]) {
+async function resolveWebsiteOption(admin: ReturnType<typeof createAdminClient>, productId: number, options: SupplierRequest["options"], format: "purchase" | "quantity" = "purchase") {
   const result = await admin.from("product_options").select("id,product_id,digiseller_option_id,digiseller_variant_id,denomination").eq("digiseller_product_id", productId).eq("is_active", true);
-  return { error: result.error, data: result.error ? null : resolveDigiSelection(result.data ?? [], options) };
+  return { error: result.error, data: result.error ? null : resolveDigiSelection(result.data ?? [], options, format) };
 }
 
 async function availableQuantity(admin: ReturnType<typeof createAdminClient>, option: { id: string; product_id: string }) {
@@ -87,14 +87,14 @@ export async function POST(request: Request) {
     const productId = positiveInteger(body.product_id);
     const requestedCount = positiveInteger(body.count);
     if (!productId || !requestedCount) return json(emptyTestResponse);
-    const suppliedVariantIds = (body.options ?? []).map((option) => positiveInteger(option.user_data_id) ?? positiveInteger(option.user_data)).filter((value): value is number => value !== null);
-    if (suppliedVariantIds.length === 0) {
+    // Only a genuinely absent selection may use the product-wide stock fallback.
+    if (!body.options?.length) {
       const mapped = await admin.from("product_options").select("id, product_id").eq("digiseller_product_id", productId).eq("is_active", true);
       if (mapped.error || !mapped.data?.length) return json({ product_id: String(productId), count: 0, error: "Product is not connected." });
       const counts = await Promise.all(mapped.data.map((option) => availableQuantity(admin, option)));
       return json({ product_id: String(productId), count: Math.min(...counts), error: "" });
     }
-    const option = await resolveWebsiteOption(admin, productId, body.options);
+    const option = await resolveWebsiteOption(admin, productId, body.options, "quantity");
     if (option.error || !option.data) return json({ product_id: String(productId), count: 0, error: "Product is not connected." });
     return json({ product_id: String(productId), count: await availableQuantity(admin, option.data), error: "" });
   }
