@@ -1,4 +1,5 @@
-﻿import { redirect } from "next/navigation";
+﻿import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../AdminSidebar";
@@ -34,6 +35,7 @@ export default async function AdminWalletPage({ searchParams }: Props) {
     <AdminSidebar walletCount={pending} />
     <main className="min-w-0 flex-1 p-5 sm:p-8">
       <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Customer funds</p><h1 className="mt-2 text-3xl font-black">Wallet top-ups</h1><p className="mt-1 text-sm text-slate-500">Verify payment references before crediting customer wallets.</p>
+      <Link href="/admin/wallet/activity" prefetch={false} className="mt-4 inline-flex rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700">All customer wallet activity →</Link>
       {messages.success && <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">{messages.success}</div>}
       {messages.error && <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{messages.error}</div>}
       <section className="mt-7 grid gap-4 sm:grid-cols-3"><div className="rounded-2xl bg-slate-100 p-5"><p className="text-sm text-slate-500">Pending review</p><p className="mt-2 text-3xl font-black text-amber-600">{pending}</p></div><div className="rounded-2xl bg-slate-100 p-5"><p className="text-sm text-slate-500">Total requests</p><p className="mt-2 text-3xl font-black">{requests.length}</p></div><div className="rounded-2xl bg-slate-100 p-5"><p className="text-sm text-slate-500">Approved value</p><p className="mt-2 text-3xl font-black text-emerald-600">{money(approved)}</p></div></section>

@@ -47,7 +47,7 @@ export default async function AdminCustomerPage({ params, searchParams }: PagePr
   const email = (customer.email ?? "").trim().toLowerCase();
   const [walletResult, transactionsResult, ordersResult, discountsResult, productsResult, loginResult] = await Promise.all([
     admin.from("customer_wallets").select("balance,currency").eq("user_id", id).maybeSingle(),
-    admin.from("wallet_transactions").select("id,transaction_type,amount,balance_before,balance_after,description,reference_id,created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(100),
+    admin.from("wallet_transactions").select("id,transaction_type,amount,balance_before,balance_after,description,reference_id,created_at").eq("user_id", id).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(10),
     admin.from("orders").select("id,order_number,status,total,currency,created_at").ilike("customer_email", email).order("created_at", { ascending: false }).limit(100),
     admin.from("customer_product_discounts").select("product_id,discount_percent").eq("user_id", id).eq("is_active", true),
     admin.from("products").select("id,name,product_type").eq("status", "ACTIVE").order("name"),
@@ -91,7 +91,7 @@ export default async function AdminCustomerPage({ params, searchParams }: PagePr
           {messages.error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{messages.error}</div>}
 
           <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Summary label="Wallet balance" value={money(Number(wallet?.balance ?? 0), wallet?.currency ?? "USD")} />
+            <Link href={`/admin/wallet/activity?customer=${id}`} prefetch={false} className="rounded-2xl outline-offset-4 hover:ring-2 hover:ring-blue-300 focus-visible:ring-2 focus-visible:ring-blue-600"><Summary label="Wallet balance · View all activity →" value={money(Number(wallet?.balance ?? 0), wallet?.currency ?? "USD")} /></Link>
             <Summary label="Total orders" value={String(orders.length)} />
             <Summary label="Total spent" value={money(totalSpent)} />
             <Summary label="Active discounts" value={String(discounts.length)} />
@@ -132,7 +132,7 @@ export default async function AdminCustomerPage({ params, searchParams }: PagePr
           </section>
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-black">Wallet activity</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-black">Recent wallet activity</h2><Link href={`/admin/wallet/activity?customer=${id}`} prefetch={false} className="text-sm font-bold text-blue-600 hover:underline">View all activity →</Link></div>
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-[850px] w-full text-left text-sm">
                 <thead className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500"><tr><th className="p-3">Date</th><th className="p-3">Type</th><th className="p-3">Amount</th><th className="p-3">Before</th><th className="p-3">After</th><th className="p-3">Activity</th><th className="p-3">Reference</th><th className="p-3">Receipt</th></tr></thead>

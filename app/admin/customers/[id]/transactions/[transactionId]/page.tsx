@@ -78,7 +78,7 @@ export default async function WalletTransactionReceipt({ params }: Props) {
   return <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-950 sm:px-8 print:bg-white print:p-0">
     <div className="mx-auto max-w-4xl">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href={`/admin/customers/${id}`} className="font-bold text-blue-600">← Customer wallet activity</Link>
+        <Link href={`/admin/wallet/activity?customer=${id}`} className="font-bold text-blue-600">← Customer wallet activity</Link>
         <PrintSavedInvoiceButton />
       </div>
       <article className={`${styles.receipt} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8 print:border-0 print:shadow-none`}>

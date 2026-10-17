@@ -339,10 +339,9 @@ export default function CustomersPanel({
                     />
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-right font-bold">
-                    {formatMoney(
-                      customer.walletBalance,
-                      customer.walletCurrency,
-                    )}
+                    <Link href={`/admin/wallet/activity?customer=${customer.id}`} prefetch={false} aria-label={`View wallet activity for ${customer.name}`} className="inline-flex min-h-10 items-center text-blue-600 underline decoration-blue-200 underline-offset-4 hover:decoration-blue-600">
+                      {formatMoney(customer.walletBalance, customer.walletCurrency)}
+                    </Link>
                   </td>
                   <td className="px-4 py-4 text-right">
                     {customer.orderCount}
@@ -435,10 +434,7 @@ export default function CustomersPanel({
             />
             <Detail
               label="Wallet balance"
-              value={formatMoney(
-                selectedCustomer.walletBalance,
-                selectedCustomer.walletCurrency,
-              )}
+              content={<Link href={`/admin/wallet/activity?customer=${selectedCustomer.id}`} prefetch={false} className="font-bold text-blue-600 hover:underline">{formatMoney(selectedCustomer.walletBalance, selectedCustomer.walletCurrency)} · View activity →</Link>}
             />
             <Detail
               label="Registered"
