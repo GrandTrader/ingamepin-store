@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { dateBoundary, portalDate, portalPage } from "@/lib/business-portal";
 import { isReceiptId } from "@/lib/wallet-receipt";
 import AdminSidebar from "../../AdminSidebar";
+import WalletActivityExport from "./WalletActivityExport";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Customer wallet activity | InGamePin", robots: { index: false, follow: false } };
@@ -118,7 +119,7 @@ export default async function WalletActivityPage({ searchParams }: { searchParam
           <label className="min-w-0 text-xs font-bold">To (IST)<input type="date" name="to" defaultValue={filters.to} className={fieldClass} /></label>
           <div className="min-w-0 text-xs font-bold"><label htmlFor="wallet-activity-type">Activity type</label><select id="wallet-activity-type" name="type" defaultValue={filters.type} className={fieldClass}><option value="">All activity</option><option value="CREDIT">Money added (credit)</option><option value="DEBIT">Money used (debit)</option></select></div>
           <label className="min-w-0 text-xs font-bold">Reference<input name="reference" placeholder="Order / payment reference" maxLength={150} defaultValue={filters.reference} className={fieldClass} /></label>
-          <div className="col-span-2 flex gap-2 lg:col-span-4"><button className="min-h-10 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Apply filters</button><Link href={activityUrl({ customer: filters.customer })} prefetch={false} className={buttonClass}>Reset</Link></div>
+          <div className="col-span-2 flex flex-wrap items-start gap-3 lg:col-span-4"><div className="flex gap-2"><button className="min-h-10 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Apply filters</button><Link href={activityUrl({ customer: filters.customer })} prefetch={false} className={buttonClass}>Reset</Link></div><WalletActivityExport customerId={filters.customer} /></div>
         </Form>
         {filterError ? <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{filterError}</p> : <>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">

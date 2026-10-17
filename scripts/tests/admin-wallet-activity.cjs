@@ -72,6 +72,7 @@ function setup(options = {}) {
     '@/lib/supabase/admin': { createAdminClient: () => { adminCreated++; return admin; } },
     '@/lib/business-portal': load('lib/business-portal.ts'),
     '@/lib/wallet-receipt': load('lib/wallet-receipt.ts'),
+    './WalletActivityExport': load('app/admin/wallet/activity/WalletActivityExport.tsx'),
     '../../AdminSidebar': { default: () => React.createElement('aside', { className: 'hidden md:block md:w-[200px] md:shrink-0' }, 'Admin') },
   }).default;
   return { queries, identityIds, sessionOptions, rows, adminCreated: () => adminCreated, render: async (params = {}) => renderToStaticMarkup(await page({ searchParams: Promise.resolve(params) })) };
