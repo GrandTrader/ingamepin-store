@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
   try {
     const website = await runFKDeliveryTick();
     const digiseller = await runDigiFKDeliveryTick();
-    return NextResponse.json({ ok: true, ...website, digiseller }, { headers: { "Cache-Control": "no-store" } });
+    const ok = website.stockFailed === 0;
+    return NextResponse.json({ ok, ...website, digiseller }, { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
   }
   catch { return NextResponse.json({ error: "FKWallet delivery check failed. Review the connection and worker setup." }, { status: 503, headers: { "Cache-Control": "no-store" } }); }
 }

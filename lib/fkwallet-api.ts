@@ -2,7 +2,9 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { FKBalance, FKCategory, FKCurrency, FKProduct, FKResult } from "./fkwallet-types";
 
-export class FKError extends Error {}
+export class FKError extends Error {
+  constructor(message: string, readonly httpStatus?: number, readonly retryAfterMs?: number) { super(message); }
+}
 export type FKCredentials = { publicKey: string; privateKey: string };
 type Row = Record<string, unknown>;
 export function object(value: unknown): Row {
@@ -82,10 +84,14 @@ export async function fkRequest(credentials: FKCredentials, endpoint: string, bo
       body: body === undefined ? undefined : serialized, signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
+      const retryAfter = response.headers.get("retry-after");
+      const retryAfterMs = retryAfter === null ? undefined : /^\d+(?:\.\d+)?$/.test(retryAfter)
+        ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now());
       await response.body?.cancel();
       throw new FKError(response.status === 401 || response.status === 403
         ? "FKWallet denied access. Check the API keys, permissions and allowed server IPs."
-        : `FKWallet request failed (HTTP ${response.status}).`);
+        : `FKWallet request failed (HTTP ${response.status}).`, response.status,
+        Number.isFinite(retryAfterMs) ? retryAfterMs : undefined);
     }
     return unwrapResponse(await readJson(response));
   } catch (error) {

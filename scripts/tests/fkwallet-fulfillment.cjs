@@ -80,7 +80,7 @@ test('delivery activation authenticates before any supplier or database operatio
 });
 test('the automatic worker endpoint rejects missing and wrong credentials before doing work',async()=>{
  let calls=0;const secret='a-strong-test-scheduler-secret';
- const route=load('app/api/cron/fkwallet/route.ts',{'next/server':{NextResponse:{json:Response.json}},'@/lib/fkwallet-fulfillment':{runFKDeliveryTick:async()=>{calls++;return {state:'idle'}}},'@/lib/digiseller-fkwallet-fulfillment':{runDigiFKDeliveryTick:async()=>{calls++;return {state:'idle'}}}},{process:{env:{CRON_SECRET:secret}}});
+ const route=load('app/api/cron/fkwallet/route.ts',{'next/server':{NextResponse:{json:Response.json}},'@/lib/fkwallet-fulfillment':{runFKDeliveryTick:async()=>{calls++;return {state:'idle',stockFailed:0}}},'@/lib/digiseller-fkwallet-fulfillment':{runDigiFKDeliveryTick:async()=>{calls++;return {state:'idle'}}}},{process:{env:{CRON_SECRET:secret}}});
  for(const token of ['', 'Bearer wrong', 'Bearer '+secret+'extra'])assert.equal((await route.GET({headers:new Headers({authorization:token})})).status,401);
  assert.equal(calls,0);assert.equal((await route.GET({headers:new Headers({authorization:'Bearer '+secret})})).status,200);assert.equal(calls,2);
 });

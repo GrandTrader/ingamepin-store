@@ -1,9 +1,10 @@
 import "server-only";
+import { setTimeout as delay } from "node:timers/promises";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { connectionId, FKError, fkRequest, findFKOrderHistory, parseBalances, parseCurrencies, parseProducts, parseResult, type FKCredentials } from "./fkwallet-api";
 import { fkCustomerFields, fkImportIssue } from "./fkwallet-import";
 import { requireCredentials, seal, unseal } from "./fkwallet-storage";
-import type { FKProduct, FKResult } from "./fkwallet-types";
+import type { FKBalance, FKProduct, FKResult } from "./fkwallet-types";
 
 type DB = ReturnType<typeof createAdminClient>;
 export type FKDeliveryPayload = {
@@ -133,7 +134,42 @@ export async function processFKPurchase(credentials: FKCredentials, job: FKDeliv
   await store.hold( "WAITING", "Unit delivered. Remaining units are queued."); return "waiting";
 }
 
-export async function syncFKProductStock(db: DB, credentials: FKCredentials, productId: string) {
+// A refresh owns one balance snapshot and one catalogue read per category.
+// Never share these across ticks/accounts, or with a paid purchase preflight.
+export function createFKStockReader(credentials: FKCredentials) {
+  let balances: Promise<FKBalance[]> | undefined;
+  const catalogues = new Map<number, Promise<FKProduct[]>>();
+  async function read(endpoint: string) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await fkRequest(credentials, endpoint); }
+      catch (error) {
+        const retryable = error instanceof FKError && (error.httpStatus === 429
+          || (error.httpStatus !== undefined && error.httpStatus >= 500)
+          || error.message === "FKWallet could not be reached or returned an invalid response.");
+        const wait = error instanceof FKError ? error.retryAfterMs ?? 1000 * 2 ** attempt : 0;
+        // Respect long provider cooldowns by failing this refresh, not retrying early.
+        if (!retryable || attempt >= 2 || wait > 5000) throw error;
+        await delay(Math.max(1000, wait));
+      }
+    }
+  }
+  return {
+    connection: connectionId(credentials),
+    balances: () => balances ??= read("balance").then(parseBalances),
+    products(categoryId: number) {
+      if (!Number.isSafeInteger(categoryId) || categoryId <= 0) throw new FKError("Supplier category is invalid.");
+      let catalogue = catalogues.get(categoryId);
+      if (!catalogue) {
+        catalogue = read(`op/categories/${categoryId}/products`).then(parseProducts);
+        catalogues.set(categoryId, catalogue);
+      }
+      return catalogue;
+    },
+  };
+}
+
+export async function syncFKProductStock(db: DB, credentials: FKCredentials, productId: string,
+  reader = createFKStockReader(credentials)) {
   const [imported, links] = await Promise.all([
     db.from("fkwallet_imports").select("connection_id,supplier_category_id,customer_fields").eq("product_id", productId).single(),
     db.from("fkwallet_product_links").select("option_id,supplier_product_id,supplier_cost,supplier_currency").eq("product_id", productId),
@@ -141,11 +177,13 @@ export async function syncFKProductStock(db: DB, credentials: FKCredentials, pro
   if (imported.error || links.error) throw new FKError("Supplier links are unavailable.");
   const imp = imported.data;
   if (imp.connection_id !== connectionId(credentials)) throw new FKError("The FKWallet connection has changed.");
+  if (reader.connection !== imp.connection_id) throw new FKError("The FKWallet connection has changed.");
   let stock: { optionId: string; quantity: number }[] = [];
+  let failure: unknown;
   try {
     const [products, balances] = await Promise.all([
-      fkRequest(credentials, `op/categories/${imp.supplier_category_id}/products`).then(parseProducts),
-      fkRequest(credentials, "balance").then(parseBalances),
+      reader.products(Number(imp.supplier_category_id)),
+      reader.balances(),
     ]);
     stock = (links.data ?? []).map(link => {
       const product = products.find(row => row.id === Number(link.supplier_product_id));
@@ -158,15 +196,18 @@ export async function syncFKProductStock(db: DB, credentials: FKCredentials, pro
       // This is funded order capacity, not a count of codes held in stock.
       return { optionId: link.option_id, quantity: valid && product ? Math.max(0, Math.min(1000, Math.floor(funds / product.price))) : 0 };
     });
-  } catch { /* A failed supplier check closes availability instead of preserving stale stock. */ }
+  } catch (error) { failure = error; }
+  // Unknown availability stays closed, but it must not be reported as a successful refresh.
   await rpc(db, "sync_fkwallet_stock", { p_product_id: productId, p_connection: imp.connection_id, p_rows: stock });
+  if (failure) throw failure;
 }
 
 export async function runFKDeliveryTick() {
   if (!fkDeliveryEnabled()) throw new FKError("FKWallet automatic delivery is not enabled on this server.");
   const db = createAdminClient(), credentials = await requireCredentials();
   // Confirm authentication before advertising a healthy worker.
-  parseBalances(await fkRequest(credentials, "balance"));
+  let stockReader = createFKStockReader(credentials);
+  await stockReader.balances();
   const heartbeat = await db.from("fkwallet_worker_state").upsert({ id: true, connection_id: connectionId(credentials), seen_at: new Date().toISOString() });
   if (heartbeat.error) throw new FKError("Install the FKWallet delivery database update first.");
   const job = await rpc(db, "claim_supplier_job", { p_provider: "FKWALLET" }) as FKDeliveryJob | null;
@@ -175,8 +216,16 @@ export async function runFKDeliveryTick() {
     try { state = await processFKDelivery(db, credentials, job); }
     catch { await hold(db, job, "UNCERTAIN", "Supplier status check could not finish. The worker will check again without repeating the purchase."); state = "waiting"; }
   }
+  // A delivery may have spent funds: do not reuse the pre-delivery balance then.
+  if (job) stockReader = createFKStockReader(credentials);
   const settings = await db.from("fkwallet_delivery_settings").select("product_id").lt("stock_synced_at", new Date(Date.now() - 5 * 60000).toISOString()).order("stock_synced_at").limit(20);
   if (settings.error) throw new FKError("Supplier stock settings could not be read.");
-  const stock = await Promise.allSettled((settings.data ?? []).map(row => syncFKProductStock(db, credentials, row.product_id)));
+  const stock = await Promise.allSettled((settings.data ?? []).map(row => syncFKProductStock(db, credentials, row.product_id, stockReader)));
+  stock.forEach((result, index) => {
+    if (result.status === "rejected") console.warn("FKWallet stock refresh failed", {
+      productId: settings.data?.[index].product_id,
+      reason: result.reason instanceof FKError ? result.reason.message : "Stock refresh could not complete.",
+    });
+  });
   return { state, stockUpdated: stock.filter(row => row.status === "fulfilled").length, stockFailed: stock.filter(row => row.status === "rejected").length };
 }
