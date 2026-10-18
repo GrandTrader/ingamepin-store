@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { csv, dateBoundary } from "@/lib/business-portal";
 import { isReceiptId } from "@/lib/wallet-receipt";
-import { WalletSummaryAccumulator, addWalletCents, summaryMoney, type WalletPeriodSummary } from "@/lib/wallet-activity-summary";
+import { emptyWalletPeriodSummary, summaryMoney, walletSummaryTotals } from "@/lib/wallet-activity-summary";
+import { loadWalletPeriodSummaries } from "@/lib/wallet-activity-summary-data";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -79,32 +80,10 @@ export async function GET(request: Request) {
   }
 
   async function periodSummaryRows() {
-    const accumulator = new WalletSummaryAccumulator(start);
-    let cursorId = "", cursorDate = "";
-    while (!cancelled && !request.signal.aborted) {
-      let query = admin.from("wallet_transactions")
-        .select("id,user_id,transaction_type,amount,balance_before,balance_after,created_at")
-        .lte("created_at", cutoff);
-      if (customer) query = query.eq("user_id", customer);
-      if (end) query = query.lt("created_at", end);
-      if (cursorId) query = query.or("created_at.lt." + cursorDate + ",and(created_at.eq." + cursorDate + ",id.lt." + cursorId + ")");
-      const result = await query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(500).abortSignal(request.signal);
-      if (result.error) throw new Error("Unable to calculate wallet summary.");
-      const transactions = (result.data ?? []) as Transaction[];
-      if (!transactions.length) break;
-      for (const item of transactions) accumulator.add(item);
-      const last = transactions[transactions.length - 1];
-      if (cursorId === last.id) throw new Error("Unable to finish wallet summary.");
-      cursorId = last.id; cursorDate = last.created_at;
-    }
-    if (cancelled || request.signal.aborted) throw new Error("Wallet export cancelled.");
-    const summaries = accumulator.summaries();
+    const summaries = await loadWalletPeriodSummaries(admin, { customer, start, end, cutoff, signal: request.signal, cancelled: () => cancelled });
     if (customer && !summaries.length) {
       await loadIdentities([customer]);
-      const wallet = walletSnapshots.get(customer);
-      // No ledger means no historical balance can be inferred from a later nonzero balance.
-      const empty = !wallet || Number(wallet.balance) === 0 || (end && Date.parse(wallet.created_at) >= Date.parse(end)) ? 0 : null;
-      summaries.push({ userId: customer, opening: empty, credit: 0, debit: 0, closing: empty });
+      summaries.push(emptyWalletPeriodSummary(customer, walletSnapshots.get(customer), end));
     }
     await loadIdentities(summaries.map(item => item.userId));
     const rows: unknown[][] = [
@@ -115,17 +94,11 @@ export async function GET(request: Request) {
       ["Balance check", "Opening balance + Total credit - Total debit = Closing balance"],
       ["Customer ID", "Customer name", "Customer email", "Currency", "Opening balance", "Total credit", "Total debit", "Closing balance"],
     ];
-    const totals = new Map<string, WalletPeriodSummary>();
     for (const item of summaries.sort((a, b) => a.userId.localeCompare(b.userId))) {
       const identity = identities.get(item.userId)!;
       rows.push([item.userId, identity.name, identity.email, identity.currency, summaryMoney(item.opening), summaryMoney(item.credit), summaryMoney(item.debit), summaryMoney(item.closing)]);
-      const total = totals.get(identity.currency) ?? { userId: "", opening: 0, credit: 0, debit: 0, closing: 0 };
-      total.credit = addWalletCents(total.credit, item.credit); total.debit = addWalletCents(total.debit, item.debit);
-      total.opening = total.opening === null || item.opening === null ? null : addWalletCents(total.opening, item.opening);
-      total.closing = total.closing === null || item.closing === null ? null : addWalletCents(total.closing, item.closing);
-      totals.set(identity.currency, total);
     }
-    if (!customer) for (const [currency, total] of [...totals].sort(([a], [b]) => a.localeCompare(b))) rows.push(["TOTAL", "All listed customers", "", currency, summaryMoney(total.opening), summaryMoney(total.credit), summaryMoney(total.debit), summaryMoney(total.closing)]);
+    if (!customer) for (const { currency, ...total } of walletSummaryTotals(summaries, id => identities.get(id)!.currency)) rows.push(["TOTAL", "All listed customers", "", currency, summaryMoney(total.opening), summaryMoney(total.credit), summaryMoney(total.debit), summaryMoney(total.closing)]);
     if (!summaries.length) rows.push(["No wallet activity recorded before the end of this period."]);
     rows.push([]);
     return rows.map(row => [...row, ...Array(14 - row.length).fill("")]);

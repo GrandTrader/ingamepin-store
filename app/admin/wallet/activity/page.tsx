@@ -5,10 +5,13 @@ import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dateBoundary, portalDate, portalPage } from "@/lib/business-portal";
 import { isReceiptId } from "@/lib/wallet-receipt";
+import { emptyWalletPeriodSummary, walletSummaryTotals, type WalletPeriodSummary } from "@/lib/wallet-activity-summary";
+import { loadWalletPeriodSummaries } from "@/lib/wallet-activity-summary-data";
 import AdminSidebar from "../../AdminSidebar";
 import WalletActivityExport from "./WalletActivityExport";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 export const metadata = { title: "Customer wallet activity | InGamePin", robots: { index: false, follow: false } };
 
 const PAGE_SIZE = 25;
@@ -76,19 +79,42 @@ export default async function WalletActivityPage({ searchParams }: { searchParam
     if (filters.page > lastPage) redirect(activityUrl({ ...filters, page: lastPage }));
   }
 
+  const hasSummary = !filterError && Boolean(start || end);
+  let periodSummaries: WalletPeriodSummary[] = [], summaryError = "";
+  if (hasSummary) {
+    try {
+      periodSummaries = await loadWalletPeriodSummaries(admin, { customer: filters.customer, start, end, cutoff: new Date().toISOString() });
+    } catch {
+      summaryError = "Unable to load the balance summary. Please apply the filters again.";
+    }
+  }
+
   const userIds = [...new Set([...transactions.map(item => item.user_id), ...(filters.customer ? [filters.customer] : [])])];
+  const walletIds = [...new Set([...userIds, ...periodSummaries.map(item => item.userId)])];
+  async function loadWallets() {
+    const data: { user_id: string; balance: number | string; currency: string; created_at: string }[] = [];
+    for (let offset = 0; offset < walletIds.length; offset += 100) {
+      const result = await admin.from("customer_wallets").select("user_id,balance,currency,created_at").in("user_id", walletIds.slice(offset, offset + 100));
+      if (result.error) throw new Error("Unable to load wallet balances. Please try again.");
+      data.push(...result.data ?? []);
+    }
+    return data;
+  }
   const [wallets, identities] = await Promise.all([
-    userIds.length ? admin.from("customer_wallets").select("user_id,balance,currency").in("user_id", userIds) : { data: [], error: null },
+    loadWallets(),
     Promise.all(userIds.map(async id => {
       if (selectedCustomer?.id === id) return [id, selectedCustomer] as const;
       const result = await admin.auth.admin.getUserById(id);
       return [id, result.error ? null : result.data.user] as const;
     })),
   ]);
-  if (wallets.error) throw new Error("Unable to load wallet balances. Please try again.");
   const customers = new Map(identities);
-  const walletByUser = new Map((wallets.data ?? []).map(wallet => [wallet.user_id, wallet]));
+  const walletByUser = new Map(wallets.map(wallet => [wallet.user_id, wallet]));
   const selectedWallet = walletByUser.get(filters.customer);
+  if (hasSummary && !summaryError && filters.customer && !periodSummaries.length) {
+    periodSummaries.push(emptyWalletPeriodSummary(filters.customer, selectedWallet, end));
+  }
+  const summaryTotals = walletSummaryTotals(periodSummaries, id => walletByUser.get(id)?.currency ?? "USD");
   const pages = Math.max(1, Math.ceil(count / PAGE_SIZE));
   const fieldClass = "mt-1 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm";
   const buttonClass = "inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50";
@@ -122,6 +148,27 @@ export default async function WalletActivityPage({ searchParams }: { searchParam
           <div className="col-span-2 flex flex-wrap items-start gap-3 lg:col-span-4"><div className="flex gap-2"><button className="min-h-10 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Apply filters</button><Link href={activityUrl({ customer: filters.customer })} prefetch={false} className={buttonClass}>Reset</Link></div><WalletActivityExport customerId={filters.customer} /></div>
         </Form>
         {filterError ? <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{filterError}</p> : <>
+          {hasSummary && <section aria-label="Wallet summary" className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-1">
+              <h2 className="font-bold">Selected date range</h2>
+              <p className="text-xs text-slate-500">{filters.from || "Beginning of history"} – {filters.to || "Today"} (IST)</p>
+            </div>
+            {summaryError ? <p role="alert" className="mt-3 text-sm text-red-700">{summaryError}</p> : summaryTotals.length ? summaryTotals.map(total => <div key={total.currency} className="mt-3">
+              <p className="mb-2 text-xs font-bold text-slate-500">{selectedCustomer ? "Customer wallet" : "All customers"} · {total.currency}</p>
+              <dl className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {([
+                  ["Opening balance", total.opening, "text-slate-950"],
+                  ["Total credit", total.credit, "text-emerald-700"],
+                  ["Total debit", total.debit, "text-red-700"],
+                  ["Closing balance", total.closing, "text-blue-700"],
+                ] as const).map(([label, value, color]) => <div key={label} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <dt className="text-xs text-slate-500">{label}</dt>
+                  <dd className={"mt-1 break-words text-lg font-black tabular-nums sm:text-xl " + color}>{value === null ? "Not recorded" : money(value / 100, total.currency)}</dd>
+                </div>)}
+              </dl>
+            </div>) : <p className="mt-3 text-sm text-slate-500">No wallet activity recorded before the end of this period.</p>}
+            {!summaryError && <p className="mt-3 text-xs text-slate-500">Totals cover all activity in this period, across all pages. Credits include refunds. Activity type and reference filters apply to the transaction list only.</p>}
+          </section>}
           <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
             <p>{count ? ((filters.page - 1) * PAGE_SIZE + 1).toLocaleString() + "–" + Math.min(filters.page * PAGE_SIZE, count).toLocaleString() + " of " + count.toLocaleString() + " activities" : "0 activities"}</p>
             {identities.some(([, customer]) => !customer) && <p>Some customer details are temporarily unavailable.</p>}

@@ -35,7 +35,7 @@ function setup(options={}) {
  }
  const session={auth:{getUser:async()=>({data:{user:options.loggedOut?null:{id:'admin'}}})},from:()=>({select(){return this;},eq(){return this;},maybeSingle:async()=>({data:options.denied?null:{user_id:'admin'},error:options.roleError?{}:null})})};
  const admin={from,auth:{admin:{getUserById:async id=>{identityIds.push(id);return {data:{user:customers[id]??null},error:options.identityError?{status:503}:null};}}}};
- const route=load('app/admin/wallet/activity/export/route.ts',{'@/lib/supabase/admin-session':{createClient:async()=>{if(options.mfa)throw Error('redirect:/admin/login/verify');return session;}},'@/lib/supabase/admin':{createAdminClient:()=>{privileged++;return admin;}},'@/lib/business-portal':load('lib/business-portal.ts'),'@/lib/wallet-receipt':load('lib/wallet-receipt.ts'),'@/lib/wallet-activity-summary':load('lib/wallet-activity-summary.ts')});
+ const route=load('app/admin/wallet/activity/export/route.ts',{'@/lib/supabase/admin-session':{createClient:async()=>{if(options.mfa)throw Error('redirect:/admin/login/verify');return session;}},'@/lib/supabase/admin':{createAdminClient:()=>{privileged++;return admin;}},'@/lib/business-portal':load('lib/business-portal.ts'),'@/lib/wallet-receipt':load('lib/wallet-receipt.ts'),'@/lib/wallet-activity-summary':load('lib/wallet-activity-summary.ts'),'@/lib/wallet-activity-summary-data':load('lib/wallet-activity-summary-data.ts',{'server-only':{},'./wallet-activity-summary':load('lib/wallet-activity-summary.ts')})});
  return {rows,queries,identityIds,privileged:()=>privileged,get:query=>route.GET(new Request('https://www.ingamepin.com/admin/wallet/activity/export'+(query?'?'+query:'')))};
 }
 function parseCsv(text) {

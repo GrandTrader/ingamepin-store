@@ -77,3 +77,23 @@ export class WalletSummaryAccumulator {
     });
   }
 }
+
+export function emptyWalletPeriodSummary(userId: string, wallet: { balance: number | string; created_at: string } | undefined, end: string | null): WalletPeriodSummary {
+  // A later nonzero wallet balance cannot establish an unrecorded historical balance.
+  const balance = !wallet || Number(wallet.balance) === 0 || (end && Date.parse(wallet.created_at) >= Date.parse(end)) ? 0 : null;
+  return { userId, opening: balance, credit: 0, debit: 0, closing: balance };
+}
+
+export function walletSummaryTotals(summaries: WalletPeriodSummary[], currencyForUser: (userId: string) => string) {
+  const totals = new Map<string, Omit<WalletPeriodSummary, "userId">>();
+  for (const item of summaries) {
+    const currency = currencyForUser(item.userId);
+    const total = totals.get(currency) ?? { opening: 0, credit: 0, debit: 0, closing: 0 };
+    total.credit = addWalletCents(total.credit, item.credit);
+    total.debit = addWalletCents(total.debit, item.debit);
+    total.opening = total.opening === null || item.opening === null ? null : addWalletCents(total.opening, item.opening);
+    total.closing = total.closing === null || item.closing === null ? null : addWalletCents(total.closing, item.closing);
+    totals.set(currency, total);
+  }
+  return [...totals].sort(([a], [b]) => a.localeCompare(b)).map(([currency, total]) => ({ currency, ...total }));
+}
