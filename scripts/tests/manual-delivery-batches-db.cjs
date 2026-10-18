@@ -31,8 +31,38 @@ const id = n => '00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await db.exec(fs.readFileSync('supabase/migrations/20261003_150000_partial_manual_code_delivery.sql','utf8'));
  await db.exec('alter table order_items add column created_at timestamptz default now(), add column product_name text;');
  await db.exec(fs.readFileSync('supabase/migrations/20260723_require_manual_fulfillment.sql','utf8'));
+
+ // Use the installed supplier and refund guards, not permissive test stubs.
+ await db.exec("alter table products add column stock_source text not null default 'OWNED'; create table definiteplay_jobs(item_id uuid primary key,provider text,order_id uuid,state text);");
+ for(const [offset,provider] of [[50,'DEFINITEPLAY'],[60,'GIFTPORT'],[70,'FKWALLET']]) {
+  await db.query("insert into orders(id,status) values($1,'DELIVERED')",[id(offset)]);
+  await db.query("insert into order_items(id,order_id,product_id,quantity,fulfillment_mode) values($1,$2,$3,2,$4)",[id(offset+1),id(offset),id(4),provider==='DEFINITEPLAY'?'RANGE_SUPPLIER':null]);
+  await db.query("insert into definiteplay_jobs values($1,$2,$3,'DELIVERED')",[id(offset+1),provider,id(offset)]);
+  await db.query("insert into gift_card_codes(product_id,order_item_id,code,status,sold_at) values($1,$2,$3,'SOLD','2020-02-01')",[id(4),id(offset+1),'old-'+provider]);
+ }
+ const supplierSql=fs.readFileSync('supabase/migrations/20260925_150000_definiteplay_fulfillment.sql','utf8');
+ const supplierGuard=supplierSql.slice(supplierSql.indexOf('create function public.guard_definiteplay_codes()'),supplierSql.indexOf('create function public.guard_definiteplay_product()'));
+ assert.match(supplierGuard,/Supplier codes are managed by supplier fulfilment/);
+ await db.exec(supplierGuard.replaceAll("stock_source='DEFINITEPLAY'","stock_source in ('DEFINITEPLAY','GIFTPORT','FKWALLET')"));
+ const refundSql=fs.readFileSync('supabase/migrations/20260927_180000_customer_order_refunds.sql','utf8');
+ const refundGuard=refundSql.slice(refundSql.indexOf('create function public.guard_customer_refund_hold()'),refundSql.indexOf('create trigger customer_refund_order_guard'));
+ await db.exec(refundGuard+"create trigger customer_refund_code_guard before insert or update or delete on gift_card_codes for each row execute function guard_customer_refund_hold();");
  await db.exec(migration);
  assert.equal(await scalar('select count(*)::integer from manual_delivery_batches where legacy'),2);
+
+ // Supplier history is untouched even if a product has switched back to owned/manual stock.
+ assert.equal(await scalar("select count(*)::integer from gift_card_codes where code like 'old-%' and manual_delivery_batch_id is not null"),0);
+ assert.equal(await scalar("select count(*)::integer from gift_card_codes where code like 'old-%' and status='SOLD'"),3);
+ for(const [offset,provider] of [[50,'DEFINITEPLAY'],[60,'GIFTPORT'],[70,'FKWALLET']]) {
+  await assert.rejects(db.query("update gift_card_codes set updated_at=now() where code=$1",['old-'+provider]),/Supplier codes are managed/);
+  // The normal supplier completion context still delivers without creating manual batches.
+  await db.transaction(async tx=>{
+   await tx.query("select set_config('app.definiteplay_delivery',$1,true)",[id(offset+1)]);
+   await tx.query("insert into gift_card_codes(product_id,order_item_id,code,status,sold_at,created_by) values($1,$2,$3,'SOLD',now(),$4)",[id(4),id(offset+1),'new-'+provider,id(1)]);
+  });
+  assert.equal(await scalar('select manual_delivery_batch_id from gift_card_codes where code=$1',['new-'+provider]),null);
+ }
+ await assert.rejects(db.query("update gift_card_codes set updated_at=now() where code='held-legacy'"),/Delivery is paused/);
  const send=async(codes,item=7)=>scalar('select deliver_manual_codes_batch($1,$2,$3,$4)',[id(2),id(item),id(1),codes]);
  const revoke=async(batch,order=2,admin=1,reason='Invalid supplier codes')=>scalar('select revoke_manual_delivery_batch($1,$2,$3,$4)',[id(order),batch,id(admin),reason]);
  const batches=Array.from({length:3},(_,b)=>Array.from({length:100},(_,i)=>b===0&&i===0?'stocked':`test-${b}-${i}`));
@@ -46,6 +76,10 @@ const id = n => '00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await assert.rejects(revoke(middle,3),/not found for this order/);
  await assert.rejects(revoke(middle,2,1,'x'),/reason/);
  await assert.rejects(revoke(middle,2,1,null),/reason/);
+ // Even a previously linked manual batch cannot bypass later supplier ownership.
+ await db.query("insert into definiteplay_jobs values($1,'DEFINITEPLAY',$2,'DELIVERED')",[id(7),id(2)]);
+ await assert.rejects(revoke(middle),/Supplier deliveries cannot be revoked as manual batches/);
+ await db.query('delete from definiteplay_jobs where item_id=$1',[id(7)]);
  await db.query('insert into order_refund_requests values($1,$2)',[id(2),'REQUESTED']);
  await assert.rejects(revoke(middle),/refund request/);
  await db.query('delete from order_refund_requests where order_id=$1',[id(2)]);
@@ -100,5 +134,5 @@ const id = n => '00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await db.exec('reset role; set role service_role;');
  await assert.rejects(db.query("update manual_delivery_batches set revoke_reason='changed'"),/permission denied/);
  await db.exec('reset role;');
- await db.close();console.log('PASS: separate 100-code sends, historical batches, idempotency, scoped revocation, atomic rollback, replacements, repeat revocation, refunds, stock safety, audit protection and permissions');
+ await db.close();console.log('PASS: separate 100-code sends, historical batches, idempotency, scoped revocation, atomic rollback, replacements, repeat revocation, refunds, stock safety, audit protection, permissions and real supplier/refund guard compatibility');
 })().catch(e=>{console.error(e);process.exit(1)});

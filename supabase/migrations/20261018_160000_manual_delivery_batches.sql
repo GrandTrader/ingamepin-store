@@ -23,6 +23,8 @@ alter table public.gift_card_codes add column if not exists manual_delivery_batc
 create index if not exists gift_card_codes_manual_batch_idx on public.gift_card_codes(manual_delivery_batch_id) where manual_delivery_batch_id is not null;
 
 -- Saved timestamps identify earlier sends. Unknown timestamps remain separate rather than being merged.
+-- Supplier jobs cover Definite Play, GiftPort and FKWallet, including historical
+-- orders whose product now uses owned stock. These codes remain supplier-managed.
 lock table public.gift_card_codes in share row exclusive mode;
 -- Permit a repeat run to include older deliveries whose refund hold has since ended.
 drop trigger if exists track_manual_delivery_batch on public.gift_card_codes;
@@ -36,6 +38,7 @@ begin
   where c.status='SOLD' and c.manual_delivery_batch_id is null
     and (p.delivery_type='MANUAL' or oi.fulfillment_mode='RANGE_MANUAL')
     and oi.fulfillment_mode is distinct from 'PLAYER_ID_TOPUP' and oi.service_delivered_at is null
+    and not exists(select 1 from public.definiteplay_jobs supplier_job where supplier_job.item_id=oi.id)
     and not exists(select 1 from public.order_refund_requests hold_request where hold_request.order_id=oi.order_id and hold_request.status in ('REQUESTED','APPROVED','COMPLETED'))
   group by oi.order_id,c.order_item_id,c.sold_at,case when c.sold_at is null then c.id end
  loop
@@ -67,7 +70,8 @@ begin
  if NEW.status<>'SOLD' or NEW.order_item_id is null then return NEW; end if;
  select oi.order_id into oid from order_items oi join products p on p.id=oi.product_id
    where oi.id=NEW.order_item_id and (p.delivery_type='MANUAL' or oi.fulfillment_mode='RANGE_MANUAL')
-     and oi.fulfillment_mode is distinct from 'PLAYER_ID_TOPUP' and oi.service_delivered_at is null;
+     and oi.fulfillment_mode is distinct from 'PLAYER_ID_TOPUP' and oi.service_delivered_at is null
+     and not exists(select 1 from public.definiteplay_jobs supplier_job where supplier_job.item_id=oi.id);
  if not found then return NEW; end if;
  actor:=nullif(current_setting('app.manual_delivery_actor',true),'')::uuid;
  if actor is null and TG_OP='INSERT' then actor:=NEW.created_by; end if;
@@ -114,6 +118,9 @@ begin
   raise exception 'Resolve the customer refund request before revoking delivery.';
  end if;
  if i.service_delivered_at is not null then raise exception 'Account delivery cannot be revoked as codes.'; end if;
+ if exists(select 1 from public.definiteplay_jobs supplier_job where supplier_job.item_id=i.id) then
+  raise exception 'Supplier deliveries cannot be revoked as manual batches.';
+ end if;
  perform 1 from gift_card_codes where manual_delivery_batch_id=b.id order by id for update;
  select count(*)::integer into n from gift_card_codes where manual_delivery_batch_id=b.id and order_item_id=i.id and status='SOLD';
  if n<>b.code_count then raise exception 'Batch contents changed. Refresh the order before retrying.'; end if;
