@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { csv, dateBoundary } from "@/lib/business-portal";
 import { isReceiptId } from "@/lib/wallet-receipt";
+import { WalletSummaryAccumulator, addWalletCents, summaryMoney, type WalletPeriodSummary } from "@/lib/wallet-activity-summary";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -53,8 +54,88 @@ export async function GET(request: Request) {
   const encoder = new TextEncoder();
   let cancelled = false;
 
+  const walletSnapshots = new Map<string, { balance: number | string; currency: string; created_at: string }>();
+  async function loadIdentities(ids: string[]) {
+    const userIds = [...new Set(ids)].filter(id => !identities.get(id)?.currency);
+    if (userIds.length) {
+      const currencies = new Map<string, string>();
+      for (let offset = 0; offset < userIds.length; offset += 100) {
+        const wallets = await admin.from("customer_wallets").select("user_id,currency,balance,created_at").in("user_id", userIds.slice(offset, offset + 100)).abortSignal(request.signal);
+        if (wallets.error) throw new Error("Unable to export wallet activity. Please try again.");
+        for (const wallet of wallets.data ?? []) { currencies.set(wallet.user_id, wallet.currency); walletSnapshots.set(wallet.user_id, wallet); }
+      }
+      // Bound directory requests and reuse each identity throughout the export.
+      for (let offset = 0; offset < userIds.length; offset += 10) {
+        await Promise.all(userIds.slice(offset, offset + 10).map(async id => {
+          const known = identities.get(id);
+          if (known) { identities.set(id, { ...known, currency: currencies.get(id) ?? "USD" }); return; }
+          const result = await admin.auth.admin.getUserById(id);
+          if (result.error || !result.data.user) throw new Error("Unable to export customer details. Please try again.");
+          const person = result.data.user;
+          identities.set(id, { name: String(person.user_metadata?.full_name ?? person.user_metadata?.name ?? person.email ?? "Customer"), email: person.email ?? "", currency: currencies.get(id) ?? "USD" });
+        }));
+      }
+    }
+  }
+
+  async function periodSummaryRows() {
+    const accumulator = new WalletSummaryAccumulator(start);
+    let cursorId = "", cursorDate = "";
+    while (!cancelled && !request.signal.aborted) {
+      let query = admin.from("wallet_transactions")
+        .select("id,user_id,transaction_type,amount,balance_before,balance_after,created_at")
+        .lte("created_at", cutoff);
+      if (customer) query = query.eq("user_id", customer);
+      if (end) query = query.lt("created_at", end);
+      if (cursorId) query = query.or("created_at.lt." + cursorDate + ",and(created_at.eq." + cursorDate + ",id.lt." + cursorId + ")");
+      const result = await query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(500).abortSignal(request.signal);
+      if (result.error) throw new Error("Unable to calculate wallet summary.");
+      const transactions = (result.data ?? []) as Transaction[];
+      if (!transactions.length) break;
+      for (const item of transactions) accumulator.add(item);
+      const last = transactions[transactions.length - 1];
+      if (cursorId === last.id) throw new Error("Unable to finish wallet summary.");
+      cursorId = last.id; cursorDate = last.created_at;
+    }
+    if (cancelled || request.signal.aborted) throw new Error("Wallet export cancelled.");
+    const summaries = accumulator.summaries();
+    if (customer && !summaries.length) {
+      await loadIdentities([customer]);
+      const wallet = walletSnapshots.get(customer);
+      // No ledger means no historical balance can be inferred from a later nonzero balance.
+      const empty = !wallet || Number(wallet.balance) === 0 || (end && Date.parse(wallet.created_at) >= Date.parse(end)) ? 0 : null;
+      summaries.push({ userId: customer, opening: empty, credit: 0, debit: 0, closing: empty });
+    }
+    await loadIdentities(summaries.map(item => item.userId));
+    const rows: unknown[][] = [
+      ["Wallet summary — selected date range"],
+      ["From (IST)", from || "Beginning of history"],
+      ["To (IST)", to || dateFormatter.format(new Date(cutoff))],
+      ["Summary scope", "All wallet activity in this period. Credits include refunds. Activity type and reference filters apply to transaction details only."],
+      ["Balance check", "Opening balance + Total credit - Total debit = Closing balance"],
+      ["Customer ID", "Customer name", "Customer email", "Currency", "Opening balance", "Total credit", "Total debit", "Closing balance"],
+    ];
+    const totals = new Map<string, WalletPeriodSummary>();
+    for (const item of summaries.sort((a, b) => a.userId.localeCompare(b.userId))) {
+      const identity = identities.get(item.userId)!;
+      rows.push([item.userId, identity.name, identity.email, identity.currency, summaryMoney(item.opening), summaryMoney(item.credit), summaryMoney(item.debit), summaryMoney(item.closing)]);
+      const total = totals.get(identity.currency) ?? { userId: "", opening: 0, credit: 0, debit: 0, closing: 0 };
+      total.credit = addWalletCents(total.credit, item.credit); total.debit = addWalletCents(total.debit, item.debit);
+      total.opening = total.opening === null || item.opening === null ? null : addWalletCents(total.opening, item.opening);
+      total.closing = total.closing === null || item.closing === null ? null : addWalletCents(total.closing, item.closing);
+      totals.set(identity.currency, total);
+    }
+    if (!customer) for (const [currency, total] of [...totals].sort(([a], [b]) => a.localeCompare(b))) rows.push(["TOTAL", "All listed customers", "", currency, summaryMoney(total.opening), summaryMoney(total.credit), summaryMoney(total.debit), summaryMoney(total.closing)]);
+    if (!summaries.length) rows.push(["No wallet activity recorded before the end of this period."]);
+    rows.push([]);
+    return rows.map(row => [...row, ...Array(14 - row.length).fill("")]);
+  }
+
   async function* chunks() {
-    yield encoder.encode(csv([["Transaction ID", "Date (IST)", "Date (UTC)", "Customer ID", "Customer name", "Customer email", "Type", "Amount", "Currency", "Balance before", "Balance after", "Activity", "Reference", "Order ID"]]));
+    const summary = start || end ? await periodSummaryRows() : [];
+    if (summary.length) yield encoder.encode(csv(summary) + "\r\n");
+    const header = csv([["Transaction ID", "Date (IST)", "Date (UTC)", "Customer ID", "Customer name", "Customer email", "Type", "Amount", "Currency", "Balance before", "Balance after", "Activity", "Reference", "Order ID"]]);
+    yield encoder.encode(summary.length ? header.slice(1) : header);
     let cursorId = "", cursorDate = "";
     while (!cancelled && !request.signal.aborted) {
       let query = admin.from("wallet_transactions")
@@ -71,26 +152,7 @@ export async function GET(request: Request) {
       if (result.error) throw new Error("Unable to export wallet activity. Please try again.");
       const transactions = (result.data ?? []) as Transaction[];
       if (!transactions.length) return;
-      const userIds = [...new Set(transactions.map(item => item.user_id))].filter(id => !identities.get(id)?.currency);
-      if (userIds.length) {
-        const currencies = new Map<string, string>();
-        for (let offset = 0; offset < userIds.length; offset += 100) {
-          const wallets = await admin.from("customer_wallets").select("user_id,currency").in("user_id", userIds.slice(offset, offset + 100)).abortSignal(request.signal);
-          if (wallets.error) throw new Error("Unable to export wallet activity. Please try again.");
-          for (const wallet of wallets.data ?? []) currencies.set(wallet.user_id, wallet.currency);
-        }
-        // Bound directory requests and reuse each identity throughout the export.
-        for (let offset = 0; offset < userIds.length; offset += 10) {
-          await Promise.all(userIds.slice(offset, offset + 10).map(async id => {
-            const known = identities.get(id);
-            if (known) { identities.set(id, { ...known, currency: currencies.get(id) ?? "USD" }); return; }
-            const result = await admin.auth.admin.getUserById(id);
-            if (result.error || !result.data.user) throw new Error("Unable to export customer details. Please try again.");
-            const person = result.data.user;
-            identities.set(id, { name: String(person.user_metadata?.full_name ?? person.user_metadata?.name ?? person.email ?? "Customer"), email: person.email ?? "", currency: currencies.get(id) ?? "USD" });
-          }));
-        }
-      }
+      await loadIdentities(transactions.map(item => item.user_id));
       const rows = transactions.map(item => {
         const identity = identities.get(item.user_id)!;
         return [item.id, dateFormatter.format(new Date(item.created_at)), item.created_at, item.user_id, identity.name, identity.email, item.transaction_type, decimal(item.amount), identity.currency, decimal(item.balance_before), decimal(item.balance_after), item.description ?? "", item.reference_id ?? "", item.order_id ?? ""];
