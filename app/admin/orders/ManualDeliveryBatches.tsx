@@ -51,9 +51,18 @@ function BatchCard({ orderId, batch, locked }: { orderId: string; batch: Batch; 
 }
 export default function ManualDeliveryBatches({ orderId, batches, locked }: { orderId: string; batches: Batch[]; locked: boolean }) {
   if (!batches.length) return null;
-  return <section aria-label="Delivery batches" className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-    <h2 className="text-xl font-black">Delivery batches</h2><p className="mt-1 text-sm text-slate-600">Each send is a separate batch. Revoke only the batch that needs replacement.</p>
+  return <details aria-label="Delivery batches" className="group/batches mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+    <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden">
+      <div className="min-w-0">
+        <h2 className="text-xl font-black">Delivery batches</h2>
+        <p className="mt-1 text-sm text-slate-600">{batches.length} batch{batches.length === 1 ? "" : "es"}. Open to view codes or revoke a batch.</p>
+      </div>
+      <span className="shrink-0 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-blue-700">
+        <span className="group-open/batches:hidden">Show batches</span>
+        <span className="hidden group-open/batches:inline">Hide batches</span>
+      </span>
+    </summary>
     {locked && <p className="mt-2 text-sm text-amber-800">Batch revocation is unavailable while this order is unpaid, cancelled, refunded, or held for a refund request.</p>}
     <div className="mt-4 space-y-3">{[...batches].reverse().map(batch => <BatchCard key={batch.id} orderId={orderId} batch={batch} locked={locked} />)}</div>
-  </section>;
+  </details>;
 }
