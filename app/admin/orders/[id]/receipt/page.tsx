@@ -11,6 +11,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import AdminSidebar from "../../../AdminSidebar";
+import ManualDeliveryBatches from "../../ManualDeliveryBatches";
+import { getManualDeliveryBatches } from "@/lib/manual-delivery-batches";
 import CompletedManualDeliveryCard from "../../CompletedManualDeliveryCard";
 import ManualDeliveryItemCard from "../../ManualDeliveryItemCard";
 import CopyableCustomerInformation from "../../CopyableCustomerInformation";
@@ -304,6 +306,14 @@ export default async function OrderReceipt({
         Boolean(item.service_delivered_at) || (codesByItem.get(item.id)?.length ?? 0) + refundedQuantityFor(item.id) === item.quantity,
     );
   const refundHistory = await getOrderRefundHistory(order.id);
+  const batchHistory = await getManualDeliveryBatches(admin, order.id);
+  const batchNumbers = new Map<string, number>();
+  const deliveryBatches = batchHistory.batches.map(batch => {
+    const item = items.find(item => item.id === batch.order_item_id);
+    const number = (batchNumbers.get(batch.order_item_id) ?? 0) + 1;
+    batchNumbers.set(batch.order_item_id, number);
+    return { ...batch, number, title: item ? item.product_name + " · " + (item.option_name ?? item.denomination ?? "Standard") : "Order item" };
+  });
   const canDeliver = !refundHistory.held && (order.status === "PAID" || order.status === "PROCESSING");
 
   return (
@@ -694,6 +704,9 @@ export default async function OrderReceipt({
             </details>
           )}
 
+          <ManualDeliveryBatches orderId={order.id} batches={deliveryBatches} locked={refundHistory.held || !["PAID", "PROCESSING", "DELIVERED"].includes(order.status)} />
+          {!batchHistory.ready && manualCodeItems.length > 0 && <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">Delivery batch controls need the database update before they can be used.</p>}
+
           {!refundHistory.held && manualCodeItems.length > 0 && (
             <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 sm:p-6">
               <h2 className="text-xl font-black text-blue-900">
@@ -757,7 +770,7 @@ export default async function OrderReceipt({
 
                   return (
                     <ManualDeliveryItemCard
-                      key={item.id}
+                      key={item.id + ":" + deliveredCodes.length + ":" + refundedQuantity}
                       orderId={order.id}
                       item={{
                         id: item.id,

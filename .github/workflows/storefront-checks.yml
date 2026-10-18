@@ -18,6 +18,7 @@ jobs:
       - run: npm ci
       - run: npm run test:storefront
       - run: npm run test:audit-fixes
+      - run: npm run test:delivery-batches
       - run: npm run test:wallet-activity
       - run: npm run test:business-bank
       - run: npm run test:business-discounts
