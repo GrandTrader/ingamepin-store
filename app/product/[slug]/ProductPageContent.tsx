@@ -390,9 +390,11 @@ export async function renderProductPage({
                     russian={hasInstantDelivery(product) ? "Мгновенная доставка" : "Цифровая доставка"}
                   />
                 </span>
-                <span className={styles.badge}>
-                  <LocalizedProductText english={`${soldCount} Sold`} russian={`Продано: ${soldCount}`} />
-                </span>
+                {soldCount > 0 && (
+                  <span className={styles.badge}>
+                    <LocalizedProductText english={`${soldCount} Sold`} russian={`Продано: ${soldCount}`} />
+                  </span>
+                )}
               </div>
 
           </header>

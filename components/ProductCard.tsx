@@ -148,7 +148,7 @@ export default function ProductCard({ product }: Props) {
               {product.rating}
             </span>
 
-            <span>{product.sold} {t("sold")}</span>
+            {product.sold > 0 && <span>{product.sold} {t("sold")}</span>}
           </div>
 
           <div className="mt-3 flex flex-col items-stretch justify-between gap-2 sm:mt-2 sm:flex-row sm:items-center sm:gap-1.5">
