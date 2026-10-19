@@ -40,6 +40,42 @@ class OpenValueTests(unittest.TestCase):
         self.worker.step()
         self.assertEqual(len([c for c in self.bridge.calls if c[0] == "order_v2.php"]), 1)
 
+    def test_database_numeric_cost_scale_delivers_once(self):
+        # DatabaseTransport preserves numeric(20,8) as text, including zeros.
+        self.db.job.update(json.loads(
+            '{"card_value":27.35,"max_unit_cost":26.81000000}', parse_float=str))
+        self.worker.step()
+        self.assertTrue(self.db.delivered)
+        self.worker.step()
+        self.assertEqual(len([c for c in self.bridge.calls if c[0] == "order_v2.php"]), 1)
+
+    def test_database_cost_scale_for_multiple_range_values(self):
+        for value, quantity, ceiling in (("20.00", 2, "19.60000000"),
+                                         ("30.00", 2, "29.40000000"),
+                                         ("25.00", 2, "24.50000000"),
+                                         ("10.00", 5, "9.80000000")):
+            with self.subTest(value=value):
+                job = {**self.db.job, "card_value": value, "quantity": quantity,
+                       "max_unit_cost": ceiling}
+                line = preflight(job, [ROW], Decimal("100"))
+                self.assertEqual(line["cardvalue"], value)
+                self.assertEqual(line["quantity"], str(quantity))
+
+    def test_eight_decimal_ceiling_is_not_rounded_up(self):
+        self.db.job["max_unit_cost"] = "26.80999999"
+        self.worker.step()
+        self.assertNotIn("order_v2.php", [c[0] for c in self.bridge.calls])
+        self.assertNotIn("mark_definiteplay_submitted", [c[0] for c in self.db.calls])
+        self.assertEqual(self.db.calls[-1][1]["p_issue"], "Supplier range price changed")
+
+    def test_invalid_cost_formats_and_face_value_precision_remain_rejected(self):
+        for ceiling in (None, True, "NaN", "Infinity", "1e2", "26.810000000", " 26.81", "26,81"):
+            with self.subTest(ceiling=ceiling):
+                with self.assertRaisesRegex(ValueError, "Invalid supplier range amount"):
+                    preflight({**self.db.job, "max_unit_cost": ceiling}, [ROW], Decimal("100"))
+        with self.assertRaisesRegex(ValueError, "outside the supplier range"):
+            preflight({**self.db.job, "card_value": "27.351"}, [ROW], Decimal("100"))
+
     def test_ambiguous_purchase_and_database_write_never_resubmit(self):
         for mode in ("post_timeout", "save_timeout", "mark_timeout"):
             with self.subTest(mode=mode):

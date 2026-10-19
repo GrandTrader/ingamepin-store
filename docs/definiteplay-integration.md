@@ -90,6 +90,14 @@ and submission may still charge a different amount; that response is held for re
 The existing website code store is reused; this change does not add separate
 application-level encryption to that store.
 
+Range purchase validation accepts the database's `numeric(20,8)` maximum unit cost
+without rounding it. The database transport preserves trailing zeros, so values
+such as `19.60000000` must be accepted even though catalogue fields permit at most
+six decimal places. Card values must still match the configured bounds and step
+and have cent precision. Only confirmed, never-submitted review jobs may be
+requeued after correcting a preflight error; submitted jobs retain their original
+reference and must be reconciled, never purchased again.
+
 Activation sequence for the maintainer:
 1. Apply the migration using database administrator access. Do not expose database
    credentials in chat. The website's service API key cannot apply SQL migrations.

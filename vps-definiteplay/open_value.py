@@ -3,10 +3,10 @@ import re
 from decimal import Decimal, InvalidOperation, ROUND_UP
 
 
-def decimal(value):
+def decimal(value, *, places=6):
     try:
         text = str(value)
-        if not re.fullmatch(r"-?\d+(?:\.\d{1,6})?", text):
+        if not re.fullmatch(rf"-?\d+(?:\.\d{{1,{places}}})?", text):
             raise ValueError()
         number = Decimal(text)
         if not number.is_finite():
@@ -61,7 +61,9 @@ def preflight(job, rows, available_usd):
     if row["cardCurrency"] != job["card_currency"] or not low <= value <= high or (value-low) % step or value != value.quantize(Decimal("0.01")):
         raise ValueError("Requested value is outside the supplier range")
     cost = (value * (1 - decimal(row["discount"][:-1])/100)).quantize(Decimal("0.01"), rounding=ROUND_UP)
-    if cost <= 0 or cost > decimal(job["max_unit_cost"]):
+    # The database's numeric(20,8) cost ceiling keeps eight decimal places in
+    # transport. Compare it exactly; never round the purchase limit upward.
+    if cost <= 0 or cost > decimal(job["max_unit_cost"], places=8):
         raise ValueError("Supplier range price changed")
     if available_usd < cost * quantity:
         raise ValueError("Insufficient confirmed supplier balance")
