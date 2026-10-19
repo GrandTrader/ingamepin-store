@@ -8,10 +8,12 @@ type DeliveredCode = {
 };
 
 export default function CompletedManualDeliveryCard({
+  id,
   productName,
   optionName,
   codes,
 }: {
+  id?: string;
   productName: string;
   optionName: string | null;
   codes: DeliveredCode[];
@@ -41,7 +43,7 @@ export default function CompletedManualDeliveryCard({
   }
 
   return (
-    <article className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+    <article id={id} tabIndex={id ? -1 : undefined} className="scroll-mt-24 rounded-xl border border-emerald-200 bg-emerald-50 p-4 target:ring-2 target:ring-blue-500 target:ring-offset-2 lg:scroll-mt-6">
       <p className="font-black text-slate-800">
         {productName}{optionName ? ` · ${optionName}` : ""}
       </p>

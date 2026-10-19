@@ -67,7 +67,7 @@ export default function ManualDeliveryItemCard({ orderId, item }: { orderId: str
     };
     reader.readAsText(file);
   }
-  return <article className="rounded-xl border border-blue-200 bg-white p-3">
+  return <article id={`delivery-${item.id}`} tabIndex={-1} className="scroll-mt-24 rounded-xl border border-blue-200 bg-white p-3 target:ring-2 target:ring-blue-500 target:ring-offset-2 lg:scroll-mt-6">
     {result.error && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{result.error}</p>}
     {result.success && <p role="status" className="mb-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{result.success}</p>}
     <p className="line-clamp-2 font-black text-slate-800">{item.product_name}{item.option_name ? ` · ${item.option_name}` : ""}</p>

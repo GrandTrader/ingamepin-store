@@ -315,6 +315,12 @@ export default async function OrderReceipt({
     return { ...batch, number, title: item ? item.product_name + " · " + (item.option_name ?? item.denomination ?? "Standard") : "Order item" };
   });
   const canDeliver = !refundHistory.held && (order.status === "PAID" || order.status === "PROCESSING");
+  const deliveryItemIds = new Set(
+    refundHistory.held ? [] : [
+      ...manualCodeItems.map((item) => item.id),
+      ...(canDeliver ? playerTopupItems.map((item) => item.id) : []),
+    ],
+  );
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -546,6 +552,7 @@ export default async function OrderReceipt({
                 </thead>
                 <tbody className="block space-y-2 md:table-row-group md:space-y-0">
                   {items.map((item) => {
+                    const optionLabel = item.option_name ?? (item.denomination ? String(item.denomination) : "Standard option");
                     const deliveredCount = item.service_delivered_at ? item.quantity : codesByItem.get(item.id)?.length ?? 0;
                     const refundedCount = refundedQuantityFor(item.id);
                     const completed = item.quantity > 0 && (
@@ -573,10 +580,16 @@ export default async function OrderReceipt({
                       </td>
                       <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top">
                         <span className="mb-0.5 block text-xs text-slate-500 md:hidden">Denomination / option</span>
-                        {item.option_name ??
-                          (item.denomination
-                            ? String(item.denomination)
-                            : "Standard option")}
+                        {deliveryItemIds.has(item.id) ? (
+                          <a
+                            href={`#delivery-${item.id}`}
+                            aria-label={`Go to delivery for ${item.product_name} · ${optionLabel}`}
+                            title="Go to this denomination's delivery section"
+                            className="inline-flex min-h-9 items-center gap-1 rounded px-1 font-bold text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:min-h-0"
+                          >
+                            {optionLabel}<span aria-hidden="true">↓</span>
+                          </a>
+                        ) : optionLabel}
                       </td>
                       <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top"><span className="mb-0.5 block text-xs text-slate-500 md:hidden">Quantity</span>{item.quantity}</td>
                       <td className="block min-w-0 break-words md:table-cell md:px-2 md:py-2.5 md:align-top">
@@ -725,7 +738,7 @@ export default async function OrderReceipt({
                     deliveredCodes.length + refundedQuantity >= item.quantity;
 
                   if (item.service_delivered_at) {
-                    return <article key={item.id} className="rounded-xl border border-emerald-200 bg-white p-4">
+                    return <article key={item.id} id={`delivery-${item.id}`} tabIndex={-1} className="scroll-mt-24 rounded-xl border border-emerald-200 bg-white p-4 target:ring-2 target:ring-blue-500 target:ring-offset-2 lg:scroll-mt-6">
                       <p className="font-black">{item.product_name} / {item.option_name ?? item.denomination}</p>
                       <p className="mt-2 font-bold text-emerald-700">Completed - UID / account delivery</p>
                       <p className="mt-1 text-xs text-slate-500">{formatDate(item.service_delivered_at)}</p>
@@ -736,6 +749,7 @@ export default async function OrderReceipt({
                     return (
                       <CompletedManualDeliveryCard
                         key={item.id}
+                        id={`delivery-${item.id}`}
                         productName={item.product_name}
                         optionName={
                           item.option_name ??
@@ -755,7 +769,9 @@ export default async function OrderReceipt({
                     return (
                       <article
                         key={item.id}
-                        className="rounded-xl border border-slate-200 bg-white p-4"
+                        id={`delivery-${item.id}`}
+                        tabIndex={-1}
+                        className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-4 target:ring-2 target:ring-blue-500 target:ring-offset-2 lg:scroll-mt-6"
                       >
                         <p className="font-black">{item.product_name}</p>
                         <p className="mt-1 text-sm text-slate-500">
