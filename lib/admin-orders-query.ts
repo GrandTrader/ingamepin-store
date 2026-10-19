@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const ADMIN_ORDER_PAGE_SIZE = 10;
 export const adminOrderColumns = `id,order_number,customer_id,customer_name,customer_email,customer_phone,total,currency,status,created_at,paid_at,delivered_at,
-  order_items(id,product_name,option_name,denomination,platform,fulfillment_mode,player_id,customer_information,quantity,affiliate_commission_percent)`;
+  order_items(id,product_id,product_option_id,product_name,option_name,denomination,platform,fulfillment_mode,player_id,customer_information,quantity,affiliate_commission_percent,products(delivery_type))`;
 const nonTrashStatuses = ["PENDING_PAYMENT", "PAYMENT_REVIEW", "PAID", "PROCESSING", "DELIVERED", "CANCELLED", "REFUNDED"];
 const missingTrashStatus = (error: { code?: string; message?: string } | null) => error?.code === "22P02" && Boolean(error.message?.includes('invalid input value for enum order_status: "TRASHED"'));
 const statusGroups = {

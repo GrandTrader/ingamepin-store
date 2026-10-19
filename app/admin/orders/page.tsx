@@ -1,493 +1,109 @@
-import { customerDetailDisplay } from "@/lib/sensitive-customer-fields";
-import { loadAdminOrders } from "@/lib/admin-orders-query";
-﻿import { redirect } from "next/navigation";
-
+import { Fragment } from "react";
+import { redirect } from "next/navigation";
 import Link from "@/components/NavigationLink";
-import AdminOrderLink from "../AdminOrderLink";
-import AdminSidebar from "../AdminSidebar";
-import AdminOrdersAutoRefresh from "./AdminOrdersAutoRefresh";
-import AdminOrdersTableScroller from "./AdminOrdersTableScroller";
+import { ADMIN_ORDER_PAGE_SIZE, loadAdminOrders } from "@/lib/admin-orders-query";
+import type { AdminOrder } from "@/lib/admin-order-display";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import AdminSidebar from "../AdminSidebar";
+import AdminOrdersAutoRefresh from "./AdminOrdersAutoRefresh";
+import AdminOrdersList from "./AdminOrdersList";
+import styles from "./Orders.module.css";
 
 export const dynamic = "force-dynamic";
 
-type Order = {
-  id: string;
-  order_number: string;
-  customer_id: string | null;
-  customer_name: string | null;
-  customer_email: string;
-  customer_phone: string | null;
-  total: number | string;
-  currency: string;
-  status: string;
-  created_at: string;
-  paid_at: string | null;
-  delivered_at: string | null;
-  order_items: OrderItem[];
-};
-
-type OrderItem = {
-  id: string;
-  product_name: string;
-  option_name: string | null;
-  denomination: number | null;
-  platform: string | null;
-  fulfillment_mode: string | null;
-  player_id: string | null;
-  customer_information: Array<{ fieldId: string; label: string; value: string }>;
-  quantity: number;
-  affiliate_commission_percent: number | string;
-};
-
 type AdminOrdersPageProps = {
-  searchParams: Promise<{
-    error?: string;
-    success?: string;
-    page?: string;
-    q?: string;
-    status?: string;
-  }>;
+  searchParams: Promise<{ error?: string; success?: string; page?: string; q?: string; status?: string }>;
 };
 
-function formatMoney(
-  amount: number | string,
-  currency: string,
-) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: currency || "USD",
-  }).format(Number(amount));
-}
-
-function formatDate(date: string | null) {
-  if (!date) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(date));
-}
-
-function statusStyle(status: string) {
-  switch (status) {
-    case "DELIVERED":
-      return "bg-emerald-100 text-emerald-700";
-
-    case "PAID":
-    case "PROCESSING":
-      return "bg-blue-100 text-blue-700";
-
-    case "PAYMENT_REVIEW":
-      return "bg-amber-100 text-amber-700";
-
-    case "CANCELLED":
-    case "REFUNDED":
-      return "bg-red-100 text-red-700";
-
-    case "TRASHED":
-      return "bg-slate-800 text-white";
-
-    default:
-      return "bg-slate-100 text-slate-600";
-  }
-}
-
-export default async function AdminOrdersPage({
-  searchParams,
-}: AdminOrdersPageProps) {
-  const {
-    error: actionError,
-    success,
-    page: requestedPage,
-    q: requestedQuery,
-    status: requestedStatus,
-  } = await searchParams;
-
+export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageProps) {
+  const { error: actionError, success, page: requestedPage, q: requestedQuery, status: requestedStatus } = await searchParams;
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
-  }
-
-  const adminResult = await supabase
-    .from("admin_users")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/admin/login");
+  const adminResult = await supabase.from("admin_users").select("role").eq("user_id", user.id).maybeSingle();
   if (!adminResult.data) {
     await supabase.auth.signOut();
     redirect("/admin/login?error=Access denied");
   }
-
   const admin = createAdminClient();
   const result = await loadAdminOrders(admin, { status: requestedStatus, query: requestedQuery, page: requestedPage });
   const { query, status: activeStatus, page, totalPages, matchedCount, counts } = result;
-  const visibleOrders = result.orders as unknown as Order[];
+  const visibleOrders = result.orders as unknown as AdminOrder[];
   const customerIdByEmail = new Map<string, string>();
-  for (const order of visibleOrders) if (order.customer_id) customerIdByEmail.set(order.customer_email.trim().toLowerCase(), order.customer_id);
+  for (const order of visibleOrders) {
+    if (order.customer_id) customerIdByEmail.set(order.customer_email.trim().toLowerCase(), order.customer_id);
+  }
   const missingEmails = [...new Set(visibleOrders.filter(order => !order.customer_id).map(order => order.customer_email.trim().toLowerCase()))];
   if (missingEmails.length) {
     const profiles = await admin.from("profiles").select("id,email").in("email", missingEmails);
-    for (const profile of profiles.data ?? []) if (profile.email) customerIdByEmail.set(profile.email.trim().toLowerCase(), profile.id);
+    for (const profile of profiles.data ?? []) {
+      if (profile.email) customerIdByEmail.set(profile.email.trim().toLowerCase(), profile.id);
+    }
   }
-  const activeOrderCount = counts.all;
-  const pendingCount = counts.pending;
-  const paymentReviewCount = counts.review;
-  const processingCount = counts.processing;
-  const deliveredCount = counts.completed;
-  const trashedCount = counts.trash;
+  const tabs = [
+    { key: "all", label: "All orders", count: counts.all },
+    { key: "pending", label: "Pending", count: counts.pending },
+    { key: "review", label: "Payment review", count: counts.review },
+    { key: "processing", label: "Processing", count: counts.processing },
+    { key: "completed", label: "Completed", count: counts.completed },
+    { key: "trash", label: "Trash", count: counts.trash },
+  ];
+  const activeLabel = tabs.find(tab => tab.key === activeStatus)!.label;
+  const heading = activeStatus === "all" || activeStatus === "trash" ? activeLabel : activeLabel + " orders";
+  const hrefFor = (status: string, pageNumber = 1) => {
+    const params = new URLSearchParams();
+    if (status !== "all") params.set("status", status);
+    if (query) params.set("q", query);
+    if (pageNumber > 1) params.set("page", String(pageNumber));
+    return "/admin/orders" + (params.size ? "?" + params.toString() : "");
+  };
+  const pages = [...new Set([1, totalPages, ...Array.from({ length: 3 }, (_, i) => page + i - 1)])]
+    .filter(number => number >= 1 && number <= totalPages).sort((a, b) => a - b);
 
-  return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <AdminOrdersAutoRefresh />
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
-        <AdminSidebar
-          orderCount={processingCount}
-        />
-
-        <main className="min-w-0 flex-1 p-5 sm:p-8">
-          <header>
-            <h1 className="text-3xl font-black">
-              Orders
-            </h1>
-
-            <p className="mt-1 text-sm text-slate-500">
-              View customers, order amounts,
-              payment progress and delivery status.
-            </p>
-          </header>
-
-          {success && (
-            <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
-              {success}
-            </div>
-          )}
-
-          {actionError && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
-              {actionError}
-            </div>
-          )}
-
-          <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl bg-slate-100 p-5">
-              <p className="text-sm text-slate-500">
-                Total orders
-              </p>
-
-              <p className="mt-2 text-3xl font-black">
-                {activeOrderCount}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-slate-100 p-5">
-              <p className="text-sm text-slate-500">
-                Payment review
-              </p>
-
-              <p className="mt-2 text-3xl font-black text-amber-600">
-                {paymentReviewCount}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-slate-100 p-5">
-              <p className="text-sm text-slate-500">
-                Processing
-              </p>
-
-              <p className="mt-2 text-3xl font-black text-slate-600">
-                {processingCount}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-slate-100 p-5">
-              <p className="text-sm text-slate-500">
-                Completed
-              </p>
-
-              <p className="mt-2 text-3xl font-black text-emerald-600">
-                {deliveredCount}
-              </p>
-            </div>
-          </section>
-
-          {counts.all + counts.trash === 0 && (
-            <div className="mt-8 rounded-2xl border border-slate-200 p-8 text-center text-slate-500">No orders are available.</div>
-          )}
-          {counts.all + counts.trash > 0 && (
-            <section className="mt-8">
-              <nav className="mb-5 flex flex-wrap gap-2" aria-label="Order status filters">
-                {[
-                  { key: "all", label: "All orders", count: activeOrderCount },
-                  { key: "pending", label: "Pending", count: pendingCount },
-                  { key: "review", label: "Payment review", count: paymentReviewCount },
-                  { key: "processing", label: "Processing", count: processingCount },
-                  { key: "completed", label: "Completed", count: deliveredCount },
-                  { key: "trash", label: "Trash", count: trashedCount },
-                ].map((tab) => {
-                  const params = new URLSearchParams();
-                  if (tab.key !== "all") params.set("status", tab.key);
-                  if (query) params.set("q", requestedQuery ?? "");
-                  const href = params.size ? `/admin/orders?${params.toString()}` : "/admin/orders";
-
-                  return (
-                    <Link prefetch={false}
-                      key={tab.key}
-                      href={href}
-                      className={`rounded-xl border px-4 py-2.5 text-sm font-black transition ${
-                        activeStatus === tab.key
-                          ? "border-blue-600 bg-blue-600 text-white shadow-sm"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
-                      }`}
-                    >
-                      {tab.label} <span className={activeStatus === tab.key ? "text-blue-100" : "text-slate-400"}>({tab.count})</span>
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <h2 className="text-xl font-black">
-                    {activeStatus === "all"
-                      ? "All orders"
-                      : activeStatus === "review"
-                        ? "Payment review orders"
-                        : activeStatus === "trash"
-                          ? "Trash"
-                        : `${activeStatus.charAt(0).toUpperCase()}${activeStatus.slice(1)} orders`}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {activeStatus === "trash"
-                      ? "Orders in Trash are permanently deleted after 30 days."
-                      : "Newest orders appear first. Updates automatically every 30 seconds."}
-                  </p>
-                </div>
-                <form method="get" className="flex w-full max-w-xl gap-2">
-                  {activeStatus !== "all" && (
-                    <input type="hidden" name="status" value={activeStatus} />
-                  )}
-                  <input
-                    maxLength={200}
-                    name="q"
-                    defaultValue={requestedQuery ?? ""}
-                    placeholder="Search order number or customer email"
-                    className="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
-                  />
-                  <button className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-500">
-                    Search
-                  </button>
-                  {query && (
-                    <Link prefetch={false} href={activeStatus === "all" ? "/admin/orders" : `/admin/orders?status=${activeStatus}`} className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-600 hover:border-blue-300">
-                      Clear
-                    </Link>
-                  )}
-                </form>
-              </div>
-
-              {matchedCount === 0 && (
-                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-5 text-center font-bold text-amber-800">
-                  {query ? `No orders found for “${requestedQuery}”.` : "No orders in this status."}
-                </div>
-              )}
-
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <AdminOrdersTableScroller>
-                  <table className="w-full min-w-[980px] table-fixed text-left">
-                    <colgroup>
-                      <col className="w-[16%]" />
-                      <col className="w-[17%]" />
-                      <col className="w-[36%]" />
-                      <col className="w-[10%]" />
-                      <col className="w-[10%]" />
-                      <col className="w-[11%]" />
-                    </colgroup>
-                    <thead className="border-b border-slate-200 bg-slate-50">
-                      <tr className="text-sm text-slate-500">
-                        <th className="px-3 py-4">
-                          Order
-                        </th>
-
-                        <th className="px-3 py-4">
-                          Customer email
-                        </th>
-
-                        <th className="px-3 py-4">
-                          Product and fulfillment
-                        </th>
-
-                        <th className="px-3 py-4">
-                          Amount
-                        </th>
-
-                        <th className="px-3 py-4">
-                          Status
-                        </th>
-
-                        <th className="px-3 py-4">
-                          Timeline
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-slate-200">
-                      {visibleOrders.map((order) => (
-                        <tr
-                          key={order.id}
-                          id={`order-${order.id}`}
-                          className="transition hover:bg-blue-50/40"
-                        >
-                          <td className="break-words px-3 py-5 align-top">
-                            <AdminOrderLink
-                              orderId={order.id}
-                              orderNumber={order.order_number}
-                            />
-                          </td>
-
-                          <td className="break-words px-3 py-5 align-top">
-                            {customerIdByEmail.get(order.customer_email.trim().toLowerCase()) ? (
-                              <Link prefetch={false}
-                                href={`/admin/customers/${encodeURIComponent(customerIdByEmail.get(order.customer_email.trim().toLowerCase())!)}`}
-                                className="break-all font-bold text-blue-600 hover:text-blue-500 hover:underline"
-                              >
-                                {order.customer_email}
-                              </Link>
-                            ) : (
-                              <p className="break-all font-bold text-slate-700">
-                                {order.customer_email}
-                              </p>
-                            )}
-                          </td>
-
-                          <td className="break-words px-3 py-5 align-top">
-                            <div className="grid gap-3">
-                              {order.order_items.map(
-                                (item) => (
-                                  <div key={item.id}>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <p className="font-bold">
-                                        {item.product_name}
-                                        {item.quantity > 1
-                                          ? ` × ${item.quantity}`
-                                          : ""}
-                                      </p>
-                                      {Number(item.affiliate_commission_percent ?? 0) > 0 && (
-                                        <span className="inline-flex rounded-full bg-fuchsia-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-fuchsia-700">
-                                          Affiliate sale · {Number(item.affiliate_commission_percent)}%
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    <p className="mt-1 text-sm text-slate-500">
-                                      {item.option_name ||
-                                        (item.denomination
-                                          ? String(item.denomination)
-                                          : "Standard option")}
-                                    </p>
-
-                                    {item.platform && (
-                                      <p className="mt-1 inline-flex rounded-full bg-violet-100 px-2 py-1 text-xs font-bold text-violet-700">
-                                        Platform: {item.platform}
-                                      </p>
-                                    )}
-
-                                    {item.fulfillment_mode && (
-                                      <p className="mt-1 text-xs font-bold text-blue-600">
-                                        {item.fulfillment_mode.replaceAll(
-                                          "_",
-                                          " ",
-                                        )}
-                                      </p>
-                                    )}
-
-                                    {item.player_id && (
-                                      <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800">
-                                        Player ID: {item.player_id}
-                                      </p>
-                                    )}
-                                    {(item.customer_information ?? []).map((field) => (
-                                      <p key={field.fieldId} className="mt-1 break-all rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-800">
-                                        {field.label}: <span className="font-bold">{customerDetailDisplay(field)}</span>
-                                      </p>
-                                    ))}
-                                  </div>
-                                ),
-                              )}
-
-                            </div>
-                          </td>
-
-                          <td className="break-words px-3 py-5 align-top font-bold">
-                            {formatMoney(
-                              order.total,
-                              order.currency,
-                            )}
-                          </td>
-
-                          <td className="break-words px-3 py-5 align-top">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusStyle(
-                                order.status,
-                              )}`}
-                            >
-                              {order.status ===
-                              "DELIVERED"
-                                ? "COMPLETED"
-                                : order.status.replaceAll(
-                                    "_",
-                                    " ",
-                                  )}
-                            </span>
-                          </td>
-
-                          <td className="break-words px-3 py-5 align-top text-xs text-slate-600">
-                            <span className="block font-bold text-slate-500">
-                              Ordered
-                            </span>
-                            <span className="mt-1 block">
-                              {formatDate(order.created_at)}
-                            </span>
-                            {order.delivered_at && (
-                              <>
-                                <span className="mt-3 block font-bold text-slate-500">
-                                  Completed
-                                </span>
-                                <span className="mt-1 block">
-                                  {formatDate(order.delivered_at)}
-                                </span>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </AdminOrdersTableScroller>
-              </div>
-              {totalPages > 1 && (
-                <nav className="mt-5 flex flex-wrap justify-center gap-2" aria-label="Order pages">
-                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                    <Link prefetch={false} key={pageNumber} href={`/admin/orders?${new URLSearchParams({ page: String(pageNumber), ...(query ? { q: requestedQuery ?? "" } : {}), ...(activeStatus !== "all" ? { status: activeStatus } : {}) }).toString()}`} className={`rounded-lg border px-3 py-2 text-sm font-bold ${pageNumber === page ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"}`}>{pageNumber}</Link>
-                  ))}
-                </nav>
-              )}
-            </section>
-          )}
-        </main>
-      </div>
+  return <div className="min-h-screen bg-slate-50 text-slate-900">
+    <AdminOrdersAutoRefresh />
+    <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
+      <AdminSidebar orderCount={counts.processing} />
+      <main className={"min-w-0 flex-1 p-5 sm:p-8 " + styles.page}>
+        <header>
+          <h1 className="text-3xl font-black">Orders</h1>
+          <p className="mt-1 text-sm text-slate-500">Payments, customers and delivery.</p>
+        </header>
+        {success && <div role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{success}</div>}
+        {actionError && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{actionError}</div>}
+        <form method="get" action="/admin/orders" className={styles.search} role="search">
+          {activeStatus !== "all" && <input type="hidden" name="status" value={activeStatus} />}
+          <input aria-label="Search order number or customer email" type="search" maxLength={200} name="q" defaultValue={requestedQuery ?? ""} placeholder="Order number or customer email" />
+          <button type="submit">Search</button>
+          {query && <Link prefetch={false} href={activeStatus === "all" ? "/admin/orders" : "/admin/orders?status=" + activeStatus}>Clear</Link>}
+        </form>
+        <nav className={styles.tabs} aria-label="Order status filters">
+          {tabs.map(tab => <Link prefetch={false} key={tab.key} href={hrefFor(tab.key)} aria-current={activeStatus === tab.key ? "page" : undefined}>
+            {tab.label} <span>{tab.count.toLocaleString("en-IN")}</span>
+          </Link>)}
+        </nav>
+        <section aria-label={heading}>
+          <div className={styles.listHeading}>
+            <h2>{heading} ({matchedCount.toLocaleString("en-IN")})</h2>
+            <p>{activeStatus === "trash" ? "Permanently deleted after 30 days." : "Newest first · Updates every 30s · IST"}</p>
+          </div>
+          {matchedCount === 0 ? <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+            {query ? "No orders found for “" + requestedQuery + "”." : counts.all + counts.trash === 0 ? "No orders are available." : "No orders in this status."}
+          </div> : <AdminOrdersList orders={visibleOrders} customerIds={customerIdByEmail} />}
+          <footer className={styles.footer}>
+            <span>{matchedCount === 0 ? "0 orders" : ((page - 1) * ADMIN_ORDER_PAGE_SIZE + 1).toLocaleString("en-IN") + "–" + Math.min(page * ADMIN_ORDER_PAGE_SIZE, matchedCount).toLocaleString("en-IN") + " of " + matchedCount.toLocaleString("en-IN") + " orders"}</span>
+            <nav className={styles.pagination} aria-label="Order pages">
+              {page > 1 && <Link prefetch={false} href={hrefFor(activeStatus, page - 1)} aria-label="Previous page">Previous</Link>}
+              {pages.map((number, index) => <Fragment key={number}>
+                {index > 0 && number - pages[index - 1] > 1 && <span aria-hidden="true">…</span>}
+                <Link prefetch={false} href={hrefFor(activeStatus, number)} aria-label={"Page " + number} aria-current={number === page ? "page" : undefined}>{number}</Link>
+              </Fragment>)}
+              {page < totalPages && <Link prefetch={false} href={hrefFor(activeStatus, page + 1)} aria-label="Next page">Next</Link>}
+            </nav>
+          </footer>
+        </section>
+      </main>
     </div>
-  );
+  </div>;
 }
-
-
-
-
