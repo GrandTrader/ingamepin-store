@@ -8,7 +8,7 @@ write('next.config.js',`module.exports={devIndicators:false,turbopack:{root:${JS
 write('postcss.config.mjs','export default {plugins:{"@tailwindcss/postcss":{}}};');
 write('styles.css','@import "../../app/globals.css";@source "../../components";@source "../../app/admin";@source "./";');
 write('app/layout.tsx',`import '../styles.css';import StorefrontFrame from '@/components/StorefrontFrame';export default function Layout({children}:{children:React.ReactNode}){return <html><body><StorefrontFrame header={<div>Retail header</div>} footer={<div>Retail footer</div>} extras={<div>Retail chat</div>}>{children}</StorefrontFrame></body></html>}`);
-write('app/admin/layout.tsx',`import AdminFrame from '@/components/AdminFrame';export default function Layout({children}:{children:React.ReactNode}){return <AdminFrame>{children}</AdminFrame>}`);
+write('app/admin/layout.tsx',fs.readFileSync('app/admin/layout.tsx','utf8'));
 write('app/loading.tsx',`export default function Loading(){return <p>Loading page…</p>}`);
 write('app/api/admin/order-notifications/route.ts',`export async function GET(){return Response.json({count:2,orderStatusCounts:{pending:1,review:0,processing:2,completed:10,trash:0}})}`);
 write('app/admin/orders/page.tsx',`import Sidebar from '@/app/admin/AdminSidebar';export default function Page(){return <div className="min-h-screen"><Sidebar/><main><header><h1>Orders</h1></header><p>Fixture order list</p></main></div>}`);
