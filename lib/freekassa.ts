@@ -138,3 +138,22 @@ export function verifyFreeKassaNotification(input: {
 
   return safeHashEquals(input.signature, expected);
 }
+
+export type FreeKassaOrderStatus = {
+  merchant_order_id: string; fk_order_id: number; amount: number | string; currency: string; status: number;
+};
+export async function getFreeKassaOrders(paymentId: string) {
+  const values: Record<string, string | number> = {
+    shopId: Number(getFreeKassaMerchantId()), nonce: Date.now(), paymentId,
+  };
+  const signature = createHmac("sha256", getFreeKassaApiKey())
+    .update(Object.keys(values).sort().map(key => String(values[key])).join("|")).digest("hex");
+  const response = await fetch("https://api.fk.life/v1/orders", {
+    method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ ...values, signature }), cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000),
+  });
+  const result = await response.json();
+  if (!response.ok || result.type !== "success" || !Array.isArray(result.orders) || !Number.isInteger(result.pages))
+    throw Error("Unable to check FreeKassa payment");
+  return result as { pages: number; orders: FreeKassaOrderStatus[] };
+}

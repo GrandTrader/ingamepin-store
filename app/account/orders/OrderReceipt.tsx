@@ -220,6 +220,12 @@ export default async function CustomerOrderReceiptPage({
         <h2 className="text-lg font-bold">Order refund</h2>
         {refundHistory.held && !refundHistory.requests.some(r => r.status === "COMPLETED") && <p className="text-sm text-amber-800">Delivery is paused while your refund request is being handled.</p>}
         <OrderRefundHistory requests={refundHistory.requests} events={refundHistory.events} />
+        {order.status === "CANCELLED" && payment?.status === "FAILED" && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+            <p>The payment gateway confirmed this payment was unsuccessful. This order no longer uses your purchase limit.</p>
+            <Link href="/checkout" className="mt-2 inline-flex font-bold underline">Return to checkout</Link>
+          </div>
+        )}
         {canRequestRefund && (refundSettings?.error ? <p className="text-sm text-red-700">Refund methods could not be loaded. Please reload this page.</p> : <RefundRequestForm orderId={order.id} amount={Number(order.total)} currency={order.currency} originalMethod={payment?.method ?? ""} methods={availableRefundMethods} />)}
       </section>}
 

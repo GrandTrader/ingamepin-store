@@ -1,3 +1,4 @@
+import { syncFailedGatewayPayments } from "@/lib/payment-failure-sync";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -105,6 +106,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (String(body.payment_status ?? "").toLowerCase() !== "finished") {
+      const invoice = String(body.invoice_id ?? ""), providerPayment = String(body.payment_id ?? "");
+      if (/^\d+$/.test(invoice) && /^\d+$/.test(providerPayment) && /^[a-f0-9-]{36}$/i.test(String(body.order_id ?? ""))) {
+        // Save the authenticated reference so polling can recover a lost notification.
+        const saved = await createAdminClient().from("payments").update({ gateway_payment_id: providerPayment })
+          .eq("order_id", body.order_id).eq("method", "NOWPAYMENTS").eq("gateway_order_id", invoice).eq("status", "PENDING");
+        if (saved.error) throw Error("Unable to save payment reference");
+        if (["failed", "expired"].includes(String(body.payment_status).toLowerCase())) {
+          const sync = await syncFailedGatewayPayments({ orderIds: [String(body.order_id)], method: "NOWPAYMENTS", providerPaymentId: providerPayment });
+          if (sync.failed) throw Error("Unable to check payment failure");
+        }
+      }
       return NextResponse.json({ received: true });
     }
 

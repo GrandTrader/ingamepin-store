@@ -22,7 +22,8 @@ function credentials() {
 
 export async function callBinancePay<T>(
   path: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  timeoutMs = 30_000
 ) {
   const { apiKey, secretKey } = credentials();
   const timestamp = Date.now().toString();
@@ -44,6 +45,7 @@ export async function callBinancePay<T>(
       "BinancePay-Signature": signature,
     },
     body: jsonBody,
+    signal: AbortSignal.timeout(timeoutMs),
     cache: "no-store",
   });
 

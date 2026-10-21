@@ -1,3 +1,4 @@
+import { syncFailedGatewayPayments } from "@/lib/payment-failure-sync";
 ﻿import { verify } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -230,6 +231,10 @@ export async function POST(request: NextRequest) {
 
     // Valid non-payment notifications are acknowledged without changing data.
     if (webhook.bizType !== "PAY" || webhookStatus !== "PAY_SUCCESS") {
+      if (webhook.bizType === "PAY" && webhookStatus === "PAY_CLOSED" && webhookData.prepayId) {
+        const sync = await syncFailedGatewayPayments({ method: "BINANCE_PAY", gatewayOrderId: String(webhookData.prepayId) });
+        if (sync.failed) return failure("Payment status will be retried.", 503);
+      }
       return NextResponse.json({
         returnCode: "SUCCESS",
         returnMessage: null,

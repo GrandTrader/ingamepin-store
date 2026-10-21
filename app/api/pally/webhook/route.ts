@@ -1,3 +1,4 @@
+import { syncFailedGatewayPayments } from "@/lib/payment-failure-sync";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -91,6 +92,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (status !== "SUCCESS") {
+      if (status === "FAIL" && /^[a-f0-9-]{36}$/i.test(orderId)) {
+        const sync = await syncFailedGatewayPayments({ orderIds: [orderId], method: "PALLY" });
+        if (sync.failed) return NextResponse.json({ error: "Payment status will be retried." }, { status: 503 });
+      }
       return NextResponse.json({ received: true });
     }
 

@@ -98,6 +98,7 @@ export async function getPallyBillStatus(billId: string) {
         Accept: "application/json",
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     },
   );
   const result = (await response.json()) as PallyBillStatusResponse;

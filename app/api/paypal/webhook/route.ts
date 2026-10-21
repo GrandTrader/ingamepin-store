@@ -1,3 +1,4 @@
+import { syncFailedGatewayPayments } from "@/lib/payment-failure-sync";
 import { privateJson } from "@/lib/request-security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { confirmPayPalCheckout } from "@/lib/paypal-checkout";
@@ -14,6 +15,14 @@ export async function POST(request: Request) {
   try {
     const event = await verifyPayPalWebhook(raw, request.headers);
     if (!event) return privateJson({ error: "Invalid notification signature." }, 401);
+    if (["PAYMENT.CAPTURE.DENIED", "CHECKOUT.PAYMENT-APPROVAL.REVERSED"].includes(event.event_type!)) {
+      const reference = event.resource?.supplementary_data?.related_ids?.order_id;
+      if (reference && /^[A-Z0-9]{10,32}$/.test(reference)) {
+        const sync = await syncFailedGatewayPayments({ method: "PAYPAL", gatewayOrderId: reference });
+        if (sync.failed) return privateJson({ error: "Payment status will be retried." }, 503);
+      }
+      return privateJson({ received: true });
+    }
     if (!["CHECKOUT.ORDER.APPROVED", "PAYMENT.CAPTURE.COMPLETED"].includes(event.event_type!)) return privateJson({ received: true });
     const paypalId = event.event_type === "CHECKOUT.ORDER.APPROVED" ? event.resource?.id : event.resource?.supplementary_data?.related_ids?.order_id;
     if (!paypalId || !/^[A-Z0-9]{10,32}$/.test(paypalId)) return privateJson({ error: "Missing payment reference." }, 400);

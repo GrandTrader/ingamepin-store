@@ -34,7 +34,7 @@ export type PayPalOrder = {
     custom_id?: string;
     amount?: { currency_code?: string; value?: string };
     payee?: { merchant_id?: string };
-    payments?: { captures?: Array<{
+    payments?: { authorizations?: Array<{ id?: string; status?: string }>; captures?: Array<{
       id?: string;
       status?: string;
       final_capture?: boolean;

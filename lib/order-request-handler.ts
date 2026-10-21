@@ -1,6 +1,7 @@
 import { supplierRangeLimits } from "@/lib/definiteplay-range-stock";
 import { extraCustomerPercent } from "@/lib/product-promotions";
 import "server-only";
+import { syncFailedGatewayPayments } from "@/lib/payment-failure-sync";
 import { paypalCheckoutAvailable } from "@/lib/paypal-checkout";
 import { businessSessionReady } from "@/lib/business-security";
 import { saveCheckoutConsent } from "@/lib/checkout-consent";
@@ -380,6 +381,20 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
         for (const query of await Promise.all(identityQueries)) {
           if (query.error || (query.data?.length ?? 0) >= 1000) return NextResponse.json({ error: "Unable to verify complete purchase history. Please contact support." }, { status: 503 });
           for (const order of query.data ?? []) orderIds.add(order.id);
+        }
+        if (onePerDenomination && orderIds.size) {
+          try {
+            await syncFailedGatewayPayments({ orderIds: [...orderIds], limit: 3 });
+            // Re-read after concurrent webhook/checkout recovery. The database
+            // constraint still checks active orders when the new order commits.
+            const active = await admin.from("orders").select("id").in("id", [...orderIds])
+              .in("status", ["PENDING_PAYMENT", "PAID", "PROCESSING", "DELIVERED"]);
+            if (active.error) throw Error("Unable to verify active orders");
+            orderIds.clear();
+            for (const order of active.data ?? []) orderIds.add(order.id);
+          } catch {
+            console.error("Pending payment check unavailable during checkout");
+          }
         }
         let previousValue = 0;
         const previousDenominations: Array<{ optionId: string | null; customValue: unknown; quantity: unknown }> = [];
