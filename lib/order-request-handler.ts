@@ -718,11 +718,13 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
     let walletPaymentResult: Record<string, unknown> | null = null;
 
     if (isWalletPayment && walletUserId) {
+      // Restricted checkout already binds the authenticated customer in its RPC.
+      // Accept that same owner or an unassigned order, never another customer.
       const customerLinkResult = await admin
         .from("orders")
         .update({ customer_id: walletUserId })
         .eq("id", orderResult.data.id)
-        .is("customer_id", null)
+        .or(`customer_id.is.null,customer_id.eq.${walletUserId}`)
         .select("id")
         .single();
 
