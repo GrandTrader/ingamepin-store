@@ -160,7 +160,7 @@ export default async function OrderReceipt({
   }
 
   const admin = createAdminClient();
-  const [orderResult, itemsResult, paymentResult] =
+  const [orderResult, itemsResult, paymentResult, replacedPaymentsResult] =
     await Promise.all([
       admin
         .from("orders")
@@ -204,6 +204,8 @@ export default async function OrderReceipt({
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      admin.from("checkout_payment_attempts").select("id,method,payment_snapshot,gateway_order_id,received_transaction_id,received_at")
+        .eq("order_id", id).not("received_at", "is", null).order("received_at", { ascending: false }),
     ]);
 
   if (orderResult.error || !orderResult.data) {
@@ -419,6 +421,16 @@ export default async function OrderReceipt({
             </section>
           </div>
 
+          {!!replacedPaymentsResult.data?.length && <section className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+            <h2 className="font-black text-amber-950">Payment received through a replaced method</h2>
+            <p className="mt-2 text-sm">Review these transactions before delivery or refund. They have not triggered automatic delivery.</p>
+            {replacedPaymentsResult.data.map(attempt => <div key={attempt.id} className="mt-3 rounded-lg border border-amber-200 bg-white p-3">
+              <Detail label="Method / original amount" value={attempt.method + " · " + attempt.payment_snapshot.currency + " " + Number(attempt.payment_snapshot.amount).toFixed(2)} />
+              <Detail label="Transaction ID" value={attempt.received_transaction_id} />
+              <Detail label="Gateway order ID" value={attempt.gateway_order_id} />
+              <Detail label="Received at" value={formatDate(attempt.received_at)} />
+            </div>)}
+          </section>}
           {order.status === "PAYMENT_REVIEW" && payment?.status === "SUBMITTED" && (
             <section className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm sm:p-6">
               <p className="text-xs font-black uppercase tracking-widest text-amber-700">

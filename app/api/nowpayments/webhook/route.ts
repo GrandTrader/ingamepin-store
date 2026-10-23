@@ -108,6 +108,17 @@ export async function POST(request: NextRequest) {
     if (String(body.payment_status ?? "").toLowerCase() !== "finished") {
       const invoice = String(body.invoice_id ?? ""), providerPayment = String(body.payment_id ?? "");
       if (/^\d+$/.test(invoice) && /^\d+$/.test(providerPayment) && /^[a-f0-9-]{36}$/i.test(String(body.order_id ?? ""))) {
+        if (["confirming", "confirmed", "sending", "partially_paid"].includes(String(body.payment_status).toLowerCase())) {
+          const admin = createAdminClient();
+          const attempt = await admin.from("checkout_gateway_payments").select("id").eq("order_id", body.order_id)
+            .eq("method", "NOWPAYMENTS").eq("gateway_order_id", invoice).maybeSingle();
+          if (attempt.error) throw Error("Unable to find the payment attempt.");
+          if (attempt.data) {
+            const held = await admin.rpc("hold_checkout_attempt", { p_payment_id: attempt.data.id, p_method: "NOWPAYMENTS",
+              p_prepay_id: invoice, p_transaction_id: providerPayment });
+            if (held.error) throw Error("Unable to record confirming funds.");
+          }
+        }
         // Save the authenticated reference so polling can recover a lost notification.
         const saved = await createAdminClient().from("payments").update({ gateway_payment_id: providerPayment,
           ...(["confirming", "confirmed", "sending", "partially_paid"].includes(String(body.payment_status).toLowerCase())
@@ -132,7 +143,7 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
     const paymentResult = await admin
-      .from("payments")
+      .from("checkout_gateway_payments")
       .select("id, order_id, status")
       .eq("order_id", orderId)
       .eq("gateway_order_id", invoiceId)
@@ -148,8 +159,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, alreadyCompleted: true });
     }
 
-    const completion = await admin.rpc("complete_binance_payment", {
+    const completion = await admin.rpc("complete_checkout_attempt", {
       p_payment_id: payment.id,
+      p_method: "NOWPAYMENTS",
       p_prepay_id: invoiceId,
       p_transaction_id: transactionId,
     });

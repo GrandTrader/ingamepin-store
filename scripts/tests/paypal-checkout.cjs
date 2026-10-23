@@ -19,7 +19,7 @@ function fixture() {
   const order={id:paypalId,intent:'CAPTURE',status:'APPROVED',purchase_units:[{reference_id:oid,custom_id:oid,amount:{currency_code:'USD',value:'12.34'},payee:{merchant_id:merchant}}],links:[{rel:'payer-action',method:'GET',href:`https://www.paypal.com/checkoutnow?token=${paypalId}`}]};
   const calls=[];
   let captures=0,completed=0;
-  const admin={from(table){const q={select(){return q},eq(){return q},maybeSingle:async()=>({data:table==='paypal_checkouts'?checkout:table==='payment_gateway_settings'?{gateway_commissions:{PAYPAL:{enabled:true}}}:{id:oid,access_token_hash:crypto.createHash('sha256').update('a'.repeat(43)).digest('hex')}})};return q;},async rpc(name,args){calls.push({name,args});if(name==='complete_paypal_checkout')completed++;return {data:name==='begin_paypal_checkout'?checkout:true}}};
+  const admin={from(table){const q={select(){return q},eq(){return q},maybeSingle:async()=>({data:table==='paypal_checkouts'?checkout:table==='payment_gateway_settings'?{gateway_commissions:{PAYPAL:{enabled:true}}}:{id:oid,access_token_hash:crypto.createHash('sha256').update('a'.repeat(43)).digest('hex')}})};return q;},async rpc(name,args){calls.push({name,args});if(name==='complete_paypal_checkout_attempt')completed++;return {data:name==='begin_paypal_checkout'?checkout:true}}};
   const request=async(path,method,body,id)=>{
     calls.push({path,method,body,id});
     if(path.endsWith('/capture')){captures++;order.status='COMPLETED';order.purchase_units[0].payments={captures:[{id:captureId,status:'COMPLETED',final_capture:true,amount:{currency_code:'USD',value:'12.34'}}]};}

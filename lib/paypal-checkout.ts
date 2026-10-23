@@ -143,7 +143,7 @@ export async function confirmPayPalCheckout(orderId: string, expectedPayPalId?: 
   if (unit.payments?.captures?.length !== 1 || capture?.status !== "COMPLETED" || capture.final_capture !== true ||
       !providerId.test(capture.id ?? "") || capture.amount?.currency_code !== "USD" ||
       paypalMoney(capture.amount?.value) !== paypalMoney(checkout.amount)) throw Error("PayPal payment is not confirmed.");
-  const completed = await admin.rpc("complete_paypal_checkout", {
+  const completed = await admin.rpc("complete_paypal_checkout_attempt", {
     p_order_id: orderId, p_paypal_order_id: order.id, p_capture_id: capture.id,
     p_merchant_id: unit.payee!.merchant_id, p_amount: paypalMoney(capture.amount!.value), p_currency: "USD",
   });

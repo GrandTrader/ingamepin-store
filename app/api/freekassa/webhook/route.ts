@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentResult = await admin
-      .from("payments")
+      .from("checkout_gateway_payments")
       .select(
         "id, order_id, status, gateway_order_id, gateway_payment_id",
       )
@@ -237,8 +237,9 @@ export async function POST(request: NextRequest) {
       return plainText("Payment verification failed.", 400);
     }
 
-    const completion = await admin.rpc("complete_binance_payment", {
+    const completion = await admin.rpc("complete_checkout_attempt", {
       p_payment_id: payment.id,
+      p_method: "FREEKASSA",
       p_prepay_id: orderId,
       p_transaction_id: transactionId,
     });

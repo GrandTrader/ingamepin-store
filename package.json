@@ -23,7 +23,7 @@
     "test:delivery-batches": "node --test scripts/tests/manual-delivery-batches.cjs scripts/tests/manual-code-upload.cjs && node scripts/tests/manual-delivery-batches-db.cjs",
     "test:payment-failures": "node --test scripts/tests/payment-failure-sync.cjs && node scripts/tests/payment-failure-sync-db.cjs",
     "test:wallet-checkout": "node --test scripts/tests/retail-wallet-checkout.cjs",
-    "test:checkout-retry": "node --test scripts/tests/checkout-retry.cjs && node scripts/tests/checkout-retry-db.cjs"
+    "test:checkout-retry": "node --test scripts/tests/checkout-retry.cjs scripts/tests/checkout-payment-options.cjs scripts/tests/checkout-payment-callbacks.cjs && node scripts/tests/checkout-retry-db.cjs && node scripts/tests/checkout-payment-switch-db.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

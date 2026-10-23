@@ -102,19 +102,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Compliance hold verification failed." }, { status: 400 });
       }
       const admin = createAdminClient();
-      const paymentResult = await admin
-        .from("payments")
-        .update({ status: "PAYMENT_REVIEW" })
-        .eq("order_id", body.orderId)
-        .eq("gateway_order_id", body.invoiceId)
-        .eq("method", "USDT_DIRECT")
-        .select("order_id")
-        .maybeSingle();
-      if (paymentResult.data?.order_id) {
-        await admin
-          .from("orders")
-          .update({ status: "PAYMENT_REVIEW", updated_at: new Date().toISOString() })
-          .eq("id", body.orderId);
+      const paymentResult = await admin.from("checkout_gateway_payments").select("id,order_id")
+        .eq("order_id", body.orderId).eq("gateway_order_id", body.invoiceId).eq("method", "USDT_DIRECT").maybeSingle();
+      if (paymentResult.error) throw Error("Unable to find the payment attempt.");
+      if (paymentResult.data) {
+        const held = await admin.rpc("hold_checkout_attempt", { p_payment_id: paymentResult.data.id, p_method: "USDT_DIRECT",
+          p_prepay_id: body.invoiceId, p_transaction_id: body.transactionHash, p_compliance: true });
+        if (held.error) throw Error("Unable to record the payment hold.");
       } else {
         await admin
           .from("wallet_topup_requests")
@@ -153,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
     const paymentResult = await admin
-      .from("payments")
+      .from("checkout_gateway_payments")
       .select("id, order_id, status, gateway_order_id")
       .eq("order_id", body.orderId)
       .eq("gateway_order_id", body.invoiceId)
@@ -210,8 +204,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, alreadyCompleted: true });
     }
 
-    const completion = await admin.rpc("complete_binance_payment", {
+    const completion = await admin.rpc("complete_checkout_attempt", {
       p_payment_id: payment.id,
+      p_method: "USDT_DIRECT",
       p_prepay_id: body.invoiceId,
       p_transaction_id: body.transactionHash,
     });

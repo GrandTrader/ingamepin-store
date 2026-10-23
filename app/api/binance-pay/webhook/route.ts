@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
     const paymentResult = await admin
-      .from("payments")
+      .from("checkout_gateway_payments")
       .select("id, order_id")
       .eq("gateway_order_id", binanceOrder.prepayId)
       .eq("method", "BINANCE_PAY")
@@ -340,9 +340,10 @@ export async function POST(request: NextRequest) {
     }
 
     const completionResult = await admin.rpc(
-      "complete_binance_payment",
+      "complete_checkout_attempt",
       {
         p_payment_id: paymentResult.data.id,
+        p_method: "BINANCE_PAY",
         p_prepay_id: binanceOrder.prepayId,
         p_transaction_id: binanceOrder.transactionId,
       }

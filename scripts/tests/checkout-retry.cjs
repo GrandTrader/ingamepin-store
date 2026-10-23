@@ -14,6 +14,7 @@ function retryFixture(opts={}){
  const db={from:table=>query(table==='orders'?order:{method:opts.method??'PALLY'},state),async rpc(name,args){
  state.calls.push({name,args});
  if(name==='pay_order_with_wallet'){state.debits++;return{data:{balanceAfter:90}}}
+ if(name==='switch_checkout_payment_method')return {data:{id,orderNumber:order.order_number,totalAmount:args.p_expected_total,currency:'USD',paymentMethod:args.p_method,checkoutVariant:args.p_variant,createdAt:'2026-10-23T10:00:00Z',expiresAt:'2026-10-23T10:15:00Z'}};
  assert.equal(name,'prepare_order_payment_retry');assert.equal(args.p_order_id,id);assert.match(args.p_access_hash,/^[a-f0-9]{64}$/);
  return opts.rpcError?{error:{code:'P0001',message:'Payment already submitted'}}:{data:{id,orderNumber:order.order_number,totalAmount:10,currency:'USD',paymentMethod:opts.method??'PALLY',createdAt:'2026-10-23T10:00:00Z',expiresAt:'2026-10-23T10:15:00Z'}};
  }};
@@ -25,6 +26,10 @@ function retryFixture(opts={}){
  '@/lib/request-security':{sameOrigin:()=>!opts.cross,privateJson:(body,status=200)=>NextResponse.json(body,{status,headers:{'cache-control':'private, no-store'}}),requestLimit:async()=>opts.limited?NextResponse.json({error:'limited'},{status:429}):null},
  '@/lib/checkout-payment-session':{assertCheckoutOpen:async()=>{state.checked++;if(opts.expired)throw Error('Payment window expired');}},
  '@/lib/checkout-expiry':expiry,
+ '@/lib/checkout-payment-options':{retryPaymentOptions:async(_db,_order,_payment,walletAllowed)=>({revision:0,selected:'pally',choices:[
+ {value:'pally',method:'PALLY',label:'SBP',total:10,fee:0},
+ {value:'paypal',method:'PAYPAL',label:'PayPal',total:10.5,fee:0.5},
+ ...(walletAllowed?[{value:'wallet',method:'WALLET',label:'Wallet',total:10,fee:0}]:[])]})},
  '@/lib/manual-fulfillment':{prepareOrderForManualFulfillment:async()=>{if(opts.notifyError)throw Error('unavailable');return{status:'PAID'}}},
  '@/lib/email':{sendWalletDebitEmails:async()=>{state.notifications++},sendOrderStatusEmails:async()=>{}},
  '@/lib/telegram-order-notification':{notifyPaidOrderInTelegram:async()=>{}},
@@ -34,7 +39,7 @@ function retryFixture(opts={}){
 test('retry authorizes the actual owner and never trusts posted email or order totals',async()=>{
  for(const [opts,status]of [[{anonymous:true},401],[{other:true},404],[{cross:true},403],[{limited:true},429]]){
  const f=retryFixture(opts),r=await f.send({email:'other@example.com',totalAmount:1});assert.equal(r.status,status);assert.equal(f.state.calls.length,0);assert.equal(f.state.writes.length,0);}
- const f=retryFixture(),r=await f.send({totalAmount:1,paymentMethod:'wallet'}),data=await r.json();
+ const f=retryFixture(),r=await f.send({totalAmount:1}),data=await r.json();
  assert.equal(r.status,200);assert.equal(data.pendingOrder.totalAmount,10);assert.equal(data.pendingOrder.databaseId,id);
  assert.equal(data.pendingOrder.paymentMethod,'pally');assert.equal(data.pendingOrder.expiresAt,'2026-10-23T10:15:00Z');
  assert.equal(data.nextUrl,'/checkout/payment');assert.equal(f.state.debits,0);
@@ -86,4 +91,18 @@ test('deadline uses original creation, never local retry time',()=>{
  assert.equal(expiry.checkoutDeadline('2026-10-23T10:00:00Z'),Date.parse('2026-10-23T10:15:00Z'));
  assert.equal(expiry.checkoutDeadline('2026-10-23T10:00:00Z','2026-10-23T10:12:00Z'),Date.parse('2026-10-23T10:12:00Z'));
  assert.equal(expiry.checkoutDeadline('invalid'),0);
+});
+
+test('payment options require ownership, and method changes require the displayed quote and explicit wallet consent',async()=>{
+ const f=retryFixture();const options=await (await f.send({action:'options'})).json();assert.equal(options.choices.length,3);assert.equal(f.state.calls.length,0);
+ for(const body of [{paymentMethod:'unknown',revision:0,expectedTotal:10},{paymentMethod:'paypal',revision:1,expectedTotal:10.5},{paymentMethod:'paypal',revision:0,expectedTotal:1}]){
+   assert.equal((await f.send(body)).status,409);assert.equal(f.state.calls.length,0);
+ }
+ assert.equal((await f.send({paymentMethod:'wallet',revision:0,expectedTotal:10})).status,409);assert.equal(f.state.debits,0);
+ const changed=await f.send({paymentMethod:'paypal',revision:0,expectedTotal:10.5});assert.equal(changed.status,200);
+ const result=await changed.json();assert.equal(result.pendingOrder.paymentMethod,'paypal');assert.equal(result.pendingOrder.totalAmount,10.5);
+ assert.equal(result.pendingOrder.id,'IP2026TEST');assert.equal(result.pendingOrder.expiresAt,'2026-10-23T10:15:00Z');
+ assert.equal(f.state.calls[0].name,'switch_checkout_payment_method');assert.equal(f.state.calls[0].args.p_method,'PAYPAL');
+ const guest=retryFixture({guest:true});assert.equal((await guest.send({paymentMethod:'wallet',action:'pay-wallet',revision:0,expectedTotal:10})).status,409);assert.equal(guest.state.debits,0);
+ const wallet=retryFixture();assert.equal((await wallet.send({paymentMethod:'wallet',action:'pay-wallet',revision:0,expectedTotal:10})).status,200);assert.equal(wallet.state.debits,1);
 });

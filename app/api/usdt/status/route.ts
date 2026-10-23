@@ -117,8 +117,9 @@ export async function GET(request: NextRequest) {
       invoice.transactionHash &&
       payment.status !== "VERIFIED"
     ) {
-      const completion = await admin.rpc("complete_binance_payment", {
+      const completion = await admin.rpc("complete_checkout_attempt", {
         p_payment_id: payment.id,
+        p_method: "USDT_DIRECT",
         p_prepay_id: invoice.invoiceId,
         p_transaction_id: invoice.transactionHash,
       });

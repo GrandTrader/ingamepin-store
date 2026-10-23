@@ -49,12 +49,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Order access was denied." }, { status: 403 });
     }
 
-    const result = await admin.rpc("submit_manual_payment", {
+    const result = await admin.rpc("submit_checkout_manual_payment", {
       p_order_id: order.id,
-      p_order_number: order.order_number,
-      p_customer_email: order.customer_email,
+      p_access_hash: createHash("sha256").update(accessToken).digest("hex"),
       p_transaction_id: `${network}:${transactionHash}`,
-      p_screenshot_path: "",
     });
 
     if (result.error) {
