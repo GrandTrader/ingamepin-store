@@ -20,8 +20,8 @@ const item = (id, amount, quantity, delivered = 0, refunded = 0, currency = "INR
   customer_information: [{ label: "Password", value: "PRIVATE_PASSWORD" }],
   customer_email: "private@example.com", code: "SECRET_VOUCHER", unit_price: 900.99,
 }, delivered, refunded);
-function build(items, selection = quote.quotationSelection(items, "remaining"), supplier = "", note = "") {
-  return quote.buildSupplierQuotation("IP123", items, selection, supplier, note, now);
+function build(items, selection = quote.quotationSelection(items, "remaining"), supplier = "", note = "", discount = "0") {
+  return quote.buildSupplierQuotation("IP123", items, selection, supplier, note, now, discount);
 }
 
 test("supplier fields exclude customer data, voucher codes and selling prices at the server boundary", () => {
@@ -101,4 +101,54 @@ test("no sensitive information is embedded in a CSV or printable quote through e
     const output = render(result);
     assert(!output.includes("PRIVATE_ABC") && !output.includes("PRIVATE_MAIL") && !output.includes("$11.22"));
   }
+});
+
+test("a single supplier discount updates selected lines and all export totals", () => {
+  const rows = [item("a", 1000, 10), item("b", 500, 20)];
+  const selection = quote.quotationSelection(rows, "none");
+  selection.a = { selected: true, quantity: "10" };
+  const result = build(rows, selection, "", "", "7.25");
+  assert.equal(result.discountPercent, 7.25);
+  assert.equal(result.faceValue, "INR 10,000.00");
+  assert.equal(result.discountAmount, "INR 725.00");
+  assert.equal(result.supplierTotal, "INR 9,275.00");
+  assert.equal(result.lines[0].discountMinor, 72500);
+  for (const render of [quote.quotationText, quote.quotationCsv, quote.quotationHtml]) {
+    const output = render(result);
+    assert(output.includes("7.25"));
+    assert(output.includes("INR 725.00"));
+    assert(output.includes("INR 9,275.00"));
+    assert(!output.includes("INR 20,000.00"));
+  }
+});
+
+test("discount rounding is per line and totals reconcile in each currency separately", () => {
+  const result = build([item("a", 2.75, 3, 0, 0, "USD"), item("b", 100, 2)], undefined, "", "", "5");
+  assert.equal(result.lines[0].faceValueMinor, 825);
+  assert.equal(result.lines[0].discountMinor, 41);
+  assert.equal(result.lines[0].supplierTotalMinor, 784);
+  assert.equal(result.discountAmount, "INR 10.00 · USD 0.41");
+  assert.equal(result.supplierTotal, "INR 190.00 · USD 7.84");
+  for (const line of result.lines) assert.equal(line.faceValueMinor - line.discountMinor, line.supplierTotalMinor);
+  const halfCent = build([item("c", 0.10, 1)], undefined, "", "", "5");
+  assert.equal(halfCent.lines[0].discountMinor, 1, "Half cents round up");
+  const large = build([item("d", 10000000000, 100)], undefined, "", "", "99.99");
+  assert.equal(large.lines[0].discountMinor, 99990000000000);
+});
+
+test("zero, fractional and full discounts are valid, and invalid discounts are rejected", () => {
+  const rows = [item("a", 100, 10)];
+  assert.equal(build(rows).supplierTotal, "INR 1,000.00");
+  assert.equal(build(rows, undefined, "", "", ".5").supplierTotal, "INR 995.00");
+  assert.equal(build(rows, undefined, "", "", "100").supplierTotal, "INR 0.00");
+  assert.equal(build(rows, undefined, "", "", "").discountPercent, 0);
+  for (const discount of ["-1", "100.01", "101", "0.001", "NaN", "Infinity", "5%", "1e1"]) {
+    assert.throws(() => build(rows, undefined, "", "", discount), /discount from 0 to 100/);
+  }
+});
+
+test("missing face value cannot silently disappear from a discounted supplier total", () => {
+  const missing = quote.supplierQuotationItem({ id: "b", product_name: "Game", option_name: "PS5", platform: "PS5", quantity: 1 }, 0, 0);
+  assert.throws(() => build([item("a", 100, 1), missing], undefined, "", "", "5"), /Face value or currency is missing for PS5/);
+  assert.equal(build([missing]).supplierTotal, "Not specified");
 });

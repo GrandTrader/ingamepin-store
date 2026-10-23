@@ -12,13 +12,21 @@ export type SupplierQuotationItem = {
 };
 
 export type QuotationSelection = Record<string, { selected: boolean; quantity: string }>;
+export type SupplierQuotationLine = SupplierQuotationItem & {
+  faceValueMinor: number | null;
+  discountMinor: number | null;
+  supplierTotalMinor: number | null;
+};
 export type SupplierQuotation = {
   reference: string;
   orderNumber: string;
   createdAt: string;
   supplier: string;
   note: string;
-  lines: SupplierQuotationItem[];
+  lines: SupplierQuotationLine[];
+  discountPercent: number;
+  discountAmount: string;
+  supplierTotal: string;
   totalQuantity: number;
   faceValue: string;
 };
@@ -50,6 +58,47 @@ export function quotationSelection(items: SupplierQuotationItem[], mode: "remain
   }]));
 }
 
+export function quotationDiscount(value: string) {
+  const raw = value.trim() || "0";
+  const percent = Number(raw);
+  if (!/^(?:\d{1,3}(?:\.\d{1,2})?|\.\d{1,2})$/.test(raw) || !Number.isFinite(percent) || percent < 0 || percent > 100) {
+    throw new Error("Enter a discount from 0 to 100%, with up to two decimal places.");
+  }
+  return Math.round(percent * 100);
+}
+
+export function quotationMoney(minor: number | null, currency: string | null) {
+  if (minor === null || !currency) return "Not specified";
+  return currency + " " + (minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function priceQuotationLine(item: SupplierQuotationItem, basisPoints: number): SupplierQuotationLine {
+  const face = faceDenomination(item);
+  if (!face) {
+    if (basisPoints > 0) throw new Error("Face value or currency is missing for " + item.optionName + ". Deselect it to calculate a discounted quotation.");
+    return { ...item, faceValueMinor: null, discountMinor: null, supplierTotalMinor: null };
+  }
+  const faceValueMinor = Math.round((face.amount + Number.EPSILON) * 100) * item.quantity;
+  if (!Number.isSafeInteger(faceValueMinor) || faceValueMinor < 0) throw new Error("The quotation amount is too large.");
+  // Round the discount once per denomination line, in integer minor units.
+  const discountMinor = Number((BigInt(faceValueMinor) * BigInt(basisPoints) + BigInt(5000)) / BigInt(10000));
+  return { ...item, faceValueMinor, discountMinor, supplierTotalMinor: faceValueMinor - discountMinor };
+}
+
+function quotationPriceTotals(lines: SupplierQuotationLine[], key: "discountMinor" | "supplierTotalMinor") {
+  const totals = new Map<string, number>();
+  let unspecified = false;
+  for (const line of lines) {
+    const minor = line[key], currency = line.denominationCurrency;
+    if (minor === null || !currency) { unspecified = true; continue; }
+    const total = (totals.get(currency) ?? 0) + minor;
+    if (!Number.isSafeInteger(total)) throw new Error("The quotation amount is too large.");
+    totals.set(currency, total);
+  }
+  const parts = [...totals].sort(([a], [b]) => a.localeCompare(b)).map(([currency, minor]) => quotationMoney(minor, currency));
+  if (unspecified) parts.push(parts.length ? "some items not specified" : "Not specified");
+  return parts.join(" · ") || "—";
+}
 export function buildSupplierQuotation(
   orderNumber: string,
   items: SupplierQuotationItem[],
@@ -57,14 +106,16 @@ export function buildSupplierQuotation(
   supplier: string,
   note: string,
   now = new Date(),
+  discount = "0",
 ): SupplierQuotation {
+  const basisPoints = quotationDiscount(discount);
   const lines = items.filter(item => selection[item.id]?.selected).map(item => {
     const raw = selection[item.id].quantity.trim();
     const quantity = Number(raw);
     if (!/^\d+$/.test(raw) || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > item.quantity) {
       throw new Error("Enter a whole quantity from 1 to " + item.quantity + " for " + item.optionName + ".");
     }
-    return { ...item, quantity };
+    return priceQuotationLine({ ...item, quantity }, basisPoints);
   });
   if (!lines.length) throw new Error("Select at least one denomination.");
   const totalQuantity = lines.reduce((total, line) => total + line.quantity, 0);
@@ -78,6 +129,9 @@ export function buildSupplierQuotation(
     note: note.trim(),
     lines,
     totalQuantity,
+    discountPercent: basisPoints / 100,
+    discountAmount: quotationPriceTotals(lines, "discountMinor"),
+    supplierTotal: quotationPriceTotals(lines, "supplierTotalMinor"),
     faceValue: formatFaceValue(lines),
   };
 }
@@ -104,17 +158,21 @@ export function quotationText(quote: SupplierQuotation) {
     "Date: " + quotationDate(quote.createdAt),
     ...(quote.supplier ? ["To: " + quote.supplier] : []),
     "",
-    "Please confirm availability, your price and delivery time for the following items:",
+    "Please confirm availability, the proposed price and delivery time for the following items:",
     "",
     ...quote.lines.map((line, index) => (index + 1) + ". " + line.productName +
       (line.platform ? " · " + line.platform : "") + "\n   " +
-      quotationDenomination(line) + " × " + line.quantity + " | Face value: " + formatFaceValue([line])),
+      quotationDenomination(line) + " × " + line.quantity + " | Face value: " + formatFaceValue([line]) +
+      "\n   Discount (" + quote.discountPercent + "%): " + quotationMoney(line.discountMinor, line.denominationCurrency) +
+      " | Supplier total: " + quotationMoney(line.supplierTotalMinor, line.denominationCurrency)),
     "",
     "Total quantity: " + quote.totalQuantity,
     "Total face value: " + quote.faceValue,
+    "Discount (" + quote.discountPercent + "%): " + quote.discountAmount,
+    "Supplier total after discount: " + quote.supplierTotal,
     ...(quote.note ? ["", "Note: " + quote.note] : []),
     "",
-    "Request for quotation only. Face value is not the purchase price.",
+    "Proposed quotation only, subject to supplier confirmation. Discounts are rounded per line.",
   ].join("\n");
 }
 
@@ -131,16 +189,20 @@ export function quotationCsv(quote: SupplierQuotation) {
     ["Date (IST)", quotationDate(quote.createdAt)],
     ["Supplier", quote.supplier],
     [],
-    ["Product", "Platform", "Denomination / option", "Face value per unit", "Currency", "Quantity", "Total face value"],
+    ["Product", "Platform", "Denomination / option", "Face value per unit", "Currency", "Quantity", "Total face value", "Discount (%)", "Discount amount", "Supplier total"],
     ...quote.lines.map(line => [
       line.productName, line.platform, line.optionName, line.denomination,
-      line.denominationCurrency, line.quantity, formatFaceValue([line]),
+      line.denominationCurrency, line.quantity, formatFaceValue([line]), quote.discountPercent,
+      quotationMoney(line.discountMinor, line.denominationCurrency), quotationMoney(line.supplierTotalMinor, line.denominationCurrency),
     ]),
     [],
     ["Total quantity", quote.totalQuantity],
     ["Total face value", quote.faceValue],
+    ["Discount (%)", quote.discountPercent],
+    ["Discount amount", quote.discountAmount],
+    ["Supplier total after discount", quote.supplierTotal],
     ["Note", quote.note],
-    ["Request for quotation only. Face value is not the purchase price."],
+    ["Proposed quotation only, subject to supplier confirmation. Discounts are rounded per line."],
   ];
   return "\uFEFF" + rows.map(row => row.map(csvCell).join(",")).join("\r\n");
 }
@@ -161,7 +223,7 @@ export function quotationHtml(quote: SupplierQuotation) {
     '.meta{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-block:1px solid #dbe3ec;padding:14px 0}' +
     'p{overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;margin:22px 0;font-size:13px;table-layout:fixed}' +
     'th{background:#eaf5f8;text-align:left}th,td{padding:12px 8px;border-bottom:1px solid #dbe3ec;vertical-align:top;overflow-wrap:anywhere}' +
-    'th:first-child{width:40%}th:nth-child(2){width:25%}th:nth-child(3){width:10%}th:last-child{width:25%}.right{text-align:right}' +
+    'th:first-child{width:32%}th:nth-child(2){width:22%}th:nth-child(3){width:8%}th:nth-child(4){width:19%}th:last-child{width:19%}.right{text-align:right}' +
     'small{display:block}.totals{margin-left:auto;max-width:360px;background:#f1f5f9;padding:14px;border-radius:8px}.totals p{margin:4px 0}' +
     '.note{white-space:pre-wrap}footer{margin-top:26px;font-size:12px;color:#52677d}' +
     'button{border:0;border-radius:8px;background:#165dff;color:white;padding:12px 18px;font-weight:bold;cursor:pointer}' +
@@ -173,16 +235,17 @@ export function quotationHtml(quote: SupplierQuotation) {
     '<div class="meta"><div>Reference<br><strong>' + html(quote.reference) + '</strong></div><div>Date (IST)<br><strong>' +
     html(quotationDate(quote.createdAt)) + '</strong></div></div>' +
     (quote.supplier ? '<p><strong>To:</strong> ' + html(quote.supplier) + '</p>' : '') +
-    '<p class="muted">Please confirm availability, your price and delivery time for the following items.</p>' +
-    '<table><thead><tr><th>Product</th><th>Denomination / option</th><th class="right">Qty</th><th class="right">Face value</th></tr></thead><tbody>' +
+    '<p class="muted">Please confirm availability, the proposed price and delivery time for the following items.</p>' +
+    '<p><strong>Discount on face value: ' + html(quote.discountPercent) + '%</strong></p>' +
+    '<table><thead><tr><th>Product</th><th>Denomination / option</th><th class="right">Qty</th><th class="right">Face value / discount</th><th class="right">Supplier total</th></tr></thead><tbody>' +
     quote.lines.map(line => '<tr><td><strong>' + html(line.productName) + '</strong>' +
       (line.platform ? '<small>' + html(line.platform) + '</small>' : '') +
       '</td><td>' + html(quotationDenomination(line)) + '</td><td class="right">' + html(line.quantity) +
-      '</td><td class="right">' + html(formatFaceValue([line])) + '</td></tr>').join('') +
+      '</td><td class="right">' + html(formatFaceValue([line])) + '<small class="muted">Discount: ' + html(quotationMoney(line.discountMinor, line.denominationCurrency)) + '</small></td><td class="right"><strong>' + html(quotationMoney(line.supplierTotalMinor, line.denominationCurrency)) + '</strong></td></tr>').join('') +
     '</tbody></table><div class="totals"><p>Total quantity: <strong>' + html(quote.totalQuantity) +
-    '</strong></p><p>Total face value: <strong>' + html(quote.faceValue) + '</strong></p></div>' +
+    '</strong></p><p>Total face value: <strong>' + html(quote.faceValue) + '</strong></p><p>Discount (' + html(quote.discountPercent) + '%): <strong>' + html(quote.discountAmount) + '</strong></p><p>Supplier total: <strong>' + html(quote.supplierTotal) + '</strong></p></div>' +
     (quote.note ? '<p class="note"><strong>Note:</strong><br>' + html(quote.note) + '</p>' : '') +
-    '<footer>Request for quotation only. Face value is not the purchase price.</footer></main></body></html>';
+    '<footer>Proposed quotation only, subject to supplier confirmation. Discounts are rounded per line.</footer></main></body></html>';
 }
 
 export function quotationFilename(quote: SupplierQuotation) {

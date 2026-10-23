@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import { formatFaceValue } from "@/lib/face-value";
 import {
   buildSupplierQuotation, quotationCsv, quotationDenomination, quotationFilename,
-  quotationHtml, quotationSelection, quotationText,
+  quotationHtml, quotationMoney, quotationSelection, quotationText,
   type SupplierQuotation, type SupplierQuotationItem,
 } from "@/lib/supplier-quotation";
 
@@ -21,6 +21,7 @@ export default function SupplierQuotationBuilder({ orderNumber, items }: {
   const [selection, setSelection] = useState(() => quotationSelection(items, "remaining"));
   const [supplier, setSupplier] = useState("");
   const [note, setNote] = useState("");
+  const [discount, setDiscount] = useState("0");
   const [preview, setPreview] = useState<SupplierQuotation | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -33,6 +34,13 @@ export default function SupplierQuotationBuilder({ orderNumber, items }: {
     groups.set(key, group);
   }
   const selected = items.filter(item => selection[item.id]?.selected);
+  let estimate: SupplierQuotation | null = null;
+  try {
+    estimate = buildSupplierQuotation(orderNumber, items, selection, supplier, note, new Date(), discount);
+  } catch {
+    // Preview reports invalid selections or discounts; never show partial totals.
+  }
+  const prices = new Map(estimate?.lines.map(line => [line.id, line]) ?? []);
   function invalidate() {
     setPreview(null);
     setError("");
@@ -46,7 +54,7 @@ export default function SupplierQuotationBuilder({ orderNumber, items }: {
     setError("");
     setMessage("");
     try {
-      setPreview(buildSupplierQuotation(orderNumber, items, selection, supplier, note));
+      setPreview(buildSupplierQuotation(orderNumber, items, selection, supplier, note, new Date(), discount));
     } catch (cause) {
       setPreview(null);
       setError(cause instanceof Error ? cause.message : "Unable to create the quotation.");
@@ -118,6 +126,20 @@ export default function SupplierQuotationBuilder({ orderNumber, items }: {
                   onChange={event => { setNote(event.target.value); invalidate(); }} />
               </label>
             </div>
+            <div className="mt-3 rounded-lg border border-blue-200 bg-white p-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="grid w-40 gap-1 text-sm font-bold text-slate-700">Supplier discount (%)
+                  <input type="number" min={0} max={100} step="0.01" inputMode="decimal" className={field}
+                    value={discount} onChange={event => { setDiscount(event.target.value); invalidate(); }} />
+                </label>
+                <p className="max-w-md text-xs text-slate-500">Applied to the face value of all selected denominations. Amounts round to two decimal places per line.</p>
+              </div>
+              <dl aria-label="Quotation totals" className="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-3">
+                <div><dt className="text-xs text-slate-500">Total face value</dt><dd className="mt-1 break-words text-sm font-bold">{estimate?.faceValue ?? "—"}</dd></div>
+                <div><dt className="text-xs text-slate-500">Discount amount</dt><dd className="mt-1 break-words text-sm font-bold text-emerald-700">{estimate?.discountAmount ?? "—"}</dd></div>
+                <div><dt className="text-xs text-slate-500">Supplier total after discount</dt><dd className="mt-1 break-words text-base font-black text-blue-800">{estimate?.supplierTotal ?? "—"}</dd></div>
+              </dl>
+            </div>
             <div className="my-3 flex flex-wrap items-center gap-2">
               <button type="button" className={button} onClick={() => selectGroup("remaining")}>Select remaining</button>
               <button type="button" className={button} onClick={() => selectGroup("all")}>Select all</button>
@@ -132,6 +154,7 @@ export default function SupplierQuotationBuilder({ orderNumber, items }: {
                   </h4>
                   {group.map(item => {
                 const value = selection[item.id] ?? { selected: false, quantity: String(item.quantity) };
+                const price = prices.get(item.id);
                 return (
                   <div key={item.id} className={"grid grid-cols-[minmax(0,1fr)_5.5rem] items-start gap-3 border-b border-slate-200 p-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_6rem_10rem] " + (value.selected ? "bg-blue-50/50" : "")}>
                     <label className="flex min-h-10 min-w-0 cursor-pointer items-start gap-3">
@@ -162,6 +185,7 @@ export default function SupplierQuotationBuilder({ orderNumber, items }: {
                         {value.selected && /^[1-9]\d*$/.test(value.quantity) && Number(value.quantity) <= item.quantity
                           ? formatFaceValue([{ ...item, quantity: Number(value.quantity) }]) : "—"}
                       </strong>
+                      {price && <span className="mt-1 block text-xs text-blue-800">Supplier total: <strong>{quotationMoney(price.supplierTotalMinor, price.denominationCurrency)}</strong></span>}
                     </div>
                   </div>
                 );
@@ -169,14 +193,14 @@ export default function SupplierQuotationBuilder({ orderNumber, items }: {
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-slate-500">The quotation contains selected product details and face values. Your order stays unchanged.</p>
+            <p className="mt-3 text-xs text-slate-500">Quotation prices use your supplier discount. Your customer prices and order stay unchanged.</p>
             {error && <p role="alert" className="mt-3 text-sm font-medium text-red-700">{error}</p>}
             <button type="button" className="mt-3 min-h-11 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"
               onClick={createPreview}>Preview quotation</button>
             {preview && (
               <section aria-label="Quotation preview" className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div><h4 className="font-bold">Ready to share</h4><p className="mt-1 text-sm text-slate-600">{preview.totalQuantity} units · {preview.faceValue}</p></div>
+                  <div><h4 className="font-bold">Ready to share</h4><p className="mt-1 text-sm text-slate-600">{preview.totalQuantity} units · Supplier total: {preview.supplierTotal}</p></div>
                   <div className="flex flex-wrap gap-2">
                     <button type="button" className={button} onClick={copy}>Copy quotation</button>
                     <button type="button" className={button} onClick={downloadCsv}>Download CSV</button>

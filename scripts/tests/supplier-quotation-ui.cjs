@@ -30,9 +30,11 @@ fs.writeFileSync(path.join(out,"entry.js"),"const React=require('react'),{create
   assert.equal(await page.getByRole("checkbox",{checked:true}).count(),13);
   await page.getByLabel("Supplier name (optional)").fill("Supplier A");
   await page.getByLabel("Note to supplier (optional)").fill("Please confirm stock and estimated delivery time.");
+  await page.getByLabel("Supplier discount (%)").fill("5");
   await page.getByRole("button",{name:"Preview quotation"}).click();
   assert((await page.getByLabel("Quotation text").inputValue()).includes("INR 970,000.00"));
   assert((await page.getByLabel("Quotation text").inputValue()).includes("Total quantity: 2315"));
+  assert((await page.getByLabel("Quotation text").inputValue()).includes("Supplier total after discount: INR 921,500.00"));
   await page.screenshot({path:path.join(out,"desktop.png"),fullPage:true});
   await page.getByRole("button",{name:"Clear",exact:true}).click();
   await page.getByRole("button",{name:"Preview quotation"}).click();
@@ -44,6 +46,7 @@ fs.writeFileSync(path.join(out,"entry.js"),"const React=require('react'),{create
   await page.getByRole("button",{name:"Preview quotation"}).click();
   const text=await page.getByLabel("Quotation text").inputValue();
   assert(text.includes("Total quantity: 20")&&text.includes("INR 3,000.00"));
+  assert(text.includes("Discount (5%): INR 150.00")&&text.includes("Supplier total after discount: INR 2,850.00"));
   await page.getByRole("button",{name:"Copy quotation",exact:true}).click();
   assert.equal(await page.evaluate(()=>window.copiedQuotation),text);
   const downloadPromise=page.waitForEvent("download");
@@ -52,16 +55,25 @@ fs.writeFileSync(path.join(out,"entry.js"),"const React=require('react'),{create
   await download.saveAs(path.join(out,"selected.csv"));
   const csv=fs.readFileSync(path.join(out,"selected.csv"),"utf8");
   assert(csv.includes("INR 3,000.00")&&!csv.includes('"4000"'));
+  assert(csv.includes("INR 2,850.00")&&csv.includes("INR 150.00"));
   const popupPromise=context.waitForEvent("page");
   await page.getByRole("button",{name:"Print / Save PDF"}).click();
   const popup=await popupPromise;
   await popup.getByRole("heading",{name:"Supplier quotation request",exact:true}).waitFor();
   assert.equal(await popup.locator("tbody tr").count(),2);
   assert((await popup.locator("body").innerText()).includes("INR 3,000.00"));
+  assert((await popup.locator("body").innerText()).includes("INR 2,850.00"));
   assert.equal(await popup.evaluate(()=>window.opener),null);
   await popup.pdf({path:path.join(out,"selected-quotation.pdf"),format:"A4",printBackground:true});
   await popup.screenshot({path:path.join(out,"print-preview.png"),fullPage:true});
   await popup.close();
+  await page.getByLabel("Supplier discount (%)").fill("10");
+  assert.equal(await page.getByLabel("Quotation preview",{exact:true}).count(),0);
+  assert((await page.getByLabel("Quotation totals",{exact:true}).innerText()).includes("INR 2,700.00"));
+  await page.getByLabel("Supplier discount (%)").fill("101");
+  await page.getByRole("button",{name:"Preview quotation"}).click();
+  await page.getByRole("alert").filter({hasText:"Enter a discount from 0 to 100%"}).waitFor();
+  await page.getByLabel("Supplier discount (%)").fill("5");
   await page.getByRole("spinbutton",{name:"Quantity for Apple iTunes Store Code India 100-10000 Bulk Order 100",exact:true}).fill("0");
   assert.equal(await page.getByLabel("Quotation preview",{exact:true}).count(),0);
   await page.getByRole("button",{name:"Preview quotation"}).click();
@@ -69,6 +81,8 @@ fs.writeFileSync(path.join(out,"entry.js"),"const React=require('react'),{create
   await page.getByRole("button",{name:"Select remaining",exact:true}).click();
   await page.setViewportSize({width:390,height:844});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),"No horizontal overflow at 390px");
+  await page.locator(".overflow-y-auto").scrollIntoViewIfNeeded();
+  await page.locator(".overflow-y-auto").evaluate(async element=>{element.scrollTop=0;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
   await page.screenshot({path:path.join(out,"mobile.png"),fullPage:true});
   await page.getByRole("button",{name:"Preview quotation"}).click();
   await page.getByLabel("Quotation preview",{exact:true}).scrollIntoViewIfNeeded();
@@ -76,6 +90,6 @@ fs.writeFileSync(path.join(out,"entry.js"),"const React=require('react'),{create
   await page.setViewportSize({width:320,height:740});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),"No horizontal overflow at 320px");
   assert.deepEqual(errors,[]);
-  console.log("PASS: real quotation selection, edited quantities, validation, live totals, copied text, CSV download, isolated print/PDF, preview invalidation, and 390/320px mobile layouts.");
+  console.log("PASS: real quotation selection, edited quantities, validation, live totals, copied text, CSV download, isolated print/PDF, preview invalidation, percentage discounts and matching net totals in all exports, and 390/320px mobile layouts.");
  }finally{await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1;});
