@@ -1,3 +1,5 @@
+import SupplierQuotationBuilder from "../../SupplierQuotationBuilder";
+import { supplierQuotationItem } from "@/lib/supplier-quotation";
 import { formatFaceValue } from "@/lib/face-value";
 import OrderRefundPermission from "@/app/admin/refund-requests/OrderRefundPermission";
 import OrderRefundHistory from "@/components/OrderRefundHistory";
@@ -548,7 +550,11 @@ export default async function OrderReceipt({
           )}
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-lg font-black">Purchased products</h2>
+            <SupplierQuotationBuilder key={order.id} orderNumber={order.order_number} items={items.map(item => supplierQuotationItem(
+              item,
+              item.service_delivered_at || (item.fulfillment_mode === "PLAYER_ID_TOPUP" && order.status === "DELIVERED") ? item.quantity : codesByItem.get(item.id)?.length ?? 0,
+              refundedQuantityFor(item.id),
+            ))} />
             <div className="mt-3">
               <table className="block w-full text-left text-sm md:table">
                 <thead className="hidden bg-slate-50 text-xs text-slate-500 md:table-header-group">

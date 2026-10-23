@@ -1,0 +1,81 @@
+const fs=require("node:fs"),path=require("node:path"),http=require("node:http"),assert=require("node:assert/strict"),ts=require("typescript");
+const out=path.resolve("tmp/supplier-quotation-ui");fs.mkdirSync(out,{recursive:true});
+const compile=file=>ts.transpileModule(fs.readFileSync(file,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+fs.writeFileSync(path.join(out,"face-value.js"),compile("lib/face-value.ts"));
+fs.writeFileSync(path.join(out,"supplier-quotation.js"),compile("lib/supplier-quotation.ts"));
+fs.writeFileSync(path.join(out,"builder.js"),compile("app/admin/orders/SupplierQuotationBuilder.tsx"));
+const amounts=[4000,10000,100,150,200,300,500,750,1000,1500,2000,2500,3000],quantities=[15,10,1500,50,200,50,100,50,200,30,50,30,30];
+const items=amounts.map((amount,i)=>({id:"item-"+amount,productName:"Apple iTunes Store Code India 100-10000 Bulk Order",optionName:String(amount),platform:null,quantity:quantities[i],remainingQuantity:quantities[i],denomination:amount,denominationCurrency:"INR"}));
+fs.writeFileSync(path.join(out,"entry.js"),"const React=require('react'),{createRoot}=require('react-dom/client'),Builder=require('./builder').default;createRoot(document.getElementById('root')).render(React.createElement(Builder,{orderNumber:'IP20261023-DEMO',items:"+JSON.stringify(items)+"}));");
+(async()=>{
+ const webpack=require("next/dist/compiled/webpack/webpack").webpack;
+ await new Promise((resolve,reject)=>webpack({mode:"development",devtool:false,entry:path.join(out,"entry.js"),output:{path:out,filename:"bundle.js"},resolve:{alias:{"@/lib/face-value":path.join(out,"face-value.js"),"@/lib/supplier-quotation":path.join(out,"supplier-quotation.js")}}},(e,s)=>e||s.hasErrors()?reject(e??Error(s.toString())):resolve()));
+ const cssDir=path.resolve(".next/static/chunks");
+ const css=fs.readdirSync(cssDir).filter(f=>f.endsWith(".css")).map(f=>fs.readFileSync(path.join(cssDir,f),"utf8")).join("\n");
+ const server=http.createServer((req,res)=>{
+  if(req.url==="/bundle.js"){res.setHeader("Content-Type","text/javascript");res.end(fs.readFileSync(path.join(out,"bundle.js")));return;}
+  res.setHeader("Content-Type","text/html");
+  res.end('<!doctype html><html lang="en" data-store-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body style="margin:0;background:#f4f7fb;font-family:Arial,sans-serif"><header style="padding:18px 24px;background:white;border-bottom:1px solid #dbe3ec;font-weight:bold">InGamePIN <span style="color:#64748b;font-size:12px">Admin · Order details</span></header><main style="max-width:1200px;margin:24px auto;padding:0 12px"><div id="root" class="rounded-2xl border border-slate-200 bg-white p-3 sm:p-6"></div></main><script src="/bundle.js"></script></body></html>');
+ });
+ await new Promise(r=>server.listen(0,"127.0.0.1",r));
+ const {chromium}=require("C:/Users/amans/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
+ const browser=await chromium.launch({headless:true,executablePath:"C:/Program Files/Google/Chrome/Application/chrome.exe"});
+ try{
+  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});
+  await context.addInitScript(()=>Object.defineProperty(navigator,"clipboard",{value:{writeText:async text=>{window.copiedQuotation=text;}}}));
+  const page=await context.newPage(),errors=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("http://127.0.0.1:"+server.address().port);
+  await page.getByRole("button",{name:"Create supplier quotation"}).click();
+  assert.equal(await page.getByRole("checkbox",{checked:true}).count(),13);
+  await page.getByLabel("Supplier name (optional)").fill("Supplier A");
+  await page.getByLabel("Note to supplier (optional)").fill("Please confirm stock and estimated delivery time.");
+  await page.getByRole("button",{name:"Preview quotation"}).click();
+  assert((await page.getByLabel("Quotation text").inputValue()).includes("INR 970,000.00"));
+  assert((await page.getByLabel("Quotation text").inputValue()).includes("Total quantity: 2315"));
+  await page.screenshot({path:path.join(out,"desktop.png"),fullPage:true});
+  await page.getByRole("button",{name:"Clear",exact:true}).click();
+  await page.getByRole("button",{name:"Preview quotation"}).click();
+  await page.getByRole("alert").filter({hasText:"Select at least one denomination."}).waitFor();
+  for(const amount of [100,200]){
+   await page.getByRole("checkbox",{name:"Include Apple iTunes Store Code India 100-10000 Bulk Order "+amount,exact:true}).check();
+   await page.getByRole("spinbutton",{name:"Quantity for Apple iTunes Store Code India 100-10000 Bulk Order "+amount,exact:true}).fill("10");
+  }
+  await page.getByRole("button",{name:"Preview quotation"}).click();
+  const text=await page.getByLabel("Quotation text").inputValue();
+  assert(text.includes("Total quantity: 20")&&text.includes("INR 3,000.00"));
+  await page.getByRole("button",{name:"Copy quotation",exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.copiedQuotation),text);
+  const downloadPromise=page.waitForEvent("download");
+  await page.getByRole("button",{name:"Download CSV"}).click();
+  const download=await downloadPromise;
+  await download.saveAs(path.join(out,"selected.csv"));
+  const csv=fs.readFileSync(path.join(out,"selected.csv"),"utf8");
+  assert(csv.includes("INR 3,000.00")&&!csv.includes('"4000"'));
+  const popupPromise=context.waitForEvent("page");
+  await page.getByRole("button",{name:"Print / Save PDF"}).click();
+  const popup=await popupPromise;
+  await popup.getByRole("heading",{name:"Supplier quotation request",exact:true}).waitFor();
+  assert.equal(await popup.locator("tbody tr").count(),2);
+  assert((await popup.locator("body").innerText()).includes("INR 3,000.00"));
+  assert.equal(await popup.evaluate(()=>window.opener),null);
+  await popup.pdf({path:path.join(out,"selected-quotation.pdf"),format:"A4",printBackground:true});
+  await popup.screenshot({path:path.join(out,"print-preview.png"),fullPage:true});
+  await popup.close();
+  await page.getByRole("spinbutton",{name:"Quantity for Apple iTunes Store Code India 100-10000 Bulk Order 100",exact:true}).fill("0");
+  assert.equal(await page.getByLabel("Quotation preview",{exact:true}).count(),0);
+  await page.getByRole("button",{name:"Preview quotation"}).click();
+  await page.getByRole("alert").filter({hasText:"Enter a whole quantity"}).waitFor();
+  await page.getByRole("button",{name:"Select remaining",exact:true}).click();
+  await page.setViewportSize({width:390,height:844});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),"No horizontal overflow at 390px");
+  await page.screenshot({path:path.join(out,"mobile.png"),fullPage:true});
+  await page.getByRole("button",{name:"Preview quotation"}).click();
+  await page.getByLabel("Quotation preview",{exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(out,"mobile-preview.png"),fullPage:true});
+  await page.setViewportSize({width:320,height:740});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),"No horizontal overflow at 320px");
+  assert.deepEqual(errors,[]);
+  console.log("PASS: real quotation selection, edited quantities, validation, live totals, copied text, CSV download, isolated print/PDF, preview invalidation, and 390/320px mobile layouts.");
+ }finally{await browser.close();await new Promise(r=>server.close(r));}
+})().catch(e=>{console.error(e);process.exitCode=1;});
