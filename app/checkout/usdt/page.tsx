@@ -2,12 +2,16 @@
 
 import { useCheckoutPaymentCurrency } from "@/components/useCheckoutPaymentCurrency";
 import Link from "next/link";
+import PaymentWindowNotice from "@/components/PaymentWindowNotice";
 import { useRouter } from "next/navigation";
+import { checkoutDeadline } from "@/lib/checkout-expiry";
 import UsdtQrCode from "@/components/UsdtQrCode";
 import UsdtComplianceWarning from "@/components/UsdtComplianceWarning";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PendingOrder = {
+  createdAt?: string;
+  expiresAt?: string | null;
   id: string;
   databaseId?: string;
   accessToken?: string;
@@ -90,16 +94,15 @@ export default function DirectUsdtPaymentPage() {
       const result = (await response.json()) as {
         invoice?: Invoice;
         paymentStatus?: string;
+        requiresReview?: boolean;
         error?: string;
       };
       if (!response.ok || !result.invoice) {
         throw new Error(result.error ?? "Unable to check payment.");
       }
       setInvoice(result.invoice);
-      if (
-        result.invoice.status === "PAID" ||
-        result.paymentStatus === "VERIFIED"
-      ) {
+      if (result.requiresReview) { setMessage("Payment received after the payment window. Support will review it. Please do not pay again."); return; }
+      if (result.paymentStatus === "VERIFIED") {
         localStorage.setItem("latestOrder", JSON.stringify(order));
         router.push("/checkout/success");
       }
@@ -154,8 +157,8 @@ export default function DirectUsdtPaymentPage() {
   }
 
   const secondsRemaining = useMemo(
-    () => (invoice ? Math.max(0, invoice.expiresAt - now) : 0),
-    [invoice, now],
+    () => (invoice ? Math.max(0, Math.min(invoice.expiresAt, order?.createdAt ? Math.floor(checkoutDeadline(order.createdAt, order.expiresAt) / 1000) : invoice.expiresAt) - now) : 0),
+    [invoice, now, order],
   );
 
   if (!isLoaded) {
@@ -198,6 +201,7 @@ export default function DirectUsdtPaymentPage() {
           </p>
         </div>
 
+        <PaymentWindowNotice createdAt={order.createdAt} expiresAt={order.expiresAt} />
         <UsdtComplianceWarning />
 
         {!invoice ? (

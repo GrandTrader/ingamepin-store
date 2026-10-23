@@ -1,3 +1,4 @@
+import { runCheckoutSession } from "@/lib/checkout-payment-session";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -16,7 +17,7 @@ function validToken(token: string, storedHash: string) {
   return expected.length === actual.length && timingSafeEqual(actual, expected);
 }
 
-export async function POST(request: NextRequest) {
+async function createSession(request: NextRequest, claim: () => Promise<void>) {
   try {
     const body = (await request.json()) as {
       orderId?: unknown;
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ invoice: existing });
     }
 
+    await claim();
     const invoice = await createUsdtInvoice({
       orderId: order.id,
       network,
@@ -150,4 +152,8 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  return runCheckoutSession(request, "USDT_DIRECT", createSession);
 }

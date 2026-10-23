@@ -76,7 +76,7 @@ test('checkout quotes check history across denominations and exemptions before a
   const optionId = '00000000-0000-4000-8000-000000000100';
   const requested = { productOptionId: optionId, quantity: 1 };
   const user = { id: 'buyer', email: 'buyer@example.com', email_confirmed_at: '2026-01-01', app_metadata: {}, user_metadata: {} };
-  let previous = [], exempt = false, rpcCalls = [], historyFilters = [], recoverFailure = false;
+  let previous = [], exempt = false, rpcCalls = [], historyFilters = [], recoverFailure = false, expired = false;
   const db = {
     async rpc(name, args) { rpcCalls.push({ name, args }); return { data: args.p_action === 'recover' ? null : { total: 10 }, error: null }; },
     from(table) {
@@ -99,6 +99,7 @@ test('checkout quotes check history across denominations and exemptions before a
   const imports = { 'server-only': {}, 'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } } };
   for (const m of fs.readFileSync('lib/order-request-handler.ts', 'utf8').matchAll(/from ["'](@\/[^"']+)["']/g)) imports[m[1]] ??= {};
   Object.assign(imports, {
+    '@/lib/checkout-payment-session': { expireUnpaidCheckouts: async ids => { assert.deepEqual([...ids], ['past']); if (expired) previous = []; return expired ? 1 : 0; } },
     '@/lib/payment-failure-sync': { syncFailedGatewayPayments: async () => { if (recoverFailure) previous = []; return { checked: 0, failed: 0, releasedOrderIds: [] }; } },
     '@/lib/denomination-purchase-limit': limit,
     '@/lib/request-security': { sameOrigin: () => true, requestLimit: async () => null }, '@/lib/trusted-client-ip': { trustedClientIp: () => '192.0.2.1' },
@@ -125,5 +126,7 @@ test('checkout quotes check history across denominations and exemptions before a
   exempt = true; result = await quote(); assert.equal(result.status, 409, 'Value exemption must not bypass denomination history');
   recoverFailure = true; result = await quote(); assert.equal(result.status, 200, 'Verified unpaid failure releases denomination on retry');
   assert(rpcCalls.some(c => c.args.p_action === 'quote'));
+  recoverFailure = false; expired = true; previous = [{ product_option_id: optionId, denomination: 1000, custom_value: null, quantity: 1, product_options: { denomination_currency: 'INR' } }];
+  result = await quote(); assert.equal(result.status, 200, 'Expired unpaid reservation releases denomination before another order is created');
   previous = []; result = await quote([requested, requested]); assert.equal(result.status, 409);
 });

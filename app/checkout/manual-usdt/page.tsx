@@ -2,6 +2,7 @@
 
 import { useCheckoutPaymentCurrency } from "@/components/useCheckoutPaymentCurrency";
 import Link from "next/link";
+import PaymentWindowNotice from "@/components/PaymentWindowNotice";
 import QRCode from "qrcode";
 import { FormEvent, useEffect, useState } from "react";
 
@@ -10,6 +11,8 @@ import { MANUAL_USDT_NETWORKS, type ManualUsdtNetwork } from "@/lib/manual-usdt"
 import { createClient } from "@/lib/supabase/client";
 
 type PendingOrder = {
+  createdAt?: string;
+  expiresAt?: string | null;
   id: string;
   databaseId?: string;
   accessToken?: string;
@@ -20,7 +23,6 @@ type PendingOrder = {
 export default function ManualUsdtPage() {
   const { formatPrice } = useStorePreferences();
   const [order, setOrder] = useState<PendingOrder | null>(null);
-  useCheckoutPaymentCurrency(order?.paymentMethod);
   const [qrCode, setQrCode] = useState("");
   const [transactionHash, setTransactionHash] = useState("");
   const [message, setMessage] = useState("");
@@ -29,10 +31,11 @@ export default function ManualUsdtPage() {
   const [copied, setCopied] = useState(false);
   const [network, setNetwork] = useState<ManualUsdtNetwork>("IOB_UPI");
   const [purchaseUrl, setPurchaseUrl] = useState("/checkout/success");
+  useCheckoutPaymentCurrency(order?.paymentMethod === "manual" ? (network === "IOB_UPI" ? "manual_upi" : "upi") : order?.paymentMethod);
   const selectedNetwork = MANUAL_USDT_NETWORKS.find((item) => item.id === network) ?? MANUAL_USDT_NETWORKS[0];
   const isManualUpi = order?.paymentMethod?.toLowerCase() === "manual_upi";
   const availableMethods = MANUAL_USDT_NETWORKS.filter((item) =>
-    isManualUpi ? item.id === "IOB_UPI" : item.id !== "IOB_UPI",
+    order?.paymentMethod?.toLowerCase() === "manual" || (isManualUpi ? item.id === "IOB_UPI" : item.id !== "IOB_UPI"),
   );
 
   useEffect(() => {
@@ -42,7 +45,7 @@ export default function ManualUsdtPage() {
       if (
         !parsed?.databaseId ||
         !parsed.accessToken ||
-        !["upi", "manual_upi"].includes(parsed.paymentMethod?.toLowerCase() ?? "")
+        !["upi", "manual_upi", "manual"].includes(parsed.paymentMethod?.toLowerCase() ?? "")
       ) {
         setOrder(null);
         return;
@@ -135,10 +138,11 @@ export default function ManualUsdtPage() {
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-5 text-white sm:py-7">
       <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-slate-900 p-5 sm:p-6">
+        <PaymentWindowNotice createdAt={order.createdAt} expiresAt={order.expiresAt} />
         <div className="text-center">
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">{isManualUpi ? "UPI" : "Manual USDT"}</p>
-          <h1 className="mt-1 text-2xl font-black">{isManualUpi ? "Pay using UPI" : "USDT payment"}</h1>
-          <p className="mt-1 text-sm text-slate-400">{isManualUpi ? "Scan the IOB QR and pay the exact amount." : "Send the full amount in USDT using one selected network."}</p>
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-700">{isManualUpi ? "UPI" : order?.paymentMethod === "manual" ? "Manual payment" : "Manual USDT"}</p>
+          <h1 className="mt-1 text-2xl font-black">{isManualUpi ? "Pay using UPI" : order?.paymentMethod === "manual" ? "Choose your payment method" : "USDT payment"}</h1>
+          <p className="mt-1 text-sm text-slate-400">{isManualUpi ? "Scan the IOB QR and pay the exact amount." : order?.paymentMethod === "manual" ? "Choose UPI or a USDT network below, then pay the exact amount shown." : "Send the full amount in USDT using one selected network."}</p>
         </div>
 
         <div className="mt-4 grid items-start gap-4 sm:grid-cols-[320px_minmax(0,1fr)]">

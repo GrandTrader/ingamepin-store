@@ -22,7 +22,8 @@ export default function PayPalReturnPage() {
       if (!response.ok) throw Error(result.error || "Unable to confirm payment yet.");
       if (result.status === "COMPLETED") {
         setPaid(true); setMessage("Your PayPal payment is confirmed. Your order is being prepared.");
-      } else setMessage("PayPal has not confirmed the payment yet. Check again before paying a second time.");
+      } else if (result.status === "REVIEW") { setPaid(true); setMessage("Payment received after the checkout window ended. Support will review this payment. Please do not pay again."); }
+      else setMessage("PayPal has not confirmed the payment yet. Check again before paying a second time.");
     } catch (error) {
       setMessage(error instanceof Error && error.name !== "TimeoutError" ? error.message : "Confirmation is taking longer than expected. Check again before paying a second time.");
     } finally { active.current = false; setBusy(false); }

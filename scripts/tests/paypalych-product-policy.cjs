@@ -7,7 +7,13 @@ function load(file,deps={}) {
   if(n==="server-only")return {};
   if(n==="node:crypto")return crypto;
   if(n==="next/server")return {NextResponse:{json:(body,init={})=>({body,status:init.status??200})}};
-  if(n in deps)return deps[n];throw Error(n);
+  if(n in deps)return deps[n];
+  if(n==="@/lib/order-request-handler")return load("lib/order-request-handler.ts",deps);
+  if(n==="@/lib/paypal-checkout")return {paypalCheckoutAvailable:async()=>false};
+  if(n==="@/lib/checkout-payment-session")return {runCheckoutSession:async(request,method,handler)=>handler(request,async()=>{})};
+  if(n==="@/lib/request-security")return {sameOrigin:()=>true,requestLimit:async()=>null};
+  if(n==="@/lib/trusted-client-ip")return {trustedClientIp:()=>"192.0.2.1"};
+  if(n.startsWith("@/lib/"))return {};throw Error(n);
  }});return exports;
 }
 const policy=load("lib/paypalych-product-policy.ts");
@@ -48,9 +54,9 @@ test("mixed cart hides only Paypalych while preserving other allowed gateways",a
 test("direct invoice creation blocks current names and old order snapshots before requesting a payment link",async()=>{
  const token="a".repeat(48);let supplierCalls=0;
  const deps={"@/lib/pally":{createPallyBill:async()=>{supplierCalls++;throw Error("must not run");},getUsdRubRate:async()=>{supplierCalls++;throw Error("must not run");}},"@/lib/paypalych-product-policy":policy};
- for(const snapshot of ["Razer Gold 100 USD","Generic Code"]){
-  const db=fakeDb({orders:{data:{id:"order",status:"PENDING_PAYMENT",currency:"USD",access_token_hash:crypto.createHash("sha256").update(token).digest("hex")}},payments:{data:{method:"PALLY",status:"PENDING"}},order_items:{data:[{product_id:"p",product_name:snapshot,option_name:"100 USD"}],error:null}});
-  const route=load("app/api/pally/create-invoice/route.ts",{...deps,"@/lib/supabase/admin":{createAdminClient:()=>db},"@/lib/paypalych-product-policy-server":{getPaypalychRestrictions:async()=>new Map([["p",snapshot==="Generic Code"?"Amazon":null]])}});
+ for(const hasLink of [false,true])for(const snapshot of ["Razer Gold 100 USD","Generic Code"]){
+  const db=fakeDb({orders:{data:{id:"order",status:"PENDING_PAYMENT",currency:"USD",access_token_hash:crypto.createHash("sha256").update(token).digest("hex")}},payments:{data:{method:"PALLY",status:"PENDING",gateway_order_id:hasLink?"bill":null}},order_items:{data:[{product_id:"p",product_name:snapshot,option_name:"100 USD"}],error:null}});
+  const route=load("app/api/pally/create-invoice/route.ts",{...deps,"@/lib/checkout-payment-session":{runCheckoutSession:async(request,method,handler)=>handler(request,async()=>{},hasLink?"https://gateway.example/saved":undefined)},"@/lib/supabase/admin":{createAdminClient:()=>db},"@/lib/paypalych-product-policy-server":{getPaypalychRestrictions:async()=>new Map([["p",snapshot==="Generic Code"?"Amazon":null]])}});
   const result=await route.POST({json:async()=>({orderId:"order",accessToken:token})});
   assert.equal(result.status,400);assert.match(result.body.error,/Paypalych is unavailable/);
  }

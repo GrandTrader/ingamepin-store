@@ -1,5 +1,6 @@
 "use client";
 
+import OrderPaymentActions from "@/components/OrderPaymentActions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DeliveryReceiptLink from "@/components/DeliveryReceiptLink";
@@ -30,6 +31,10 @@ type LookupResult = {
     total: number | string;
     currency: string;
     orderedAt: string;
+    expiresAt?: string | null;
+    expiredAt?: string | null;
+    paymentStatus?: string;
+    paymentMethod?: string;
     paidAt: string | null;
     deliveredAt: string | null;
   };
@@ -169,7 +174,10 @@ export default function OrderDetails({ orderNumber, returnPage }: { orderNumber:
               />
             </div>
 
-            {!delivered && completedItemCount === 0 && (
+            <OrderPaymentActions orderNumber={order.orderNumber} status={order.status} paymentStatus={order.paymentStatus} paymentMethod={order.paymentMethod}
+              createdAt={order.orderedAt} expiresAt={order.expiresAt} expiredAt={order.expiredAt} total={Number(order.total)} currency={order.currency} />
+
+            {!delivered && order.status !== "CANCELLED" && completedItemCount === 0 && (
               <p className="mt-6 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm leading-6 text-amber-200">
                 Your order is not completed yet. Activation codes will appear here after successful payment verification and manual delivery.
               </p>

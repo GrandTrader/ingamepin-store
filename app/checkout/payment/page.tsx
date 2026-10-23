@@ -2,10 +2,13 @@
 
 import { useCheckoutPaymentCurrency } from "@/components/useCheckoutPaymentCurrency";
 import Link from "next/link";
+import PaymentWindowNotice from "@/components/PaymentWindowNotice";
 import { useEffect, useState } from "react";
 import { useStorePreferences } from "@/components/StorePreferences";
 
 type PendingOrder = {
+  createdAt?: string;
+  expiresAt?: string | null;
   id: string;
   databaseId?: string;
   accessToken?: string;
@@ -168,6 +171,7 @@ export default function PaymentPage() {
                 ? "FreeKassa"
                 : "Binance Pay"}
         </p>
+        <PaymentWindowNotice createdAt={order.createdAt} expiresAt={order.expiresAt} />
         <h1 className="mt-3 text-3xl font-black">
           Pay securely with{" "}
           {order.paymentMethod?.toLowerCase() === "paypal" ? "PayPal" : order.paymentMethod?.toLowerCase() === "nowpayments"

@@ -72,7 +72,9 @@ export async function POST(
           currency,
           created_at,
           paid_at,
-          delivered_at
+          delivered_at,
+          payment_expires_at,
+          payment_expired_at
         `,
       )
       .eq("order_number", orderNumber)
@@ -87,6 +89,9 @@ export async function POST(
     if (!order || !ownsPurchase(identity, order)) {
       return lookupDenied();
     }
+
+    const paymentResult = await admin.from("payments").select("method,status").eq("order_id", order.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (paymentResult.error) throw paymentResult.error;
 
     const itemResult = await admin
       .from("order_items")
@@ -187,6 +192,10 @@ export async function POST(
           total: order.total,
           currency: order.currency,
           orderedAt: order.created_at,
+          expiresAt: order.payment_expires_at,
+          expiredAt: order.payment_expired_at,
+          paymentStatus: paymentResult.data?.status,
+          paymentMethod: paymentResult.data?.method,
           paidAt: order.paid_at,
           deliveredAt: order.delivered_at,
         },

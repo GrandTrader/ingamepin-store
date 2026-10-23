@@ -1,3 +1,4 @@
+import { expireUnpaidCheckouts } from "@/lib/checkout-payment-session";
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { syncFailedGatewayPayments } from "@/lib/payment-failure-sync";
@@ -14,8 +15,9 @@ export async function GET(request: NextRequest) {
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
+    const expired = await expireUnpaidCheckouts();
     const result = await syncFailedGatewayPayments();
-    return NextResponse.json({ checked: result.checked, released: result.releasedOrderIds.length, failed: result.failed },
+    return NextResponse.json({ expired, checked: result.checked, released: result.releasedOrderIds.length, failed: result.failed },
       { status: result.failed ? 503 : 200, headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Payment status check unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });

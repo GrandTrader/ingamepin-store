@@ -247,6 +247,8 @@ export async function POST(request: NextRequest) {
       return plainText(completion.error.message, 400);
     }
 
+    if (completion.data?.requiresReview) return plainText("YES");
+
     await prepareOrderForManualFulfillment(payment.order_id);
     await sendPaymentEmails(payment.order_id);
     await notifyPaidOrderInTelegram(payment.order_id);

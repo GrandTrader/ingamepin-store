@@ -109,7 +109,9 @@ export async function POST(request: NextRequest) {
       const invoice = String(body.invoice_id ?? ""), providerPayment = String(body.payment_id ?? "");
       if (/^\d+$/.test(invoice) && /^\d+$/.test(providerPayment) && /^[a-f0-9-]{36}$/i.test(String(body.order_id ?? ""))) {
         // Save the authenticated reference so polling can recover a lost notification.
-        const saved = await createAdminClient().from("payments").update({ gateway_payment_id: providerPayment })
+        const saved = await createAdminClient().from("payments").update({ gateway_payment_id: providerPayment,
+          ...(["confirming", "confirmed", "sending", "partially_paid"].includes(String(body.payment_status).toLowerCase())
+            ? { status: "SUBMITTED", submitted_at: new Date().toISOString() } : {}) })
           .eq("order_id", body.order_id).eq("method", "NOWPAYMENTS").eq("gateway_order_id", invoice).eq("status", "PENDING");
         if (saved.error) throw Error("Unable to save payment reference");
         if (["failed", "expired"].includes(String(body.payment_status).toLowerCase())) {
@@ -155,6 +157,8 @@ export async function POST(request: NextRequest) {
     if (completion.error) {
       return NextResponse.json({ error: completion.error.message }, { status: 400 });
     }
+
+    if (completion.data?.requiresReview) return NextResponse.json({ received: true, requiresReview: true });
 
     await prepareOrderForManualFulfillment(payment.order_id);
     await sendPaymentEmails(payment.order_id);

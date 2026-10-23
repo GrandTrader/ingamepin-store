@@ -25,7 +25,7 @@ function fixture() {
     if(path.endsWith('/capture')){captures++;order.status='COMPLETED';order.purchase_units[0].payments={captures:[{id:captureId,status:'COMPLETED',final_capture:true,amount:{currency_code:'USD',value:'12.34'}}]};}
     return order;
   };
-  const service=load('lib/paypal-checkout.ts',{'server-only':{},'node:crypto':crypto,'@/lib/supabase/admin':{createAdminClient:()=>admin},'@/lib/paypal':{getPayPalConfiguration:()=>({environment:env.PAYPAL_ENVIRONMENT}),paypalRequest:request}},{process:{env}});
+  const service=load('lib/paypal-checkout.ts',{'@/lib/checkout-payment-session':{assertCheckoutOpen:async()=>{}},'server-only':{},'node:crypto':crypto,'@/lib/supabase/admin':{createAdminClient:()=>admin},'@/lib/paypal':{getPayPalConfiguration:()=>({environment:env.PAYPAL_ENVIRONMENT}),paypalRequest:request}},{process:{env}});
   return {env,checkout,order,calls,service,counts:()=>({captures,completed})};
 }
 test('customer checkout fails closed for Sandbox, incomplete setup and disabled activation',async()=>{

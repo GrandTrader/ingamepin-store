@@ -1,3 +1,4 @@
+import { assertCheckoutOpen } from "@/lib/checkout-payment-session";
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -83,6 +84,7 @@ export async function authorizePayPalOrder(orderId: unknown, accessToken: unknow
 }
 
 export async function createPayPalCheckout(orderId: string, origin: string) {
+  await assertCheckoutOpen(orderId);
   if (!(await paypalCheckoutAvailable())) throw Error("PayPal is currently unavailable.");
   // Real checkout requires HTTPS. Localhost remains an isolated Sandbox test.
   const url = new URL(origin);
@@ -146,5 +148,6 @@ export async function confirmPayPalCheckout(orderId: string, expectedPayPalId?: 
     p_merchant_id: unit.payee!.merchant_id, p_amount: paypalMoney(capture.amount!.value), p_currency: "USD",
   });
   if (completed.error) throw Error("Payment confirmation is being retried. Do not pay again.");
+  if (completed.data?.requiresReview) return { status: "REVIEW" as const, orderId };
   return { status: "COMPLETED" as const, orderId, alreadyCompleted: completed.data?.alreadyCompleted === true };
 }

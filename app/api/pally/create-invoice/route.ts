@@ -1,3 +1,4 @@
+import { runCheckoutSession } from "@/lib/checkout-payment-session";
 import { getPaypalychRestrictions } from "@/lib/paypalych-product-policy-server";
 import { PAYPALYCH_BLOCK_MESSAGE, paypalychBlockedBrand } from "@/lib/paypalych-product-policy";
 import { createHash, timingSafeEqual } from "node:crypto";
@@ -14,7 +15,7 @@ function validToken(token: string, storedHash: string) {
   return expected.length === actual.length && timingSafeEqual(actual, expected);
 }
 
-export async function POST(request: NextRequest) {
+async function createSession(request: NextRequest, claim: () => Promise<void>, existingUrl?: string) {
   try {
     const body = (await request.json()) as {
       orderId?: unknown;
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (payment.gateway_order_id) {
+    if (payment.gateway_order_id && !existingUrl) {
       return NextResponse.json(
         { error: "A Pally payment link already exists for this order." },
         { status: 409 },
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
       paypalychBlockedBrand(item.product_name, item.option_name))) {
       return NextResponse.json({ error: PAYPALYCH_BLOCK_MESSAGE }, { status: 400 });
     }
+    if (existingUrl) return NextResponse.json({ checkoutUrl: existingUrl }, { headers: { "Cache-Control": "no-store" } });
     const productResult = await admin
       .from("products")
       .select("id, category_id")
@@ -186,6 +188,7 @@ export async function POST(request: NextRequest) {
       0,
     );
 
+    await claim();
     const bill = await createPallyBill({
       amount: rubAmount,
       currency: "RUB",
@@ -219,4 +222,8 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  return runCheckoutSession(request, "PALLY", createSession);
 }

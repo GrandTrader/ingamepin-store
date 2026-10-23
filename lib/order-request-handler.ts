@@ -1,3 +1,4 @@
+import { expireUnpaidCheckouts } from "@/lib/checkout-payment-session";
 import { supplierRangeLimits } from "@/lib/definiteplay-range-stock";
 import { extraCustomerPercent } from "@/lib/product-promotions";
 import "server-only";
@@ -384,6 +385,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
         }
         if (onePerDenomination && orderIds.size) {
           try {
+            await expireUnpaidCheckouts([...orderIds]);
             await syncFailedGatewayPayments({ orderIds: [...orderIds], limit: 3 });
             // Re-read after concurrent webhook/checkout recovery. The database
             // constraint still checks active orders when the new order commits.
@@ -697,7 +699,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
           .eq("id", orderResult.data.id),
         admin
           .from("payments")
-          .update({ amount: commission.total })
+          .update({ amount: commission.total, checkout_variant: requestedPaymentMethod })
           .eq("order_id", orderResult.data.id),
       ]);
 

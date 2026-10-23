@@ -1,3 +1,4 @@
+import { runCheckoutSession } from "@/lib/checkout-payment-session";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -15,7 +16,7 @@ function validToken(token: string, storedHash: string) {
   return expected.length === actual.length && timingSafeEqual(actual, expected);
 }
 
-export async function POST(request: NextRequest) {
+async function createSession(request: NextRequest, claim: () => Promise<void>) {
   try {
     const body = (await request.json()) as {
       orderId?: unknown;
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     const orderResult = await admin
       .from("orders")
-      .select("id, order_number, customer_email, total, status, access_token_hash")
+      .select("id, order_number, customer_email, total, status, access_token_hash, created_at, payment_expires_at")
       .eq("id", orderId)
       .maybeSingle();
     const order = orderResult.data;
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin).replace(/\/$/, "");
     const webhookUrl = process.env.BINANCE_PAY_WEBHOOK_URL;
     const merchantTradeNo = order.id.replaceAll("-", "");
+    await claim();
     const binanceOrder = await callBinancePay<BinanceCreateOrderResult>(
       "/binancepay/openapi/v3/order",
       {
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
         buyer: { buyerEmail: order.customer_email },
         returnUrl: `${siteUrl}/checkout/success`,
         cancelUrl: `${siteUrl}/checkout/payment`,
-        orderExpireTime: Date.now() + 30 * 60 * 1000,
+        orderExpireTime: Date.parse(order.payment_expires_at || order.created_at) + (order.payment_expires_at ? 0 : 15 * 60 * 1000),
         passThroughInfo: order.id,
         ...(webhookUrl && !/localhost|your-domain|example/i.test(webhookUrl)
           ? { webhookUrl }
@@ -114,4 +116,8 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  return runCheckoutSession(request, "BINANCE_PAY", createSession);
 }

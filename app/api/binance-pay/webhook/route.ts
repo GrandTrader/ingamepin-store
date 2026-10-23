@@ -352,6 +352,8 @@ export async function POST(request: NextRequest) {
       return failure(completionResult.error.message, 500);
     }
 
+    if (completionResult.data?.requiresReview) return NextResponse.json({ returnCode: "SUCCESS", returnMessage: null });
+
     await prepareOrderForManualFulfillment(
       paymentResult.data.order_id,
     );

@@ -1,3 +1,4 @@
+import { runCheckoutSession } from "@/lib/checkout-payment-session";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -12,7 +13,7 @@ function validToken(token: string, storedHash: string) {
   return expected.length === actual.length && timingSafeEqual(actual, expected);
 }
 
-export async function POST(request: NextRequest) {
+async function createSession(request: NextRequest, claim: () => Promise<void>) {
   try {
     const body = (await request.json()) as {
       orderId?: unknown;
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
     const siteUrl = (
       process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin
     ).replace(/\/$/, "");
+    await claim();
     const invoice = await createNowPaymentsInvoice({
       price_amount: Number(order.total),
       order_id: order.id,
@@ -113,4 +115,8 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  return runCheckoutSession(request, "NOWPAYMENTS", createSession);
 }

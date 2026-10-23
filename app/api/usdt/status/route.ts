@@ -123,6 +123,8 @@ export async function GET(request: NextRequest) {
         p_transaction_id: invoice.transactionHash,
       });
 
+      if (completion.data?.requiresReview) return NextResponse.json({ invoice, orderStatus: "PAYMENT_REVIEW", paymentStatus: "SUBMITTED", requiresReview: true, transactionId: invoice.transactionHash });
+
       if (completion.error) {
         const refreshedPayment = await admin
           .from("payments")

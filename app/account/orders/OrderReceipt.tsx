@@ -1,3 +1,4 @@
+import OrderPaymentActions from "@/components/OrderPaymentActions";
 import { formatFaceValue } from "@/lib/face-value";
 import RefreshOrderButton from "../portal/orders/RefreshOrderButton";
 import RefundRequestForm from "./RefundRequestForm";
@@ -75,7 +76,7 @@ export default async function CustomerOrderReceiptPage({
     admin
       .from("orders")
       .select(
-        "id, order_number, sales_channel, customer_name, customer_email, customer_phone, currency, subtotal, discount, total, status, customer_note, created_at, paid_at, delivered_at",
+        "id, order_number, sales_channel, customer_name, customer_email, customer_phone, currency, subtotal, discount, total, status, customer_note, created_at, paid_at, delivered_at, payment_expires_at, payment_expired_at",
       )
       .eq("id", id)
       .eq("customer_email", customerEmail)
@@ -216,16 +217,13 @@ export default async function CustomerOrderReceiptPage({
         </dl>
       </div>
 
+      <OrderPaymentActions orderNumber={order.order_number} status={order.status} paymentStatus={payment?.status} paymentMethod={payment?.method}
+        createdAt={order.created_at} expiresAt={order.payment_expires_at} expiredAt={order.payment_expired_at} total={Number(order.total)} currency={order.currency} />
+
       {(refundHistory.requests.length > 0 || canRequestRefund) && <section className="mt-5 space-y-4 rounded-xl border bg-white p-4 sm:p-6">
         <h2 className="text-lg font-bold">Order refund</h2>
         {refundHistory.held && !refundHistory.requests.some(r => r.status === "COMPLETED") && <p className="text-sm text-amber-800">Delivery is paused while your refund request is being handled.</p>}
         <OrderRefundHistory requests={refundHistory.requests} events={refundHistory.events} />
-        {order.status === "CANCELLED" && payment?.status === "FAILED" && (
-          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-            <p>The payment gateway confirmed this payment was unsuccessful. This order no longer uses your purchase limit.</p>
-            <Link href="/checkout" className="mt-2 inline-flex font-bold underline">Return to checkout</Link>
-          </div>
-        )}
         {canRequestRefund && (refundSettings?.error ? <p className="text-sm text-red-700">Refund methods could not be loaded. Please reload this page.</p> : <RefundRequestForm orderId={order.id} amount={Number(order.total)} currency={order.currency} originalMethod={payment?.method ?? ""} methods={availableRefundMethods} />)}
       </section>}
 

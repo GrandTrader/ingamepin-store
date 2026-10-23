@@ -32,7 +32,7 @@ test('order lookup ignores submitted email and requires verified ownership befor
  const query={select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'test-order',customer_email:'Owner_Test@Example.com',order_number:'IGP-TEST-0001'}})};
  const {POST}=load('app/api/orders/lookup/route.ts',{
   'next/server':{NextResponse:{json:(body,options)=>({body,status:options?.status??200})}},
-  '@/lib/supabase/admin':{createAdminClient:()=>({from:(table)=>table==='orders'?query:{select(){return this},eq(){return this},order:async()=>({data:[]})}})},
+  '@/lib/supabase/admin':{createAdminClient:()=>({from:(table)=>table==='orders'?query:table==='payments'?{select(){return this},eq(){return this},order(){return this},limit(){return this},maybeSingle:async()=>({data:{method:'PALLY',status:'PENDING'}})}:{select(){return this},eq(){return this},order:async()=>({data:[]})}})},
   '@/lib/delivered-codes':{getAllDeliveredCodes:async()=>{codeReads++;return []}},
   '@/lib/delivery-receipts':{getAuthorizedDeliveryReceipts:async()=>new Map()},
   '@/lib/purchase-access':{purchaseIdentity:async()=>identity,ownsPurchase:(identity,order)=>Boolean(identity&&identity.email===order.customer_email.toLowerCase())},
