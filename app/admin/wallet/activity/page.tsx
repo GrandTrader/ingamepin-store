@@ -136,6 +136,7 @@ export default async function WalletActivityPage({ searchParams }: { searchParam
           {selectedCustomer && <div className="rounded-xl border border-slate-200 bg-white px-4 py-3"><p className="text-xs text-slate-500">Current wallet balance</p><p className="mt-1 text-xl font-black">{money(selectedWallet?.balance ?? 0, selectedWallet?.currency ?? "USD")}</p></div>}
         </header>
         <nav aria-label="Wallet views" className="mt-4 flex flex-wrap gap-2">
+          <Link href="/admin/wallet/withdrawals" prefetch={false} className={buttonClass}>Crypto withdrawals</Link>
           {filters.customer && <Link href={activityUrl({ ...filters, customer: "", page: 1 })} prefetch={false} className={buttonClass}>All customers</Link>}
           <Link href="/admin/wallet" prefetch={false} className={buttonClass}>Top-up requests</Link>
         </nav>

@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "../../AdminSidebar";
 import CustomerDiscountManager from "./CustomerDiscountManager";
+import WithdrawalAccess from "./WithdrawalAccess";
 import { setCustomerWalletAccess } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -116,6 +117,8 @@ export default async function AdminCustomerPage({ params, searchParams }: PagePr
               </form>
             </div>
           </section>
+
+          <WithdrawalAccess customerId={id} />
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-xl font-black">Profile information</h2>

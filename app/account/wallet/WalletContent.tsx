@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getWalletPaymentGateways } from "@/lib/wallet-payment-gateways";
 import WalletTopupForm from "./WalletTopupForm";
+import WithdrawalSection from "./WithdrawalSection";
 import { expireStaleWalletTopups } from "@/lib/wallet-topup-expiry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { claimWalletRefund } from "./actions";
@@ -99,7 +100,7 @@ export default async function CustomerWalletPage({
 
         <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <section className="flex items-center justify-between gap-3 border-b border-slate-200 bg-cyan-50 px-4 py-3">
-            <p className="text-xs font-semibold text-slate-600">Wallet balance</p>
+            <p className="text-xs font-semibold text-slate-600">Available wallet balance</p>
             <p className="text-2xl font-bold text-cyan-700">{formatMoney(wallet.balance)}</p>
           </section>
           <section className="p-4">
@@ -129,6 +130,8 @@ export default async function CustomerWalletPage({
             )}
           </section>
         </div>
+
+        <WithdrawalSection userId={user.id} walletEnabled={walletEnabled} balance={Number(wallet.balance)} />
 
         <details className="mt-3 rounded-xl border border-slate-200 bg-white p-3" open={refunds.some(refund => refund.status === "PENDING_CLAIM")}>
           <summary className="cursor-pointer text-sm font-bold">Approved refunds</summary>

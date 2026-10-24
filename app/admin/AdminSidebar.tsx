@@ -38,6 +38,7 @@ const links = [
   { label: "Payment Settings", href: "/admin/payment-settings", icon: "PS" },
   { label: "Homepage Slider", href: "/admin/homepage-slider", icon: "HS" },
   { label: "Wallet", href: "/admin/wallet", icon: "WA" },
+  { label: "Withdrawals", href: "/admin/wallet/withdrawals", icon: "WD" },
   { label: "Customer Discounts", href: "/admin/customer-discounts", icon: "CD" },
   { label: "Affiliates", href: "/admin/affiliates", icon: "AF" },
   { label: "Affiliate Applications", href: "/admin/affiliates/promoters", icon: "AA" },
@@ -100,7 +101,8 @@ const menuGroups = [
     "icon": "WA",
     "paths": [
       "/admin/payment-settings",
-      "/admin/wallet"
+      "/admin/wallet",
+      "/admin/wallet/withdrawals"
     ]
   },
   {
