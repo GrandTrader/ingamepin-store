@@ -26,6 +26,7 @@ jobs:
       - run: npm run test:business-discounts
       - run: npm run test:checkout-retry
       - run: npm run test:payment-failures
+      - run: npm run test:restricted-accounts
       - run: npm run test:purchase-restrictions
       - run: npm run test:fkwallet
       - run: npm run test:digiseller-fkwallet

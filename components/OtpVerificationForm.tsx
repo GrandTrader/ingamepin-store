@@ -18,7 +18,7 @@ import RegistrationTurnstile from "@/components/RegistrationTurnstile";
 
 const OTP_LENGTH = 6;
 
-export default function OtpVerificationForm() {
+export default function OtpVerificationForm({ returnToCheckout = false }: { returnToCheckout?: boolean }) {
   const [digits, setDigits] = useState<string[]>(
     Array.from({ length: OTP_LENGTH }, () => ""),
   );
@@ -88,6 +88,7 @@ export default function OtpVerificationForm() {
         className="mt-7"
         onSubmit={validateSubmission}
       >
+        <input type="hidden" name="next" value={returnToCheckout ? "/checkout" : ""} />
         <input type="hidden" name="otp" value={digits.join("")} />
         <div className="grid grid-cols-6 gap-2 sm:gap-3">
           {digits.map((digit, index) => (
@@ -120,6 +121,7 @@ export default function OtpVerificationForm() {
         className="mt-4"
         onSubmit={() => setResendSeconds(60)}
       >
+        <input type="hidden" name="next" value={returnToCheckout ? "/checkout" : ""} />
         {resendSeconds === 0 && (
           <RegistrationTurnstile message="Complete the security check to request another code." />
         )}

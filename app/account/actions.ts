@@ -23,15 +23,16 @@ function accountRedirect(
   kind: "error" | "success",
   message: string,
 ): never {
-  redirect(`${path}?${kind}=${encodeURIComponent(message)}`);
+  redirect(`${path}${path.includes("?") ? "&" : "?"}${kind}=${encodeURIComponent(message)}`);
 }
 
 function verificationRedirect(
   kind: "error" | "success",
   message: string,
+  checkout = false,
 ): never {
   redirect(
-    `/account/register?verify=1&${kind}=${encodeURIComponent(message)}`,
+    `/account/register?verify=1${checkout ? "&next=/checkout" : ""}&${kind}=${encodeURIComponent(message)}`,
   );
 }
 
@@ -60,7 +61,8 @@ async function clearPendingSignupEmail() {
 
 export async function customerLogin(formData: FormData) {
   const business = formData.get("login_area") === "business";
-  const loginPath = business ? "/business/login" : "/account";
+  const checkout = !business && formData.get("next") === "/checkout";
+  const loginPath = business ? "/business/login" : checkout ? "/account?next=/checkout" : "/account";
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const captchaToken = String(formData.get("captcha_token") ?? "").trim();
@@ -92,7 +94,7 @@ export async function customerLogin(formData: FormData) {
     );
   }
 
-  redirect(business ? "/business/login" : "/account/dashboard");
+  redirect(business ? "/business/login" : checkout ? "/checkout" : "/account/dashboard");
 }
 
 export async function recordCustomerPasskeyLogin() {
@@ -106,6 +108,9 @@ export async function recordCustomerPasskeyLogin() {
 }
 
 export async function customerRegister(formData: FormData) {
+  const checkout = formData.get("next") === "/checkout";
+  const registerPath = checkout ? "/account/register?next=/checkout" : "/account/register";
+  const verifyRedirect = (kind: "error" | "success", message: string): never => verificationRedirect(kind, message, checkout);
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const countryCode = String(formData.get("country_code") ?? "").trim();
@@ -117,27 +122,25 @@ export async function customerRegister(formData: FormData) {
   const captchaToken = String(formData.get("captcha_token") ?? "").trim();
 
   if (!captchaToken) {
-    accountRedirect(
-      "/account/register",
+    accountRedirect(registerPath,
       "error",
       "Complete the security check before creating your account.",
     );
   }
 
   if (fullName.length < 2 || fullName.length > 100) {
-    accountRedirect("/account/register", "error", "Enter your full name.");
+    accountRedirect(registerPath, "error", "Enter your full name.");
   }
 
   if (!email || !isStrongPassword(password)) {
-    accountRedirect(
-      "/account/register",
+    accountRedirect(registerPath,
       "error",
       PASSWORD_RULES,
     );
   }
 
   if (password !== confirmPassword) {
-    accountRedirect("/account/register", "error", "Passwords do not match.");
+    accountRedirect(registerPath, "error", "Passwords do not match.");
   }
 
   const validCountryCode = countryCallingCodes.some(
@@ -148,8 +151,7 @@ export async function customerRegister(formData: FormData) {
     localPhone &&
     (!validCountryCode || !/^[0-9 ()-]{6,18}$/.test(localPhone))
   ) {
-    accountRedirect(
-      "/account/register",
+    accountRedirect(registerPath,
       "error",
       "Select a country and enter a valid mobile number.",
     );
@@ -161,7 +163,7 @@ export async function customerRegister(formData: FormData) {
     password,
     options: {
       captchaToken,
-      emailRedirectTo: "https://www.ingamepin.com/account/callback",
+      emailRedirectTo: `https://www.ingamepin.com/account/callback${checkout ? "?next=/checkout" : ""}`,
       data: {
         full_name: fullName,
         phone,
@@ -175,7 +177,7 @@ export async function customerRegister(formData: FormData) {
 
   if (result.error?.code === "over_email_send_rate_limit") {
     await savePendingSignupEmail(email);
-    verificationRedirect(
+    verifyRedirect(
       "error",
       "Please wait a minute before requesting another verification email.",
     );
@@ -189,15 +191,14 @@ export async function customerRegister(formData: FormData) {
 
   if (isExistingAccount) {
     accountRedirect(
-      "/account",
+      checkout ? "/account?next=/checkout" : "/account",
       "error",
       "An account already exists with this email. Sign in or reset your password.",
     );
   }
 
   if (result.error) {
-    accountRedirect(
-      "/account/register",
+    accountRedirect(registerPath,
       "error",
       getAuthErrorMessage(result.error, "register"),
     );
@@ -228,26 +229,28 @@ export async function customerRegister(formData: FormData) {
   }
 
   await savePendingSignupEmail(email);
-  verificationRedirect(
+  verifyRedirect(
     "success",
     "A six-digit verification code has been sent to your email.",
   );
 }
 
 export async function customerVerifySignupOtp(formData: FormData) {
+  const checkout = formData.get("next") === "/checkout";
+  const registerPath = checkout ? "/account/register?next=/checkout" : "/account/register";
+  const verifyRedirect = (kind: "error" | "success", message: string): never => verificationRedirect(kind, message, checkout);
   const token = String(formData.get("otp") ?? "").replace(/\D/g, "");
   const email = await getPendingSignupEmail();
 
   if (!email) {
-    accountRedirect(
-      "/account/register",
+    accountRedirect(registerPath,
       "error",
       "Your verification session expired. Please register again.",
     );
   }
 
   if (!/^\d{6}$/.test(token)) {
-    verificationRedirect("error", "Enter the complete six-digit code.");
+    verifyRedirect("error", "Enter the complete six-digit code.");
   }
 
   const supabase = await createClient();
@@ -258,7 +261,7 @@ export async function customerVerifySignupOtp(formData: FormData) {
   });
 
   if (result.error) {
-    verificationRedirect(
+    verifyRedirect(
       "error",
       getAuthErrorMessage(result.error, "verify-signup"),
     );
@@ -274,23 +277,25 @@ export async function customerVerifySignupOtp(formData: FormData) {
     );
   }
 
-  redirect("/account/dashboard");
+  redirect(checkout ? "/checkout" : "/account/dashboard");
 }
 
 export async function resendSignupOtp(formData: FormData) {
+  const checkout = formData.get("next") === "/checkout";
+  const registerPath = checkout ? "/account/register?next=/checkout" : "/account/register";
+  const verifyRedirect = (kind: "error" | "success", message: string): never => verificationRedirect(kind, message, checkout);
   const email = await getPendingSignupEmail();
   const captchaToken = String(formData.get("captcha_token") ?? "").trim();
 
   if (!email) {
-    accountRedirect(
-      "/account/register",
+    accountRedirect(registerPath,
       "error",
       "Your verification session expired. Please register again.",
     );
   }
 
   if (!captchaToken) {
-    verificationRedirect(
+    verifyRedirect(
       "error",
       "Complete the security check before requesting another code.",
     );
@@ -302,19 +307,19 @@ export async function resendSignupOtp(formData: FormData) {
     email,
     options: {
       captchaToken,
-      emailRedirectTo: "https://www.ingamepin.com/account/callback",
+      emailRedirectTo: `https://www.ingamepin.com/account/callback${checkout ? "?next=/checkout" : ""}`,
     },
   });
 
   if (result.error) {
-    verificationRedirect(
+    verifyRedirect(
       "error",
       getAuthErrorMessage(result.error, "resend-signup"),
     );
   }
 
   await savePendingSignupEmail(email);
-  verificationRedirect(
+  verifyRedirect(
     "success",
     "A new six-digit verification code has been sent.",
   );

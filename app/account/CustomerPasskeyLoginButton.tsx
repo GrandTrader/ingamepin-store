@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { resetRegistrationTurnstile } from "@/components/RegistrationTurnstile";
 import { recordCustomerPasskeyLogin } from "./actions";
 
-export default function CustomerPasskeyLoginButton() {
+export default function CustomerPasskeyLoginButton({ returnToCheckout = false }: { returnToCheckout?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -40,7 +40,7 @@ export default function CustomerPasskeyLoginButton() {
       }
 
       await recordCustomerPasskeyLogin();
-      router.replace("/account/dashboard");
+      router.replace(returnToCheckout ? "/checkout" : "/account/dashboard");
       router.refresh();
     } catch {
       resetRegistrationTurnstile();

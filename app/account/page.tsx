@@ -10,15 +10,16 @@ import { customerLogin } from "./actions";
 import CustomerPasskeyLoginButton from "./CustomerPasskeyLoginButton";
 
 type AccountPageProps = {
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; next?: string }>;
 };
 
 export default async function AccountPage({ searchParams }: AccountPageProps) {
-  const { error, success } = await searchParams;
+  const { error, success, next } = await searchParams;
+  const returnToCheckout = next === "/checkout";
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (user) redirect("/account/dashboard");
+  if (user) redirect(returnToCheckout && user.email_confirmed_at ? "/checkout" : "/account/dashboard");
 
   return (
     <div className="bg-slate-100 px-4 py-6 text-slate-950 sm:py-10">
@@ -30,6 +31,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           {success && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p>}
 
           <form action={customerLogin} className="mt-5 space-y-4">
+            <input type="hidden" name="next" value={returnToCheckout ? "/checkout" : ""} />
             <label className="block text-sm font-bold">Email address
               <input name="email" type="email" required autoComplete="email" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500" placeholder="customer@example.com" />
             </label>
@@ -48,12 +50,12 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-slate-400">
               <span className="h-px flex-1 bg-slate-200" />or<span className="h-px flex-1 bg-slate-200" />
             </div>
-            <CustomerPasskeyLoginButton />
+            <CustomerPasskeyLoginButton returnToCheckout={returnToCheckout} />
           </form>
 
           <div className="mt-6 flex flex-wrap justify-between gap-3 text-sm font-bold">
             <Link className="text-slate-500 hover:text-cyan-600" href="/account/forgot-password">Forgot password?</Link>
-            <Link className="text-cyan-600 hover:text-cyan-500" href="/account/register">Create account</Link>
+            <Link className="text-cyan-600 hover:text-cyan-500" href={returnToCheckout ? "/account/register?next=/checkout" : "/account/register"}>Create account</Link>
           </div>
         </section>
       </div>

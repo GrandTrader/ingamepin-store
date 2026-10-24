@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { UNLIMITED_STOCK_QUANTITY } from "@/lib/product-stock";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { supplierProductIds, supplierAvailableQuantity } from "@/lib/definiteplay-fulfillment";
 
 import { privateJson, requestLimit, sameOrigin } from "@/lib/request-security";
@@ -120,7 +121,10 @@ export async function POST(request: NextRequest) {
       limits.push(...await Promise.all(uniqueItems.slice(offset, offset + 5).map(resolveLimit)));
     }
 
-    return NextResponse.json({ limits }, { headers: { "Cache-Control": "no-store" } });
+    const requiresVerifiedSignIn = Boolean(restrictionsResult.data?.length);
+    const user = requiresVerifiedSignIn ? (await (await createClient()).auth.getUser()).data.user : null;
+    const verified = Boolean(user?.id && user.email && user.email_confirmed_at);
+    return privateJson({ limits, purchaseAccess: { requiresVerifiedSignIn, verified, email: verified ? user!.email : null } });
   } catch (error) {
     if (error instanceof RequestBodyError) return privateJson({ error: error.message }, error.status);
     return NextResponse.json(

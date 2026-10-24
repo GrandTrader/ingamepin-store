@@ -10,7 +10,7 @@ const source = fs.readFileSync('lib/order-request-handler.ts', 'utf8');
 
 function fixture(config = {}) {
   const state = { order: null, calls: [], debits: 0, balance: 90.31 };
-  const user = config.anonymous ? null : { id: buyer, email: 'buyer@example.com', app_metadata: { wallet_disabled: config.disabled }, user_metadata: {} };
+  const user = config.anonymous ? null : { id: buyer, email: 'buyer@example.com', email_confirmed_at: config.unverified ? null : '2026-01-01', app_metadata: { wallet_disabled: config.disabled }, user_metadata: {} };
   const option = { id: 'option', product_id: 'product', denomination: 3000, denomination_currency: 'INR', is_active: true, is_in_stock: true };
   const db = {
     from(table) {

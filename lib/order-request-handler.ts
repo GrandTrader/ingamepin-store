@@ -175,7 +175,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       if (browserSession && !(await businessSessionReady(browserSession, signedInUser.id))) return NextResponse.json({error:"Complete password and Google Authenticator verification before using the B2B portal.",redirect:"/account/business/setup"},{status:403});
       customer={email:signedInUser.email,fullName:signedInUser.user_metadata?.name??signedInUser.user_metadata?.full_name,orderNote:portal!.reference};
     }
-    if (!Array.isArray(body.items)) {
+    if (!Array.isArray(body.items) || !body.items.length || body.items.length > 100 || body.items.some(item => !item || typeof item !== "object")) {
       return NextResponse.json(
         { error: "Your cart is invalid." },
         { status: 400 }
@@ -262,11 +262,25 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       }
     }
     const optionIds = submittedItems.map((item) => String(item.productOptionId ?? "")).filter(Boolean);
+    if (optionIds.length !== submittedItems.length) return privateJson({ error: "Select a valid product option." }, 400);
     let requiresDenominationGuard = false;
     if (optionIds.length) {
       const optionsResult = await admin.from("product_options").select("id, product_id, denomination, denomination_currency, is_custom_value, selling_price, stock_quantity, minimum_quantity, maximum_quantity, is_active, is_in_stock").in("id", optionIds);
       if (optionsResult.error) return NextResponse.json({ error: "Unable to check current stock." }, { status: 503 });
+      if (optionsResult.data?.length !== new Set(optionIds).size) return privateJson({ error: "A product option is unavailable." }, 400);
       const options = optionsResult.data ?? []; const productIds = [...new Set(options.map((option) => option.product_id))];
+      const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("*").in("product_id", productIds).eq("is_enabled", true) : { data: [], error: null };
+      if (restrictionsResult.error) return privateJson({ error: "Unable to verify purchase limits. Please retry." }, 503);
+      // Bind every restricted checkout to a verified account, including value-only limits.
+      requiresDenominationGuard = Boolean(restrictionsResult.data?.length);
+      if (requiresDenominationGuard) {
+        if (!signedInUser?.id || !signedInUser.email || !signedInUser.email_confirmed_at) {
+          return privateJson({ error: "Sign in with a verified account to buy products with purchase limits.", code: "VERIFIED_SIGN_IN_REQUIRED" }, 401);
+        }
+        if (customerEmailForLimit !== signedInUser.email.trim().toLowerCase()) {
+          return privateJson({ error: "Use your verified account email for products with purchase limits.", code: "VERIFIED_EMAIL_REQUIRED", email: signedInUser.email.trim().toLowerCase() }, 400);
+        }
+      }
       const productsResult = productIds.length ? await admin.from("products").select("id, name, minimum_quantity, maximum_quantity, is_bulk_order, allowed_payment_methods, stock_quantity, retail_enabled, business_enabled").in("id", productIds) : { data: [], error: null };
       if(productsResult.error || productsResult.data?.length !== productIds.length) return NextResponse.json({error:"Unable to check product availability."},{status:503});
       const unavailableChannel = (productsResult.data ?? []).find(product => (isPortal ? product.business_enabled : product.retail_enabled) !== true);
@@ -340,9 +354,7 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
           );
         }
       }
-      const restrictionsResult = productIds.length ? await admin.from("product_purchase_restrictions").select("*").in("product_id", productIds).eq("is_enabled", true) : { data: [], error: null };
-      if (restrictionsResult.error) return NextResponse.json({ error: "Unable to verify purchase limits. Please retry." }, { status: 503 });
-      requiresDenominationGuard = (restrictionsResult.data ?? []).some(rule => rule.one_per_denomination === true);
+
       let exemptProducts: Set<string>;
       try {
         exemptProducts = await exemptPurchaseProducts(admin, signedInUser?.id, (restrictionsResult.data ?? []).map(rule => rule.product_id));

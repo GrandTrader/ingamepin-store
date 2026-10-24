@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/auth-server";
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const requestedNext = request.nextUrl.searchParams.get("next");
-  const next = requestedNext?.startsWith("/account/")
+  const next = requestedNext === "/checkout" || requestedNext?.startsWith("/account/")
     ? requestedNext
     : "/account/dashboard";
 

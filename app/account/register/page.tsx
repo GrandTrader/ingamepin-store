@@ -15,6 +15,7 @@ type RegisterPageProps = {
     error?: string;
     success?: string;
     verify?: string;
+    next?: string;
   }>;
 };
 
@@ -33,7 +34,8 @@ function maskEmail(email: string) {
 }
 
 export default async function RegisterPage({ searchParams }: RegisterPageProps) {
-  const { error, success, verify } = await searchParams;
+  const { error, success, verify, next } = await searchParams;
+  const returnToCheckout = next === "/checkout";
   const cookieStore = await cookies();
   const pendingEmail = cookieStore.get("ingamepin_pending_signup")?.value;
   const showVerification = verify === "1" && Boolean(pendingEmail);
@@ -69,14 +71,14 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
               </p>
             )}
 
-            <OtpVerificationForm />
+            <OtpVerificationForm returnToCheckout={returnToCheckout} />
 
             <p className="mt-5 text-xs leading-5 text-slate-500">
               The code expires for security. Never share it with anyone,
               including support.
             </p>
             <Link
-              href="/account/register"
+              href={returnToCheckout ? "/account/register?next=/checkout" : "/account/register"}
               className="mt-5 inline-flex text-sm font-bold text-cyan-700 hover:text-cyan-600"
             >
               Use a different email address
@@ -100,6 +102,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
               action={customerRegister}
               className="mt-7 grid gap-5 sm:grid-cols-2"
             >
+              <input type="hidden" name="next" value={returnToCheckout ? "/checkout" : ""} />
               <label className="block text-sm font-bold sm:col-span-2">
                 Full name
                 <input
@@ -187,7 +190,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
             </form>
             <p className="mt-6 text-center text-sm text-slate-500">
               Already registered?{" "}
-              <Link className="font-bold text-cyan-600" href="/account">
+              <Link className="font-bold text-cyan-600" href={returnToCheckout ? "/account?next=/checkout" : "/account"}>
                 Sign in
               </Link>
             </p>

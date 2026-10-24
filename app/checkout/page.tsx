@@ -261,6 +261,8 @@ export default function CheckoutPage() {
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [message, setMessage] = useState("");
+  const [purchaseAccess, setPurchaseAccess] = useState({ requiresVerifiedSignIn: false, verified: false, email: "" });
+  const needsSignIn = purchaseAccess.requiresVerifiedSignIn && !purchaseAccess.verified;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [wallet, setWallet] = useState<WalletDetails>({
     authenticated: false,
@@ -408,12 +410,17 @@ export default function CheckoutPage() {
         });
         const result = (await response.json()) as {
           limits?: QuantityLimit[];
+          purchaseAccess?: { requiresVerifiedSignIn: boolean; verified: boolean; email: string | null };
           error?: string;
         };
         if (!response.ok || !result.limits) {
           throw new Error(result.error ?? "Unable to load quantity settings.");
         }
 
+        if (controller.signal.aborted) return;
+        const access = result.purchaseAccess;
+        setPurchaseAccess({ requiresVerifiedSignIn: Boolean(access?.requiresVerifiedSignIn), verified: Boolean(access?.verified), email: access?.email ?? "" });
+        if (access?.requiresVerifiedSignIn && access.verified && access.email) setForm(current => ({ ...current, email: access.email! }));
         const limits = new Map(
           result.limits.map((limit) => [
             `${limit.productId}:${limit.productOptionId ?? ""}`,
@@ -846,6 +853,7 @@ export default function CheckoutPage() {
 ) {
   event.preventDefault();
   setMessage("");
+  if (needsSignIn) { router.push("/account?next=/checkout"); return; }
 
   const validationError = validateForm();
 
@@ -919,8 +927,16 @@ export default function CheckoutPage() {
       };
 
       error?: string;
+      code?: string;
+      email?: string;
     };
 
+    if (result.code === "VERIFIED_SIGN_IN_REQUIRED") {
+      setPurchaseAccess({ requiresVerifiedSignIn: true, verified: false, email: "" });
+    } else if (result.code === "VERIFIED_EMAIL_REQUIRED" && result.email) {
+      setPurchaseAccess({ requiresVerifiedSignIn: true, verified: true, email: result.email });
+      setForm(current => ({ ...current, email: result.email! }));
+    }
     if (!response.ok || !result.order) {
       throw new Error(
         result.error ??
@@ -1253,6 +1269,7 @@ export default function CheckoutPage() {
                   id="email"
                   type="email"
                   value={form.email}
+                  readOnly={purchaseAccess.requiresVerifiedSignIn && purchaseAccess.verified}
                   onChange={(event) =>
                     updateField("email", event.target.value)
                   }
@@ -1934,9 +1951,15 @@ export default function CheckoutPage() {
               </p>
             )}
 
+            {needsSignIn && (
+              <div role="status" className="mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-sm">
+                <p>Sign in with a verified account to buy products with purchase limits.</p>
+                <Link href="/account?next=/checkout" className="mt-2 inline-block font-bold text-cyan-400 underline">Sign in to continue</Link>
+              </div>
+            )}
             <button
               type="submit"
-              disabled={isSubmitting || paymentRestrictions.loading || !paymentAllowed(paymentMethod)}
+              disabled={needsSignIn || isSubmitting || paymentRestrictions.loading || !paymentAllowed(paymentMethod)}
               className="mt-5 w-full rounded-xl bg-cyan-400 px-5 py-4 text-base font-black text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
