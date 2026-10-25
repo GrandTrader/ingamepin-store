@@ -133,3 +133,73 @@ test('Every dashboard and catalogue action authenticates before reading supplier
  assert.equal(dashboard.connected,true);assert.equal(dashboard.balance.amount,0);assert.equal(dashboard.sandbox,true);
  assert(!JSON.stringify(dashboard).includes(creds.apiKey));assert(!JSON.stringify(dashboard).includes(creds.merchantCode));
 });
+
+test('Catalogue combines category, region, name and type on the supplier and preserves them for import lookup',async()=>{
+ const calls=[];
+ const a=load('lib/wupex-api.ts',{}, {fetch:async(url,options)=>{calls.push(JSON.parse(options.body));return Response.json({...catalog,data:[{...product,productType:'Apple Gift Card'}]});}});
+ const filters={category:'Apple Gift Card',region:'USA'};
+ const result=await a.getWupexCatalog(creds,1,'Apple','voucher',20,filters);
+ assert.equal(result.products[0].category,'Apple Gift Card');
+ assert.deepEqual(calls[0].search,[
+  {column:'productName',operator:'Contains',value:'Apple'},
+  {column:'cardType',operator:'Equals',value:'voucher'},
+  {column:'productType',operator:'Equals',value:'Apple Gift Card'},
+  {column:'regionName',operator:'Equals',value:'USA'}
+ ]);
+ await a.findWupexProducts(creds,[101],'Apple',filters);
+ assert(calls[1].search.some(f=>f.column==='productType'&&f.value===filters.category));
+ assert(calls[1].search.some(f=>f.column==='regionName'&&f.value==='USA'));
+ for(const invalid of [null,[],{category:{}},{category:'a'.repeat(201)},{region:'a'.repeat(101)},{region:'US\nA'}])await assert.rejects(a.getWupexCatalog(creds,1,'','',20,invalid));
+ assert.equal(calls.length,2);
+});
+test('Wupex zero-sized empty pages render no results but malformed nonempty pages stay rejected',()=>{
+ const empty={status:true,pageInfo:{currentPage:1,totalPage:0,totalCount:0,pageSize:0},data:[]};
+ assert.deepEqual(clone(api.parseWupexCatalog(empty,1)),{products:[],page:1,pageSize:20,totalPages:0,totalCount:0});
+ assert.equal(api.parseWupexCatalog(empty,1,100).pageSize,100);
+ assert.throws(()=>api.parseWupexCatalog({...empty,data:[product]},1));
+ assert.throws(()=>api.parseWupexCatalog({...empty,pageInfo:{...empty.pageInfo,totalCount:1,totalPage:1}},1));
+});
+test('Filter lists collect all pages, deduplicate and never return partial results',async()=>{
+ const calls=[];
+ const pages=[
+  {categories:['Steam'],regions:['USA'],count:100,totalCount:201,totalPages:3},
+  {categories:['Apple','Steam'],regions:['India'],count:100,totalCount:201,totalPages:3},
+  {categories:['Xbox'],regions:['USA','Global'],count:1,totalCount:201,totalPages:3},
+ ];
+ const make=read=>load('lib/wupex-catalog-filters.ts',{'next/cache':{},'./wupex-api':{...api,getWupexFilterPage:read}});
+ const filters=make(async(c,page)=>{calls.push(page);return pages[page-1]});
+ assert.deepEqual(clone(await filters.collectWupexCatalogFilters(creds)),{categories:['Apple','Steam','Xbox'],regions:['Global','India','USA']});
+ assert.deepEqual(calls,[1,2,3]);
+ await assert.rejects(make(async(c,p)=>{if(p===2)throw Error('read failed');return pages[p-1]}).collectWupexCatalogFilters(creds),/read failed/);
+ await assert.rejects(make(async(c,p)=>p===2?{...pages[1],totalCount:202}:pages[p-1]).collectWupexCatalogFilters(creds),/changed/);
+ await assert.rejects(make(async(c,p)=>p===2?{...pages[1],count:99}:pages[p-1]).collectWupexCatalogFilters(creds),/complete/);
+});
+test('Cached filter names are isolated by account and key and never use raw API keys as cache keys',async()=>{
+ const keys=[],cache=new Map();let reads=0;
+ const filters=load('lib/wupex-catalog-filters.ts',{
+  'next/cache':{unstable_cache:(fn,parts,options)=>async()=>{const key=JSON.stringify(parts);keys.push(key);assert.equal(options.revalidate,900);if(!cache.has(key))cache.set(key,await fn());return cache.get(key);}},
+  './wupex-api':{...api,getWupexFilterPage:async()=>{reads++;return{categories:['Apple'],regions:['USA'],count:1,totalCount:1,totalPages:1};}},
+ });
+ await filters.getCachedWupexCatalogFilters(creds);
+ await filters.getCachedWupexCatalogFilters(creds);
+ await filters.getCachedWupexCatalogFilters({...creds,merchantCode:'another-account'});
+ await filters.getCachedWupexCatalogFilters({...creds,apiKey:'another-test-key'});
+ assert.equal(reads,3);assert.equal(keys[0],keys[1]);assert.notEqual(keys[0],keys[2]);assert.notEqual(keys[0],keys[3]);
+ assert(keys.every(k=>!k.includes(creds.apiKey)&&!k.includes('another-test-key')));
+});
+test('Category and region endpoint authenticates before accessing settings or supplier data',async()=>{
+ const calls=[];
+ const mocks={
+  '@/lib/wupex-admin':{requireWupexAdmin:async()=>{calls.push('auth');throw Error('denied')}},
+  '@/lib/wupex-storage':{requireWupexCredentials:async()=>{calls.push('credentials');return creds}},
+  '@/lib/wupex-catalog-filters':{getCachedWupexCatalogFilters:async()=>{calls.push('filters');return{categories:['Apple'],regions:['USA']}}},
+  '@/lib/wupex-api':api
+ };
+ await assert.rejects(load('app/api/admin/wupex/catalog-filters/route.ts',mocks,{Response}).GET(),/denied/);
+ assert.deepEqual(calls,['auth']);
+ mocks['@/lib/wupex-admin'].requireWupexAdmin=async()=>calls.push('auth');
+ const response=await load('app/api/admin/wupex/catalog-filters/route.ts',mocks,{Response}).GET();
+ assert.equal(response.status,200);assert.equal(response.headers.get('Cache-Control'),'private, no-store');
+ assert.deepEqual(await response.json(),{data:{categories:['Apple'],regions:['USA']}});
+ assert.deepEqual(calls,['auth','auth','credentials','filters']);
+});

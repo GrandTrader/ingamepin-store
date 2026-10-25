@@ -1,18 +1,19 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { requireWupexAdmin } from "@/lib/wupex-admin";
-import { findWupexProducts, getWupexBalance, getWupexFields, wupexConnectionId, WupexError } from "@/lib/wupex-api";
+import { findWupexProducts, getWupexBalance, getWupexFields, wupexConnectionId, WupexError, validateWupexCatalogFilters } from "@/lib/wupex-api";
 import { requireWupexCredentials } from "@/lib/wupex-storage";
 import { prepareWupexDraft, wupexUuid, type WupexImportInput, type WupexImportProduct } from "@/lib/wupex-import";
-import type { WupexAction } from "@/lib/wupex-types";
-export type WupexImportSetup = { connection: string; products: WupexImportProduct[]; categories: { id: string; name: string }[]; query: string };
-export async function loadWupexImport(ids: number[], query: string): Promise<WupexAction<WupexImportSetup>> {
+import type { WupexAction, WupexCatalogFilterSelection } from "@/lib/wupex-types";
+export type WupexImportSetup = { connection: string; products: WupexImportProduct[]; categories: { id: string; name: string }[]; query: string; catalogFilters?: WupexCatalogFilterSelection };
+export async function loadWupexImport(ids: number[], query: string, filters: WupexCatalogFilterSelection = {}): Promise<WupexAction<WupexImportSetup>> {
  const { db } = await requireWupexAdmin();
  try {
   if (!Array.isArray(ids) || ids.length > 20 || typeof query !== "string" || query.length > 150) throw new WupexError("Select up to 20 supplier products.");
+  const catalogFilters = validateWupexCatalogFilters(filters);
   const credentials = await requireWupexCredentials();
   const [products, categories, balance] = await Promise.all([
-   findWupexProducts(credentials, ids, query),
+   findWupexProducts(credentials, ids, query, catalogFilters),
    db.from("categories").select("id,name").eq("is_active", true).in("category_type", ["GIFT_CARD", "GAME_KEY", "SUBSCRIPTION", "DIGITAL_PRODUCT", "GAME_TOPUP"]).order("name"),
    getWupexBalance(credentials),
   ]);
@@ -20,7 +21,7 @@ export async function loadWupexImport(ids: number[], query: string): Promise<Wup
   if (categories.error || products.length !== new Set(ids).size) throw new WupexError("The selected products or website categories could not be loaded.");
   const enriched = await Promise.all(products.map(async p => ({ ...p, fields: await getWupexFields(credentials, p) })));
   if (new Set(enriched.map(p => p.cardType)).size !== 1 || new Set(enriched.map(p => p.subType)).size !== 1) throw new WupexError("Import products with the same delivery type together.");
-  return { data: { connection: wupexConnectionId(credentials), products: enriched, categories: categories.data ?? [], query } };
+  return { data: { connection: wupexConnectionId(credentials), products: enriched, categories: categories.data ?? [], query, catalogFilters } };
  } catch (error) { return { error: error instanceof WupexError ? error.message : "Unable to prepare the Wupex import." }; }
 }
 export async function importWupexProduct(input: WupexImportInput): Promise<WupexAction<{ productId: string }>> {
@@ -35,7 +36,7 @@ export async function importWupexProduct(input: WupexImportInput): Promise<Wupex
    if (previous.data.connection_id !== connection || previous.data.imported_by !== userId) throw new WupexError("This import reference is already used.");
    return { data: { productId: previous.data.product_id } };
   }
-  const [products, balance] = await Promise.all([findWupexProducts(credentials, input.options.map(o => o.id), input.query), getWupexBalance(credentials)]);
+  const [products, balance] = await Promise.all([findWupexProducts(credentials, input.options.map(o => o.id), input.query, input.catalogFilters), getWupexBalance(credentials)]);
   const enriched = await Promise.all(products.map(async p => ({ ...p, fields: await getWupexFields(credentials, p) })));
   let draft;
   try { draft = prepareWupexDraft(input, enriched, balance.currency); }

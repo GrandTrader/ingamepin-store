@@ -3,7 +3,7 @@ import Link from "next/link";
 import { listWupexImports } from "./import-actions";
 import { useEffect, useRef, useState } from "react";
 import { connectWupex, loadWupexDashboard, loadWupexProducts } from "./actions";
-import type { WupexCatalog, WupexDashboard } from "@/lib/wupex-types";
+import type { WupexCatalog, WupexDashboard, WupexCatalogFilters } from "@/lib/wupex-types";
 
 const sandboxUrl = "https://sandbox-service.wupex.com";
 const inputClass = "mt-1 min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900";
@@ -22,7 +22,11 @@ export default function WupexPanel() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("");
-  const [applied, setApplied] = useState({ query: "", kind: "" });
+  const [category, setCategory] = useState(""), [region, setRegion] = useState("");
+  const [filterOptions, setFilterOptions] = useState<WupexCatalogFilters | null>(null);
+  const [filterError, setFilterError] = useState("");
+  const [filterAttempt, setFilterAttempt] = useState(0);
+  const [applied, setApplied] = useState({ query: "", kind: "", category: "", region: "" });
   const sequence = useRef(0);
   const [selected, setSelected] = useState<number[]>([]);
   const [imports, setImports] = useState<{ id: string; name: string; status: string; markup: number }[]>([]);
@@ -39,6 +43,23 @@ export default function WupexPanel() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!dashboard?.connected) return;
+    let active = true;
+    const controller = new AbortController();
+    fetch("/api/admin/wupex/catalog-filters", { cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error();
+        const result = await response.json() as { data?: WupexCatalogFilters };
+        if (!result.data || !Array.isArray(result.data.categories) || !Array.isArray(result.data.regions)) throw new Error();
+        if (active) { setFilterOptions(result.data); setFilterError(""); }
+      })
+      .catch(() => { if (active) setFilterError("Category and region filters could not load."); });
+    return () => { active = false; controller.abort(); };
+  }, [dashboard?.connected, dashboard?.baseUrl, filterAttempt]);
+
+  function retryFilters() { setFilterOptions(null); setFilterError(""); setFilterAttempt(value => value + 1); }
+
   async function connect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
@@ -51,6 +72,7 @@ export default function WupexPanel() {
       if (result.error) { setError(result.error); return; }
       form.reset();
       setMessage("Connection verified and saved.");
+      retryFilters();
       const refreshed = await loadWupexDashboard();
       setDashboard(refreshed);
       if (refreshed.baseUrl) { setBaseUrl(refreshed.baseUrl); setMode(refreshed.sandbox ? "sandbox" : "live"); }
@@ -62,7 +84,7 @@ export default function WupexPanel() {
     const request = ++sequence.current;
     setLoadingProducts(true); setError("");
     try {
-      const result = await loadWupexProducts(page, search.query, search.kind);
+      const result = await loadWupexProducts(page, search.query, search.kind, { category: search.category, region: search.region });
       if (request !== sequence.current) return;
       if (!result.data) { setError(result.error ?? "Unable to load products."); return; }
       setCatalog(result.data); setApplied(search); setSelected([]);
@@ -127,11 +149,17 @@ export default function WupexPanel() {
           <h2 className="text-lg font-bold">Supplier catalogue</h2>
           <p className="mt-1 text-xs text-slate-500">Browsing products does not place an order or spend your supplier balance.</p>
         </div>{dashboard.sandbox && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">Test catalogue</span>}</div>
-        <form onSubmit={e => { e.preventDefault(); void products(1, { query, kind }); }} className="mt-4 grid gap-2 sm:grid-cols-[1fr_160px_auto]">
-          <input aria-label="Search Wupex products" value={query} onChange={e => setQuery(e.target.value)} maxLength={150} placeholder="Search product name" className={inputClass} />
-          <select aria-label="Product type" value={kind} onChange={e => setKind(e.target.value)} className={inputClass}><option value="">All products</option><option value="voucher">Vouchers</option><option value="topup">Top-ups</option></select>
+        <form onSubmit={e => { e.preventDefault(); void products(1, { query, kind, category, region }); }} className="mt-4 grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,.8fr)_auto]">
+          <label className="min-w-0 text-xs font-semibold text-slate-600">Search<input aria-label="Search Wupex products" value={query} onChange={e => setQuery(e.target.value)} maxLength={150} placeholder="Search product name" className={inputClass} /></label>
+          <label className="min-w-0 text-xs font-semibold text-slate-600">Category<select aria-label="Supplier category" value={category} onChange={e => setCategory(e.target.value)} disabled={!filterOptions} className={inputClass}><option value="">All categories</option>{filterOptions?.categories.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="min-w-0 text-xs font-semibold text-slate-600">Region<select aria-label="Supplier region" value={region} onChange={e => setRegion(e.target.value)} disabled={!filterOptions} className={inputClass}><option value="">All regions</option>{filterOptions?.regions.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="min-w-0 text-xs font-semibold text-slate-600">Product type<select aria-label="Product type" value={kind} onChange={e => setKind(e.target.value)} className={inputClass}><option value="">All products</option><option value="voucher">Vouchers</option><option value="topup">Top-ups</option></select></label>
           <button disabled={busy || loadingProducts} className={buttonClass}>{loadingProducts ? "Loading…" : "Load products"}</button>
         </form>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+          {!filterOptions && !filterError ? <span role="status" className="text-slate-500">Loading category and region filters…</span> : filterError ? <span role="alert" className="text-amber-800">{filterError} <button type="button" onClick={retryFilters} className="font-bold underline">Retry filters</button></span> : <span className="text-slate-500">{filterOptions?.categories.length} categories · {filterOptions?.regions.length} regions</span>}
+          <button type="button" disabled={busy || loadingProducts} onClick={() => { setQuery(""); setKind(""); setCategory(""); setRegion(""); void products(1, { query: "", kind: "", category: "", region: "" }); }} className="font-bold text-blue-700 disabled:opacity-50">Reset filters</button>
+        </div>
         {catalog && <>
           <p className="mt-3 text-xs text-slate-500">{catalog.totalCount} products · Page {catalog.page} of {Math.max(1, catalog.totalPages)}</p>
           <div className="mt-3 grid gap-3">
@@ -145,7 +173,7 @@ export default function WupexPanel() {
                 </div>
               </article>)}
           </div>
-          {selected.length > 0 && <Link className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white" href={"/admin/wupex/import?ids=" + selected.join(",") + "&q=" + encodeURIComponent(applied.query)}>Import selected ({selected.length})</Link>}
+          {selected.length > 0 && <Link className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white" href={"/admin/wupex/import?" + new URLSearchParams({ ids: selected.join(","), q: applied.query, category: applied.category, region: applied.region }).toString()}>Import selected ({selected.length})</Link>}
           <div className="mt-4 flex items-center justify-between gap-3">
             <button type="button" disabled={busy || loadingProducts || catalog.page <= 1} onClick={() => void products(catalog.page - 1)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold disabled:opacity-40">Previous</button>
             <button type="button" disabled={busy || loadingProducts || catalog.page >= catalog.totalPages} onClick={() => void products(catalog.page + 1)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold disabled:opacity-40">Next</button>

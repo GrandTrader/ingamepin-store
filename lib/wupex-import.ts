@@ -1,9 +1,9 @@
 import { fkSellingPrice, prepareFKDraft, type FKImportInput } from "./fkwallet-import";
 import type { FKProduct } from "./fkwallet-types";
-import type { WupexProduct } from "./wupex-types";
+import type { WupexProduct, WupexCatalogFilterSelection } from "./wupex-types";
 import type { WupexField } from "./wupex-api";
 export { fkSellingPrice as wupexSellingPrice, fkUuid as wupexUuid } from "./fkwallet-import";
-export type WupexImportInput = Omit<FKImportInput, "supplierCategoryId"> & { query: string };
+export type WupexImportInput = Omit<FKImportInput, "supplierCategoryId"> & { query: string; catalogFilters?: WupexCatalogFilterSelection };
 export type WupexImportProduct = WupexProduct & { fields: WupexField[] };
 export function prepareWupexDraft(input: WupexImportInput, products: WupexImportProduct[], supplierCurrency: string) {
   if (supplierCurrency !== "USD") throw new Error("Wupex supplier prices need a verified USD account.");

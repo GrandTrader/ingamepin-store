@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireWupexAdmin } from "@/lib/wupex-admin";
 import { getWupexBalance, getWupexCatalog, getWupexPreorderStatus, validateWupexCredentials, WUPEX_SANDBOX_URL, WupexError } from "@/lib/wupex-api";
 import { readWupexCredentials, requireWupexCredentials, sealWupexCredentials, wupexEnvironmentConfigured } from "@/lib/wupex-storage";
-import type { WupexAction, WupexCatalog, WupexDashboard } from "@/lib/wupex-types";
+import type { WupexAction, WupexCatalog, WupexDashboard, WupexCatalogFilterSelection } from "@/lib/wupex-types";
 
 function safeError(error: unknown): string {
   return error instanceof WupexError ? error.message : "Wupex could not complete this action. Check the connection and database setup.";
@@ -46,8 +46,8 @@ export async function connectWupex(form: FormData): Promise<WupexAction<boolean>
     return { data: true };
   } catch (error) { return { error: safeError(error) }; }
 }
-export async function loadWupexProducts(page: number, query: string, kind: string): Promise<WupexAction<WupexCatalog>> {
+export async function loadWupexProducts(page: number, query: string, kind: string, filters: WupexCatalogFilterSelection = {}): Promise<WupexAction<WupexCatalog>> {
   await requireWupexAdmin();
-  try { return { data: await getWupexCatalog(await requireWupexCredentials(), page, query, kind) }; }
+  try { return { data: await getWupexCatalog(await requireWupexCredentials(), page, query, kind, 20, filters) }; }
   catch (error) { return { error: safeError(error) }; }
 }

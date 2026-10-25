@@ -15,7 +15,7 @@ export default function WupexImportForm({ setup }: { setup: WupexImportSetup }) 
  async function submit(e: React.FormEvent<HTMLFormElement>) {
   e.preventDefault(); if (busy) return;
   const form = new FormData(e.currentTarget);
-  const input: WupexImportInput = { requestId: reference, connectionId: setup.connection, query: setup.query, categoryId: String(form.get("category")), title, titleRu: "", description: String(form.get("description") ?? ""), descriptionRu: "", region, markup, exchangeRate: "1", options: rows.map(r => ({ ...r, currency })) };
+  const input: WupexImportInput = { requestId: reference, connectionId: setup.connection, query: setup.query, catalogFilters: setup.catalogFilters, categoryId: String(form.get("category")), title, titleRu: "", description: String(form.get("description") ?? ""), descriptionRu: "", region, markup, exchangeRate: "1", options: rows.map(r => ({ ...r, currency })) };
   setBusy(true); setError("");
   try { const result = await importWupexProduct(input); if (result.data) setSaved(result.data.productId); else setError(result.error ?? "Import failed."); }
   catch { setError("The import response was interrupted. Retry to check the same draft."); }

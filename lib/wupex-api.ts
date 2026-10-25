@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { requestWupexThroughRelay } from "./wupex-relay";
-import type { WupexBalance, WupexCatalog, WupexCredentials, WupexProduct } from "./wupex-types";
+import type { WupexBalance, WupexCatalog, WupexCredentials, WupexProduct, WupexCatalogFilterSelection } from "./wupex-types";
 
 export const WUPEX_SANDBOX_URL = "https://sandbox-service.wupex.com";
 export class WupexError extends Error {
@@ -125,11 +125,14 @@ export async function getWupexPreorderStatus(credentials: WupexCredentials): Pro
   if (typeof data.enabled !== "boolean") throw new WupexError("Wupex pre-order status is unavailable.");
   return data.enabled;
 }
-export function parseWupexCatalog(value: unknown, requestedPage: number): WupexCatalog {
+export function parseWupexCatalog(value: unknown, requestedPage: number, requestedPageSize = 20): WupexCatalog {
   const envelope = row(value), paging = row(envelope.pageInfo);
   if (envelope.status !== true || !Array.isArray(envelope.data) || envelope.data.length > 100) throw new WupexError("Wupex returned an invalid catalogue.");
-  const page = integer(paging.currentPage, 1), pageSize = integer(paging.pageSize, 1, 100);
+  const page = integer(paging.currentPage, 1), reportedSize = integer(paging.pageSize, 0, 100);
   const totalPages = integer(paging.totalPage), totalCount = integer(paging.totalCount);
+  const empty = totalCount === 0 && totalPages === 0 && envelope.data.length === 0;
+  if (reportedSize === 0 && !empty) throw new WupexError("Wupex catalogue paging could not be verified.");
+  const pageSize = reportedSize || integer(requestedPageSize, 1, 100);
   if (page !== requestedPage || envelope.data.length > pageSize || (totalCount > 0 && totalPages < 1)) throw new WupexError("Wupex catalogue paging could not be verified.");
   const seen = new Set<number>();
   const products = envelope.data.map(value => {
@@ -143,26 +146,54 @@ export function parseWupexCatalog(value: unknown, requestedPage: number): WupexC
     // subType describes top-up recipient fields; live voucher products use 0.
     const subType = cardType === "voucher" || data.subType == null ? null : integer(data.subType, 1, 5);
     if (faceValue !== null && faceValue < 0) throw new WupexError("Wupex returned an invalid face value.");
-    return { id, sku, name, price, available, faceValue, subType, cardType: cardType as WupexProduct["cardType"], region: text(data.regionName, 100) };
+    return { id, sku, name, price, available, faceValue, subType, cardType: cardType as WupexProduct["cardType"], region: text(data.regionName, 100), category: text(data.productType, 200) };
   });
   return { products, page, pageSize, totalPages, totalCount };
 }
-export async function getWupexCatalog(credentials: WupexCredentials, page = 1, query = "", kind = "", pageSize = 20): Promise<WupexCatalog> {
+export function validateWupexCatalogFilters(value: unknown = {}): { category: string; region: string } {
+  const filters = row(value);
+  const field = (key: string, max: number) => {
+    const value = filters[key] ?? "";
+    if (typeof value !== "string" || value.length > max || /[\u0000-\u001f\u007f]/.test(value)) throw new WupexError("Choose a valid category and region.");
+    return value.trim();
+  };
+  return { category: field("category", 200), region: field("region", 100) };
+}
+export async function getWupexFilterPage(credentials: WupexCredentials, page: number) {
+  integer(page, 1, 200);
+  const envelope = await request(credentials, "/api/product/merchant/invited/list", { page, pageSize: 100 });
+  const paging = row(envelope.pageInfo);
+  const currentPage = integer(paging.currentPage, 1), totalPages = integer(paging.totalPage, 0, 200), totalCount = integer(paging.totalCount, 0, 20000);
+  if (currentPage !== page || !Array.isArray(envelope.data) || envelope.data.length > 100 || (totalCount > 0 && totalPages < 1)) throw new WupexError("Wupex filter paging could not be verified.");
+  const categories = new Set<string>(), regions = new Set<string>();
+  for (const value of envelope.data) {
+    const product = row(value);
+    const filters = validateWupexCatalogFilters({ category: product.productType, region: product.regionName });
+    if (filters.category) categories.add(filters.category);
+    if (filters.region) regions.add(filters.region);
+  }
+  return { categories: [...categories], regions: [...regions], totalPages, totalCount, count: envelope.data.length };
+}
+
+export async function getWupexCatalog(credentials: WupexCredentials, page = 1, query = "", kind = "", pageSize = 20, filters: WupexCatalogFilterSelection = {}): Promise<WupexCatalog> {
   if (![20, 100].includes(pageSize) || !Number.isSafeInteger(page) || page < 1 || page > 100000 || typeof query !== "string" || query.length > 150 || !["", "voucher", "topup"].includes(kind)) throw new WupexError("Choose a valid catalogue page and search.");
+  const { category, region } = validateWupexCatalogFilters(filters);
   const search = [
     ...(query.trim() ? [{ column: "productName", operator: "Contains", value: query.trim() }] : []),
     ...(kind ? [{ column: "cardType", operator: "Equals", value: kind }] : []),
+    ...(category ? [{ column: "productType", operator: "Equals", value: category }] : []),
+    ...(region ? [{ column: "regionName", operator: "Equals", value: region }] : []),
   ];
   const envelope = await request(credentials, "/api/product/merchant/invited/list", { page, pageSize, ...(search.length ? { search } : {}) });
-  return parseWupexCatalog(envelope, page);
+  return parseWupexCatalog(envelope, page, pageSize);
 }
 
-export async function findWupexProducts(credentials: WupexCredentials, ids: number[], query = ""): Promise<WupexProduct[]> {
+export async function findWupexProducts(credentials: WupexCredentials, ids: number[], query = "", filters: WupexCatalogFilterSelection = {}): Promise<WupexProduct[]> {
   if (!ids.length || ids.length > 50 || ids.some(id => !Number.isSafeInteger(id) || id <= 0)) throw new WupexError("Select between 1 and 50 products.");
   const found = new Map<number, WupexProduct>();
   // Bound one request: narrowing by the saved product name avoids a catalogue-wide scan.
   for (let page = 1; page <= 20; page++) {
-    const result = await getWupexCatalog(credentials, page, query, "", 100);
+    const result = await getWupexCatalog(credentials, page, query, "", 100, filters);
     for (const product of result.products) if (ids.includes(product.id)) {
       if (found.has(product.id)) throw new WupexError("Wupex returned a duplicate product. Refresh the catalogue.");
       found.set(product.id, product);
