@@ -1,6 +1,7 @@
 {
   "env": {
-    "FKWALLET_FULFILLMENT_ENABLED": "true"
+    "FKWALLET_FULFILLMENT_ENABLED": "true",
+    "WUPEX_FULFILLMENT_ENABLED": "true"
   },
   "crons": [
     {
@@ -17,6 +18,10 @@
     },
     {
       "path": "/api/cron/payment-status",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/wupex",
       "schedule": "* * * * *"
     }
   ]

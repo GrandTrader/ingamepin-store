@@ -15,6 +15,8 @@ function pageFixture({fk=true,denied=false,failed=false}={}){
   '@/components/ProductSettingsActions':({children})=>React.createElement('div',null,children),
   '@/components/ProductEditPageTabs':()=>null,'../../../../AdminSidebar':()=>null,
   '@/lib/definiteplay-admin':{requireDefinitePlayAdmin:async()=>{calls.push(['auth']);if(denied)throw Error('denied');return session},validProductId:()=>true},
+  '@/lib/wupex-product-supplier':{getWupexProductImport:async()=>null},
+  '@/app/admin/wupex/WupexSupplierPanel':()=>React.createElement('p',null,'Wupex supplier'),
   '@/lib/fkwallet-product-supplier':{getFKWalletDeliveryState:async()=>({ready:false,deliveryKind:'CODE'}),getFKWalletProductImport:async()=>{calls.push(['fk-import']);if(failed)throw Error('Supplier lookup failed');return fk?imported:null},getFKWalletSavedLinks:async()=>{calls.push(['fk-links']);return links}},
   '@/lib/definiteplay-relay':{getDefinitePlayMappings:async()=>{calls.push(['definiteplay']);return {mappings:[]}}},
   '@/lib/definiteplay-fulfillment':{supplierDeliveryEnabled:()=>false},

@@ -52,8 +52,8 @@ export async function prepareCustomerFieldsSave(db: DB, productId: string, field
     field[key] !== saved.find(row => row.id === field.id)?.[key]));
   const additions = fields.filter(field => !field.id);
   const removals = saved.flatMap(field => field.id && !ids.includes(field.id) ? [field.id] : []);
-  if (product.data.stock_source === "FKWALLET" && (updates.length || additions.length || removals.length)) {
-    throw new Error("Disable FKWallet automatic delivery in Supplier before editing customer fields.");
+  if (["FKWALLET", "WUPEX"].includes(product.data.stock_source) && (updates.length || additions.length || removals.length)) {
+    throw new Error("Disable " + (product.data.stock_source === "WUPEX" ? "Wupex" : "FKWallet") + " automatic delivery in Supplier before editing customer fields.");
   }
   return async () => {
     for (const field of updates) {

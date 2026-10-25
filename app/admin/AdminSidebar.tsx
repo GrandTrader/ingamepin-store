@@ -30,6 +30,7 @@ const links = [
   { label: "Sellers", href: "/admin/sellers", icon: "SE" },
   { label: "Definite Play", href: "/admin/definiteplay", icon: "DP" },
   { label: "FKWallet", href: "/admin/fkwallet", icon: "FK" },
+  { label: "Wupex", href: "/admin/wupex", icon: "WX" },
   { label: "Categories", href: "/admin/categories", icon: "CA" },
   { label: "Orders", href: "/admin/orders", icon: "OR" },
   { label: "Refund requests", href: "/admin/refund-requests", icon: "RF" },
@@ -63,6 +64,7 @@ const menuGroups = [
       "/admin/categories",
       "/admin/definiteplay",
       "/admin/fkwallet",
+      "/admin/wupex",
     ]
   },
   {

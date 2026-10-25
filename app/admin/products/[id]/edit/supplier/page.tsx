@@ -12,6 +12,8 @@ import { supplierDeliveryEnabled } from "@/lib/definiteplay-fulfillment";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFKWalletProductImport, getFKWalletSavedLinks, getFKWalletDeliveryState } from "@/lib/fkwallet-product-supplier";
 import FKWalletSupplierPanel from "./FKWalletSupplierPanel";
+import { getWupexProductImport } from "@/lib/wupex-product-supplier";
+import WupexSupplierPanel from "@/app/admin/wupex/WupexSupplierPanel";
 
 export const dynamic = "force-dynamic";
 export default async function ProductSupplierPage({params}:{params:Promise<{id:string}>}) {
@@ -25,11 +27,12 @@ export default async function ProductSupplierPage({params}:{params:Promise<{id:s
   if (product.error || options.error) throw new Error("Unable to load product details.");
   if (!product.data) notFound();
   if (product.data.stock_source === "GIFTPORT") return <main className="p-6"><h1 className="text-xl font-bold">Supplier disconnected</h1><p className="mt-3">This product cannot accept new supplier orders. Existing orders require manual review.</p><Link href="/admin/products" className="mt-4 inline-block text-blue-600">Return to products</Link></main>;
-  const fkImport = await getFKWalletProductImport(id);
+  const wupexImport = await getWupexProductImport(id);
+  const fkImport = wupexImport ? null : await getFKWalletProductImport(id);
   const fkLinks = fkImport ? await getFKWalletSavedLinks(id) : [];
   const fkDelivery = fkImport ? await getFKWalletDeliveryState(id) : undefined;
-  const enabled=!fkImport && product.data.stock_source === "DEFINITEPLAY";
-  const configured=!fkImport && (enabled||supplierDeliveryEnabled());
+  const enabled=!fkImport && !wupexImport && product.data.stock_source === "DEFINITEPLAY";
+  const configured=!fkImport && !wupexImport && (enabled||supplierDeliveryEnabled());
   const pricing=enabled && options.data?.length ? await createAdminClient().from("definiteplay_price_rules")
     .select("option_id,base_unit_cost,base_selling_price").in("option_id",options.data.map(option=>option.id)) : null;
   const jobs=configured ? await createAdminClient().from("definiteplay_jobs")
@@ -37,15 +40,15 @@ export default async function ProductSupplierPage({params}:{params:Promise<{id:s
     .eq("order_items.product_id",id).order("created_at",{ascending:false}).limit(20) : null;
   let mappings:DefinitePlayMapping[]=[];
   let error="";
-  try { if (!fkImport) mappings=(await getDefinitePlayMappings(id)).mappings; }
+  try { if (!fkImport && !wupexImport) mappings=(await getDefinitePlayMappings(id)).mappings; }
   catch(e){error=e instanceof Error?e.message:"Supplier connection unavailable.";}
   return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
     <AdminSidebar/><main className="min-w-0 flex-1 p-5 sm:p-8">
       <header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-600">Product settings</p>
         <h1 className="mt-2 text-3xl font-black">{product.data.name}</h1><p className="mt-1 text-sm text-slate-500">{product.data.slug}</p></div>
-        <ProductSettingsActions slug={product.data.slug}><Link href={fkImport ? "/admin/fkwallet" : "/admin/definiteplay"} className="rounded-xl border px-5 py-3 font-bold text-blue-600">{fkImport ? "FKWallet catalogue" : "Supplier catalogue"}</Link></ProductSettingsActions></header>
+        <ProductSettingsActions slug={product.data.slug}><Link href={wupexImport ? "/admin/wupex" : fkImport ? "/admin/fkwallet" : "/admin/definiteplay"} className="rounded-xl border px-5 py-3 font-bold text-blue-600">{wupexImport ? "Wupex catalogue" : fkImport ? "FKWallet catalogue" : "Supplier catalogue"}</Link></ProductSettingsActions></header>
       <div className="mt-8"><ProductEditPageTabs productId={id} current="supplier"/></div>
-      {fkImport ? <FKWalletSupplierPanel productId={id} imported={fkImport} options={options.data ?? []} links={fkLinks} enabled={product.data.stock_source === "FKWALLET"} delivery={fkDelivery}/> : <>
+      {wupexImport ? <WupexSupplierPanel imported={wupexImport} enabled={product.data.stock_source === "WUPEX"} /> : fkImport ? <FKWalletSupplierPanel productId={id} imported={fkImport} options={options.data ?? []} links={fkLinks} enabled={product.data.stock_source === "FKWALLET"} delivery={fkDelivery}/> : <>
       <SupplierDeliveryControl productId={id} enabled={enabled} configured={configured}/>
       {enabled && <p role="status" className="mt-3 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">{pricing?.error
         ? "Automatic price updates are awaiting the supplier pricing database update."
