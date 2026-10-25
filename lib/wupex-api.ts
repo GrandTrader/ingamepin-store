@@ -110,8 +110,11 @@ async function request(credentials: WupexCredentials, endpoint: string, body?: R
 }
 export function parseWupexBalance(value: unknown): WupexBalance {
   const data = row(value);
-  const currency = text(data.currency, 3);
-  if (!/^[A-Z]{3}$/.test(currency)) throw new WupexError("Wupex balance currency is unavailable.");
+  // Wupex API Reference v1.1 defines /api/customer/balance in USD.
+  // Some responses omit currency; preserve any explicit currency for USD-only checks.
+  const currency = data.currency == null || (typeof data.currency === "string" && !data.currency.trim())
+    ? "USD" : typeof data.currency === "string" ? data.currency.trim().toUpperCase() : "";
+  if (!/^[A-Z]{3}$/.test(currency)) throw new WupexError("Wupex returned an invalid balance currency.");
   return { amount: amount(data.balance), currency };
 }
 export async function getWupexBalance(credentials: WupexCredentials): Promise<WupexBalance> {

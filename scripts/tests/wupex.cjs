@@ -45,12 +45,22 @@ test('Supplier failures and malformed payloads fail closed and do not reveal key
  }
  for(const value of [null,true,'',Infinity,'NaN'])assert.throws(()=>api.parseWupexBalance({balance:value,currency:'USD'}));
  assert.equal(api.parseWupexBalance({balance:0,currency:'USD'}).amount,0);
- assert.throws(()=>api.parseWupexBalance({balance:1,currency:null}));
+ for(const currency of [true,42,{},[], 'US','USDollars','USD123'])assert.throws(()=>api.parseWupexBalance({balance:1,currency}),/invalid balance currency/);
  for(const patch of [{price:null},{available:-1},{available:1.2},{cardType:'other'},{productId:0},{productName:''},{subType:6}])assert.throws(()=>api.parseWupexCatalog({...catalog,data:[{...product,...patch}]},1));
  assert.throws(()=>api.parseWupexCatalog({...catalog,data:[product,product]},1));
  assert.throws(()=>api.parseWupexCatalog(catalog,2));
  assert.equal(api.parseWupexCatalog({...catalog,data:[{...product,available:undefined}]},1).products[0].available,null);
 });
+test('Balance uses documented USD when omitted and normalizes explicit currency without truncation',async()=>{
+ for(const data of [{balance:0},{balance:'1250.75',currency:null},{balance:4,currency:''},{balance:4,currency:'  '},{balance:4,currency:' usd '}]){
+  const a=load('lib/wupex-api.ts',{}, {fetch:async()=>Response.json({status:true,data})});
+  assert.deepEqual(clone(await a.getWupexBalance(creds)),{amount:Number(data.balance),currency:'USD'});
+ }
+ assert.equal(api.parseWupexBalance({balance:4,currency:' eur '}).currency,'EUR');
+ for(const balance of [undefined,null,true,'',Infinity,'NaN'])assert.throws(()=>api.parseWupexBalance({balance}),/invalid amount/);
+ assert.throws(()=>api.parseWupexBalance({currency:'USD'}),/invalid amount/);
+});
+
 test('Oversized responses stop reading before unbounded allocation',async()=>{
  let canceled=false;
  const a=load('lib/wupex-api.ts',{}, {fetch:async()=>({ok:true,body:{getReader:()=>({read:async()=>({done:false,value:new Uint8Array(4*1024*1024+1)}),cancel:async()=>{canceled=true}})}})});
@@ -71,7 +81,7 @@ function actions(options={}) {
  const a=load('app/admin/wupex/actions.ts',{
   'next/cache':{revalidatePath:path=>calls.push(path)},
   '@/lib/wupex-admin':{requireWupexAdmin:async()=>{calls.push('auth');if(options.denied)throw Error('denied');return{db:{from:()=>q},userId:'admin'}}},
-  '@/lib/wupex-api':{...api,getWupexBalance:async()=>{calls.push('balance');if(options.upstreamError)throw new api.WupexError('Access denied');return{amount:0,currency:'USD'}},getWupexPreorderStatus:async()=>false,getWupexCatalog:async()=>{calls.push('catalog');return catalog}},
+  '@/lib/wupex-api':{...api,getWupexBalance:async()=>{calls.push('balance');if(options.upstreamError)throw new api.WupexError('Access denied');return options.balanceData?api.parseWupexBalance(options.balanceData):{amount:0,currency:'USD'}},getWupexPreorderStatus:async()=>false,getWupexCatalog:async()=>{calls.push('catalog');return catalog}},
   '@/lib/wupex-storage':{wupexEnvironmentConfigured:()=>!!options.environment,sealWupexCredentials:()=> 'encrypted-only',readWupexCredentials:async()=>creds,requireWupexCredentials:async()=>creds}
  });
  return{...a,calls,get saved(){return saved}};
@@ -89,6 +99,17 @@ test('Connecting requires admin, verifies without purchase, and stores ciphertex
  }
  assert((await actions({dbError:true}).connectWupex(form())).error);
 });
+test('Connecting saves a verified balance without currency and refuses malformed balances',async()=>{
+ const a=actions({balanceData:{balance:0}});
+ assert.equal((await a.connectWupex(form())).data,true);
+ assert.deepEqual(a.calls,['auth','balance','save','/admin/wupex']);
+ for(const balanceData of [{balance:null},{currency:'USD'},{balance:1,currency:'USDollars'}]){
+  const invalid=actions({balanceData});
+  assert((await invalid.connectWupex(form())).error);
+  assert(!invalid.calls.includes('save'));
+ }
+});
+
 test('Every dashboard and catalogue action authenticates before reading supplier information',async()=>{
  for(const method of ['loadWupexDashboard','loadWupexProducts']){
   const a=actions({denied:true});await assert.rejects(a[method](1,'',''),/denied/);assert.deepEqual(a.calls,['auth']);
