@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { requestWupexThroughRelay } from "./wupex-relay";
 import type { WupexBalance, WupexCatalog, WupexCredentials, WupexProduct } from "./wupex-types";
 
 export const WUPEX_SANDBOX_URL = "https://sandbox-service.wupex.com";
@@ -77,16 +78,24 @@ async function request(credentials: WupexCredentials, endpoint: string, body?: R
   ];
   if (!allowed.includes(endpoint.split("?")[0])) throw new WupexError("Unsupported Wupex operation.");
   try {
-    const response = await fetch(c.baseUrl + endpoint, {
+    const response = await requestWupexThroughRelay({
+      baseUrl: c.baseUrl, endpoint, apiKey: c.apiKey,
       method: method ?? (body === undefined ? "GET" : "POST"),
-      headers: { "x-api-key": c.apiKey, "Accept-Language": "en", Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15000),
+      ...(body === undefined ? {} : { body }),
     });
     if (!response.ok) {
-      await response.body?.cancel();
+      const failure = await readJson(response).catch(() => null);
+      const detail = failure && typeof failure === "object" && !Array.isArray(failure) ? failure as Row : {};
+      if (detail.relayError === "UPSTREAM_CLOUDFLARE_BLOCK") {
+        const ray = typeof detail.rayId === "string" && /^[a-fA-F0-9]{8,32}(?:-[A-Z0-9]{2,8})?$/.test(detail.rayId) ? detail.rayId : "";
+        throw new WupexError("Wupex's Cloudflare firewall blocked the VPS connection. Ask Wupex to review server IP 187.127.167.138." + (ray ? " Reference: " + ray + "." : ""), response.status);
+      }
+      if (detail.relayError === "RELAY_AUTH_FAILED") throw new WupexError("Wupex VPS connection authentication failed. The server configuration needs updating.", response.status);
+      if (typeof detail.relayError === "string" && ["UPSTREAM_UNREACHABLE", "UPSTREAM_REDIRECT_REFUSED", "UPSTREAM_INVALID_RESPONSE", "UPSTREAM_RESPONSE_TOO_LARGE"].includes(detail.relayError)) {
+        throw new WupexError("Wupex could not return a verified response through the VPS. Any submitted purchase must be checked before retrying.", response.status);
+      }
       throw new WupexError(response.status === 401 || response.status === 403
-        ? "Wupex denied access. Check the API key, service URL and allowed server IPs."
+        ? "Wupex denied API access from the VPS. Check the live API key and Wupex account permissions."
         : response.status === 429 ? "Wupex is limiting requests. Wait briefly and refresh."
         : "Wupex request failed (HTTP " + response.status + ").", response.status);
     }

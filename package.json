@@ -28,7 +28,7 @@
     "test:restricted-accounts": "node --test scripts/tests/restricted-product-account.cjs scripts/tests/checkout-sign-in-return.cjs && node scripts/tests/restricted-product-account-db.cjs",
     "test:wallet-withdrawals": "node --test scripts/tests/wallet-withdrawals.cjs && node scripts/tests/wallet-withdrawals-db.cjs",
     "test:wallet-topup-timeout": "node --test scripts/tests/wallet-topup-timeout.cjs && node scripts/tests/wallet-topup-timeout-db.cjs",
-    "test:wupex": "node --test scripts/tests/wupex.cjs scripts/tests/wupex-fulfillment.cjs && node scripts/tests/wupex-db.cjs && node scripts/tests/wupex-integration-db.cjs"
+    "test:wupex": "node --test scripts/tests/wupex.cjs scripts/tests/wupex-fulfillment.cjs scripts/tests/wupex-relay.cjs && node scripts/tests/wupex-db.cjs && node scripts/tests/wupex-integration-db.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

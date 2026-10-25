@@ -30,6 +30,7 @@ jobs:
       - run: npm run test:payment-failures
       - run: npm run test:restricted-accounts
       - run: npm run test:purchase-restrictions
+      - run: python3 -m unittest discover -s vps-wupex -p "test_*.py"
       - run: npm run test:wupex
       - run: npm run test:fkwallet
       - run: npm run test:digiseller-fkwallet

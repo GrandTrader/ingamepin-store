@@ -3,7 +3,7 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 function load(file,mocks={},globals={}) {
  const exports={};
  vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{
-  exports,require:n=>n==='server-only'?{}:n in mocks?mocks[n]:require(n),Buffer,URL,AbortSignal,Date,process,...globals
+  exports,require:n=>n==='server-only'?{}:n in mocks?mocks[n]:n==='./wupex-relay'?{requestWupexThroughRelay:async r=>globals.fetch(r.baseUrl+r.endpoint,{method:r.method,headers:{'x-api-key':r.apiKey},body:r.body===undefined?undefined:JSON.stringify(r.body),redirect:'error',cache:'no-store'})}:require(n),Buffer,URL,AbortSignal,Date,process,...globals
  });
  return exports;
 }
