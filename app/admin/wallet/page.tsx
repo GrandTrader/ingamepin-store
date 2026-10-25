@@ -1,4 +1,5 @@
 ﻿import Link from "next/link";
+import { expireStaleWalletTopups, WALLET_TOPUP_EXPIRY_MINUTES } from "@/lib/wallet-topup-expiry";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,7 @@ export default async function AdminWalletPage({ searchParams }: Props) {
   const check = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
   if (!check.data) redirect("/admin/login?error=Access denied");
 
+  await expireStaleWalletTopups();
   const admin = createAdminClient();
   const result = await admin.from("wallet_topup_requests").select("id, user_id, amount, payment_method, payment_reference, status, rejection_reason, created_at").order("created_at", { ascending: false });
   const requests = (result.data ?? []) as RequestRow[];
@@ -34,7 +36,7 @@ export default async function AdminWalletPage({ searchParams }: Props) {
   return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
     <AdminSidebar walletCount={pending} />
     <main className="min-w-0 flex-1 p-5 sm:p-8">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Customer funds</p><h1 className="mt-2 text-3xl font-black">Wallet top-ups</h1><p className="mt-1 text-sm text-slate-500">Verify payment references before crediting customer wallets.</p>
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Customer funds</p><h1 className="mt-2 text-3xl font-black">Wallet top-ups</h1><p className="mt-1 text-sm text-slate-500">Unconfirmed requests are automatically rejected after {WALLET_TOPUP_EXPIRY_MINUTES} minutes. Verify payment references before crediting customer wallets.</p>
       <Link href="/admin/wallet/activity" prefetch={false} className="mt-4 inline-flex rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700">All customer wallet activity →</Link>
       <Link href="/admin/wallet/withdrawals" prefetch={false} className="ml-3 mt-4 inline-flex rounded-lg border border-blue-200 px-4 py-3 text-sm font-bold text-blue-700">Crypto withdrawals →</Link>
       {messages.success && <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">{messages.success}</div>}

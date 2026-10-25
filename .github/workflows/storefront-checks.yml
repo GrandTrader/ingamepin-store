@@ -22,6 +22,7 @@ jobs:
       - run: npm run test:supplier-quotation
       - run: npm run test:wallet-activity
       - run: npm run test:wallet-withdrawals
+      - run: npm run test:wallet-topup-timeout
       - run: npm run test:wallet-checkout
       - run: npm run test:business-bank
       - run: npm run test:business-discounts

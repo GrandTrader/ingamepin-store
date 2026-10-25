@@ -38,11 +38,11 @@ function WalletTopupReturnContent() {
           return;
         }
         if (["REJECTED", "EXPIRED"].includes(result.topupStatus ?? "")) {
-          router.replace(`${walletBase}?error=Wallet+payment+was+not+completed`);
+          router.replace(`${walletBase}?error=This+top-up+is+closed.+If+you+already+paid,+contact+support+before+trying+again.`);
           return;
         }
 
-        setMessage("Payment received. Waiting for gateway confirmation...");
+        setMessage("Waiting for payment confirmation...");
       } catch (error) {
         setMessage(
           error instanceof Error ? error.message : "Unable to verify payment.",
@@ -64,7 +64,7 @@ function WalletTopupReturnContent() {
       <section className="w-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-cyan-100 border-t-cyan-500" />
         <h1 className="mt-6 text-3xl font-black text-slate-950">
-          Wallet payment received
+          Checking wallet payment
         </h1>
         <p className="mt-3 text-slate-600">{message}</p>
         <p className="mt-2 text-sm text-slate-500">

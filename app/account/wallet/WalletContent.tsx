@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getWalletPaymentGateways } from "@/lib/wallet-payment-gateways";
 import WalletTopupForm from "./WalletTopupForm";
 import WithdrawalSection from "./WithdrawalSection";
-import { expireStaleWalletTopups } from "@/lib/wallet-topup-expiry";
+import { expireStaleWalletTopups, WALLET_TOPUP_EXPIRY_MINUTES } from "@/lib/wallet-topup-expiry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { claimWalletRefund } from "./actions";
 
@@ -105,6 +105,7 @@ export default async function CustomerWalletPage({
           </section>
           <section className="p-4">
             <h1 className="text-xl font-bold">Add money</h1>
+            <p className="mt-1 text-xs text-slate-500">Complete payment within {WALLET_TOPUP_EXPIRY_MINUTES} minutes. Unconfirmed requests are automatically rejected. If you already paid, contact support before trying again.</p>
 
             {error && (
               <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">
@@ -172,8 +173,10 @@ export default async function CustomerWalletPage({
                     )}
                   </div>
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                    request.status === "EXPIRED"
-                      ? "bg-slate-200 text-slate-600"
+                    request.status === "REJECTED"
+                      ? "bg-red-100 text-red-700"
+                      : request.status === "EXPIRED"
+                        ? "bg-slate-200 text-slate-600"
                       : request.status === "APPROVED"
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-amber-100 text-amber-700"

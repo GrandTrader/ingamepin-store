@@ -4,23 +4,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const WALLET_TOPUP_EXPIRY_MINUTES = 30;
 
-export async function expireStaleWalletTopups(userId: string) {
-  const cutoff = new Date(
-    Date.now() - WALLET_TOPUP_EXPIRY_MINUTES * 60 * 1000,
-  ).toISOString();
-
-  const result = await createAdminClient()
-    .from("wallet_topup_requests")
-    .update({
-      status: "EXPIRED",
-      rejection_reason: "Payment session expired. Start a new top-up if you still want to add money.",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId)
-    .eq("status", "PENDING")
-    .lt("created_at", cutoff);
+// The database clock and row locks serialize timeouts with payment completion.
+export async function expireStaleWalletTopups(userId?: string): Promise<number> {
+  const result = await createAdminClient().rpc("reject_stale_wallet_topups", {
+    p_user_id: userId ?? null,
+  });
 
   if (result.error) {
-    throw new Error(`Unable to expire old wallet top-ups: ${result.error.message}`);
+    throw new Error("Unable to reject old wallet top-ups.");
   }
+
+  return Number(result.data ?? 0);
 }

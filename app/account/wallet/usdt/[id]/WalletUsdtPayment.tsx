@@ -47,14 +47,23 @@ export default function WalletUsdtPayment({
         error?: string;
       };
 
-      if (!response.ok || !result.invoice) {
+      if (!response.ok) {
         throw new Error(result.error ?? "Unable to check payment.");
       }
-
-      setInvoice(result.invoice);
       if (result.topupStatus === "APPROVED") {
-        router.push(`${walletBase}?success=Wallet+top-up+completed`);
+        setInvoice(null);
+        router.replace(`${walletBase}?success=Wallet+top-up+completed`);
+        return;
       }
+      if (["REJECTED", "EXPIRED"].includes(result.topupStatus ?? "")) {
+        setInvoice(null);
+        router.replace(`${walletBase}?error=This+top-up+is+closed.+If+you+already+paid,+contact+support+before+trying+again.`);
+        return;
+      }
+      if (!result.invoice) {
+        throw new Error("Unable to check payment.");
+      }
+      setInvoice(result.invoice);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Unable to check payment.",

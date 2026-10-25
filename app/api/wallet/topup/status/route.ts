@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (topup.payment_method !== "USDT_DIRECT") {
+    if (topup.payment_method !== "USDT_DIRECT" || topup.status !== "PENDING") {
       return NextResponse.json({
         topupStatus: topup.status,
         transactionId: topup.gateway_transaction_id,
