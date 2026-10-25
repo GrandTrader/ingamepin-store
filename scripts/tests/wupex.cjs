@@ -46,11 +46,26 @@ test('Supplier failures and malformed payloads fail closed and do not reveal key
  for(const value of [null,true,'',Infinity,'NaN'])assert.throws(()=>api.parseWupexBalance({balance:value,currency:'USD'}));
  assert.equal(api.parseWupexBalance({balance:0,currency:'USD'}).amount,0);
  for(const currency of [true,42,{},[], 'US','USDollars','USD123'])assert.throws(()=>api.parseWupexBalance({balance:1,currency}),/invalid balance currency/);
- for(const patch of [{price:null},{available:-1},{available:1.2},{cardType:'other'},{productId:0},{productName:''},{subType:6}])assert.throws(()=>api.parseWupexCatalog({...catalog,data:[{...product,...patch}]},1));
+ for(const patch of [{price:null},{available:-1},{available:1.2},{cardType:'other'},{productId:0},{productName:''},{cardType:'topup',subType:6}])assert.throws(()=>api.parseWupexCatalog({...catalog,data:[{...product,...patch}]},1));
  assert.throws(()=>api.parseWupexCatalog({...catalog,data:[product,product]},1));
  assert.throws(()=>api.parseWupexCatalog(catalog,2));
  assert.equal(api.parseWupexCatalog({...catalog,data:[{...product,available:undefined}]},1).products[0].available,null);
 });
+test('Voucher subtype zero is not a top-up identifier; top-up subtypes remain validated',()=>{
+ for(const subType of [0,'0',undefined,null]){
+  const parsed=api.parseWupexCatalog({...catalog,data:[{...product,subType}]},1);
+  assert.equal(parsed.products[0].subType,null);
+  assert.equal(parsed.products[0].id,product.productId);
+  assert.equal(parsed.products[0].available,product.available);
+ }
+ for(const subType of [1,2,3,4,5]){
+  assert.equal(api.parseWupexCatalog({...catalog,data:[{...product,cardType:'topup',subType}]},1).products[0].subType,subType);
+ }
+ for(const subType of [0,'0',-1,1.5,6]){
+  assert.throws(()=>api.parseWupexCatalog({...catalog,data:[{...product,cardType:'topup',subType}]},1));
+ }
+});
+
 test('Balance uses documented USD when omitted and normalizes explicit currency without truncation',async()=>{
  for(const data of [{balance:0},{balance:'1250.75',currency:null},{balance:4,currency:''},{balance:4,currency:'  '},{balance:4,currency:' usd '}]){
   const a=load('lib/wupex-api.ts',{}, {fetch:async()=>Response.json({status:true,data})});

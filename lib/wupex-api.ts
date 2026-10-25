@@ -140,7 +140,8 @@ export function parseWupexCatalog(value: unknown, requestedPage: number): WupexC
     seen.add(id);
     const available = data.available == null ? null : integer(data.available);
     const faceValue = data.faceValue == null ? null : amount(data.faceValue);
-    const subType = data.subType == null ? null : integer(data.subType, 1, 5);
+    // subType describes top-up recipient fields; live voucher products use 0.
+    const subType = cardType === "voucher" || data.subType == null ? null : integer(data.subType, 1, 5);
     if (faceValue !== null && faceValue < 0) throw new WupexError("Wupex returned an invalid face value.");
     return { id, sku, name, price, available, faceValue, subType, cardType: cardType as WupexProduct["cardType"], region: text(data.regionName, 100) };
   });
