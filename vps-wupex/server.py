@@ -2,6 +2,8 @@
 import hashlib
 import hmac
 import http.server
+import http.client
+import socket
 import json
 import os
 import re
@@ -15,6 +17,7 @@ from pathlib import Path
 from contextlib import closing
 
 PORT = 8803
+OUTBOUND_IPV4 = "187.127.167.138"
 MAX_REQUEST = 256 * 1024
 MAX_RESPONSE = 4 * 1024 * 1024
 BASES = {"https://service.wupex.com", "https://sandbox-service.wupex.com"}
@@ -102,6 +105,38 @@ def authenticate(headers, body, secret, guard, now=None):
     return hmac.compare_digest(expected, supplied) and guard.accept(nonce, now)
 
 
+def connect_ipv4(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
+    # Scope IPv4 to this relay; do not change system-wide networking or other suppliers.
+    host, port = address
+    last_error = None
+    for family, socktype, protocol, _, destination in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM):
+        connection = socket.socket(family, socktype, protocol)
+        try:
+            if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+                connection.settimeout(timeout)
+            connection.bind((OUTBOUND_IPV4, 0))
+            connection.connect(destination)
+            return connection
+        except OSError as error:
+            last_error = error
+            connection.close()
+    if last_error is not None:
+        raise last_error
+    raise OSError("Wupex has no IPv4 service address")
+
+
+class IPv4HTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._create_connection = connect_ipv4
+
+
+class IPv4HTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, request):
+        # HTTPSConnection still verifies the certificate and sends the original hostname as SNI.
+        return self.do_open(IPv4HTTPSConnection, request, context=self._context)
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -114,7 +149,7 @@ def forward(value, opener=None):
         "User-Agent": "InGamePin-Wupex-Relay/1.0",
         **({"Content-Type": "application/json"} if body is not None else {}),
     })
-    opener = opener or urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    opener = opener or urllib.request.build_opener(urllib.request.ProxyHandler({}), IPv4HTTPSHandler(), NoRedirect())
     try:
         response = opener.open(request, timeout=12)
     except urllib.error.HTTPError as error:

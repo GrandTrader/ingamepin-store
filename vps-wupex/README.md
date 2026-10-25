@@ -2,7 +2,9 @@
 
 Production requests flow from Next.js to the existing HTTPS host
 https://pally-relay.ingamepin.com/wupex/request, then to Wupex from
-187.127.167.138. Other supplier services are independent.
+187.127.167.138. Supplier connections explicitly resolve IPv4 and bind to
+that source address, while retaining TLS hostname verification. IPv6 is
+not used by this relay. Other supplier services are independent.
 
 The relay listens only on 127.0.0.1:8803 under the ingamepin-wupex
 systemd service. Caddy terminates HTTPS. Requests are signed with HMAC,

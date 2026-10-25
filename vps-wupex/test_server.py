@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import tempfile
+import ssl
 import threading
 import urllib.request
 import unittest
@@ -29,6 +30,33 @@ class RelayTests(unittest.TestCase):
         headers = {"x-wupex-timestamp": str(stamp), "x-wupex-nonce": nonce}
         headers["x-wupex-signature"] = hmac.new(KEY, (str(stamp) + "\n" + nonce + "\n").encode() + body, hashlib.sha256).hexdigest()
         return headers
+
+    def test_only_ipv4_is_resolved_and_the_allowed_source_is_bound(self):
+        addresses = [(server.socket.AF_INET, server.socket.SOCK_STREAM, 6, "", ("104.26.6.74", 443))]
+        connection = Mock()
+        with patch.object(server.socket, "getaddrinfo", return_value=addresses) as lookup, patch.object(server.socket, "socket", return_value=connection):
+            self.assertIs(server.connect_ipv4(("service.wupex.com", 443), 12), connection)
+            lookup.assert_called_once_with("service.wupex.com", 443, server.socket.AF_INET, server.socket.SOCK_STREAM)
+            connection.bind.assert_called_once_with(("187.127.167.138", 0))
+            connection.connect.assert_called_once_with(("104.26.6.74", 443))
+            connection.settimeout.assert_called_once_with(12)
+        tls = server.IPv4HTTPSConnection("service.wupex.com", timeout=12)
+        self.assertEqual(tls.host, "service.wupex.com")
+        self.assertTrue(tls._context.check_hostname)
+        self.assertEqual(tls._context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertIs(tls._create_connection, server.connect_ipv4)
+
+    def test_ipv4_failures_close_sockets_and_never_try_ipv6(self):
+        addresses = [(server.socket.AF_INET, server.socket.SOCK_STREAM, 6, "", ("104.26.6.74", 443))]
+        connection = Mock()
+        connection.connect.side_effect = OSError("unreachable")
+        with patch.object(server.socket, "getaddrinfo", return_value=addresses), patch.object(server.socket, "socket", return_value=connection):
+            with self.assertRaises(OSError):
+                server.connect_ipv4(("service.wupex.com", 443), 12)
+            connection.close.assert_called_once()
+        with patch.object(server.socket, "getaddrinfo", return_value=[]):
+            with self.assertRaisesRegex(OSError, "no IPv4"):
+                server.connect_ipv4(("service.wupex.com", 443), 12)
 
     def test_authentication_integrity_and_durable_replay_protection(self):
         body = json.dumps(REQUEST).encode()
