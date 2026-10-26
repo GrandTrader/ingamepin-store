@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const result = await supabase
       .from("wallet_topup_requests")
       .select(
-        "id, status, payment_method, gateway_order_id, gateway_transaction_id",
+        "id, status, payment_method, gateway_order_id, gateway_transaction_id, financial_hold_at, financial_hold_released_at",
       )
       .eq("id", requestId)
       .eq("user_id", user.id)
@@ -33,6 +33,10 @@ export async function GET(request: NextRequest) {
         { error: "Wallet top-up was not found." },
         { status: 404 },
       );
+    }
+
+    if (topup.financial_hold_at && !topup.financial_hold_released_at) {
+      return NextResponse.json({ topupStatus: "HELD", transactionId: topup.gateway_transaction_id });
     }
 
     if (topup.payment_method !== "USDT_DIRECT" || topup.status !== "PENDING") {

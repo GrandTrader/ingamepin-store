@@ -1,3 +1,4 @@
+import { customerFinancialAccess } from "@/lib/customer-financial-access";
 import { businessCatalogDiscounts } from "@/lib/business-catalog-discounts";
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest, context: Context) {
     if (path.length === 1 && path[0] === "wallet") {
       const wallet = await db.from("customer_wallets").select("balance,currency").eq("user_id",user.id).maybeSingle();
       if (wallet.error) throw Error("Wallet unavailable.");
-      return businessApiJson({ balance: Number(wallet.data?.balance ?? 0), currency: wallet.data?.currency ?? "USD", paymentsEnabled: user.app_metadata?.wallet_disabled !== true });
+      return businessApiJson({ balance: Number(wallet.data?.balance ?? 0), currency: wallet.data?.currency ?? "USD", paymentsEnabled: user.app_metadata?.wallet_disabled !== true && (await customerFinancialAccess(user.id)).allowed });
     }
     if (path.length === 1 && path[0] === "products") {
       let page: number;

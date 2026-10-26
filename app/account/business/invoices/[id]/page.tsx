@@ -1,3 +1,4 @@
+import { customerFinancialAccess } from "@/lib/customer-financial-access";
 import { businessApplication } from "@/lib/business-verification-data";
 import { notFound } from "next/navigation";
 import Link from "@/components/ScopedAccountLink";
@@ -21,7 +22,8 @@ export default async function BankInvoicePage({ params }: { params: Promise<{ id
   if (result.error || deposit.error || settings.error) throw Error("Unable to load the invoice. Please try again.");
   if (!result.data) notFound();
   const invoice = result.data as Invoice;
-  const canSubmit = application?.status === "APPROVED" && application.bank_transfer_enabled === true && settings.data?.enabled === true && user.app_metadata?.wallet_disabled !== true;
+  const financialAccess = await customerFinancialAccess(user.id);
+  const canSubmit = financialAccess.allowed && application?.status === "APPROVED" && application.bank_transfer_enabled === true && settings.data?.enabled === true && user.app_metadata?.wallet_disabled !== true;
   const changed = !canSubmit || ["beneficiary", "account_number", "bank", "ifsc", "swift"].some(key => settings.data?.instructions?.[key] !== invoice.bank_instructions[key]);
   return <div className="mx-auto max-w-4xl space-y-5 p-5">
     <Link href="/account/business" className="inline-block text-blue-700 print:hidden">← Bank deposits and invoices</Link>

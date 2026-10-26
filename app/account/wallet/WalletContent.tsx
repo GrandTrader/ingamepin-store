@@ -1,3 +1,4 @@
+import { customerFinancialAccess, FINANCIAL_RESTRICTED } from "@/lib/customer-financial-access";
 import AccountReturnField from "@/components/AccountReturnField";
 import Link from "@/components/ScopedAccountLink";
 import { redirect } from "next/navigation";
@@ -66,7 +67,7 @@ export default async function CustomerWalletPage({
     supabase
       .from("wallet_topup_requests")
       .select(
-        "id, amount, payment_method, payment_reference, status, rejection_reason, created_at",
+        "id, amount, payment_method, payment_reference, status, rejection_reason, financial_hold_at, financial_hold_released_at, created_at",
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
@@ -86,7 +87,8 @@ export default async function CustomerWalletPage({
   const requests = requestResult.data ?? [];
   const refunds = refundResult.data ?? [];
   const gateways = getWalletPaymentGateways();
-  const walletEnabled = user.app_metadata?.wallet_disabled !== true;
+  const financialAccess = await customerFinancialAccess(user.id);
+  const walletEnabled = user.app_metadata?.wallet_disabled !== true && financialAccess.allowed;
 
   return (
     <main className="bg-slate-100 px-3 py-4 sm:px-4 sm:py-6 text-slate-950">
@@ -100,7 +102,7 @@ export default async function CustomerWalletPage({
 
         <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <section className="flex items-center justify-between gap-3 border-b border-slate-200 bg-cyan-50 px-4 py-3">
-            <p className="text-xs font-semibold text-slate-600">Available wallet balance</p>
+            <p className="text-xs font-semibold text-slate-600">Wallet balance</p>
             <p className="text-2xl font-bold text-cyan-700">{formatMoney(wallet.balance)}</p>
           </section>
           <section className="p-4">
@@ -126,7 +128,7 @@ export default async function CustomerWalletPage({
               />
             ) : (
               <div className="mt-7 rounded-2xl border border-red-200 bg-red-50 p-5 font-bold text-red-700">
-                Your wallet is currently disabled. Contact support for assistance.
+                {financialAccess.unavailable ? "Financial access could not be checked. Please try again." : FINANCIAL_RESTRICTED}
               </div>
             )}
           </section>
@@ -143,7 +145,7 @@ export default async function CustomerWalletPage({
               const item = Array.isArray(refund.order_items) ? refund.order_items[0] : refund.order_items;
               return <article key={refund.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-3 last:border-b-0">
                 <div><p className="font-black">{refund.currency} {Number(refund.amount).toFixed(2)} · {item?.option_name ?? item?.product_name ?? "Product refund"}</p><p className="mt-1 text-xs text-slate-500">Order {order ? <Link href={`/account/orders/${order.id}`} className="font-bold text-cyan-700 underline underline-offset-2">{order.order_number}</Link> : ""} · Quantity {refund.quantity} · {formatDate(refund.created_at)}</p><p className="mt-2 text-sm text-slate-600">{refund.reason}</p></div>
-                {refund.status === "PENDING_CLAIM" ? <form action={claimWalletRefund}><AccountReturnField area="wallet"/><input type="hidden" name="refund_id" value={refund.id} /><button className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500">Claim to wallet</button></form> : <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{refund.status.replaceAll("_", " ")}</span>}
+                {refund.status === "PENDING_CLAIM" && walletEnabled ? <form action={claimWalletRefund}><AccountReturnField area="wallet"/><input type="hidden" name="refund_id" value={refund.id} /><button className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500">Claim to wallet</button></form> : <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{refund.status.replaceAll("_", " ")}</span>}
               </article>;
             })}
           </div>
@@ -181,7 +183,7 @@ export default async function CustomerWalletPage({
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-amber-100 text-amber-700"
                   }`}>
-                    {request.status}
+                    {request.financial_hold_at && !request.financial_hold_released_at ? "PAYMENT HELD — CONTACT SUPPORT" : request.status}
                   </span>
                 </article>
               ))

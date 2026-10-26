@@ -1,7 +1,9 @@
 import "server-only";
+import { requireCustomerFinancialAccess } from "@/lib/customer-financial-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function requireBusinessBankTransfer(userId: string) {
+  await requireCustomerFinancialAccess(userId);
   const result = await createAdminClient().from("business_kyb")
     .select("status,bank_transfer_enabled").eq("user_id", userId).maybeSingle();
   if (result.error) throw Error("Unable to check Direct Bank Transfer access. Please try again.");

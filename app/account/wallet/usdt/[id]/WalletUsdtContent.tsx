@@ -1,3 +1,4 @@
+import { customerFinancialAccess } from "@/lib/customer-financial-access";
 import { notFound, redirect } from "next/navigation";
 
 import { expireStaleWalletTopups } from "@/lib/wallet-topup-expiry";
@@ -20,6 +21,8 @@ export default async function WalletUsdtPage({
   if (!user) redirect("/account?error=Please sign in to continue.");
 
   await expireStaleWalletTopups(user.id);
+  if (!(await customerFinancialAccess(user.id)).allowed) redirect(`${portal ? "/account/portal/wallet" : "/account/wallet"}?error=Financial+transactions+are+restricted.+Contact+support.`);
+
   const result = await supabase
     .from("wallet_topup_requests")
     .select("id, amount, payment_method, status, gateway_order_id")

@@ -24,7 +24,7 @@ export default async function WithdrawalSection({ userId, walletEnabled, balance
     {!enabled && rows.length > 0 && <p className="mt-2 text-sm text-slate-600">New withdrawal requests are disabled. Your existing requests remain visible below.</p>}
     {!!rows.length && <details className="mt-4" open={pending.length > 0}><summary className="cursor-pointer text-sm font-bold">Withdrawal history · active and latest 20 finished requests</summary><div className="mt-3 space-y-3">{rows.map(row => <article key={row.id} className="min-w-0 rounded-xl border border-slate-200 p-3">
       <WithdrawalHistory row={row} />
-      {row.status === "REQUESTED" && <form action={cancelWithdrawal} className="mt-3"><AccountReturnField area="wallet" /><input type="hidden" name="request_id" value={row.id} /><button className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-bold text-red-700">Cancel request & release funds</button></form>}
+      {row.status === "REQUESTED" && walletEnabled && <form action={cancelWithdrawal} className="mt-3"><AccountReturnField area="wallet" /><input type="hidden" name="request_id" value={row.id} /><button className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-bold text-red-700">Cancel request & release funds</button></form>}
     </article>)}</div></details>}
   </section>;
 }

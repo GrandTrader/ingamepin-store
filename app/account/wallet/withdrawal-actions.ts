@@ -1,4 +1,5 @@
 "use server";
+import { requireCustomerFinancialAccess } from "@/lib/customer-financial-access";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +17,7 @@ export async function requestWithdrawal(form: FormData) {
   const client = await createClient();
   const { data: { user } } = await client.auth.getUser();
   if (!user?.email_confirmed_at) redirect("/account?error=Sign in with a verified email.");
+  try { await requireCustomerFinancialAccess(user.id); } catch (error) { finish(form, "error", error instanceof Error ? error.message : "Financial access unavailable."); }
   const key = String(form.get("request_key") ?? "");
   const amount = String(form.get("amount") ?? "").trim();
   const network = String(form.get("network") ?? "");
@@ -34,6 +36,7 @@ export async function cancelWithdrawal(form: FormData) {
   const client = await createClient();
   const { data: { user } } = await client.auth.getUser();
   if (!user?.email_confirmed_at) redirect("/account?error=Sign in with a verified email.");
+  try { await requireCustomerFinancialAccess(user.id); } catch (error) { finish(form, "error", error instanceof Error ? error.message : "Financial access unavailable."); }
   const id = String(form.get("request_id") ?? "");
   if (!isReceiptId(id)) finish(form, "error", "Invalid withdrawal request.");
   const result = await client.rpc("cancel_wallet_withdrawal", { p_request_id: id });

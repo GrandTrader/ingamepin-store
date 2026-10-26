@@ -22,7 +22,7 @@ export async function saveCustomerPurchaseAccess(_previous: PurchaseAccessResult
     p_admin: user.id, p_customer: customerId, p_enabled: action === "restrict",
     p_devices: form.get("devices") === "on", p_ips: form.get("ips") === "on", p_reason: reason,
   });
-  if (result.error) return { error: result.error.code === "P0001" ? result.error.message : "Unable to save purchase access. Please try again." };
+  if (result.error) return { error: result.error.code === "P0001" ? result.error.message : "Unable to save financial access. Please try again." };
   revalidatePath(`/admin/customers/${customerId}`);
-  return { success: action === "restrict" ? "New purchases restricted. Previous orders and support remain accessible." : "This customer's purchase restriction was removed." };
+  return { success: action === "restrict" ? "Financial transactions restricted. Previous orders, history and support remain accessible." : "Financial restriction removed. Separately disabled wallets and held payments still require review." };
 }

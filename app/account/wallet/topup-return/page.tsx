@@ -33,6 +33,10 @@ function WalletTopupReturnContent() {
         if (!response.ok) {
           throw new Error(result.error ?? "Unable to verify payment.");
         }
+        if (result.topupStatus === "HELD") {
+          router.replace(`${walletBase}?error=Payment+received+and+held+for+review.+Contact+support.`);
+          return;
+        }
         if (result.topupStatus === "APPROVED") {
           router.replace(`${walletBase}?success=Wallet+top-up+completed`);
           return;

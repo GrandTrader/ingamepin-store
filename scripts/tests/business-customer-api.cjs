@@ -23,9 +23,11 @@ const headers={Authorization:'Bearer igp_b2b_'+'a'.repeat(43)};
  rpcResult={data:null,error:null};assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}))).error.status,403);
  rpcResult={data:null,error:{message:'business_api_rate_limit'}};const limit=await auth.authorizeBusinessApi(new Request('http://test',{headers}));assert.equal(limit.error.status,429);assert.equal(limit.error.headers.get('Retry-After'),'60');
  rpcResult={data:null,error:{message:'database unavailable'}};assert.equal((await auth.authorizeBusinessApi(new Request('http://test',{headers}))).error.status,503);
+ let financialAllowed=true;
  let requiredPermission,forwarded,filters=[],returnedOrder=null,readCodes=0,stockRequest;
  const builder={in(){return this;},then(resolve){resolve({data:[{id:"123e4567-e89b-42d3-a456-426614174000",product_id:"product"}],error:null});},select(){return this;},eq(k,v){filters.push([k,v]);return this;},maybeSingle:async()=>({data:returnedOrder,error:null})};
  const route=load('app/api/v1/business/[...path]/route.ts',{
+  '@/lib/customer-financial-access':{customerFinancialAccess:async()=>({allowed:financialAllowed})},
   '@/lib/business-api-auth':{businessApiJson:auth.businessApiJson,authorizeBusinessApi:async(req,ordering)=>{requiredPermission=ordering;return {error:null,principal:{user,ip:'203.0.113.10'}};}},
   '@/lib/business-catalog-discounts':{businessCatalogDiscounts:async()=>({})},
   '@/lib/product-promotion-data':{productPromotions:async()=>({rows:[]})},'@/lib/product-promotions':{},
@@ -45,6 +47,7 @@ const headers={Authorization:'Bearer igp_b2b_'+'a'.repeat(43)};
  let result=await route.GET(new NextRequest('http://test/api/v1/business/orders/'+id+'/codes'),context(['orders',id,'codes']));assert.equal(result.status,404);assert(filters.some(([k,v])=>k==='customer_id'&&v===user.id));assert(filters.some(([k,v])=>k==='sales_channel'&&v==='BUSINESS'));assert.equal(readCodes,0);
  returnedOrder={id,status:'REFUNDED',order_items:[{id:'item'}]};result=await route.GET(new NextRequest('http://test/api/v1/business/orders/'+id+'/codes'),context(['orders',id,'codes']));assert.equal(result.status,409);assert.equal(readCodes,0);
  returnedOrder={id,status:'DELIVERED',order_items:[{id:'item',quantity:2}]};result=await route.GET(new NextRequest('http://test/api/v1/business/orders/'+id+'/codes'),context(['orders',id,'codes']));assert.equal(result.status,200);assert.equal(readCodes,1);
+ for(const allowed of [true,false]){financialAllowed=allowed;returnedOrder={balance:100,currency:'USD'};const walletResponse=await route.GET(new NextRequest('http://test/api/v1/business/wallet'),context(['wallet']));const walletBody=await walletResponse.json();assert.equal(walletBody.paymentsEnabled,allowed);assert.equal(walletBody.balance,100);}
  let approvedIps=['203.0.113.10'],createdKey=null,changedKey=null;
  const keysDb={rpc:async(name,args)=>{createdKey=args;return {data:'key',error:null};},from(table){const q={select(){return this},eq(){return this},is(){return this},update(value){changedKey=value;return this},maybeSingle:async()=>({data:table==='business_api_ip_approvals'?{ips:approvedIps}:{id:'key'},error:null})};return q;}};
  const keyActions=load('app/account/portal/api-access/actions.ts',{'@/lib/business-api-input':inputs,'next/cache':{revalidatePath(){}},'@/lib/business-portal-data':{portalCustomer:async()=>({user})},'@/lib/supabase/admin':{createAdminClient:()=>keysDb}});

@@ -50,6 +50,11 @@ export default function WalletUsdtPayment({
       if (!response.ok) {
         throw new Error(result.error ?? "Unable to check payment.");
       }
+      if (result.topupStatus === "HELD") {
+        setInvoice(null);
+        router.replace(`${walletBase}?error=Payment+received+and+held+for+review.+Contact+support.`);
+        return;
+      }
       if (result.topupStatus === "APPROVED") {
         setInvoice(null);
         router.replace(`${walletBase}?success=Wallet+top-up+completed`);

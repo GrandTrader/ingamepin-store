@@ -1,3 +1,5 @@
+import { requireCustomerFinancialAccess } from "@/lib/customer-financial-access";
+import { CustomerPurchaseAccessError } from "@/lib/customer-purchase-access";
 import { after, NextRequest, NextResponse } from "next/server";
 
 import {
@@ -86,6 +88,8 @@ export async function POST(request: NextRequest) {
         { status: 403 },
       );
     }
+
+    await requireCustomerFinancialAccess(user.id, request);
 
     await expireStaleWalletTopups(user.id);
 
@@ -244,6 +248,7 @@ export async function POST(request: NextRequest) {
       paymentTotal: paymentAmount,
     });
   } catch (error) {
+    if (error instanceof CustomerPurchaseAccessError) return NextResponse.json({ error: error.message }, { status: error.status });
     return NextResponse.json(
       {
         error:

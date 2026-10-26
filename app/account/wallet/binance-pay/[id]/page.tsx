@@ -1,3 +1,4 @@
+import { customerFinancialAccess } from "@/lib/customer-financial-access";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -18,6 +19,8 @@ export default async function BinanceWalletTopupPage({
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/account?error=Please sign in to continue.");
+
+  if (!(await customerFinancialAccess(user.id)).allowed) redirect("/account/wallet?error=Financial+transactions+are+restricted.+Contact+support.");
 
   const result = await supabase
     .from("wallet_topup_requests")

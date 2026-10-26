@@ -32,6 +32,7 @@
     "test:supplier-switch-ui": "node scripts/tests/supplier-switch-ui.cjs",
     "test:wupex": "node --test scripts/tests/wupex.cjs scripts/tests/wupex-fulfillment.cjs scripts/tests/wupex-relay.cjs && node scripts/tests/wupex-db.cjs && node scripts/tests/wupex-integration-db.cjs",
     "test:customer-purchase-access": "node --test scripts/tests/customer-purchase-access.cjs scripts/tests/restricted-product-account.cjs scripts/tests/retail-wallet-checkout.cjs scripts/tests/portal-checkout-api.cjs scripts/tests/checkout-retry.cjs scripts/tests/paypal-checkout.cjs && node scripts/tests/customer-purchase-access-db.cjs",
+    "test:customer-financial-access": "node --test scripts/tests/customer-financial-access.cjs && node scripts/tests/customer-financial-access-db.cjs",
     "test:customer-purchase-access-ui": "node scripts/tests/customer-purchase-access-ui.cjs"
   },
   "dependencies": {

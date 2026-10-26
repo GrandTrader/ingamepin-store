@@ -1,3 +1,5 @@
+import { requireCustomerFinancialAccess } from "@/lib/customer-financial-access";
+import { CustomerPurchaseAccessError } from "@/lib/customer-purchase-access";
 import { NextRequest, NextResponse } from "next/server";
 
 import { BinanceCreateOrderResult, callBinancePay } from "@/lib/binance-pay";
@@ -18,6 +20,8 @@ export async function POST(request: NextRequest) {
     if (!user?.email) {
       return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
     }
+
+    await requireCustomerFinancialAccess(user.id, request);
 
     const admin = createAdminClient();
     const topupResult = await admin
@@ -78,6 +82,7 @@ export async function POST(request: NextRequest) {
       expiresAt: binanceOrder.expireTime,
     });
   } catch (error) {
+    if (error instanceof CustomerPurchaseAccessError) return NextResponse.json({ error: error.message }, { status: error.status });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to start Binance Pay." },
       { status: 500 }

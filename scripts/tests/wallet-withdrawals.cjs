@@ -18,7 +18,7 @@ test('fixed fees and exact cent subtraction; malformed or tiny amounts fail',()=
 function actions(options={}){
  const calls=[],revalidations=[];
  const session={auth:{getUser:async()=>({data:{user:options.loggedOut?null:{id:customer,email_confirmed_at:options.unverified?null:'2026-01-01'}}})},rpc:async(name,args)=>{calls.push({name,args});return {data:key,error:options.error?{message:'Unavailable'}:null};},from:()=>({select(){return this;},eq(){return this;},maybeSingle:async()=>({data:options.denied?null:{user_id:customer}})})};
- const common={'next/navigation':{redirect:path=>{throw new Error('REDIRECT '+path);}},'next/cache':{revalidatePath:path=>revalidations.push(path)},'@/lib/supabase/server':{createClient:async()=>session},'@/lib/supabase/admin-session':{createClient:async()=>session},'@/lib/supabase/admin':{createAdminClient:()=>session},'@/lib/wallet-withdrawals':helper,'@/lib/wallet-receipt':receipt};
+ const common={'@/lib/customer-financial-access':{requireCustomerFinancialAccess:async()=>{}},'next/navigation':{redirect:path=>{throw new Error('REDIRECT '+path);}},'next/cache':{revalidatePath:path=>revalidations.push(path)},'@/lib/supabase/server':{createClient:async()=>session},'@/lib/supabase/admin-session':{createClient:async()=>session},'@/lib/supabase/admin':{createAdminClient:()=>session},'@/lib/wallet-withdrawals':helper,'@/lib/wallet-receipt':receipt};
  return {...load('app/account/wallet/withdrawal-actions.ts',common),...load('app/admin/wallet/withdrawals/actions.ts',common),calls,revalidations};
 }
 function form(extra={}){const data=new FormData();for(const [k,v] of Object.entries({amount:'100',network:'TRC20',wallet_address:'T'+'A'.repeat(33),confirmed:'yes',request_key:key,...extra}))data.set(k,v);return data;}
@@ -39,15 +39,16 @@ test('admin mutations require admin access and explicit action confirmation',asy
  await assert.rejects(a.reviewWithdrawal(form({request_id:key,action:'PAY',note:'abc'})),/success=/);assert.equal(a.calls[1].args.p_admin_user_id,customer);
 });
 test('customer section defaults hidden; holds remain visible after access is disabled',async()=>{
- async function render(enabled,rows=[],error=null){
+ async function render(enabled,rows=[],error=null,walletEnabled=true){
   const session={from(table){const q={select(){return q;},eq(){return q;},in(){q.active=true;return q;},not(){q.history=true;return q;},order(){return q;},limit(){return q;},maybeSingle:async()=>({data:{enabled},error}),then(resolve){return Promise.resolve({data:q.active?rows:[],error}).then(resolve);}};return q;}};
   const Section=load('app/account/wallet/WithdrawalSection.tsx',{'@/lib/supabase/server':{createClient:async()=>session},'@/lib/wallet-withdrawals':helper,'@/components/AccountReturnField':{default:()=>null},'@/components/WithdrawalHistory':{default:()=>React.createElement('p',{},'History')},'./WithdrawalForm':{default:()=>React.createElement('div',{},'Form')},'./withdrawal-actions':{cancelWithdrawal:async()=>{}}}).default;
-  return renderToStaticMarkup(await Section({userId:customer,walletEnabled:true,balance:50}));
+  return renderToStaticMarkup(await Section({userId:customer,walletEnabled,balance:50}));
  }
  assert.equal(await render(false),'');
  assert.match(await render(true),/Request withdrawal/);
  const html=await render(false,[{id:key,amount:100,status:'REQUESTED'}]);
  assert.match(html,/Reserved/);assert.match(html,/100.00/);assert.match(html,/Cancel request/);assert.doesNotMatch(html,/Request withdrawal/);
+ const frozen=await render(true,[{id:key,amount:100,status:'REQUESTED'}],null,false);assert.match(frozen,/Reserved/);assert.doesNotMatch(frozen,/Cancel request|Request withdrawal/);
  const approved=await render(true,[{id:key,amount:100,status:'APPROVED'}]);assert.doesNotMatch(approved,/Cancel request|Request withdrawal/);
  assert.match(await render(true,[],{message:'secret'}),/temporarily unavailable/);
 });

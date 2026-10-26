@@ -323,9 +323,10 @@ export async function POST(request: NextRequest) {
         amount?: number;
         balanceAfter?: number;
         alreadyCompleted?: boolean;
+        held?: boolean;
       };
 
-      if (!completion.alreadyCompleted) {
+      if (!completion.alreadyCompleted && !completion.held) {
         await sendBinanceWalletEmails(
           walletResult.data.user_id,
           Number(completion.amount ?? walletResult.data.amount),

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requireCustomerFinancialAccess } from "@/lib/customer-financial-access";
+
 import { createClient } from "@/lib/supabase/server";
 
 function walletRedirect(kind: "error" | "success", message: string, returnTo = "/account/wallet"): never {
@@ -24,6 +26,8 @@ export async function startBinanceWalletTopup(formData: FormData) {
   if (!user?.email) {
     redirect("/account?error=Please sign in to continue.");
   }
+
+  try { await requireCustomerFinancialAccess(user.id); } catch (error) { walletRedirect("error", error instanceof Error ? error.message : "Financial access unavailable."); }
 
   const paymentReference = `BINANCE-${crypto.randomUUID()}`;
   const result = await supabase.rpc("create_wallet_topup_request", {
@@ -52,6 +56,7 @@ export async function claimWalletRefund(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) redirect("/account?error=Please sign in to continue.");
+  try { await requireCustomerFinancialAccess(user.id); } catch (error) { walletRedirect("error", error instanceof Error ? error.message : "Financial access unavailable.", returnTo); }
   const result = await supabase.rpc("credit_order_item_refund", { p_refund_id: refundId });
   if (result.error) walletRedirect("error", result.error.message, returnTo);
   revalidatePath("/account/dashboard");

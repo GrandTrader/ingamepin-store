@@ -18,7 +18,7 @@ test('Unauthorized users cannot toggle any customer',async()=>{
 test('Customer bank access fails closed on missing, revoked, disabled and database errors',async()=>{
  let data={status:'APPROVED',bank_transfer_enabled:true},error=null,target;
  const q={select(){return this},eq(k,v){target=v;return this},async maybeSingle(){return {data,error}}};
- const check=load('lib/business-bank-access.ts',{'server-only':{},'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>q})}}).requireBusinessBankTransfer;
+ const check=load('lib/business-bank-access.ts',{'server-only':{},'@/lib/customer-financial-access':{requireCustomerFinancialAccess:async()=>{}},'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>q})}}).requireBusinessBankTransfer;
  await check(uid);assert.equal(target,uid);
  for(const status of ['REVOKED','PENDING']){data={status,bank_transfer_enabled:true};await assert.rejects(check(uid),/Approved/);}
  for(const enabled of [false,undefined,null]){data={status:'APPROVED',bank_transfer_enabled:enabled};await assert.rejects(check(uid),/disabled/);}
