@@ -114,6 +114,7 @@ test('scheduler reports partial refresh failure instead of a misleading success'
  const secret='stock-test-strong-cron-secret';
  for(const stockFailed of [0,1]) {
   const route=load('app/api/cron/fkwallet/route.ts',{
+   '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async(name,args)=>{assert.equal(name,'fulfill_uploaded_supplier_backups');assert.equal(args.p_limit,25);return{data:0,error:null}}})},
    'next/server':{NextResponse:{json:Response.json}},'@/lib/fkwallet-fulfillment':{runFKDeliveryTick:async()=>({state:'idle',stockUpdated:2-stockFailed,stockFailed})},
    '@/lib/digiseller-fkwallet-fulfillment':{runDigiFKDeliveryTick:async()=>({state:'idle'})},
   },{process:{env:{CRON_SECRET:secret}}});
