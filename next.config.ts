@@ -34,6 +34,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: { remotePatterns: productImageRemotePatterns(), maximumRedirects: 0 },
   outputFileTracingIncludes: {
+    "/admin/customers/*/report": ["./lib/assets/customer-report-fonts/*"],
     "/admin/products": ["./node_modules/flag-icons/flags/4x3/*.svg", "./lib/assets/fonts/*"],
     "/admin/products/**": ["./node_modules/flag-icons/flags/4x3/*.svg", "./lib/assets/fonts/*"],
   },
@@ -47,6 +48,10 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [
+      ...["/account/:path*", "/business/:path*"].map((source) => ({
+        source,
+        headers: [{ key: "Accept-CH", value: "Sec-CH-UA-Model, Sec-CH-UA-Platform" }],
+      })),
       ...["/api/customer-discounts", "/api/wallet/:path*", "/api/orders/:path*", "/api/support/chat", "/api/admin/:path*"].map((source) => ({
         source,
         headers: [{ key: "Cache-Control", value: "private, no-store" }],

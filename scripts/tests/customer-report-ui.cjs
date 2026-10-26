@@ -1,0 +1,19 @@
+const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict'),ts=require('typescript');
+const out=path.join(process.cwd(),'tmp/customer-report-ui');fs.mkdirSync(out,{recursive:true});
+fs.writeFileSync(path.join(out,'Panel.js'),ts.transpileModule(fs.readFileSync('app/admin/customers/[id]/CustomerReportDownload.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText);
+fs.writeFileSync(path.join(out,'entry.js'),`const React=require('react'),Panel=require('./Panel').default;require('react-dom/client').createRoot(document.getElementById('app')).render(React.createElement('main',{className:'mx-auto max-w-6xl p-4'},React.createElement(Panel,{customerId:'00000000-0000-4000-8000-000000000001'})));`);
+(async()=>{
+ await new Promise((resolve,reject)=>require('next/dist/compiled/webpack/webpack').webpack({mode:'development',devtool:false,entry:path.join(out,'entry.js'),output:{path:out,filename:'bundle.js'}},(error,stats)=>error||stats.hasErrors()?reject(error||Error(stats.toString({all:false,errors:true}))):resolve()));
+ const css=fs.readdirSync('.next/static',{recursive:true}).filter(p=>p.endsWith('.css')).map(p=>fs.readFileSync(path.join('.next/static',p),'utf8')).join('\n');
+ const html='<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'body{margin:0;font-family:Arial;background:#f8fafc}</style><div id="app"></div><script src="/bundle.js"></script>';
+ const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/bundle.js'?'text/javascript':'text/html');res.end(req.url==='/bundle.js'?fs.readFileSync(path.join(out,'bundle.js')):html)});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const {chromium}=require('C:/Users/amans/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'),browser=await chromium.launch({channel:'chrome',headless:true});
+ try{for(const width of [1280,390,320]){
+ const page=await browser.newPage({viewport:{width,height:700},acceptDownloads:true}),errors=[];page.on('pageerror',e=>errors.push(e.message));let fail=false,requests=[];
+ await page.route('**/admin/customers/*/report?*',async route=>{requests.push(route.request().url());await new Promise(r=>setTimeout(r,100));return route.fulfill(fail?{status:403,contentType:'application/json',body:JSON.stringify({error:'Please sign in as an administrator.'})}:{status:200,contentType:'application/pdf',headers:{'Content-Disposition':'attachment; filename="customer-report-test.pdf"'},body:fs.readFileSync('tmp/pdfs/customer-report-test.pdf')});});
+ await page.goto('http://127.0.0.1:'+server.address().port);const button=page.getByRole('button',{name:'Download customer report PDF'});await button.waitFor();assert.equal(requests.length,0);
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));await page.screenshot({path:path.join(out,'customer-report-'+width+'.png'),fullPage:true});
+ await page.getByLabel('Report time zone').selectOption('Europe/Moscow');const download=page.waitForEvent('download');await button.click();const result=await download;assert.equal(result.suggestedFilename(),'customer-report-test.pdf');assert(requests[0].endsWith('timezone=Europe%2FMoscow'));assert.equal(await result.failure(),null);await button.waitFor();
+ fail=true;await button.click();await page.getByRole('alert').filter({hasText:'Please sign in as an administrator.'}).waitFor();assert.equal(requests.length,2);assert.deepEqual(errors,[]);await page.close();
+ }console.log('PASS: desktop, 390px and 320px mobile; PDF downloads, timezone, error recovery, no overflow or browser errors');}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
+})().catch(e=>{console.error(e);process.exitCode=1});

@@ -90,7 +90,7 @@ export async function customerLogin(formData: FormData) {
     const requestHeaders = await headers();
     await recordCustomerLogin(
       result.data.user.id,
-      getCountryCode(requestHeaders),
+      getCountryCode(requestHeaders), requestHeaders, "PASSWORD_SIGN_IN",
     );
   }
 
@@ -104,7 +104,7 @@ export async function recordCustomerPasskeyLogin() {
   if (!user) return;
 
   const requestHeaders = await headers();
-  await recordCustomerLogin(user.id, getCountryCode(requestHeaders));
+  await recordCustomerLogin(user.id, getCountryCode(requestHeaders), requestHeaders, "SESSION_OBSERVED");
 }
 
 export async function customerRegister(formData: FormData) {
@@ -273,7 +273,7 @@ export async function customerVerifySignupOtp(formData: FormData) {
     const requestHeaders = await headers();
     await recordCustomerLogin(
       result.data.user.id,
-      getCountryCode(requestHeaders),
+      getCountryCode(requestHeaders), requestHeaders, "EMAIL_VERIFICATION",
     );
   }
 

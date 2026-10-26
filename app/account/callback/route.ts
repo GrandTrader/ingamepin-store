@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       if (result.data.user) {
         await recordCustomerLogin(
           result.data.user.id,
-          getCountryCode(request.headers),
+          getCountryCode(request.headers), request.headers, "AUTH_CALLBACK",
         );
       }
 
