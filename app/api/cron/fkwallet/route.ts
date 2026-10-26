@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { runFKDeliveryTick } from "@/lib/fkwallet-fulfillment";
@@ -12,10 +13,12 @@ export async function GET(request: NextRequest) {
   const supplied = Buffer.from(request.headers.get("authorization") ?? ""), expected = Buffer.from(`Bearer ${secret}`);
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
+    const backup = await createAdminClient().rpc("fulfill_uploaded_supplier_backups", { p_limit: 25 });
+    if (backup.error) throw new Error("Uploaded backup delivery check failed.");
     const website = await runFKDeliveryTick();
     const digiseller = await runDigiFKDeliveryTick();
     const ok = website.stockFailed === 0;
-    return NextResponse.json({ ok, ...website, digiseller }, { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ok, uploadedBackupDeliveries: Number(backup.data ?? 0), ...website, digiseller }, { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
   }
   catch { return NextResponse.json({ error: "FKWallet delivery check failed. Review the connection and worker setup." }, { status: 503, headers: { "Cache-Control": "no-store" } }); }
 }

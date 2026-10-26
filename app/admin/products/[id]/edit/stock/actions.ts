@@ -22,6 +22,11 @@ export async function setProductStockMode(productId: string, formData: FormData)
   }
 
   const admin = await requireAdministrator();
+  const product = await admin.from("products").select("stock_source").eq("id", productId).single();
+  if (product.error || product.data.stock_source !== "OWNED") {
+    redirect(path + "?error=" + encodeURIComponent("Use the Supplier tab to manage supplier delivery. Uploaded backup stock stays enabled for voucher denominations."));
+  }
+
   const optionsResult = await admin
     .from("product_options")
     .select("id")
@@ -115,38 +120,9 @@ export async function deleteAllUnsoldCodes(productId: string, productOptionId: s
     redirect(`${path}?error=${encodeURIComponent(remove.error.message)}`);
   }
 
-  const optionStock = await admin
-    .from("gift_card_codes")
-    .select("id", { count: "exact", head: true })
-    .eq("product_id", productId)
-    .eq("product_option_id", productOptionId)
-    .eq("status", "AVAILABLE");
-  if (optionStock.error) {
-    redirect(`${path}?error=${encodeURIComponent(optionStock.error.message)}`);
-  }
-  const optionUpdate = await admin
-    .from("product_options")
-    .update({ stock_quantity: optionStock.count ?? 0, updated_at: new Date().toISOString() })
-    .eq("id", productOptionId)
-    .eq("product_id", productId);
-  if (optionUpdate.error) {
-    redirect(`${path}?error=${encodeURIComponent(optionUpdate.error.message)}`);
-  }
-
-  const stockResult = await admin
-    .from("gift_card_codes")
-    .select("id", { count: "exact", head: true })
-    .eq("product_id", productId)
-    .eq("status", "AVAILABLE");
-  if (stockResult.error) {
-    redirect(`${path}?error=${encodeURIComponent(stockResult.error.message)}`);
-  }
-  const productUpdate = await admin
-    .from("products")
-    .update({ stock_quantity: stockResult.count ?? 0, updated_at: new Date().toISOString() })
-    .eq("id", productId);
-  if (productUpdate.error) {
-    redirect(`${path}?error=${encodeURIComponent(productUpdate.error.message)}`);
+  const reconcile = await admin.rpc("reconcile_code_inventory", { p_product_id: productId });
+  if (reconcile.error) {
+    redirect(path + "?error=" + encodeURIComponent(reconcile.error.message));
   }
 
   revalidatePath(path);

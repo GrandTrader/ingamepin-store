@@ -42,7 +42,7 @@ test('CSV backup round trip retains labelled card and PIN even with quoted comma
 function actions({ authenticated = true, allowed = true, existing = [], validOption = true } = {}) {
   const writes = [], invalidations = [];
   const session = { auth: { getUser: async () => ({ data: { user: authenticated ? { id: 'admin' } : null } }) }, from: () => ({ select(){return this},eq(){return this},maybeSingle:async()=>({data:allowed?{role:'ADMIN'}:null}) }) };
-  const db = { from(table) {
+  const db = { async rpc(name,args){assert.equal(name,'reconcile_code_inventory');assert.equal(args.p_product_id,'product');writes.push({rpc:name,args});return {data:null,error:null};}, from(table) {
     const query = { kind: 'select', select(_fields, options){this.options=options;return this},eq(){return this},in(field,values){this.filters ??= {};this.filters[field]=values;return this},update(value){this.kind='update';this.filters ??= {};writes.push({table,value,filters:this.filters});return this},insert(value){this.kind='insert';writes.push({table,value});return this},maybeSingle:async()=>({data:table==='products'?{id:'product'}:validOption?{id:'option',product_id:'product',denomination:15}:null}),then(resolve,reject){return Promise.resolve({data:this.kind!=='select'?null:table==='gift_card_codes'?existing.filter(row=>!this.filters?.code||this.filters.code.includes(row.code)):table==='product_options'?[{stock_quantity:2}]:[],count:this.options?.head?2:undefined}).then(resolve,reject)} };
     return query;
   } };
@@ -94,7 +94,7 @@ test('restoring 1000 unchanged vouchers avoids 1000 row updates and keeps the se
  const {api,writes}=actions({existing});const f=new FormData();f.set('codes_option',existing.map(x=>x.code).join('\n'));
  await assert.rejects(api.addCodesForOption('product','option','option',f),/success=.*optionId=option/);
  assert.equal(writes.filter(x=>x.table==='gift_card_codes').length,0);
- assert(writes.some(x=>x.table==='product_options'),'Stock totals are still reconciled');
+ assert(writes.some(x=>x.rpc==='reconcile_code_inventory'),'Stock totals are still reconciled');
 });
 
 test('relinking 1000 vouchers uses four bounded updates and retains status and product guards',async()=>{

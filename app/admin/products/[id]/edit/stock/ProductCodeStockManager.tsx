@@ -7,8 +7,8 @@ import styles from "./ProductCodeStockManager.module.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addCodesForOption } from "../ProductCodeInventoryActions";
 import { deleteAllUnsoldCodes, setProductStockMode } from "./actions";
-type Option = { id: string; name: string; denomination: number | null; currency: string | null; availableCount: number };
-export default function ProductCodeStockManager({ productId, isUnlimited, options, initialOptionId, revision }: { productId: string; isUnlimited: boolean; options: Option[]; initialOptionId?: string; revision: string }) {
+type Option = { id: string; name: string; denomination: number | null; currency: string | null; availableCount: number; supplierAvailableCount?: number; publishedAvailableCount?: number };
+export default function ProductCodeStockManager({ productId, isUnlimited, options, initialOptionId, revision, isSupplierBackup = false }: { productId: string; isUnlimited: boolean; options: Option[]; initialOptionId?: string; revision: string; isSupplierBackup?: boolean }) {
   const [selectedId, setSelectedId] = useState(options.find(option => option.id === initialOptionId)?.id ?? options[0]?.id ?? "");
   const [entryFormat, setEntryFormat] = useState<"CODE" | "CARD_PIN">("CODE");
   const readVersion = useRef(0);
@@ -60,7 +60,7 @@ export default function ProductCodeStockManager({ productId, isUnlimited, option
     reader.readAsText(file);
   }
   return <div className={styles.manager}>
-    <details className="mb-4 rounded-xl border border-slate-200 p-3"><summary className="cursor-pointer py-2 text-sm font-bold">Stock: {isUnlimited ? "Unlimited / manual delivery" : "Voucher inventory"}</summary>
+    {!isSupplierBackup && <details className="mb-4 rounded-xl border border-slate-200 p-3"><summary className="cursor-pointer py-2 text-sm font-bold">Stock: {isUnlimited ? "Unlimited / manual delivery" : "Voucher inventory"}</summary>
     <form action={setProductStockMode.bind(null, productId)} className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
       <h2 className="text-xl font-black">Stock mode</h2>
       <p className="mt-1 text-sm text-slate-500">Choose one stock system for this product. The two modes cannot be active together.</p>
@@ -77,7 +77,7 @@ export default function ProductCodeStockManager({ productId, isUnlimited, option
         </label>
       </div>
       <AdminSubmitButton className="admin-save-action mt-4 rounded-xl px-6 py-3 font-black transition">Save stock mode</AdminSubmitButton>
-    </form></details>
+    </form></details>}
 
     {isUnlimited ? (
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
@@ -85,8 +85,9 @@ export default function ProductCodeStockManager({ productId, isUnlimited, option
         <p className="mt-2 text-sm leading-6 text-emerald-800">All active denominations are available without voucher inventory. Orders must be delivered manually from the order receipt page.</p>
       </div>
     ) : <div className="grid min-w-0 gap-4 lg:grid-cols-[200px_minmax(0,1fr)]">
-    <aside data-stock-denominations className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-2"><p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">Denominations</p><div className="grid gap-1">{options.map((option) => <button key={option.id} type="button" onClick={() => { readVersion.current++; setReadingFile(false); setFileError(""); setSelectedId(option.id); setNewCodes(""); setIsPreviewing(false); setShowUploadedContent(false); }} aria-pressed={selectedId === option.id} data-empty={option.availableCount === 0} className={`${styles.denomination} flex items-center justify-between gap-2 rounded-lg px-3 py-3 text-left text-sm font-bold`}><span>{option.name}</span><span className={`${styles.count} shrink-0 rounded-full px-2 py-0.5 text-xs`} aria-label={option.availableCount === 0 ? "Out of stock" : `${option.availableCount} available codes`}>{option.availableCount === 0 ? "0 · Out of stock" : option.availableCount}</span></button>)}</div></aside>
-    <section className="min-w-0">{selected ? <><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-black">{selected.name}</h2><p className="text-sm text-slate-500">{selected.availableCount} available</p></div>
+    <aside data-stock-denominations className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-2"><p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-500">{isSupplierBackup ? "Backup denominations" : "Denominations"}</p><div className="grid gap-1">{options.map((option) => <button key={option.id} type="button" onClick={() => { readVersion.current++; setReadingFile(false); setFileError(""); setSelectedId(option.id); setNewCodes(""); setIsPreviewing(false); setShowUploadedContent(false); }} aria-pressed={selectedId === option.id} data-empty={option.availableCount === 0} className={`${styles.denomination} flex items-center justify-between gap-2 rounded-lg px-3 py-3 text-left text-sm font-bold`}><span>{option.name}</span><span className={`${styles.count} shrink-0 rounded-full px-2 py-0.5 text-xs`} aria-label={isSupplierBackup ? String(option.availableCount) + " uploaded backup codes" : option.availableCount === 0 ? "Out of stock" : `${option.availableCount} available codes`}>{isSupplierBackup ? String(option.availableCount) + " backup" : option.availableCount === 0 ? "0 · Out of stock" : option.availableCount}</span></button>)}</div></aside>
+    <section className="min-w-0">{selected ? <><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-black">{selected.name}</h2><p className="text-sm text-slate-500">{selected.availableCount} {isSupplierBackup ? "uploaded backup codes" : "available"}</p></div>
+      {isSupplierBackup && <div className="mt-3 grid grid-cols-2 gap-2 text-sm"><div className="rounded-lg bg-slate-50 p-3"><span>Supplier stock</span><strong className="mt-1 block">{selected.supplierAvailableCount ?? 0}</strong></div><div className="rounded-lg bg-emerald-50 p-3"><span>Available to buy</span><strong className="mt-1 block">{selected.publishedAvailableCount ?? 0}</strong></div></div>}
 
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Voucher format">
         <button type="button" aria-pressed={entryFormat === "CODE"} onClick={() => setEntryFormat("CODE")} className={`rounded-lg border px-4 py-2 text-sm font-bold ${entryFormat === "CODE" ? "border-blue-600 bg-blue-50 text-blue-800" : "border-slate-300"}`}>Code / bundle</button>

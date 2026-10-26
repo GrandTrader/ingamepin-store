@@ -49,56 +49,9 @@ async function requireAdmin() {
 async function syncAvailableCodeStock(
   admin: ReturnType<typeof createAdminClient>,
   productId: string,
-  productOptionId: string,
 ) {
-  const countResult = await admin
-    .from("gift_card_codes")
-    .select("id", { count: "exact", head: true })
-    .eq("product_option_id", productOptionId)
-    .eq("status", "AVAILABLE");
-
-  if (countResult.error) {
-    throw new Error(countResult.error.message);
-  }
-
-  const optionUpdate = await admin
-    .from("product_options")
-    .update({
-      stock_quantity: countResult.count ?? 0,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", productOptionId);
-
-  if (optionUpdate.error) {
-    throw new Error(optionUpdate.error.message);
-  }
-
-  const optionsResult = await admin
-    .from("product_options")
-    .select("stock_quantity")
-    .eq("product_id", productId)
-    .eq("is_active", true);
-
-  if (optionsResult.error) {
-    throw new Error(optionsResult.error.message);
-  }
-
-  const totalStock = (optionsResult.data ?? []).reduce(
-    (total, option) => total + Number(option.stock_quantity ?? 0),
-    0,
-  );
-
-  const productUpdate = await admin
-    .from("products")
-    .update({
-      stock_quantity: totalStock,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", productId);
-
-  if (productUpdate.error) {
-    throw new Error(productUpdate.error.message);
-  }
+  const result = await admin.rpc("reconcile_code_inventory", { p_product_id: productId });
+  if (result.error) throw new Error(result.error.message);
 }
 
 export async function addProductCodes(formData: FormData) {
@@ -253,8 +206,6 @@ export async function addProductCodes(formData: FormData) {
     }
   }
 
-  const previousOptionIds = new Set<string>();
-
   // A restored backup usually contains codes already linked correctly. Skip
   // those rows; batch changed links by note instead of one network call per code.
   const updates = new Map<string | null, string[]>();
@@ -263,7 +214,6 @@ export async function addProductCodes(formData: FormData) {
     if (existingCode.product_option_id === verifiedOption.id &&
         existingCode.denomination === (verifiedOption.denomination ?? null) &&
         existingCode.note === nextNote) continue;
-    if (existingCode.product_option_id && existingCode.product_option_id !== verifiedOption.id) previousOptionIds.add(existingCode.product_option_id);
     const ids = updates.get(nextNote) ?? [];
     ids.push(existingCode.id);
     updates.set(nextNote, ids);
@@ -279,10 +229,7 @@ export async function addProductCodes(formData: FormData) {
   }
 
   try {
-    await syncAvailableCodeStock(admin, productId, productOptionId);
-    for (const previousOptionId of previousOptionIds) {
-      await syncAvailableCodeStock(admin, productId, previousOptionId);
-    }
+    await syncAvailableCodeStock(admin, productId);
   } catch (error) {
     finishUpload(
       productId,
@@ -354,7 +301,6 @@ export async function changeProductCodeStatus(formData: FormData) {
     await syncAvailableCodeStock(
       admin,
       productId,
-      codeResult.data.product_option_id,
     );
   } catch (error) {
     redirectWithMessage(
@@ -458,7 +404,6 @@ export async function deleteProductCode(
     await syncAvailableCodeStock(
       admin,
       productId,
-      codeResult.data.product_option_id,
     );
   } catch (error) {
     redirectWithMessage(

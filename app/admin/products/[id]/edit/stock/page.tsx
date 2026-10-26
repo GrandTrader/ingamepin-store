@@ -41,12 +41,37 @@ export default async function ProductStockPage({ params, searchParams }: {
   if (optionsResult.error) throw new Error("Unable to load product options.");
   const product = productResult.data;
   const supplierEnabled=["DEFINITEPLAY", "FKWALLET", "WUPEX"].includes(product.stock_source);
+  type BackupInventory = { optionId: string; enabled: boolean; uploadedQuantity: number; supplierQuantity: number; availableQuantity: number };
+  const inventory = supplierEnabled ? await admin.rpc("supplier_backup_inventory", { p_product_id: id }) : null;
+  if (inventory?.error) throw new Error("Unable to load uploaded backup inventory. Apply the supplier backup database update.");
+  const backupRows = new Map<string, BackupInventory>(((inventory?.data ?? []) as BackupInventory[]).map(row => [row.optionId, row]));
+  const backupOptions = (optionsResult.data ?? []).filter(option => !supplierEnabled || backupRows.get(option.id)?.enabled);
+  const stockManager = <ProductCodeStockManager productId={id} isUnlimited={!supplierEnabled && isUnlimitedStock(product.stock_quantity)}
+    isSupplierBackup={supplierEnabled}
+    options={backupOptions.map(option => ({
+      id: option.id, name: option.option_name, denomination: option.denomination === null ? null : Number(option.denomination),
+      currency: option.denomination_currency,
+      availableCount: supplierEnabled ? Number(backupRows.get(option.id)?.uploadedQuantity ?? 0) : Number(option.stock_quantity ?? 0),
+      supplierAvailableCount: Number(backupRows.get(option.id)?.supplierQuantity ?? 0),
+      publishedAvailableCount: Number(backupRows.get(option.id)?.availableQuantity ?? 0),
+    }))} initialOptionId={optionId} revision={new Date().toISOString()} />;
+
 
   return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row"><AdminSidebar /><main className="min-w-0 flex-1 p-5 sm:p-8">
     <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-bold uppercase tracking-widest text-blue-600">Product settings</p><h1 className="mt-2 text-3xl font-black">{product.name}</h1><p className="mt-1 text-sm text-slate-500">{product.slug}</p></div><ProductSettingsActions slug={product.slug}><Link href="/admin/products" className="rounded-xl border border-slate-200 px-5 py-3 text-center text-sm font-bold">← Product list</Link></ProductSettingsActions></header>
     {success && <div data-editor-notice role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">{success}</div>}{error && <div data-editor-notice role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
     <div className="mt-8"><ProductEditPageTabs productId={id} current="stock" /></div>
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">{product.stock_source === "GIFTPORT" ? <p>This supplier is disconnected. New orders are disabled; existing orders require manual review.</p> : supplierEnabled ? <div><h2 className="text-xl font-black">Stock supplied by {product.stock_source === "WUPEX" ? "Wupex" : product.stock_source === "FKWALLET" ? "FKWallet" : "Definite Play"}</h2><span className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-400 px-3 py-1.5 text-xs font-black text-slate-950"><span aria-hidden="true">⚡</span>Instant Delivery</span><p className="mt-2">Availability is checked automatically. Supplier purchases happen after verified payment.</p><Link className="mt-4 inline-flex rounded-xl bg-blue-600 px-5 py-3 font-bold text-white" href={"/admin/products/"+id+"/edit/supplier"}>Manage supplier delivery</Link></div> : <ProductCodeStockManager productId={id} isUnlimited={isUnlimitedStock(product.stock_quantity)} options={(optionsResult.data ?? []).map((option) => ({ id: option.id, name: option.option_name, denomination: option.denomination === null ? null : Number(option.denomination), currency: option.denomination_currency, availableCount: Number(option.stock_quantity ?? 0) }))} initialOptionId={optionId} revision={new Date().toISOString()} />}</section>
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      {product.stock_source === "GIFTPORT" ? <p>This supplier is disconnected. New orders are disabled; existing orders require manual review.</p> : supplierEnabled ? <>
+        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <h2 className="text-lg font-black">Supplier first · uploaded stock backup</h2>
+          <p className="mt-2 text-sm">Stock supplied by {product.stock_source === "WUPEX" ? "Wupex" : product.stock_source === "FKWALLET" ? "FKWallet" : "Definite Play"}. After verified payment, uploaded codes for the same denomination are used when supplier stock cannot cover the order.</p>
+          <p className="mt-2 text-sm text-slate-600">Each order item uses one source. Purchases already submitted to the supplier stay with that supplier.</p>
+          <Link className="mt-3 inline-flex text-sm font-bold text-blue-600 underline" href={"/admin/products/"+id+"/edit/supplier"}>Manage supplier delivery</Link>
+        </div>
+        {backupOptions.length ? stockManager : <p className="text-sm text-slate-600">Uploaded backup stock supports fixed voucher denominations. Account top-ups and custom ranges use their existing delivery method.</p>}
+      </> : stockManager}
+    </section>
 
 
   </main></div></div>;

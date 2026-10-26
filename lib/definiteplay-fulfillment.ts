@@ -18,11 +18,8 @@ export async function supplierProductIds(ids: string[]): Promise<Set<string>> {
 }
 
 export async function supplierAvailableQuantity(optionId: string): Promise<number> {
-  const result = await createAdminClient().from("definiteplay_stock")
-    .select("available_quantity,synced_at,unit_cost").eq("option_id", optionId).maybeSingle();
-  if (result.error) throw new Error("Unable to verify supplier stock.");
-  const row = result.data;
-  const age = row ? Date.now() - Date.parse(row.synced_at) : NaN;
-  return row && Number.isFinite(age) && age >= -60000 && age < 15 * 60000 && Number(row.unit_cost) > 0
-    ? Math.max(0, Math.min(1000, Number(row.available_quantity))) : 0;
+  const result = await createAdminClient().rpc("supplier_available_quantity", { p_option_id: optionId });
+  if (result.error) throw new Error("Unable to verify supplier and uploaded stock.");
+  const quantity = Number(result.data);
+  return Number.isInteger(quantity) && quantity >= 0 ? Math.min(1000, quantity) : 0;
 }
