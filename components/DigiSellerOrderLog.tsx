@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useState } from "react";
+import CollapsibleAdminSection from "@/components/CollapsibleAdminSection";
 import type { DigiSellerLogPage, DigiSellerLogRow } from "@/lib/digiseller-order-log";
 
 const sourceLabels = { stock: "Own stock", definiteplay: "DefinitePlay", fkwallet: "FKWallet" };
@@ -46,6 +47,12 @@ function DeliveredContent({ productId, row }: { productId: string; row: DigiSell
 }
 
 export default function DigiSellerOrderLog({ productId, deliveredOnly = false }: { productId: string; deliveredOnly?: boolean }) {
+  return <CollapsibleAdminSection title={deliveredOnly ? "DigiSeller sales" : "DigiSeller orders log"} description={deliveredOnly ? "Delivered sales with their DigiSeller invoice reference. Dates in India time (IST)." : "Orders received from DigiSeller, newest invoice first. Dates in India time (IST)."}>
+    <DigiSellerOrderLogContents productId={productId} deliveredOnly={deliveredOnly} />
+  </CollapsibleAdminSection>;
+}
+
+function DigiSellerOrderLogContents({ productId, deliveredOnly = false }: { productId: string; deliveredOnly?: boolean }) {
   const [draft, setDraft] = useState("");
   const [invoice, setInvoice] = useState("");
   const [delivered, setDelivered] = useState(deliveredOnly);
@@ -76,10 +83,8 @@ export default function DigiSellerOrderLog({ productId, deliveredOnly = false }:
     return () => controller.abort();
   }, [productId, invoice, before, deliveredOnly, delivered, refresh]);
   function resetPage() { setPage(null); setCursors([""]); }
-  return <section className="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 className="text-xl font-black">{deliveredOnly ? "DigiSeller sales" : "DigiSeller orders log"}</h2>
-        <p className="mt-1 text-sm text-slate-500">{deliveredOnly ? "Delivered sales with their DigiSeller invoice reference." : "Orders received by this website from DigiSeller, newest invoice first."} Dates in India time (IST).</p></div>
+  return <div>
+    <div className="flex justify-end">
       <button type="button" onClick={() => { resetPage(); setRefresh(value => value + 1); }} className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold">Refresh log</button>
     </div>
     <form onSubmit={event => { event.preventDefault(); resetPage(); setInvoice(draft.trim()); setRefresh(value => value + 1); }} className="mt-4 flex flex-wrap items-end gap-2">
@@ -98,5 +103,5 @@ export default function DigiSellerOrderLog({ productId, deliveredOnly = false }:
       {page.rows.length === 0 && <p className="py-6 text-center text-sm text-slate-500">No {deliveredOnly ? "delivered DigiSeller sales" : "DigiSeller orders"}{invoice ? " match this invoice." : " recorded for this product."}</p>}
       {(cursors.length > 1 || page.next) && <div className="mt-4 flex items-center justify-between gap-2 text-sm"><button type="button" disabled={cursors.length === 1} onClick={() => { setPage(null); setCursors(values => values.slice(0, -1)); }} className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 font-bold disabled:opacity-40">Previous</button><span>Page {cursors.length}</span><button type="button" disabled={!page.next} onClick={() => { if (page.next) { setPage(null); setCursors(values => [...values, page.next!]); } }} className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 font-bold disabled:opacity-40">Next</button></div>}
     </>}
-  </section>;
+  </div>;
 }

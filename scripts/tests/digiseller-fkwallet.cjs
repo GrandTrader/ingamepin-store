@@ -108,7 +108,7 @@ test('timeouts and unknown supplier status never duplicate a purchase or claim d
 
 test('admin field synchronization rejects unauthenticated users before external access',async()=>{
  let writes=0;const actions=load('app/admin/products/[id]/edit/stock/digiseller-actions.ts',{'next/cache':{},'next/navigation':{redirect:()=>{throw Error('login required')}},'@/lib/supabase/admin':{createAdminClient:()=>{writes++}},'@/lib/supabase/admin-session':{createClient:async()=>({auth:{getUser:async()=>({data:{user:null}})}})},'@/lib/digiseller-api':{},'@/lib/digiseller-field-sync':{syncDigiSellerRecipientFields:async()=>{writes++}}});
- for(const action of [()=>actions.syncDigiSellerCustomerFields('product'),()=>actions.saveDigiSellerMapping('product',new FormData()),()=>actions.createDigiSellerProduct('product',new FormData())])await assert.rejects(action(),/login required/);
+ for(const action of [()=>actions.loadDigiSellerMappingProducts(),()=>actions.syncDigiSellerCustomerFields('product'),()=>actions.saveDigiSellerMapping('product',new FormData()),()=>actions.createDigiSellerProduct('product',new FormData())])await assert.rejects(action(),/login required/);
  assert.equal(writes,0);
 });
 

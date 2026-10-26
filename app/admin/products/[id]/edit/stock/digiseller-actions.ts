@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/admin-session";
-import { createDigiSellerFormProduct, listDigiSellerVariants, parseDigiSellerCategoryUrl } from "@/lib/digiseller-api";
+import { createDigiSellerFormProduct, listDigiSellerProducts, listDigiSellerVariants, parseDigiSellerCategoryUrl } from "@/lib/digiseller-api";
 import { getDigiSellerRecipientFields, syncDigiSellerRecipientFields } from "@/lib/digiseller-field-sync";
 
 async function requireAdmin() {
@@ -14,6 +14,15 @@ async function requireAdmin() {
   if (!user) redirect("/admin/login");
   const access = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
   if (!access.data) redirect("/admin/login?error=Access denied");
+}
+
+export async function loadDigiSellerMappingProducts() {
+  await requireAdmin();
+  try {
+    return { products: await listDigiSellerProducts(AbortSignal.timeout(10000)) };
+  } catch {
+    return { error: "DigiSeller is currently unavailable. Please try again." };
+  }
 }
 
 export async function saveDigiSellerMapping(productId: string, formData: FormData) {
