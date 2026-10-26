@@ -1,5 +1,6 @@
 import SupplierQuotationBuilder from "../../SupplierQuotationBuilder";
 import { supplierQuotationItem } from "@/lib/supplier-quotation";
+import { formatReceiptDate as formatDate, receiptCheckoutIp } from "@/lib/order-receipt-details";
 import { formatFaceValue } from "@/lib/face-value";
 import OrderRefundPermission from "@/app/admin/refund-requests/OrderRefundPermission";
 import OrderRefundHistory from "@/components/OrderRefundHistory";
@@ -90,16 +91,6 @@ function formatMoney(amount: number | string, currency: string) {
   }).format(Number(amount));
 }
 
-function formatDate(date: string | null) {
-  if (!date) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(date));
-}
 
 function statusStyle(status: string) {
   switch (status) {
@@ -167,7 +158,7 @@ export default async function OrderReceipt({
       admin
         .from("orders")
         .select(
-          "id, order_number, customer_name, customer_email, customer_phone, currency, subtotal, discount, total, status, customer_note, admin_note, created_at, paid_at, delivered_at",
+          "id, order_number, customer_id, customer_name, customer_email, customer_phone, customer_ip, sales_channel, currency, subtotal, discount, payment_fee, total, status, customer_note, admin_note, created_at, paid_at, delivered_at",
         )
         .eq("id", id)
         .maybeSingle(),
@@ -405,6 +396,10 @@ export default async function OrderReceipt({
                 <Detail label="Customer name" value={order.customer_name} />
                 <Detail label="Email" value={order.customer_email} />
                 <Detail label="Phone" value={order.customer_phone} />
+                <Detail label="Checkout IP address" value={receiptCheckoutIp(order.customer_ip)} />
+                <Detail label="Customer ID" value={order.customer_id || "Guest checkout"} />
+                <Detail label="Order ID" value={order.id} />
+                <Detail label="Sales channel" value={order.sales_channel === "BUSINESS" ? "B2B" : "Retail"} />
                 <Detail label="Customer note" value={order.customer_note} />
               </div>
             </section>
@@ -412,6 +407,10 @@ export default async function OrderReceipt({
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 className="text-lg font-black">Payment details</h2>
               <div className="mt-3">
+                <Detail label="Payment amount" value={payment ? formatMoney(payment.amount, payment.currency) : "Not recorded"} />
+                <Detail label="Submitted at" value={formatDate(payment?.submitted_at)} />
+                <Detail label="Paid at" value={formatDate(order.paid_at)} />
+                <Detail label="Delivered at" value={formatDate(order.delivered_at)} />
                 <Detail label="Transaction ID" value={payment?.transaction_id} />
                 <Detail label="Gateway order ID" value={payment?.gateway_order_id} />
                 <Detail label="Gateway payment ID" value={payment?.gateway_payment_id} />
@@ -647,9 +646,13 @@ export default async function OrderReceipt({
                 <span className="text-slate-500">Discount</span>
                 <strong>{formatMoney(order.discount, order.currency)}</strong>
               </div>
+              <div className="flex justify-between gap-3 py-1 text-sm">
+                <span className="text-slate-500">Payment fee</span>
+                <strong>{formatMoney(order.payment_fee ?? 0, order.currency)}</strong>
+              </div>
               <div className="flex justify-between gap-3 py-1 text-sm"><span className="text-slate-500">Face value</span><strong className="text-right">{formatFaceValue(items)}</strong></div>
               <div className="mt-2 flex justify-between gap-5 border-t border-slate-200 pt-4 text-lg">
-                <span className="font-black">Total paid</span>
+                <span className="font-black">Order total</span>
                 <strong>{formatMoney(order.total, order.currency)}</strong>
               </div>
             </div>

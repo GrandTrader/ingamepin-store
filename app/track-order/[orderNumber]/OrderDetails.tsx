@@ -1,5 +1,8 @@
 "use client";
 
+import { formatReceiptDate as formatDate, receiptCheckoutIp } from "@/lib/order-receipt-details";
+import { formatPaymentMethod } from "@/lib/payment-method-label";
+import { formatFaceValue } from "@/lib/face-value";
 import OrderPaymentActions from "@/components/OrderPaymentActions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,6 +22,10 @@ type LookupItem = {
   platform: string | null;
   region: string | null;
   quantity: number;
+  customValue: number | null;
+  denominationCurrency: string | null;
+  unitPrice: number | string;
+  totalPrice: number | string;
   receiptUrl?: string | null;
   serviceCompleted?: boolean;
   codes: string[];
@@ -27,6 +34,22 @@ type LookupItem = {
 type LookupResult = {
   order?: {
     orderNumber: string;
+    customerName: string | null;
+    customerEmail: string;
+    customerPhone: string | null;
+    checkoutIp: string | null;
+    customerNote: string | null;
+    salesChannel: string | null;
+    subtotal: number | string;
+    discount: number | string;
+    paymentFee: number | string | null;
+    paymentAmount?: number | string;
+    paymentCurrency?: string;
+    transactionId?: string | null;
+    gatewayOrderId?: string | null;
+    gatewayPaymentId?: string | null;
+    submittedAt?: string | null;
+    verifiedAt?: string | null;
     status: string;
     total: number | string;
     currency: string;
@@ -52,16 +75,6 @@ function formatMoney(
   }).format(Number(amount));
 }
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return "Not available";
-  }
-
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 export default function OrderDetails({ orderNumber, returnPage }: { orderNumber: string; returnPage: number }) {
   const router = useRouter();
@@ -107,7 +120,7 @@ export default function OrderDetails({ orderNumber, returnPage }: { orderNumber:
   const delivered =
     order?.status === "DELIVERED";
   const completedItemCount = items.filter(
-    (item) => item.codes.length >= item.quantity,
+    (item) => Boolean(item.serviceCompleted) || item.codes.length >= item.quantity,
   ).length;
   const hasDeliveredCodes = items.some(
     (item) => item.codes.length > 0,
@@ -152,7 +165,7 @@ export default function OrderDetails({ orderNumber, returnPage }: { orderNumber:
 
             <div className="mt-6 grid grid-cols-2 gap-4 rounded-2xl bg-slate-950 p-4 text-sm lg:grid-cols-4">
               <OrderInfo
-                label="Amount"
+                label="Order total"
                 value={formatMoney(
                   order.total,
                   order.currency,
@@ -172,6 +185,37 @@ export default function OrderDetails({ orderNumber, returnPage }: { orderNumber:
                   order.deliveredAt,
                 )}
               />
+            </div>
+
+            <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
+              <section className="min-w-0 rounded-xl border border-white/10 p-4">
+                <h3 className="font-black">Customer details</h3>
+                <dl className="mt-3 space-y-3 text-sm">
+                  <ReceiptDetail label="Name" value={order.customerName || "Not recorded"} />
+                  <ReceiptDetail label="Email" value={order.customerEmail} />
+                  <ReceiptDetail label="Phone" value={order.customerPhone || "Not recorded"} />
+                  <ReceiptDetail label="Checkout IP address" value={receiptCheckoutIp(order.checkoutIp)} />
+                  <ReceiptDetail label="Sales channel" value={order.salesChannel === "BUSINESS" ? "B2B" : "Retail"} />
+                  {order.customerNote && <ReceiptDetail label="Order note" value={order.customerNote} />}
+                </dl>
+              </section>
+              <section className="min-w-0 rounded-xl border border-white/10 p-4">
+                <h3 className="font-black">Payment details</h3>
+                <dl className="mt-3 space-y-3 text-sm">
+                  <ReceiptDetail label="Method" value={formatPaymentMethod(order.paymentMethod)} />
+                  <ReceiptDetail label="Status" value={order.paymentStatus?.replaceAll("_", " ") || "Not recorded"} />
+                  <ReceiptDetail label="Subtotal" value={formatMoney(order.subtotal, order.currency)} />
+                  <ReceiptDetail label="Discount" value={formatMoney(order.discount, order.currency)} />
+                  <ReceiptDetail label="Payment fee" value={formatMoney(order.paymentFee ?? 0, order.currency)} />
+                  <ReceiptDetail label="Order total" value={formatMoney(order.total, order.currency)} />
+                  {order.paymentAmount != null && <ReceiptDetail label="Payment amount" value={formatMoney(order.paymentAmount, order.paymentCurrency || order.currency)} />}
+                  <ReceiptDetail label="Submitted at" value={formatDate(order.submittedAt)} />
+                  <ReceiptDetail label="Verified at" value={formatDate(order.verifiedAt)} />
+                  <ReceiptDetail label="Transaction ID" value={order.transactionId || "Not recorded"} />
+                  <ReceiptDetail label="Gateway order ID" value={order.gatewayOrderId || "Not recorded"} />
+                  <ReceiptDetail label="Gateway payment ID" value={order.gatewayPaymentId || "Not recorded"} />
+                </dl>
+              </section>
             </div>
 
             <OrderPaymentActions orderNumber={order.orderNumber} status={order.status} paymentStatus={order.paymentStatus} paymentMethod={order.paymentMethod}
@@ -246,6 +290,13 @@ export default function OrderDetails({ orderNumber, returnPage }: { orderNumber:
                       )}
                     </div>
 
+                    <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                      <OrderInfo label="Quantity" value={String(item.quantity)} />
+                      <OrderInfo label="Delivered" value={String(item.serviceCompleted ? item.quantity : item.codes.length) + " / " + item.quantity} />
+                      <OrderInfo label="Unit price" value={formatMoney(item.unitPrice, order.currency)} />
+                      <OrderInfo label="Face value" value={formatFaceValue([item])} />
+                      <OrderInfo label="Item total" value={formatMoney(item.totalPrice, order.currency)} />
+                    </dl>
                     <DeliveryReceiptLink url={item.receiptUrl ?? undefined} />
                     <details
                       className="mt-4 rounded-xl border border-white/10 p-3"
@@ -304,6 +355,13 @@ export default function OrderDetails({ orderNumber, returnPage }: { orderNumber:
   );
 }
 
+function ReceiptDetail({ label, value }: { label: string; value: string }) {
+  return <div className="grid min-w-0 grid-cols-[100px_minmax(0,1fr)] gap-3 border-b border-white/10 pb-2 last:border-0 sm:grid-cols-[140px_minmax(0,1fr)]">
+    <dt className="text-slate-400">{label}</dt>
+    <dd className="min-w-0 break-all font-bold text-slate-200">{value}</dd>
+  </div>;
+}
+
 function OrderInfo({
   label,
   value,
@@ -312,11 +370,11 @@ function OrderInfo({
   value: string;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-1 font-bold text-slate-200">
+      <p className="mt-1 break-words font-bold text-slate-200">
         {value}
       </p>
     </div>

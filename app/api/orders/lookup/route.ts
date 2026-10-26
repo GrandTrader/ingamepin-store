@@ -27,7 +27,7 @@ function lookupDenied() {
     {
       status: 404,
       headers: {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-store",
       },
     },
   );
@@ -67,6 +67,14 @@ export async function POST(
           order_number,
           customer_email,
           customer_id,
+          customer_name,
+          customer_phone,
+          customer_ip,
+          customer_note,
+          sales_channel,
+          subtotal,
+          discount,
+          payment_fee,
           status,
           total,
           currency,
@@ -90,7 +98,7 @@ export async function POST(
       return lookupDenied();
     }
 
-    const paymentResult = await admin.from("payments").select("method,status").eq("order_id", order.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const paymentResult = await admin.from("payments").select("method,status,amount,currency,transaction_id,gateway_order_id,gateway_payment_id,submitted_at,verified_at").eq("order_id", order.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (paymentResult.error) throw paymentResult.error;
 
     const itemResult = await admin
@@ -102,6 +110,10 @@ export async function POST(
           product_name,
           option_name,
           denomination,
+          custom_value,
+          product_options(denomination_currency),
+          unit_price,
+          total_price,
           platform,
           fulfillment_mode,
           service_delivered_at,
@@ -188,6 +200,22 @@ export async function POST(
       {
         order: {
           orderNumber: order.order_number,
+          customerName: order.customer_name,
+          customerEmail: order.customer_email,
+          customerPhone: order.customer_phone,
+          checkoutIp: order.customer_ip,
+          customerNote: order.customer_note,
+          salesChannel: order.sales_channel,
+          subtotal: order.subtotal,
+          discount: order.discount,
+          paymentFee: order.payment_fee,
+          paymentAmount: paymentResult.data?.amount,
+          paymentCurrency: paymentResult.data?.currency,
+          transactionId: paymentResult.data?.transaction_id,
+          gatewayOrderId: paymentResult.data?.gateway_order_id,
+          gatewayPaymentId: paymentResult.data?.gateway_payment_id,
+          submittedAt: paymentResult.data?.submitted_at,
+          verifiedAt: paymentResult.data?.verified_at,
           status: order.status,
           total: order.total,
           currency: order.currency,
@@ -205,6 +233,10 @@ export async function POST(
           optionName: item.option_name ?? null,
           denomination:
             item.denomination ?? null,
+          customValue: item.custom_value,
+          denominationCurrency: (Array.isArray(item.product_options) ? item.product_options[0] : item.product_options)?.denomination_currency ?? null,
+          unitPrice: item.unit_price,
+          totalPrice: item.total_price,
           platform: item.platform ?? null,
           region:
             regionByProduct.get(
@@ -218,7 +250,7 @@ export async function POST(
       },
       {
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store",
         },
       },
     );
@@ -231,7 +263,7 @@ export async function POST(
       {
         status: 500,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store",
         },
       },
     );

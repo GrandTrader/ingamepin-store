@@ -1,3 +1,4 @@
+import { formatReceiptDate as formatCustomerDate, receiptCheckoutIp } from "@/lib/order-receipt-details";
 import OrderPaymentActions from "@/components/OrderPaymentActions";
 import { formatFaceValue } from "@/lib/face-value";
 import RefreshOrderButton from "../portal/orders/RefreshOrderButton";
@@ -22,7 +23,6 @@ import { getAllDeliveredCodes } from "@/lib/delivered-codes";
 import { formatPaymentMethod } from "@/lib/payment-method-label";
 import {
   customerStatusClass,
-  formatCustomerDate,
   formatCustomerMoney,
   requireCustomer,
 } from "@/lib/customer-account-data";
@@ -76,7 +76,7 @@ export default async function CustomerOrderReceiptPage({
     admin
       .from("orders")
       .select(
-        "id, order_number, sales_channel, customer_name, customer_email, customer_phone, currency, subtotal, discount, total, status, customer_note, created_at, paid_at, delivered_at, payment_expires_at, payment_expired_at",
+        "id, order_number, sales_channel, customer_name, customer_email, customer_phone, customer_ip, currency, subtotal, discount, payment_fee, total, status, customer_note, created_at, paid_at, delivered_at, payment_expires_at, payment_expired_at",
       )
       .eq("id", id)
       .eq("customer_email", customerEmail)
@@ -90,7 +90,7 @@ export default async function CustomerOrderReceiptPage({
       .order("created_at"),
     admin
       .from("payments")
-      .select("method, status, transaction_id, verified_at")
+      .select("method, status, amount, currency, transaction_id, gateway_order_id, gateway_payment_id, submitted_at, verified_at")
       .eq("order_id", id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -253,7 +253,7 @@ export default async function CustomerOrderReceiptPage({
                       ? `Denomination: ${item.denomination}`
                       : "Standard option")}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">Quantity: {item.quantity}</p>
+                <p className="mt-1 text-xs text-slate-500">Quantity: {item.quantity} · Delivered: {deliveredUnits(item, codesByItem.get(item.id)?.length ?? 0, order.status)} / {item.quantity}</p>
                 <DeliveryReceiptLink url={deliveryReceipts.get(item.id)} />
                 {refundLabel && <p className="mt-1 text-xs font-bold text-orange-800">{refundLabel}</p>}
                 {itemRefunds.filter(r => r.status === "MANUALLY_REFUNDED").map(r => <div key={r.id} className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-xs text-orange-900">
@@ -263,7 +263,7 @@ export default async function CustomerOrderReceiptPage({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">
-                <div className="text-right"><p className="mb-1 text-xs text-slate-500">Face value: <strong>{formatFaceValue([item])}</strong></p><p className="text-sm font-bold text-slate-900 sm:text-base sm:font-black">Total: {formatCustomerMoney(item.total_price, order.currency)}</p></div>
+                <div className="text-right"><p className="mb-1 text-xs text-slate-500">Unit price: {formatCustomerMoney(item.unit_price, order.currency)}</p><p className="mb-1 text-xs text-slate-500">Face value: <strong>{formatFaceValue([item])}</strong></p><p className="text-sm font-bold text-slate-900 sm:text-base sm:font-black">Total: {formatCustomerMoney(item.total_price, order.currency)}</p></div>
                 {itemDelivered && order.status === "DELIVERED" && (
                   <Link
                     href={`${portal ? "/account/portal/orders" : "/account/orders"}/${order.id}/invoice?itemId=${encodeURIComponent(item.id)}`}
@@ -358,7 +358,10 @@ export default async function CustomerOrderReceiptPage({
           <dl className="mt-2 grid gap-2 text-xs sm:mt-4 sm:gap-3 sm:text-sm">
             <ReceiptDetail label="Name" value={order.customer_name} />
             <ReceiptDetail label="Email" value={order.customer_email} />
-            <ReceiptDetail label="Phone" value={order.customer_phone || "—"} />
+            <ReceiptDetail label="Phone" value={order.customer_phone || "Not recorded"} />
+            <ReceiptDetail label="Checkout IP address" value={receiptCheckoutIp(order.customer_ip)} />
+            <ReceiptDetail label="Sales channel" value={isBusiness ? "B2B" : "Retail"} />
+            {order.customer_note && <ReceiptDetail label="Order note" value={order.customer_note} />}
           </dl>
         </div>
 
@@ -367,7 +370,15 @@ export default async function CustomerOrderReceiptPage({
           <dl className="mt-2 grid gap-2 text-xs sm:mt-4 sm:gap-3 sm:text-sm">
             <ReceiptDetail label="Subtotal" value={formatCustomerMoney(order.subtotal, order.currency)} />
             <ReceiptDetail label="Discount" value={formatCustomerMoney(order.discount, order.currency)} />
-            <ReceiptDetail label="Transaction ID" value={payment?.transaction_id || "—"} />
+            <ReceiptDetail label="Payment fee" value={formatCustomerMoney(order.payment_fee ?? 0, order.currency)} />
+            <ReceiptDetail label="Order total" value={formatCustomerMoney(order.total, order.currency)} />
+            {payment && <ReceiptDetail label="Payment amount" value={formatCustomerMoney(payment.amount, payment.currency)} />}
+            <ReceiptDetail label="Submitted at" value={formatCustomerDate(payment?.submitted_at)} />
+            <ReceiptDetail label="Verified at" value={formatCustomerDate(payment?.verified_at)} />
+            <ReceiptDetail label="Paid at" value={formatCustomerDate(order.paid_at)} />
+            <ReceiptDetail label="Transaction ID" value={payment?.transaction_id || "Not recorded"} />
+            <ReceiptDetail label="Gateway order ID" value={payment?.gateway_order_id || "Not recorded"} />
+            <ReceiptDetail label="Gateway payment ID" value={payment?.gateway_payment_id || "Not recorded"} />
           </dl>
         </div>
       </section>
@@ -383,7 +394,7 @@ function ReceiptDetail({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid min-w-0 grid-cols-[90px_minmax(0,1fr)] gap-2 border-b border-slate-100 pb-2 sm:pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[120px_minmax(0,1fr)]">
       <dt className="text-slate-500">{label}</dt>
-      <dd className="break-all font-bold text-slate-900">{value}</dd>
+      <dd className="min-w-0 break-all font-bold text-slate-900">{value}</dd>
     </div>
   );
 }
