@@ -26,7 +26,7 @@ tabComponent=tabComponent.replace('"@/lib/paypalych-product-policy-server"','"./
 write('fixture-policy.ts','export async function getProductEditorPaypalychWarning(_id:string){await new Promise(r=>setTimeout(r,600));return null}');
 write('Tabs.tsx',tabComponent);
 write('actions.ts',`'use server';import {cookies} from 'next/headers';import {redirect} from 'next/navigation';import {revalidatePath} from 'next/cache';export async function save(form:FormData){const name=String(form.get('name')||'');const tab=String(form.get('tab'));if(!name)redirect('/admin/products/test/edit/'+tab+'?error=Name+required');(await cookies()).set('fixture-product',name);revalidatePath('/');redirect('/admin/products/test/edit/'+tab+'?success=Saved');}`);
-write('EditPage.tsx',`import Sidebar from '@/app/admin/AdminSidebar';import Link from 'next/link';import {cookies} from 'next/headers';import Tabs from './Tabs';import {save} from './actions';export default async function Edit({tab,searchParams}:{tab:string;searchParams:Promise<{success?:string;error?:string}>}){const q=await searchParams;return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row"><Sidebar/><main className="min-w-0 flex-1 p-5 sm:p-8"><header style={{minHeight:tab==='general'?160:60}}><h1>Test product</h1><Link href="/admin/products">Product list</Link></header>{q.success&&<p data-editor-notice role="status">{q.success}</p>}{q.error&&<p data-editor-notice role="alert">{q.error}</p>}<div className="mt-8"><Tabs productId="test" current={tab}/></div><h2 className="mt-6 text-xl font-bold">{tab}</h2><form action={save} className="mt-4 grid gap-4 rounded-xl border border-slate-200 p-4"><input name="tab" type="hidden" value={tab}/><label className="grid gap-2 text-sm font-bold">Product name<input className="min-w-0 rounded-lg border border-slate-300 px-3 py-2" name="name" defaultValue={(await cookies()).get('fixture-product')?.value||'Test product'}/></label><button className="rounded-lg bg-blue-600 px-4 py-3 font-bold text-white">Save changes</button></form><div style={{height:1100}}>Long product form</div><button>Bottom action</button></main></div></div>}`);
+write('EditPage.tsx',`import Sidebar from '@/app/admin/AdminSidebar';import Link from 'next/link';import {cookies} from 'next/headers';import Tabs from './Tabs';import {save} from './actions';import ProductOptionsEditor from '@/app/admin/products/[id]/edit/product-options/ProductOptionsEditor';export default async function Edit({tab,searchParams}:{tab:string;searchParams:Promise<{success?:string;error?:string}>}){const q=await searchParams;return <div className="min-h-screen bg-white text-slate-900"><div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row"><Sidebar/><main className="min-w-0 flex-1 p-5 sm:p-8"><header style={{minHeight:tab==='general'?160:60}}><h1>Test product</h1><Link href="/admin/products">Product list</Link></header>{q.success&&<p data-editor-notice role="status">{q.success}</p>}{q.error&&<p data-editor-notice role="alert">{q.error}</p>}<div className="mt-8"><Tabs productId="test" current={tab}/></div><h2 className="mt-6 text-xl font-bold">{tab}</h2><form action={save} className="mt-4 grid gap-4 rounded-xl border border-slate-200 p-4"><input name="tab" type="hidden" value={tab}/><label className="grid gap-2 text-sm font-bold">Product name<input className="min-w-0 rounded-lg border border-slate-300 px-3 py-2" name="name" defaultValue={(await cookies()).get('fixture-product')?.value||'Test product'}/></label>{tab==='product-options'&&<ProductOptionsEditor productName="Apple Turkey" initialOptions={[10,25,50,100,125,150,175,200,250,300,400,500,600,700,750,800,900,1000,1250,1500,2000].map(n=>({id:'try-'+n,name:'Apple Gift Card '+n+' TRY (Türkiye)',denomination:n,currency:'TRY',sellingPrice:Math.round(n*2.1)/100,isActive:true,isInStock:true}))}/>}<button className="rounded-lg bg-blue-600 px-4 py-3 font-bold text-white">Save changes</button></form><div style={{height:1100}}>Long product form</div><button>Bottom action</button></main></div></div>}`);
 for(const [tab] of tabs){
  write('app/admin/products/[id]/edit/'+tab+'/page.tsx',`import Edit from '../../../../../../EditPage';export default function Page({searchParams}:{searchParams:Promise<{success?:string;error?:string}>}){return <Edit tab="${tab}" searchParams={searchParams}/>} `);
  const original=fs.readFileSync('app/admin/products/@editor/(.)[id]/edit/'+tab+'/page.tsx','utf8');
@@ -46,6 +46,45 @@ for(const [tab] of tabs){
   let ready=false;for(let i=0;i<60;i++){try{const r=await fetch('http://localhost:3011/admin/products');if(r.ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,500));}assert(ready,logs.join('').slice(-3000));
   let page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const list='http://localhost:3011/admin/products?category=games&page=2';
+  if(process.argv.includes('--scroll-only')) {
+   for(const width of [320,390,1912]) for(const modal of [false,true]) {
+    await page.setViewportSize({width,height:990});
+    if(modal) {
+     await page.goto(list);await page.locator('#edit-product').click();
+     await page.getByRole('dialog').waitFor();
+     await page.getByRole('link',{name:'Product options',exact:true}).click();
+    } else await page.goto('http://localhost:3011/admin/products/test/edit/product-options?success=Previous+save');
+    await page.getByRole('heading',{name:'Denomination options',exact:true}).waitFor();
+    const scope=modal?page.getByRole('dialog'):page.locator('[data-admin-frame]');
+    const scroller=modal?scope.locator('[class*=content]'):page.locator('[data-admin-scroll]');
+    const toolbar=scope.locator('[data-product-edit-tabs]');
+    await page.waitForFunction(()=>document.querySelector('[data-product-tabs-dock] [data-product-edit-tabs]'));
+    const toolbarTop=(await toolbar.boundingBox()).y;
+    async function contained(stage) {
+     const actual=await page.evaluate(()=>({height:document.documentElement.scrollHeight,viewport:innerHeight,y:scrollY}));
+     assert(actual.height<=actual.viewport+1,stage+': hidden controls must not create a second document scrollbar '+JSON.stringify(actual));
+     assert.equal(actual.y,0,stage+': the admin frame must not scroll into a blank page');
+     assert(Math.abs((await toolbar.boundingBox()).y-toolbarTop)<2,stage+': product tabs must stay fixed');
+    }
+    await contained('Initial render');
+    const price=scope.getByRole('spinbutton',{name:'Price for Apple Gift Card 700 TRY (Türkiye)',exact:true});
+    await price.scrollIntoViewIfNeeded();await contained('Scroll to denomination');
+    const before=await scroller.evaluate(el=>el.scrollTop);
+    const checkbox=price.locator('..').locator('input[type=checkbox]');
+    await checkbox.focus();await page.keyboard.press('Space');assert.equal(await checkbox.isChecked(),false);
+    await contained('Toggle stock with keyboard');
+    assert(Math.abs(await scroller.evaluate(el=>el.scrollTop)-before)<2,'Toggling a visible denomination must keep the form position');
+    await price.fill('15.25');await contained('Edit price');
+    await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));await contained('Attempt outer scroll');
+    await scroller.evaluate(el=>el.scrollTop=el.scrollHeight);await contained('Bottom of editor');
+    await page.getByRole('button',{name:'Save changes',exact:true}).click();
+    await page.waitForURL('**/product-options?success=Saved');
+    await page.getByRole('status').filter({hasText:'Saved'}).waitFor();await contained('Save response');
+    await page.screenshot({path:path.join(screenshots,'product-options-scroll-'+width+'-'+(modal?'modal':'direct')+'.png')});
+    console.log('PASS '+width+'px '+(modal?'modal':'direct')+': no outer overflow or blank-page jump; fixed tabs, keyboard stock toggle, price editing and save work.');
+   }
+   assert.deepEqual(errors,[]);return;
+  }
   if(production){
    for(const width of [390,1440]){
    await page.close();page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
