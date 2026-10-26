@@ -2,7 +2,7 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { requireWupexAdmin } from "@/lib/wupex-admin";
 import { wupexUuid } from "@/lib/wupex-import";
-import { supplierCategories, supplierCatalogue, prepareSupplierConfiguration } from "@/lib/supplier-switch-catalogue";
+import { supplierCatalogFilters, supplierCatalogue, prepareSupplierConfiguration } from "@/lib/supplier-switch-catalogue";
 import { supplierPreviewToken, verifySupplierPreview } from "@/lib/supplier-switch-preview";
 import { isSupplier, type SupplierProvider, type SupplierSetup, type SupplierSelection, type SupplierPreview } from "@/lib/supplier-switch";
 import { syncWupexProduct } from "@/lib/wupex-fulfillment";
@@ -62,9 +62,9 @@ export async function loadSupplierSwitch(productId: string): Promise<{ data?: Su
   return {data:{provider,version:version.data,markup,exchangeRate,selection:selection??null,options:opts}};
  } catch(error) {return {error:message(error)};}
 }
-export async function loadSupplierCategories(provider: SupplierProvider) {
+export async function loadSupplierCatalogFilters(provider: SupplierProvider) {
  await requireWupexAdmin();
- try { return { data: await supplierCategories(provider) }; }
+ try { return { data: await supplierCatalogFilters(provider) }; }
  catch (error) { return { error: message(error) }; }
 }
 export async function searchSupplierDenominations(provider:SupplierProvider,query:string,category:string,region:string,page:number) {

@@ -20,36 +20,41 @@ function actions(authorized=true){let calls=[],price='11',source='v1',configured
  const module=load('app/admin/products/[id]/edit/supplier/switch-actions.ts',{
   'next/cache':{revalidatePath:p=>calls.push('path:'+p),updateTag:t=>calls.push('tag:'+t)},
   '@/lib/wupex-admin':{requireWupexAdmin:async()=>{calls.push('auth');if(!authorized)throw new Error('unauthorized');return {db,userId:'admin'}}},
-  '@/lib/wupex-import':{wupexUuid:()=>true},'@/lib/supplier-switch-catalogue':{supplierCategories:async provider=>{calls.push("categories:"+provider);return [{id:"PUBG",name:"PUBG"}]},supplierCatalogue:async()=>{calls.push('catalogue');return {items:[]}},prepareSupplierConfiguration:async()=>draft()},
+  '@/lib/wupex-import':{wupexUuid:()=>true},'@/lib/supplier-switch-catalogue':{supplierCatalogFilters:async provider=>{calls.push("categories:"+provider);return {categories:[{id:"PUBG",name:"PUBG"}],regions:["Global"]}},supplierCatalogue:async()=>{calls.push('catalogue');return {items:[]}},prepareSupplierConfiguration:async()=>draft()},
   '@/lib/supplier-switch-preview':tokens,'@/lib/supplier-switch':types,
   '@/lib/wupex-fulfillment':{syncWupexProduct:async()=>calls.push('stock-refresh')},'@/lib/wupex-storage':{requireWupexCredentials:async()=>({})},
   '@/lib/fkwallet-fulfillment':{syncFKProductStock:async()=>{}},'@/lib/fkwallet-storage':{requireCredentials:async()=>({})},'@/lib/definiteplay-relay':{getDefinitePlayItems:async()=>({items:[],stale:false})},
  });return {module,calls,changePrice:()=>price='12',configured:()=>configured};}
-test('unauthorized users cannot search suppliers, preview, or save',async()=>{const f=actions(false);for(const [name,args] of [['loadSupplierCategories',['WUPEX']],['searchSupplierDenominations',['WUPEX','','','',1]],['previewSupplierSwitch',['product',selection]],['applySupplierSwitch',['product','request',{}]]])await assert.rejects(f.module[name](...args),/unauthorized/);assert.deepEqual(f.calls,['auth','auth','auth','auth']);});
+test('unauthorized users cannot search suppliers, preview, or save',async()=>{const f=actions(false);for(const [name,args] of [['loadSupplierCatalogFilters',['WUPEX']],['searchSupplierDenominations',['WUPEX','','','',1]],['previewSupplierSwitch',['product',selection]],['applySupplierSwitch',['product','request',{}]]])await assert.rejects(f.module[name](...args),/unauthorized/);assert.deepEqual(f.calls,['auth','auth','auth','auth']);});
 test('changed supplier price prevents a save and preserves the current configuration',async()=>{const f=actions();const r=await f.module.previewSupplierSwitch('product',selection);assert(r.data);f.changePrice();const result=await f.module.applySupplierSwitch('product','request',r.data);assert.match(result.error,/prices changed/);assert.equal(f.configured(),false);});
 test('valid reviewed save uses the atomic RPC, then refreshes stock and storefront data',async()=>{const f=actions();const r=await f.module.previewSupplierSwitch('product',selection);const result=await f.module.applySupplierSwitch('product','request',r.data);assert.equal(result.success,true);assert.equal(f.configured(),true);assert(f.calls.indexOf('apply_product_supplier_configuration')<f.calls.indexOf('stock-refresh'));assert(f.calls.includes('tag:homepage-store-data'));});
 
 
-test('category loading checks administrator access and does not modify products',async()=>{
- const f=actions();const result=await f.module.loadSupplierCategories('WUPEX');
- assert.equal(result.data[0].name,'PUBG');assert.deepEqual(f.calls,['auth','categories:WUPEX']);assert.equal(f.configured(),false);
+test('catalogue filter loading checks administrator access and does not modify products',async()=>{
+ const f=actions();const result=await f.module.loadSupplierCatalogFilters('WUPEX');
+ assert.equal(result.data.categories[0].name,'PUBG');assert.deepEqual(f.calls,['auth','categories:WUPEX']);assert.equal(f.configured(),false);
 });
 
-test('category choices cover the full supplier catalogue and search forwards combined filters with pagination',async()=>{
+test('category and region choices cover the full supplier catalogue and search forwards combined filters with pagination',async()=>{
  const calls=[];
  const catalogue=load('lib/supplier-switch-catalogue.ts',{
   '@/lib/supabase/admin':{},'./supplier-switch':types,
-  './definiteplay-relay':{getDefinitePlayCatalogue:async(...args)=>{calls.push(['dp',...args]);return {items:[],categories:['Apple','PUBG'],total:0,stale:false};}},
+  './definiteplay-relay':{getDefinitePlayCatalogue:async(...args)=>{calls.push(['dp',...args]);return {items:[],categories:['Apple','PUBG'],regions:['Global','India'],total:0,stale:false};}},
   './definiteplay-import':{}, './wupex-storage':{requireWupexCredentials:async()=>({merchantCode:'fixture'})},
   './wupex-api':{getWupexCatalog:async(...args)=>{calls.push(['wx-search',...args.slice(1)]);return {products:[],totalCount:25};}},
-  './wupex-catalog-filters':{getCachedWupexCatalogFilters:async()=>{calls.push(['wx-categories']);return {categories:['Apple','PUBG'],regions:['Global']};}},
+  './wupex-catalog-filters':{getCachedWupexCatalogFilters:async()=>{calls.push(['wx-categories']);return {categories:['Apple','PUBG'],regions:['Global','Turkey']};}},
   './wupex-import':{},'./wupex-fulfillment':{},'./fkwallet-storage':{requireCredentials:async()=>({})},
   './fkwallet-api':{fkRequest:async(_,endpoint)=>{calls.push(['fk',endpoint]);return [{id:12,name:'Games'}];},parseCategories:rows=>rows},'./fkwallet-import':{},
  });
- for(const provider of ['WUPEX','DEFINITEPLAY'])assert.deepEqual(Array.from(await catalogue.supplierCategories(provider),c=>c.name),['Apple','PUBG']);
- assert.deepEqual(Array.from(await catalogue.supplierCategories('FKWALLET'),c=>c.id),['12']);
+ for(const provider of ['WUPEX','DEFINITEPLAY']){
+  const filters=await catalogue.supplierCatalogFilters(provider);
+  assert.deepEqual(Array.from(filters.categories,c=>c.name),['Apple','PUBG']);
+  assert.deepEqual(Array.from(filters.regions),provider==='WUPEX'?['Global','Turkey']:['Global','India']);
+ }
+ const fkFilters=await catalogue.supplierCatalogFilters('FKWALLET');
+ assert.deepEqual(Array.from(fkFilters.categories,c=>c.id),['12']);assert.equal(fkFilters.regions.length,0);
  assert(calls.some(c=>c[0]==='dp'&&c[1]===''&&c[2]===0&&c[3]===1));
- await assert.rejects(catalogue.supplierCategories('OTHER'),/valid supplier/);
+ await assert.rejects(catalogue.supplierCatalogFilters('OTHER'),/valid supplier/);
  const result=await catalogue.supplierCatalogue('WUPEX','60 UC','PUBG','Global',2);
  assert.equal(result.total,25);
  const args=calls.find(c=>c[0]==='wx-search');assert.equal(args[1],2);assert.equal(args[2],'60 UC');assert.equal(args[5].category,'PUBG');assert.equal(args[5].region,'Global');
