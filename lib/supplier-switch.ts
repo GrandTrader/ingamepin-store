@@ -42,3 +42,10 @@ export function validateSupplierSelection(value: SupplierSelection) {
   }
   return value;
 }
+
+/** Preserve existing stock links only when one exact value/currency match exists. */
+export function matchingSupplierOption(item: SupplierChoice, options: SupplierSetup["options"], selected: SupplierSelection["options"]): string | null {
+  if (!item.denomination || !item.currency || Number(item.denomination) <= 0) return null;
+  const matches = options.filter(option => Number(option.denomination) === Number(item.denomination) && option.currency === item.currency);
+  return matches.length === 1 && !selected.some(option => option.optionId === matches[0].id) ? matches[0].id : null;
+}

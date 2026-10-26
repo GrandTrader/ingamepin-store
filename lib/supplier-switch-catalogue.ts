@@ -6,7 +6,7 @@ import type { WupexCredentials, WupexProduct } from "./wupex-types";
 import { requireWupexCredentials } from "./wupex-storage";
 import { getWupexCatalog, findWupexProducts, getWupexBalance, getWupexFields, wupexConnectionId } from "./wupex-api";
 import { getCachedWupexCatalogFilters } from "./wupex-catalog-filters";
-import { prepareWupexDraft } from "./wupex-import";
+import { prepareWupexDraft, wupexCardDenomination } from "./wupex-import";
 import { assertWupexLive, wupexDeliveryEnabled } from "./wupex-fulfillment";
 import { requireCredentials } from "./fkwallet-storage";
 import { connectionId, fkRequest, parseCategories, parseProducts } from "./fkwallet-api";
@@ -41,7 +41,11 @@ export async function supplierCatalogue(provider: SupplierProvider, query: strin
     total = result.total; categories = result.categories.map(id => ({ id, name: id }));
   } else if (provider === "WUPEX") {
     const result = await getWupexCatalog(await requireWupexCredentials(), page, query, "", 20, { category, region });
-    items = result.products.filter(p => p.price > 0).map(p => ({ key: String(p.id), name: p.name.slice(0,150), cost: String(p.price), costCurrency: "USD", region: p.region, denomination: String(p.faceValue || 1), currency: "USD", kind: p.cardType === "voucher" ? "CODE" : "ACCOUNT" }));
+    items = result.products.filter(p => p.price > 0).map(p => {
+      const card = wupexCardDenomination(p);
+      return { key: String(p.id), name: p.name.slice(0,150), cost: String(p.price), costCurrency: "USD", region: p.region,
+        denomination: card?.denomination ?? "", currency: card?.currency ?? "", kind: p.cardType === "voucher" ? "CODE" : "ACCOUNT" };
+    });
     total = result.totalCount;
   } else {
     const credentials = await requireCredentials();

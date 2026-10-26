@@ -18,7 +18,7 @@ export async function loadSupplierSwitch(productId: string): Promise<{ data?: Su
  try {
   const [product, options, settings, version, wx, fk] = await Promise.all([
    db.from("products").select("stock_source").eq("id",productId).single(),
-   db.from("product_options").select("id,option_name,denomination,denomination_currency,is_active").eq("product_id",productId).order("sort_order"),
+   db.from("product_options").select("id,option_name,denomination,denomination_currency,is_active").eq("product_id",productId).eq("is_custom_value",false).order("sort_order"),
    db.from("product_supplier_settings").select("selection").eq("product_id",productId).maybeSingle(),
    db.rpc("product_supplier_version",{p_product_id:productId}),
    db.from("wupex_imports").select("markup_percent,exchange_rate,wupex_product_links(option_id,supplier_product_id,supplier_snapshot)").eq("product_id",productId).maybeSingle(),

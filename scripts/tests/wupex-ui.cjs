@@ -17,7 +17,7 @@ write('wupex-import.js',compile('lib/wupex-import.ts'));
 write('fkwallet-import.js',compile('lib/fkwallet-import.ts'));
 fs.appendFileSync(path.join(out,'import-actions.js'),"exports.importWupexProduct=async input=>{window.calls.push({type:'import',input});await new Promise(r=>setTimeout(r,100));return window.calls.filter(c=>c.type==='import').length===1?{error:'Test interrupted response. Retry the same draft.'}:{data:{productId:input.requestId}};};");
 
-write('entry.js',"const React=require('react'),{createRoot}=require('react-dom/client'),Panel=require('./Panel').default,Form=require('./Form').default;window.calls=[];const setup={connection:'fixture',query:'Apple',catalogFilters:{category:'Apple Gift Card',region:'USA'},products:[{id:101,name:'Apple Gift Card $4 (USA)',sku:'APPLE4',price:4.1,faceValue:4,available:250,cardType:'voucher',subType:null,region:'USA',fields:[]}],categories:[{id:'22222222-2222-4222-8222-222222222222',name:'Gift cards'}]};createRoot(document.getElementById('app')).render(React.createElement('main',{className:'mx-auto max-w-5xl p-4 sm:p-8'},React.createElement('h1',{className:'mb-5 text-3xl font-black'},'Wupex'),location.search.includes('form')?React.createElement(Form,{setup}):React.createElement(Panel)));");
+write('entry.js',"const React=require('react'),{createRoot}=require('react-dom/client'),Panel=require('./Panel').default,Form=require('./Form').default;window.calls=[];const setup={connection:'fixture',query:'Apple',catalogFilters:{category:'Apple Gift Card',region:'USA'},products:[{id:101,name:'Apple Gift Card $4 (USA)',sku:'APPLE4',price:4.1,faceValue:4,available:250,cardType:'voucher',subType:null,region:'USA',fields:[]}],categories:[{id:'22222222-2222-4222-8222-222222222222',name:'Gift cards'}]};if(location.search.includes('try')){setup.products[0]={...setup.products[0],name:'Apple Gift Card 2000 TRY (Türkiye)',region:'Turkiye',faceValue:40.71851899,price:40.718681};}createRoot(document.getElementById('app')).render(React.createElement('main',{className:'mx-auto max-w-5xl p-4 sm:p-8'},React.createElement('h1',{className:'mb-5 text-3xl font-black'},'Wupex'),location.search.includes('form')?React.createElement(Form,{setup}):React.createElement(Panel)));");
 (async()=>{
  await new Promise((resolve,reject)=>require('next/dist/compiled/webpack/webpack').webpack({mode:'development',devtool:false,entry:path.join(out,'entry.js'),output:{path:out,filename:'bundle.js'}},(err,stats)=>err||stats.hasErrors()?reject(err||Error(stats.toString({all:false,errors:true}))):resolve()));
  const css=fs.readdirSync('.next/static',{recursive:true}).filter(p=>p.endsWith('.css')).map(p=>fs.readFileSync(path.join('.next/static',p),'utf8')).join('\n');
@@ -78,6 +78,8 @@ write('entry.js',"const React=require('react'),{createRoot}=require('react-dom/c
    await formPage.goto('http://127.0.0.1:'+server.address().port+'/?form');
    await formPage.getByLabel('Product name',{exact:true}).waitFor();
    await formPage.getByLabel('Website category').selectOption('22222222-2222-4222-8222-222222222222');
+   assert.equal(await formPage.getByLabel('Face value / units').inputValue(),'','Unknown card value requires manual entry');
+   await formPage.getByLabel('Face value / units').fill('4');
    await formPage.getByLabel('Denomination currency').fill('USD');
    await formPage.getByLabel('Markup on supplier cost (%)').fill('10');
    await formPage.getByText('Sell: $4.51',{exact:true}).waitFor();
@@ -92,6 +94,16 @@ write('entry.js',"const React=require('react'),{createRoot}=require('react-dom/c
    assert.equal(saved[1].input.markup,'10');assert.equal(saved[1].input.options[0].currency,'USD');
    assert.deepEqual(saved[1].input.catalogFilters,{category:'Apple Gift Card',region:'USA'});
    assert.equal(saved[1].input.options[0].expectedCost,'4.1');assert.deepEqual(formErrors,[]);await formPage.close();
+   const tryPage=await browser.newPage({viewport:{width,height:1100}});
+   await tryPage.goto('http://127.0.0.1:'+server.address().port+'/?form&try');
+   assert.equal(await tryPage.getByLabel('Face value / units').inputValue(),'2000');
+   assert.equal(await tryPage.getByLabel('Denomination currency').inputValue(),'TRY');
+   await tryPage.getByLabel('Markup on supplier cost (%)').fill('4.5');
+   await tryPage.getByText('Sell: $42.55',{exact:true}).waitFor();
+   assert.equal(await tryPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   await tryPage.screenshot({path:path.join(out,'import-try-'+width+'.png'),fullPage:true});
+   await tryPage.close();
+
 
   }
   console.log('Wupex browser checks passed: desktop/mobile layout, masked and cleared credentials, sandbox/live settings, filters, pagination and no overflow.');

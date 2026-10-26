@@ -116,3 +116,25 @@ test('Supplier price increases refresh cost facts and retain funded stock; faile
  await assert.rejects(f.module.syncWupexProduct(db,credentials,'product-1',{...reader,products:async()=>{throw Error('network')}}));
  assert.deepEqual(clone(calls.at(-1).args.p_rows),[]);
 });
+
+
+test('Wupex card values use explicit local currency, never converted USD faceValue',()=>{
+ const fk=load('lib/fkwallet-import.ts'),imp=load('lib/wupex-import.ts',{'./fkwallet-import':fk});
+ for(const [name,denomination,currency] of [
+  ['Apple Gift Card 1250 TRY (Türkiye)','1250','TRY'],['Apple Gift Card 2000 TRY (Türkiye)','2000','TRY'],
+  ['Apple Gift Card 50SAR (KSA)','50','SAR'],['Gift Card 1,000 AED','1000','AED'],
+  ['Steam EUR 10.50','10.5','EUR'],['Apple Gift Card €25 (Netherlands)','25','EUR'],
+  ['Gift Card ₹1000','1000','INR'],['Apple 5 CAD (Canada)','5','CAD'],
+ ]) assert.deepEqual(clone(imp.wupexCardDenomination({name,faceValue:40.71851899})),{denomination,currency});
+ for(const name of ['PUBG Mobile 60 UC','Free Fire 100+10 Diamonds','Gift Card $50','Gift Card 10 USD / 20 EUR','Gift Card 10-50 USD','Gift Card 10,50 EUR','Gift Card 0 TRY','Gift Card 40.71851899 USD'])
+  assert.equal(imp.wupexCardDenomination({name,faceValue:40.71851899}),null,name);
+ const card={...product,name:'Apple Gift Card 2000 TRY (Türkiye)',sku:'APPLE-TUR-2000TRY',faceValue:40.71851899,price:40.718681,fields:[]};
+ const input={requestId:'11111111-1111-4111-8111-111111111111',categoryId:'22222222-2222-4222-8222-222222222222',connectionId:payload.connectionId,query:'Apple',title:'Apple Turkey',titleRu:'',description:'',descriptionRu:'',region:'Turkiye',markup:'4.5',exchangeRate:'1',options:[{id:101,expectedCost:'40.718681',expectedCurrency:'USD',name:card.name,denomination:'2000',currency:'TRY',optionType:'CURRENCY'}]};
+ const draft=imp.prepareWupexDraft(input,[card],'USD');
+ assert.equal(draft.options[0].denomination,'2000');assert.equal(draft.options[0].currency,'TRY');
+ assert.equal(draft.options[0].supplierCurrency,'USD');assert.equal(draft.options[0].price,'42.55');
+ for(const bad of [{denomination:'1500'},{currency:'USD'},{denomination:'40.7185',currency:'USD'}])
+  assert.throws(()=>imp.prepareWupexDraft({...input,options:[{...input.options[0],...bad}]},[card],'USD'),/2000 TRY/);
+ const unknown={...card,name:'Voucher without a printed currency',faceValue:40.71851899};
+ assert.equal(imp.prepareWupexDraft(input,[unknown],'USD').options[0].denomination,'2000','manual card details are allowed when the catalogue gives no clear card value');
+});

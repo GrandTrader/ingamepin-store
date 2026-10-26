@@ -6,9 +6,9 @@ for(const [file,source] of [['Panel.js','app/admin/products/[id]/edit/supplier/S
 write('router.js',`exports.useRouter=()=>({refresh(){window.calls.push(['refresh'])}});`);
 write('switch-actions.js',`
 const initial={provider:'DEFINITEPLAY',version:'v1',markup:'10',exchangeRate:'1',selection:null,options:[{id:'old',name:'PUBG 60 UC',denomination:'1',currency:'USD',active:true},{id:'hidden',name:'PUBG 325 UC',denomination:'5',currency:'USD',active:true}]};
-exports.loadSupplierSwitch=async()=>{window.calls.push(['load']);return {data:initial}};
+exports.loadSupplierSwitch=async()=>{window.calls.push(['load']);return {data:window.tryFixture?{...initial,provider:'OWNED',options:[{id:'try2000',name:'2000 TRY',denomination:'2000',currency:'TRY',active:true}]}:initial}};
 exports.loadSupplierCatalogFilters=async provider=>{window.calls.push(['categories',provider]);if(provider==='DEFINITEPLAY')await new Promise(resolve=>setTimeout(resolve,80));if(provider==='WUPEX'&&window.categoryFail)return {error:'Supplier filters unavailable'};return {data:{categories:provider==='FKWALLET'?[{id:'12',name:'Mobile games'}]:provider==='WUPEX'?[{id:'PUBG',name:'PUBG Mobile'},{id:'Apple',name:'Apple'}]:[{id:'Definite Play games',name:'Definite Play games'}],regions:provider==='FKWALLET'?[]:provider==='WUPEX'?['Global','Turkey']:['Global','India']}}};
-exports.searchSupplierDenominations=async(provider,query,category,region,page)=>{window.calls.push(['search',provider,page,query,category,region]);return {data:{items:[{key:'801',name:'PUBG Mobile 60 UC Global Digital Voucher',cost:'1.00',costCurrency:'USD',region:'Global',denomination:'1',currency:'USD',kind:'CODE'}],categories:[],total:25}}};
+exports.searchSupplierDenominations=async(provider,query,category,region,page)=>{window.calls.push(['search',provider,page,query,category,region]);return {data:{items:window.tryFixture?[{key:'11317',name:'Apple Gift Card 2000 TRY (Türkiye)',cost:'40.718681',costCurrency:'USD',region:'Turkiye',denomination:'2000',currency:'TRY',kind:'CODE'}]:[{key:'801',name:'PUBG Mobile 60 UC Global Digital Voucher',cost:'1.00',costCurrency:'USD',region:'Global',denomination:'1',currency:'USD',kind:'CODE'}],categories:[],total:25}}};
 exports.previewSupplierSwitch=async(productId,selection)=>{window.calls.push(['preview',selection]);return {data:{token:'test-token',version:'v1',selection,options:selection.options.map(o=>({...o,cost:'1.00',costCurrency:'USD',price:(1+Number(selection.markup)/100).toFixed(2)})),hiddenCount:1,recipientFields:[]}}};
 exports.applySupplierSwitch=async(...args)=>{window.calls.push(['apply',...args]);return window.failSave?{error:'Resolve unfinished website orders before switching or syncing denominations'}:{success:true,message:'Supplier and denominations saved.'}};
 `);
@@ -62,6 +62,24 @@ write('entry.js',`const React=require('react'),root=require('react-dom/client').
   await page.getByLabel('Supplier',{exact:true}).selectOption('FKWALLET');await page.getByLabel('Supplier category').selectOption('12');
   assert.equal(await page.getByLabel('Supplier region').count(),0);
   assert.deepEqual(errors,[]);await page.getByRole('button',{name:'Close',exact:true}).click();assert.equal(await page.getByLabel('Supplier',{exact:true}).count(),0);await page.close();
- }console.log('PASS: category and region dropdowns for all suppliers, retry, combined filters and pagination, selection preservation, price review and safe save; no mobile overflow or browser errors');}
+ }
+ for(const width of [1280,390,320]){
+  const page=await browser.newPage({viewport:{width,height:1000}});
+  await page.goto('http://127.0.0.1:'+server.address().port);await page.evaluate(()=>window.tryFixture=true);
+  await page.getByRole('button',{name:'Change supplier',exact:true}).click();
+  await page.getByLabel('Supplier category').selectOption('Apple');
+  await page.getByRole('button',{name:'Load supplier products'}).click();await page.getByRole('checkbox').check();
+  assert.equal(await page.getByLabel('Denomination for Apple Gift Card 2000 TRY (Türkiye)').inputValue(),'2000');
+  assert.equal(await page.getByLabel('Currency for Apple Gift Card 2000 TRY (Türkiye)').inputValue(),'TRY');
+  assert.equal(await page.getByLabel('Match Apple Gift Card 2000 TRY (Türkiye)').inputValue(),'try2000');
+  await page.getByRole('button',{name:'Preview denominations & prices'}).click();
+  await page.getByRole('region',{name:'Supplier change preview'}).waitFor();
+  const selection=await page.evaluate(()=>window.calls.find(c=>c[0]==='preview')[1]);
+  assert.equal(selection.options[0].optionId,'try2000');assert.equal(selection.options[0].currency,'TRY');
+  assert.equal((await page.evaluate(()=>window.calls.filter(c=>c[0]==='apply'))).length,0);
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await page.screenshot({path:path.join(out,'try-'+width+'.png'),fullPage:true});await page.close();
+ }
+ console.log('PASS: exact TRY denomination and uploaded-stock mapping; category and region dropdowns for all suppliers, retry, combined filters and pagination, selection preservation, price review and safe save; no mobile overflow or browser errors');}
  finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1});

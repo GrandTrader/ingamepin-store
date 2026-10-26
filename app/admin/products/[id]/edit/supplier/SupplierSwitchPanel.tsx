@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { SUPPLIERS, isSupplier, type SupplierChoice, type SupplierSelection, type SupplierSetup, type SupplierPreview } from "@/lib/supplier-switch";
+import { SUPPLIERS, isSupplier, matchingSupplierOption, type SupplierChoice, type SupplierSelection, type SupplierSetup, type SupplierPreview } from "@/lib/supplier-switch";
 import { loadSupplierSwitch, loadSupplierCatalogFilters, searchSupplierDenominations, previewSupplierSwitch, applySupplierSwitch } from "./switch-actions";
 
 const inputClass="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900";
@@ -41,9 +41,8 @@ export default function SupplierSwitchPanel({productId,currentSupplier}:{product
  function toggle(item:SupplierChoice){if(!selection||!setup)return;
   const exists=selection.options.some(o=>o.key===item.key);
   if(!exists&&selection.options.length>=50){setError("Select up to 50 denominations.");return;}
-  // Only match identical named denominations automatically; other mappings are reviewed explicitly.
-  const matches=setup.options.filter(o=>o.name===item.name&&Number(o.denomination)===Number(item.denomination)&&o.currency===item.currency&&!selection.options.some(s=>s.optionId===o.id));
-  edit({...selection,deliveryKind:selection.options.length?selection.deliveryKind:item.kind,options:exists?selection.options.filter(o=>o.key!==item.key):[...selection.options,{key:item.key,optionId:matches.length===1?matches[0].id:null,name:item.name,denomination:item.denomination,currency:item.currency}]});
+  const optionId=matchingSupplierOption(item,setup.options,selection.options);
+  edit({...selection,deliveryKind:selection.options.length?selection.deliveryKind:item.kind,options:exists?selection.options.filter(o=>o.key!==item.key):[...selection.options,{key:item.key,optionId,name:item.name,denomination:item.denomination,currency:item.currency}]});
  }
  function review(){if(!selection)return;setError("");startTransition(async()=>{
   try{const r=await previewSupplierSwitch(productId,selection);if(!r.data){setError(r.error||"Unable to preview.");return;}setPreview(r.data);setRequestId(crypto.randomUUID());}
@@ -83,7 +82,7 @@ export default function SupplierSwitchPanel({productId,currentSupplier}:{product
     <button type="button" onClick={()=>search(1)} className="mt-3 rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm font-semibold text-blue-700">Load supplier products</button>
     {searched&&<div className="mt-3"><p className="mb-2 text-xs text-slate-600">{total} supplier products · Page {page} · {selection.options.length} selected</p><div className="max-h-72 space-y-2 overflow-y-auto">{items.map(item=><label key={item.key} className="flex items-start gap-3 rounded-lg border bg-white p-3 text-sm"><input type="checkbox" className="mt-1 size-4 shrink-0" checked={selection.options.some(o=>o.key===item.key)} onChange={()=>toggle(item)}/><span className="min-w-0 flex-1"><strong className="block break-words">{item.name}</strong><span className="text-xs text-slate-500">{item.region||"Supplier catalogue"} · {item.kind==="CODE"?"Voucher":"Top-up"} · Cost {item.cost} {item.costCurrency}</span></span></label>)}{!items.length&&<p className="text-sm">No matching supplier products. Check the search or category.</p>}</div><div className="mt-2 flex gap-2"><button type="button" disabled={pending||page<=1} onClick={()=>search(page-1)} className="rounded border px-3 py-2 text-xs disabled:opacity-40">Previous</button><button type="button" disabled={pending||page*20>=total} onClick={()=>search(page+1)} className="rounded border px-3 py-2 text-xs disabled:opacity-40">Next</button></div></div>}
    </fieldset>
-   <fieldset disabled={pending} className="space-y-3"><h3 className="font-bold">Selected denominations ({selection.options.length})</h3><p className="text-xs text-slate-600">Verify value and currency. Match an existing option only when it is the same denomination; this preserves its links, purchase limits and uploaded codes as backup stock.</p>
+   <fieldset disabled={pending} className="space-y-3"><h3 className="font-bold">Selected denominations ({selection.options.length})</h3><p className="text-xs text-slate-600">Verify value and currency. Match an existing option only when it is the same denomination; this preserves its links, purchase limits and uploaded codes as backup stock. Card values use the card currency; supplier costs and selling prices use USD. Enter blank card values manually.</p>
     {selection.options.map((o,index)=><div key={o.key} className="rounded-xl border p-3"><div className="mb-2 flex items-start justify-between gap-2"><strong className="break-words text-sm">{o.name}</strong><button aria-label={`Remove ${o.name}`} type="button" className="shrink-0 text-xs text-red-700" onClick={()=>edit({...selection,options:selection.options.filter((_,i)=>i!==index)})}>Remove</button></div><div className="grid gap-2 sm:grid-cols-3">
      <label className="text-xs">Denomination<input aria-label={`Denomination for ${o.name}`} className={inputClass} inputMode="decimal" value={o.denomination} onChange={e=>edit({...selection,options:selection.options.map((x,i)=>i===index?{...x,denomination:e.target.value,optionId:null}:x)})}/></label>
      <label className="text-xs">Currency<input aria-label={`Currency for ${o.name}`} className={inputClass} maxLength={3} value={o.currency} onChange={e=>edit({...selection,options:selection.options.map((x,i)=>i===index?{...x,currency:e.target.value.toUpperCase(),optionId:null}:x)})}/></label>

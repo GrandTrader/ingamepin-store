@@ -41,9 +41,9 @@ test('category and region choices cover the full supplier catalogue and search f
   '@/lib/supabase/admin':{},'./supplier-switch':types,
   './definiteplay-relay':{getDefinitePlayCatalogue:async(...args)=>{calls.push(['dp',...args]);return {items:[],categories:['Apple','PUBG'],regions:['Global','India'],total:0,stale:false};}},
   './definiteplay-import':{}, './wupex-storage':{requireWupexCredentials:async()=>({merchantCode:'fixture'})},
-  './wupex-api':{getWupexCatalog:async(...args)=>{calls.push(['wx-search',...args.slice(1)]);return {products:[],totalCount:25};}},
+  './wupex-api':{getWupexCatalog:async(...args)=>{calls.push(['wx-search',...args.slice(1)]);return {products:[{id:11317,name:'Apple Gift Card 2000 TRY (Türkiye)',price:40.718681,faceValue:40.71851899,region:'Turkiye',cardType:'voucher'}],totalCount:25};}},
   './wupex-catalog-filters':{getCachedWupexCatalogFilters:async()=>{calls.push(['wx-categories']);return {categories:['Apple','PUBG'],regions:['Global','Turkey']};}},
-  './wupex-import':{},'./wupex-fulfillment':{},'./fkwallet-storage':{requireCredentials:async()=>({})},
+  './wupex-import':load('lib/wupex-import.ts',{'./fkwallet-import':load('lib/fkwallet-import.ts')}),'./wupex-fulfillment':{},'./fkwallet-storage':{requireCredentials:async()=>({})},
   './fkwallet-api':{fkRequest:async(_,endpoint)=>{calls.push(['fk',endpoint]);return [{id:12,name:'Games'}];},parseCategories:rows=>rows},'./fkwallet-import':{},
  });
  for(const provider of ['WUPEX','DEFINITEPLAY']){
@@ -56,6 +56,18 @@ test('category and region choices cover the full supplier catalogue and search f
  assert(calls.some(c=>c[0]==='dp'&&c[1]===''&&c[2]===0&&c[3]===1));
  await assert.rejects(catalogue.supplierCatalogFilters('OTHER'),/valid supplier/);
  const result=await catalogue.supplierCatalogue('WUPEX','60 UC','PUBG','Global',2);
- assert.equal(result.total,25);
+ assert.equal(result.total,25);assert.equal(result.items[0].denomination,'2000');assert.equal(result.items[0].currency,'TRY');assert.equal(result.items[0].costCurrency,'USD');
+ types.validateSupplierSelection({...selection,options:[{...result.items[0],optionId:null}]});
  const args=calls.find(c=>c[0]==='wx-search');assert.equal(args[1],2);assert.equal(args[2],'60 UC');assert.equal(args[5].category,'PUBG');assert.equal(args[5].region,'Global');
+});
+
+
+test('exact value and currency preserve uploaded-stock links despite different supplier names',()=>{
+ const item={key:'11317',name:'Apple Gift Card 2000 TRY (Türkiye)',denomination:'2000',currency:'TRY'};
+ const existing=[{id:'owned-option',name:'2000 TRY',denomination:'2000',currency:'TRY',active:true}];
+ assert.equal(types.matchingSupplierOption(item,existing,[]),'owned-option');
+ assert.equal(types.matchingSupplierOption({...item,currency:'USD'},existing,[]),null);
+ assert.equal(types.matchingSupplierOption({...item,denomination:''},existing,[]),null);
+ assert.equal(types.matchingSupplierOption(item,existing,[{optionId:'owned-option'}]),null);
+ assert.equal(types.matchingSupplierOption(item,[...existing,{...existing[0],id:'other'}],[]),null);
 });
