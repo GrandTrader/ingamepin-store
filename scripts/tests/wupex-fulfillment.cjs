@@ -89,13 +89,23 @@ test('Every Wupex mutation and import read authenticates before touching the pro
   ['app/admin/wupex/delivery-actions.ts',['configureWupexDelivery','saveWupexMarkup','refreshWupexProduct']],
  ]) {const actions=load(file,common);for(const name of names)await assert.rejects(actions[name](),/admin required/);}
 });
-test('Scheduler refuses wrong bearer tokens before invoking the delivery worker',async()=>{
- let calls=0;
- const route=load('app/api/cron/wupex/route.ts',{'next/server':{NextResponse:{json:(body,init)=>({body,...init})}},'@/lib/wupex-fulfillment':{runWupexDeliveryTick:async()=>{calls++;return{stockFailed:0}}}},{process:{env:{CRON_SECRET:'fixture-secret-'.repeat(3)}}});
+test('Scheduler authenticates before backup delivery, then runs the supplier worker',async()=>{
+ const calls=[];let failBackup=false;
+ const route=load('app/api/cron/wupex/route.ts',{
+  'next/server':{NextResponse:{json:(body,init)=>({body,...init})}},
+  '@/lib/supabase/admin':{createAdminClient:()=>{calls.push('database');return{rpc:async(name,args)=>{assert.equal(name,'fulfill_uploaded_supplier_backups');assert.equal(args.p_limit,25);calls.push('backup');return failBackup?{error:{message:'fixture database failure'}}:{data:2,error:null}}}}},
+  '@/lib/wupex-fulfillment':{runWupexDeliveryTick:async()=>{calls.push('supplier');return{stockFailed:0}}}
+ },{process:{env:{CRON_SECRET:'fixture-secret-'.repeat(3)}}});
  for(const token of ['', 'wrong'])assert.equal((await route.GET({headers:new Headers({authorization:token})})).status,401);
- assert.equal(calls,0);
- assert.equal((await route.GET({headers:new Headers({authorization:'Bearer '+'fixture-secret-'.repeat(3)})})).status,200);assert.equal(calls,1);
+ assert.deepEqual(calls,[]);
+ const request={headers:new Headers({authorization:'Bearer '+'fixture-secret-'.repeat(3)})};
+ const response=await route.GET(request);assert.equal(response.status,200);assert.equal(response.body.uploadedBackupDeliveries,2);
+ assert.deepEqual(calls,['database','backup','supplier']);
+ calls.length=0;failBackup=true;
+ const failed=await route.GET(request);assert.equal(failed.status,503);assert.deepEqual(calls,['database','backup']);
+ assert(!JSON.stringify(failed.body).includes('fixture database failure'));
 });
+
 test('Supplier price increases refresh cost facts and retain funded stock; failed reads close stock',async()=>{
  const calls=[];
  const db={from(table){const q={select(){return q},eq(){return q},single(){return q},then(resolve){resolve({data:table==='wupex_imports'?{connection_id:payload.connectionId,customer_fields:[]}:[{option_id:'option-1',supplier_product_id:101,supplier_snapshot:product}],error:null})}};return q},rpc:async(name,args)=>{calls.push({name,args});return{data:1}}};

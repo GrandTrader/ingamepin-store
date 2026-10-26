@@ -78,11 +78,22 @@ test('delivery activation authenticates before any supplier or database operatio
  const actions=load('app/admin/fkwallet/delivery-actions.ts',{'next/cache':{},'@/lib/fkwallet-admin':{requireFKAdmin:async()=>{throw Error('denied')}},'@/lib/fkwallet-api':{},'@/lib/fkwallet-fulfillment':{fkDeliveryEnabled:()=>{accessed=true}},'@/lib/fkwallet-import':{},'@/lib/fkwallet-storage':{}});
  await assert.rejects(actions.configureFKDelivery('anything',true,'ACCOUNT'),/denied/);assert.equal(accessed,false);
 });
-test('the automatic worker endpoint rejects missing and wrong credentials before doing work',async()=>{
- let calls=0;const secret='a-strong-test-scheduler-secret';
- const route=load('app/api/cron/fkwallet/route.ts',{'next/server':{NextResponse:{json:Response.json}},'@/lib/fkwallet-fulfillment':{runFKDeliveryTick:async()=>{calls++;return {state:'idle',stockFailed:0}}},'@/lib/digiseller-fkwallet-fulfillment':{runDigiFKDeliveryTick:async()=>{calls++;return {state:'idle'}}}},{process:{env:{CRON_SECRET:secret}}});
+test('the automatic worker authenticates before backup and supplier work',async()=>{
+ const calls=[];const secret='a-strong-test-scheduler-secret';let failBackup=false;
+ const route=load('app/api/cron/fkwallet/route.ts',{
+  'next/server':{NextResponse:{json:Response.json}},
+  '@/lib/supabase/admin':{createAdminClient:()=>{calls.push('database');return{rpc:async(name,args)=>{assert.equal(name,'fulfill_uploaded_supplier_backups');assert.equal(args.p_limit,25);calls.push('backup');return failBackup?{error:{message:'fixture database failure'}}:{data:2,error:null}}}}},
+  '@/lib/fkwallet-fulfillment':{runFKDeliveryTick:async()=>{calls.push('supplier');return {state:'idle',stockFailed:0}}},
+  '@/lib/digiseller-fkwallet-fulfillment':{runDigiFKDeliveryTick:async()=>{calls.push('digiseller');return {state:'idle'}}}
+ },{process:{env:{CRON_SECRET:secret}}});
  for(const token of ['', 'Bearer wrong', 'Bearer '+secret+'extra'])assert.equal((await route.GET({headers:new Headers({authorization:token})})).status,401);
- assert.equal(calls,0);assert.equal((await route.GET({headers:new Headers({authorization:'Bearer '+secret})})).status,200);assert.equal(calls,2);
+ assert.deepEqual(calls,[]);
+ const request={headers:new Headers({authorization:'Bearer '+secret})};
+ const response=await route.GET(request);assert.equal(response.status,200);assert.equal((await response.json()).uploadedBackupDeliveries,2);
+ assert.deepEqual(calls,['database','backup','supplier','digiseller']);
+ calls.length=0;failBackup=true;
+ const failed=await route.GET(request);assert.equal(failed.status,503);assert.deepEqual(calls,['database','backup']);
+ assert(!(await failed.text()).includes('fixture database failure'));
 });
 
 test('activation explains the actual configuration failure without exposing raw database details',async()=>{
