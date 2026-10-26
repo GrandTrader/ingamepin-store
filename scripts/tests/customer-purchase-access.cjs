@@ -26,7 +26,7 @@ test('admin mutations require real membership and MFA, validate input, and bind 
   const writes=[],refreshes=[];const user=condition==='signed-out'?null:{id:'real-admin'};
   const session={auth:{getUser:async()=>({data:{user}})},from:()=>({select(){return this},eq(){return this},maybeSingle:async()=>({data:condition==='not-admin'?null:{user_id:'real-admin'}})})};
   const actions=load('app/admin/customers/purchase-access-actions.ts',{
-   'next/cache':{revalidatePath:p=>refreshes.push(p)},'@/lib/supabase/server':{createClient:async()=>session},'@/lib/admin-assurance':{hasRequiredAdminAssurance:async()=>condition!=='no-mfa'},
+   'next/cache':{revalidatePath:p=>refreshes.push(p)},'@/lib/supabase/admin-session':{createClient:async()=>session},'@/lib/admin-assurance':{hasRequiredAdminAssurance:async()=>condition!=='no-mfa'},
    '@/lib/supabase/admin':{createAdminClient:()=>({rpc:async(n,a)=>{writes.push({n,a});return{}}})},
   });
   const form=new FormData();for(const [k,v] of Object.entries({customer_id:customer,admin_id:'forged',action:'restrict',devices:'on',reason:condition==='invalid'?'':'Review'}))form.set(k,v);

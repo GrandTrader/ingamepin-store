@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/admin-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasRequiredAdminAssurance } from "@/lib/admin-assurance";
 
 export type PurchaseAccessResult = { error?: string; success?: string };
 export async function saveCustomerPurchaseAccess(_previous: PurchaseAccessResult, form: FormData): Promise<PurchaseAccessResult> {
-  const session = await createClient();
+  const session = await createClient({ reuseVerifiedUser: true });
   const { data: { user }, error } = await session.auth.getUser();
   if (error || !user) return { error: "Sign in as an administrator." };
   const membership = await session.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
