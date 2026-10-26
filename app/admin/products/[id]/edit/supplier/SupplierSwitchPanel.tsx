@@ -1,8 +1,8 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { SUPPLIERS, isSupplier, type SupplierChoice, type SupplierSelection, type SupplierSetup, type SupplierPreview } from "@/lib/supplier-switch";
-import { loadSupplierSwitch, searchSupplierDenominations, previewSupplierSwitch, applySupplierSwitch } from "./switch-actions";
+import { loadSupplierSwitch, loadSupplierCategories, searchSupplierDenominations, previewSupplierSwitch, applySupplierSwitch } from "./switch-actions";
 
 const inputClass="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900";
 export default function SupplierSwitchPanel({productId,currentSupplier}:{productId:string;currentSupplier:string}) {
@@ -12,15 +12,30 @@ export default function SupplierSwitchPanel({productId,currentSupplier}:{product
  const [items,setItems]=useState<SupplierChoice[]>([]),[categories,setCategories]=useState<{id:string;name:string}[]>([]);
  const [page,setPage]=useState(1),[total,setTotal]=useState(0),[searched,setSearched]=useState(false);
  const [preview,setPreview]=useState<SupplierPreview|null>(null),[requestId,setRequestId]=useState("");
+ const [categoryLoading,setCategoryLoading]=useState(false),[categoryError,setCategoryError]=useState(""),[categoryAttempt,setCategoryAttempt]=useState(0);
+ const categoryProvider=selection?.provider;
+ useEffect(()=>{
+  if(!open||!categoryProvider)return;
+  let active=true;
+  setCategories([]);setCategoryError("");setCategoryLoading(true);
+  loadSupplierCategories(categoryProvider).then(result=>{
+   if(!active)return;
+   if(result.data)setCategories(result.data);
+   else setCategoryError(result.error||"Categories could not be loaded.");
+  }).catch(()=>{if(active)setCategoryError("Categories could not be loaded. Try again.");})
+    .finally(()=>{if(active)setCategoryLoading(false);});
+  return ()=>{active=false;};
+ },[open,categoryProvider,categoryAttempt]);
+ function filter(next:SupplierSelection){edit(next);setItems([]);setTotal(0);setPage(1);setSearched(false);}
  function edit(next:SupplierSelection){setSelection(next);setPreview(null);setError("");setNotice("");}
- function load(){setOpen(true);setError("");startTransition(async()=>{
+ function load(){setOpen(true);setError("");setItems([]);setSearched(false);setPage(1);startTransition(async()=>{
   try{const r=await loadSupplierSwitch(productId);if(!r.data){setError(r.error||"Unable to load supplier setup.");return;}
    setSetup(r.data);setSelection(r.data.selection||{provider:isSupplier(r.data.provider)?r.data.provider:"WUPEX",query:"",category:"",region:"",markup:r.data.markup,exchangeRate:r.data.exchangeRate,deliveryKind:"CODE",options:[]});setPreview(null);
   }catch{setError("Supplier settings could not be loaded. Try again.");}
  });}
  function search(nextPage=1){if(!selection)return;setError("");startTransition(async()=>{
   try{const r=await searchSupplierDenominations(selection.provider,selection.query,selection.category,selection.region,nextPage);
-   if(!r.data){setError(r.error||"Unable to load catalogue.");return;}setItems(r.data.items);setTotal(r.data.total);setCategories(r.data.categories);setPage(nextPage);setSearched(true);
+   if(!r.data){setError(r.error||"Unable to load catalogue.");return;}setItems(r.data.items);setTotal(r.data.total);setPage(nextPage);setSearched(true);
   }catch{setError("Catalogue could not be loaded. Try again.");}
  });}
  function toggle(item:SupplierChoice){if(!selection||!setup)return;
@@ -45,15 +60,22 @@ export default function SupplierSwitchPanel({productId,currentSupplier}:{product
   {open&&selection&&setup&&<div className="mt-4 space-y-4">
    <p className="text-sm text-slate-600">Select the denominations this product should offer. Only the selected supplier’s options will remain visible. Previous orders are kept.</p>
    <fieldset disabled={pending} className="grid min-w-0 gap-3 sm:grid-cols-3">
-    <label className="text-sm font-semibold">Supplier<select aria-label="Supplier" className={inputClass} value={selection.provider} onChange={e=>{const provider=e.target.value;if(!isSupplier(provider))return;edit({...selection,provider,query:"",category:"",region:"",exchangeRate:provider==="FKWALLET"?selection.exchangeRate:"1",options:[],deliveryKind:"CODE"});setItems([]);setCategories([]);setSearched(false);}}>{Object.entries(SUPPLIERS).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+    <label className="text-sm font-semibold">Supplier<select aria-label="Supplier" className={inputClass} value={selection.provider} onChange={e=>{const provider=e.target.value;if(!isSupplier(provider))return;filter({...selection,provider,query:"",category:"",region:"",exchangeRate:provider==="FKWALLET"?selection.exchangeRate:"1",options:[],deliveryKind:"CODE"});setItems([]);setCategories([]);setSearched(false);}}>{Object.entries(SUPPLIERS).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
     <label className="text-sm font-semibold">Markup (%)<input aria-label="Supplier markup" className={inputClass} inputMode="decimal" value={selection.markup} onChange={e=>edit({...selection,markup:e.target.value})} placeholder="Enter markup"/><span className="text-xs font-normal text-slate-500">Supplier cost + this percentage</span></label>
     <label className="text-sm font-semibold">Delivery<select className={inputClass} aria-label="Supplier delivery" value={selection.deliveryKind} onChange={e=>edit({...selection,deliveryKind:e.target.value as "CODE"|"ACCOUNT"})}><option value="CODE">Voucher codes</option>{selection.provider!=="DEFINITEPLAY"&&<option value="ACCOUNT">Account top-up</option>}</select></label>
     {selection.provider==="FKWALLET"&&<label className="text-sm font-semibold">Supplier currency units per USD<input className={inputClass} inputMode="decimal" value={selection.exchangeRate} onChange={e=>edit({...selection,exchangeRate:e.target.value})}/></label>}
    </fieldset>
    <fieldset disabled={pending} className="rounded-xl bg-slate-50 p-3">
-    <div className="grid gap-2 sm:grid-cols-2"><label className="text-sm">Search supplier products<input aria-label="Search supplier products" className={inputClass} value={selection.query} onChange={e=>edit({...selection,query:e.target.value})} placeholder="For example: PUBG"/></label>
-     <label className="text-sm">{selection.provider==="FKWALLET"?"Supplier category":"Region"}{selection.provider==="FKWALLET"?<select aria-label="Supplier category" className={inputClass} value={selection.category} onChange={e=>{edit({...selection,category:e.target.value,options:[]});setItems([]);setSearched(false);}}><option value="">Load products to choose category</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>:<input aria-label="Supplier region" className={inputClass} value={selection.region} onChange={e=>edit({...selection,region:e.target.value})} placeholder="All regions"/>}</label>
+    <div className={"grid min-w-0 gap-2 "+(selection.provider==="FKWALLET"?"sm:grid-cols-2":"sm:grid-cols-3")}>
+     <label className="min-w-0 text-sm">Search supplier products<input aria-label="Search supplier products" className={inputClass} value={selection.query} onChange={e=>filter({...selection,query:e.target.value})} placeholder="For example: PUBG"/></label>
+     <label className="min-w-0 text-sm">Product category<select aria-label="Supplier category" className={inputClass} value={selection.category} disabled={categoryLoading||!!categoryError} onChange={e=>filter({...selection,category:e.target.value,options:selection.provider==="FKWALLET"?[]:selection.options})}>
+      <option value="">{categoryLoading?"Loading categories…":selection.provider==="FKWALLET"?"Choose category":"All categories"}</option>
+      {selection.category&&!categories.some(c=>c.id===selection.category)&&<option value={selection.category}>{selection.category}</option>}
+      {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+     </select></label>
+     {selection.provider!=="FKWALLET"&&<label className="min-w-0 text-sm">Region<input aria-label="Supplier region" className={inputClass} value={selection.region} onChange={e=>filter({...selection,region:e.target.value})} placeholder="All regions"/></label>}
     </div>
+    {categoryError&&<p role="alert" className="mt-2 text-xs text-amber-800">{categoryError} <button type="button" className="font-bold underline" onClick={()=>setCategoryAttempt(value=>value+1)}>Retry categories</button></p>}
     <button type="button" onClick={()=>search(1)} className="mt-3 rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm font-semibold text-blue-700">Load supplier products</button>
     {searched&&<div className="mt-3"><p className="mb-2 text-xs text-slate-600">{total} supplier products · Page {page} · {selection.options.length} selected</p><div className="max-h-72 space-y-2 overflow-y-auto">{items.map(item=><label key={item.key} className="flex items-start gap-3 rounded-lg border bg-white p-3 text-sm"><input type="checkbox" className="mt-1 size-4 shrink-0" checked={selection.options.some(o=>o.key===item.key)} onChange={()=>toggle(item)}/><span className="min-w-0 flex-1"><strong className="block break-words">{item.name}</strong><span className="text-xs text-slate-500">{item.region||"Supplier catalogue"} · {item.kind==="CODE"?"Voucher":"Top-up"} · Cost {item.cost} {item.costCurrency}</span></span></label>)}{!items.length&&<p className="text-sm">No matching supplier products. Check the search or category.</p>}</div><div className="mt-2 flex gap-2"><button type="button" disabled={pending||page<=1} onClick={()=>search(page-1)} className="rounded border px-3 py-2 text-xs disabled:opacity-40">Previous</button><button type="button" disabled={pending||page*20>=total} onClick={()=>search(page+1)} className="rounded border px-3 py-2 text-xs disabled:opacity-40">Next</button></div></div>}
    </fieldset>

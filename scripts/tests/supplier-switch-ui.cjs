@@ -7,7 +7,8 @@ write('router.js',`exports.useRouter=()=>({refresh(){window.calls.push(['refresh
 write('switch-actions.js',`
 const initial={provider:'DEFINITEPLAY',version:'v1',markup:'10',exchangeRate:'1',selection:null,options:[{id:'old',name:'PUBG 60 UC',denomination:'1',currency:'USD',active:true},{id:'hidden',name:'PUBG 325 UC',denomination:'5',currency:'USD',active:true}]};
 exports.loadSupplierSwitch=async()=>{window.calls.push(['load']);return {data:initial}};
-exports.searchSupplierDenominations=async(provider,query,category,region,page)=>{window.calls.push(['search',provider,page]);return {data:{items:[{key:'801',name:'PUBG Mobile 60 UC Global Digital Voucher',cost:'1.00',costCurrency:'USD',region:'Global',denomination:'1',currency:'USD',kind:'CODE'}],categories:[],total:1}}};
+exports.loadSupplierCategories=async provider=>{window.calls.push(['categories',provider]);if(provider==='DEFINITEPLAY')await new Promise(resolve=>setTimeout(resolve,80));if(provider==='WUPEX'&&window.categoryFail)return {error:'Category list unavailable'};return {data:provider==='FKWALLET'?[{id:'12',name:'Mobile games'}]:provider==='WUPEX'?[{id:'PUBG',name:'PUBG Mobile'},{id:'Apple',name:'Apple'}]:[{id:'Definite Play games',name:'Definite Play games'}]}};
+exports.searchSupplierDenominations=async(provider,query,category,region,page)=>{window.calls.push(['search',provider,page,query,category,region]);return {data:{items:[{key:'801',name:'PUBG Mobile 60 UC Global Digital Voucher',cost:'1.00',costCurrency:'USD',region:'Global',denomination:'1',currency:'USD',kind:'CODE'}],categories:[],total:25}}};
 exports.previewSupplierSwitch=async(productId,selection)=>{window.calls.push(['preview',selection]);return {data:{token:'test-token',version:'v1',selection,options:selection.options.map(o=>({...o,cost:'1.00',costCurrency:'USD',price:(1+Number(selection.markup)/100).toFixed(2)})),hiddenCount:1,recipientFields:[]}}};
 exports.applySupplierSwitch=async(...args)=>{window.calls.push(['apply',...args]);return window.failSave?{error:'Resolve unfinished website orders before switching or syncing denominations'}:{success:true,message:'Supplier and denominations saved.'}};
 `);
@@ -22,8 +23,20 @@ write('entry.js',`const React=require('react'),root=require('react-dom/client').
  try{for(const width of [1280,390,320]){
   const page=await browser.newPage({viewport:{width,height:1000}}),errors=[];page.on('pageerror',error=>errors.push(error.message));await page.goto('http://127.0.0.1:'+server.address().port);
   await page.getByRole('button',{name:'Change supplier',exact:true}).waitFor();assert.deepEqual(await page.evaluate(()=>window.calls),[]);
+  await page.evaluate(()=>window.categoryFail=true);
   await page.getByRole('button',{name:'Change supplier',exact:true}).click();await page.getByLabel('Supplier',{exact:true}).selectOption('WUPEX');
+  await page.getByRole('alert').filter({hasText:'Category list unavailable'}).waitFor();
+  await page.evaluate(()=>window.categoryFail=false);await page.getByRole('button',{name:'Retry categories'}).click();
+  await page.getByLabel('Supplier category').selectOption('PUBG');
+  await page.getByLabel('Supplier region').fill('Global');
   await page.getByLabel('Search supplier products').fill('PUBG');await page.getByRole('button',{name:'Load supplier products'}).click();await page.getByRole('checkbox').check();
+  await page.getByRole('button',{name:'Next',exact:true}).click();
+  const search=await page.evaluate(()=>window.calls.filter(c=>c[0]==='search').at(-1));assert.deepEqual(search,['search','WUPEX',2,'PUBG','PUBG','Global']);
+  assert.equal(await page.getByLabel('Supplier category').inputValue(),'PUBG');
+  await page.getByLabel('Supplier category').selectOption('Apple');assert.equal(await page.getByRole('checkbox').count(),0);
+  assert(await page.getByText('Selected denominations (1)',{exact:true}).isVisible());
+  await page.getByLabel('Supplier category').selectOption('PUBG');await page.getByRole('button',{name:'Load supplier products'}).click();
+  assert.equal((await page.evaluate(()=>window.calls.filter(c=>c[0]==='search').at(-1)))[2],1);
   await page.getByLabel('Match PUBG Mobile 60 UC Global Digital Voucher').selectOption('old');
   const preview=page.getByRole('button',{name:'Preview denominations & prices'});await preview.click();
   await page.getByRole('region',{name:'Supplier change preview'}).waitFor();assert.equal((await page.evaluate(()=>window.calls.filter(c=>c[0]==='apply'))).length,0);
@@ -33,7 +46,11 @@ write('entry.js',`const React=require('react'),root=require('react-dom/client').
   await page.evaluate(()=>window.failSave=true);await page.getByRole('button',{name:'Confirm supplier switch'}).click();await page.getByRole('alert').filter({hasText:'unfinished website orders'}).waitFor();
   await page.evaluate(()=>window.failSave=false);await page.getByRole('button',{name:'Confirm supplier switch'}).click();await page.getByRole('status').filter({hasText:'Supplier and denominations saved.'}).waitFor();
   const attempts=await page.evaluate(()=>window.calls.filter(c=>c[0]==='apply'));assert.equal(attempts.length,2);assert.equal(attempts[0][2],attempts[1][2]);assert.equal(attempts[1][3].selection.options[0].optionId,'old');
+  await page.getByRole('button',{name:'Change supplier',exact:true}).click();
+  await page.getByLabel('Supplier',{exact:true}).selectOption('DEFINITEPLAY');await page.getByLabel('Supplier category').selectOption('Definite Play games');
+  await page.getByLabel('Supplier',{exact:true}).selectOption('FKWALLET');await page.getByLabel('Supplier category').selectOption('12');
+  assert.equal(await page.getByLabel('Supplier region').count(),0);
   assert.deepEqual(errors,[]);await page.getByRole('button',{name:'Close',exact:true}).click();assert.equal(await page.getByLabel('Supplier',{exact:true}).count(),0);await page.close();
- }console.log('PASS: desktop and mobile supplier selection, matching, price review, preview invalidation, safe retry, no overflow or browser errors');}
+ }console.log('PASS: category filters for all suppliers, retry, combined filters and pagination, selection preservation, price review and safe save; no mobile overflow or browser errors');}
  finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1});

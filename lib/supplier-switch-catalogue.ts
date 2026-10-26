@@ -5,6 +5,7 @@ import { prepareSupplierDraft, supplierDefaultDenomination } from "./definitepla
 import type { WupexCredentials, WupexProduct } from "./wupex-types";
 import { requireWupexCredentials } from "./wupex-storage";
 import { getWupexCatalog, findWupexProducts, getWupexBalance, getWupexFields, wupexConnectionId } from "./wupex-api";
+import { getCachedWupexCatalogFilters } from "./wupex-catalog-filters";
 import { prepareWupexDraft } from "./wupex-import";
 import { assertWupexLive, wupexDeliveryEnabled } from "./wupex-fulfillment";
 import { requireCredentials } from "./fkwallet-storage";
@@ -13,6 +14,22 @@ import { prepareFKDraft, fkImportIssue } from "./fkwallet-import";
 import { isSupplier, validateSupplierSelection, type SupplierProvider, type SupplierSelection, type SupplierChoice } from "./supplier-switch";
 
 type DB = ReturnType<typeof createAdminClient>;
+/** Load complete category choices independently of the current search and page. */
+export async function supplierCategories(provider: SupplierProvider): Promise<{ id: string; name: string }[]> {
+  if (!isSupplier(provider)) throw new Error("Choose a valid supplier.");
+  if (provider === "WUPEX") {
+    const filters = await getCachedWupexCatalogFilters(await requireWupexCredentials());
+    return filters.categories.map(name => ({ id: name, name }));
+  }
+  if (provider === "DEFINITEPLAY") {
+    const result = await getDefinitePlayCatalogue("", 0, 1);
+    if (result.stale) throw new Error("Definite Play catalogue is stale. Refresh its connection before switching.");
+    return result.categories.map(name => ({ id: name, name }));
+  }
+  return parseCategories(await fkRequest(await requireCredentials(), "op/categories"))
+    .map(category => ({ id: String(category.id), name: category.name }));
+}
+
 export async function supplierCatalogue(provider: SupplierProvider, query: string, category: string, region: string, page: number) {
   if (!isSupplier(provider) || typeof query !== "string" || query.length > 150 || typeof category !== "string" || category.length > 200 || typeof region !== "string" || region.length > 100 || !Number.isSafeInteger(page) || page < 1 || page > 10000) throw new Error("Choose a valid supplier search.");
   let items: SupplierChoice[] = [], total = 0;
