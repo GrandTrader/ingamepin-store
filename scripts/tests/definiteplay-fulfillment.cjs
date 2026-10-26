@@ -40,15 +40,15 @@ test("manual preparation never releases supplier codes or reopens a completed su
  assert.equal(calls.length,0);
 });
 test("admin activation requires authorization and healthy worker before any database mutation",async()=>{
- let denied=true,ready=false,enabled=true,fkwallet=false;
+ let denied=true,ready=false,enabled=true,fkwallet=false,saved=null;
  const calls=[];
  const deps={
    "next/cache":{revalidatePath(){}},
    "@/lib/fkwallet-product-supplier":{getFKWalletProductImport:async()=>fkwallet?{product_id:"product"}:null},
    "@/lib/definiteplay-admin":{requireDefinitePlayAdmin:async()=>{if(denied)throw Error("denied");},validProductId:()=>true},
    "@/lib/definiteplay-fulfillment":{supplierDeliveryEnabled:()=>enabled},
-   "@/lib/definiteplay-relay":{getDefinitePlayMappings:async()=>({mappings:[{option_id:"o",sku:"sku",supplier:{currency:"USD"}}]}),getDefinitePlayStatus:async()=>({fulfillmentReady:ready,stale:false})},
-   "@/lib/supabase/admin":{createAdminClient:()=>({rpc:async(...args)=>{calls.push(args);return {error:null};}})}
+   "@/lib/definiteplay-relay":{getDefinitePlayItems:async()=>({stale:false,items:[{sku:"new-sku",currency:"USD"}]}),getDefinitePlayMappings:async()=>({mappings:[{option_id:"o",sku:"sku",supplier:{currency:"USD"}}]}),getDefinitePlayStatus:async()=>({fulfillmentReady:ready,stale:false})},
+   "@/lib/supabase/admin":{createAdminClient:()=>({from:()=>({select(){return this},eq(){return this},maybeSingle:async()=>({data:saved})}),rpc:async(...args)=>{calls.push(args);return {error:null};}})}
  };
  const api=load("app/admin/definiteplay/fulfillment-actions.ts",deps);
  await assert.rejects(api.configureSupplierDelivery("product",true));
@@ -59,6 +59,9 @@ test("admin activation requires authorization and healthy worker before any data
  ready=true;
  assert.equal((await api.configureSupplierDelivery("product",true)).success,true);
  assert.equal(calls.length,1);
+ saved={provider:"DEFINITEPLAY",selection:{options:[{key:"new-sku",optionId:"new-option"}]}};
+ assert.equal((await api.configureSupplierDelivery("product",true)).success,true);
+ assert.equal(calls[1][1].p_mappings[0].sku,"new-sku");assert.equal(calls[1][1].p_mappings[0].optionId,"new-option");calls.pop();
  fkwallet=true;
  assert.match((await api.configureSupplierDelivery("product",true)).error,/FKWallet/);
  assert.equal(calls.length,1,"FKWallet imports never reach Definite Play activation");
@@ -80,7 +83,8 @@ test("cart quantity check uses fresh supplier availability and preserves owned i
   return chain;
  }};
  const api=load("app/api/products/quantity-limits/route.ts",{
-  "@/lib/request-security":{sameOrigin:()=>true,requestLimit:async()=>null},
+  "@/lib/supabase/server":{createClient:async()=>{throw Error("No auth query expected for unrestricted products")}},
+  "@/lib/request-security":{privateJson:body=>({body}),sameOrigin:()=>true,requestLimit:async()=>null},
   "@/lib/read-json-body":{readJsonBody:request=>request.json(),RequestBodyError:class extends Error{}},
   "@/lib/definiteplay-range-stock":{supplierRangeLimits:async()=>new Map()},
   "@/lib/product-range-data":{productRanges:async()=>({ready:true,ranges})},

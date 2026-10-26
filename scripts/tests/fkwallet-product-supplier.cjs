@@ -21,7 +21,7 @@ function pageFixture({fk=true,denied=false,failed=false}={}){
   '@/lib/definiteplay-relay':{getDefinitePlayMappings:async()=>{calls.push(['definiteplay']);return {mappings:[]}}},
   '@/lib/definiteplay-fulfillment':{supplierDeliveryEnabled:()=>false},
   '@/lib/supabase/admin':{createAdminClient:()=>{throw Error('Unexpected supplier data request')}},
-  './FKWalletSupplierPanel':panel,'./SupplierOptionEditor':()=>React.createElement('p',null,'Definite Play editor'),
+  './SupplierSwitchPanel':()=>null,'./FKWalletSupplierPanel':panel,'./SupplierOptionEditor':()=>React.createElement('p',null,'Definite Play editor'),
   './SupplierDeliveryControl':()=>React.createElement('button',null,'Enable supplier stock and delivery'),
  }).default;
  return {page,calls};
