@@ -1,3 +1,4 @@
+import { assertCustomerPurchaseAccess, customerPurchaseContext, CustomerPurchaseAccessError } from "@/lib/customer-purchase-access";
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -27,11 +28,12 @@ export async function runCheckoutSession(request: NextRequest, method: string, h
         typeof body.accessToken !== "string" || body.accessToken.length < 40 || body.accessToken.length > 128)
       return NextResponse.json({ error: "Invalid order access." }, { status: 403 });
     const admin = createAdminClient();
-    const order = await admin.from("orders").select("access_token_hash").eq("id", body.orderId).maybeSingle();
+    const order = await admin.from("orders").select("access_token_hash,customer_id,customer_email").eq("id", body.orderId).maybeSingle();
     const hash = order.data?.access_token_hash;
     if (order.error || typeof hash !== "string" || !/^[a-f0-9]{64}$/i.test(hash) ||
         !timingSafeEqual(createHash("sha256").update(body.accessToken).digest(), Buffer.from(hash, "hex")))
       return NextResponse.json({ error: "Order access was denied." }, { status: 403 });
+    await assertCustomerPurchaseAccess(admin, await customerPurchaseContext(request), { userId: order.data?.customer_id, email: order.data?.customer_email });
     await assertCheckoutOpen(body.orderId);
     const payment = await admin.from("payments").select("id,method,status,submitted_at,verified_at,transaction_id,gateway_order_id,gateway_checkout_url")
       .eq("order_id", body.orderId).single();
@@ -65,6 +67,7 @@ export async function runCheckoutSession(request: NextRequest, method: string, h
     }
     return response;
   } catch (error) {
+    if (error instanceof CustomerPurchaseAccessError) return NextResponse.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "no-store" } });
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to resume payment." },
       { status: 409, headers: { "Cache-Control": "no-store" } });
   }

@@ -11,7 +11,8 @@ const chain={select(){return this;},eq(){return this;},async maybeSingle(){retur
 const admin={from(table){assert.equal(table,'business_kyb');return chain;},async rpc(name,args){calls.push({name,args});return rpcResult;}};
 const mocks={'@/lib/portal-checkout':parser,'@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user}})}})},'@/lib/supabase/admin':{createAdminClient:()=>admin},'next/server':{NextResponse:{json:(body,options={})=>({status:options.status??200,body})}}};
 for(const match of fs.readFileSync('lib/order-request-handler.ts','utf8').matchAll(/from ["'](@\/[^"']+)["']/g))mocks[match[1]]??={};
-Object.assign(mocks,{'server-only':{},'@/lib/request-security':{sameOrigin:()=>true,requestLimit:async()=>null,privateJson:(body,status=200)=>({body,status})},'@/lib/trusted-client-ip':{trustedClientIp:()=> '203.0.113.10'},'@/lib/checkout-consent':{saveCheckoutConsent:async()=>{}},'@/lib/purchase-restriction-exemptions':{exemptPurchaseProducts:async()=>new Set()}});
+Object.assign(mocks,{
+'@/lib/customer-purchase-access': { customerPurchaseContext: async () => ({ browserId: 'browser', ip: '192.0.2.1' }), assertCustomerPurchaseAccess: async () => {}, CustomerPurchaseAccessError: class extends Error {} },'server-only':{},'@/lib/request-security':{sameOrigin:()=>true,requestLimit:async()=>null,privateJson:(body,status=200)=>({body,status})},'@/lib/trusted-client-ip':{trustedClientIp:()=> '203.0.113.10'},'@/lib/checkout-consent':{saveCheckoutConsent:async()=>{}},'@/lib/purchase-restriction-exemptions':{exemptPurchaseProducts:async()=>new Set()}});
 let securityReady=true;
 mocks['@/lib/business-security']={businessSessionReady:async()=>securityReady};
 const {POST}=load('lib/order-request-handler.ts',mocks);
@@ -25,7 +26,7 @@ const request=body=>({json:async()=>structuredClone(body),nextUrl:{pathname:'/ap
  assert.equal((await POST(request(base))).status,403);assert.equal(calls.length,0);
  user.app_metadata={};securityReady=false;assert.equal((await POST(request(base))).status,403);assert.equal(calls.length,0);securityReady=true;assert.equal((await POST(request(base))).status,403);assert.equal(calls[0].args.p_user,'real-user');assert.equal(calls[0].args.p_items[0].unitPrice,undefined);
  rpcResult={data:{orderId:'existing-order',orderNumber:'IPB2B20260928123456',replayed:true},error:null};
- const replay=await POST(request(base));assert.equal(replay.status,200);assert.equal(replay.body.result.orderId,'existing-order');assert(calls.every(c=>c.name==='portal_wallet_checkout'&&c.args.p_action==='recover'));
+ const replay=await POST(request(base));assert.equal(replay.status,200);assert.equal(replay.body.result.orderId,'existing-order');assert(calls.every(c=>c.name==='customer_checked_portal_checkout'&&c.args.p_action==='recover'));
  rpcResult={data:null,error:{message:'Connection lost',code:''}};assert.equal((await POST(request(base))).status,503,'Uncertain recovery must preserve the confirmation key');
  rpcResult={data:null,error:{message:'Function missing',code:'PGRST202'}};assert.equal((await POST(request(base))).status,400);
  // Exercise full quote validation with isolated database mocks; no external requests or payments.
@@ -40,7 +41,7 @@ const request=body=>({json:async()=>structuredClone(body),nextUrl:{pathname:'/ap
   if(table==='product_purchase_restrictions')return {data:[],error:fixture.restrictionError?{message:'unavailable'}:null};
   throw Error('Unexpected table '+table);
  }).then(resolve,reject);}};return query;};
- admin.rpc=async(name,args)=>{events.push(args.p_action);assert.equal(name,'portal_wallet_checkout');return {data:args.p_action==='recover'?null:{total:12,...(args.p_action==='confirm'?{orderId:'fixture-order'}:{})},error:null};};
+ admin.rpc=async(name,args)=>{events.push(args.p_action);assert.equal(name,'customer_checked_portal_checkout');return {data:args.p_action==='recover'?null:{total:12,...(args.p_action==='confirm'?{orderId:'fixture-order'}:{})},error:null};};
  mocks['@/lib/definiteplay-fulfillment'].supplierProductIds=async()=>{events.push('supplier:start');await delay();events.push('supplier:end');if(fixture.supplierError)throw Error('Supplier delivery setup is not ready.');return new Set();};
  mocks['@/lib/product-range-data'].productRanges=async()=>{events.push('range:start');await delay();events.push('range:end');if(fixture.rangeError)throw Error('Unable to load ranges.');return {ranges:fixture.ranges??[]};};
  mocks['@/lib/definiteplay-range-stock'].supplierRangeLimits=async ids=>new Map(ids.map(id=>[id,fixture.rangeAvailable===false?0:1000]));

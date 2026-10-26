@@ -54,7 +54,7 @@ function fixture(config = {}) {
     },
     async rpc(name, args) {
       state.calls.push({ name, args });
-      if (name === 'create_business_checked_order' || name === 'create_purchase_checked_order') {
+      if (name === 'create_customer_checked_order') {
         assert.equal(args.p_user, buyer, 'Identity comes from the authenticated session');
         const order = { id: 'order', order_number: 'IP-TEST', customer_id: Object.hasOwn(config, 'owner') ? config.owner : config.restricted ? buyer : null, customer_email: user.email, total: 75.36, subtotal: 75.36, currency: 'USD', status: 'PENDING_PAYMENT' };
         if (!config.missingOrder) state.order = order;
@@ -71,6 +71,7 @@ function fixture(config = {}) {
   };
   const mocks = Object.fromEntries([...source.matchAll(/from ["'](@\/[^"']+)["']/g)].map(match => [match[1], {}]));
   Object.assign(mocks, {
+'@/lib/customer-purchase-access': { customerPurchaseContext: async () => ({ browserId: 'browser', ip: '192.0.2.1' }), assertCustomerPurchaseAccess: async () => {}, CustomerPurchaseAccessError: class extends Error {} },
     'server-only': {}, 'next/server': { NextResponse },
     '@/lib/supabase/admin': { createAdminClient: () => db },
     '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user } }) } }) },
@@ -103,7 +104,7 @@ test('restricted retail checkout accepts the customer linked during order creati
   const f = fixture({ restricted: true });
   const response = await f.submit();
   assert.equal(response.status, 200, JSON.stringify(await response.json()));
-  assert.equal(f.state.calls[0].name, 'create_purchase_checked_order');
+  assert.equal(f.state.calls[0].name, 'create_customer_checked_order');
   assert.equal(f.state.debits, 1);
   assert.equal(f.state.order.customer_id, buyer);
 });

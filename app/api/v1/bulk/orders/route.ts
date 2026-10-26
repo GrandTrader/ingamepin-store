@@ -1,3 +1,4 @@
+import { assertCustomerPurchaseAccess, customerPurchaseContext, CustomerPurchaseAccessError } from "@/lib/customer-purchase-access";
 import { createHash } from "node:crypto";
 import { NextRequest } from "next/server";
 
@@ -53,6 +54,8 @@ export async function POST(request: NextRequest) {
       return bulkApiNoStore(existing.data.response_body ?? { orderId: existing.data.order_id, status: existing.data.status });
     }
 
+    const purchaseContext = await customerPurchaseContext(request, true, trustedClientIp(request.headers));
+    await assertCustomerPurchaseAccess(admin, purchaseContext, { bulkClientId: auth.principal.clientId, email });
     let recentQuery = admin.from("bulk_api_requests").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 60_000).toISOString());
     recentQuery = auth.principal.clientId ? recentQuery.eq("client_id", auth.principal.clientId) : recentQuery.is("client_id", null);
     const recentCount = await recentQuery;
@@ -86,8 +89,8 @@ export async function POST(request: NextRequest) {
       return bulkApiNoStore({ error: "Unable to verify purchase limits." }, { status: 503 });
     }
     const restricted = (restrictions.data ?? []).some(rule => rule.one_per_denomination === true);
-    const orderResult = await admin.rpc(restricted ? "create_purchase_checked_order" : "create_business_checked_order", {
-      ...(restricted ? { p_ip: trustedClientIp(request.headers) } : {}),
+    const orderResult = await admin.rpc("create_customer_checked_order", {
+      p_denomination_guard: restricted, p_ip: purchaseContext.ip, p_browser: null,
       p_bulk_client: auth.principal.clientId,
       p_customer_name: name,
       p_customer_email: email,
@@ -118,7 +121,8 @@ export async function POST(request: NextRequest) {
     completedQuery = auth.principal.clientId ? completedQuery.eq("client_id", auth.principal.clientId) : completedQuery.is("client_id", null);
     await completedQuery;
     return bulkApiNoStore(responseBody, { status: 201 });
-  } catch {
+  } catch (error) {
+    if (error instanceof CustomerPurchaseAccessError) return bulkApiNoStore({ error: error.message }, { status: error.status });
     return bulkApiNoStore({ error: "Unable to create the bulk order." }, { status: 500 });
   }
 }

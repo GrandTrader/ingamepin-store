@@ -1,3 +1,4 @@
+import CustomerPurchaseAccess from "./CustomerPurchaseAccess";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -119,6 +120,7 @@ export default async function AdminCustomerPage({ params, searchParams }: PagePr
             </div>
           </section>
 
+          <CustomerPurchaseAccess customerId={id} />
           <WithdrawalAccess customerId={id} />
           <CustomerReportDownload customerId={id} />
 

@@ -1,3 +1,4 @@
+import { assertCustomerPurchaseAccess, customerPurchaseContext, CustomerPurchaseAccessError } from "@/lib/customer-purchase-access";
 import { expireUnpaidCheckouts } from "@/lib/checkout-payment-session";
 import { supplierRangeLimits } from "@/lib/definiteplay-range-stock";
 import { extraCustomerPercent } from "@/lib/product-promotions";
@@ -216,7 +217,8 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
     }
 
     const admin = createAdminClient();
-    const portalRpc=async(action:string)=>admin.rpc("portal_wallet_checkout",{p_user:signedInUser!.id,p_request:portal!.requestId,p_action:action,p_items:portal!.items,p_reference:portal!.reference,p_expected:portal!.expectedTotal,p_ip:customerIp});
+    let purchaseContext: Awaited<ReturnType<typeof customerPurchaseContext>> | null = null;
+    const portalRpc=async(action:string)=>admin.rpc("customer_checked_portal_checkout",{p_user:signedInUser!.id,p_request:portal!.requestId,p_action:action,p_items:portal!.items,p_reference:portal!.reference,p_expected:portal!.expectedTotal,p_ip:customerIp,p_browser:purchaseContext?.browserId??null});
     if(portal){
       // Recover a committed confirmation before stock checks: its codes may already be sold.
       const replay=await portalRpc("recover");
@@ -225,6 +227,8 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       const approval=await admin.from("business_kyb").select("status").eq("user_id",signedInUser!.id).maybeSingle();
       if(approval.error||approval.data?.status!=="APPROVED")return NextResponse.json({error:"Approved business verification is required."},{status:403});
     }
+    purchaseContext = await customerPurchaseContext(request, !!apiUser, apiIp);
+    await assertCustomerPurchaseAccess(admin, purchaseContext, { userId: signedInUser?.id, email: String(customer.email ?? "") });
     const customerEmailForLimit = String(customer.email ?? "").trim().toLowerCase();
     const submittedCustomerName = String(customer.fullName ?? "").trim();
     const accountCustomerName = String(
@@ -445,8 +449,8 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
       if(checkout.data?.orderId&&!checkout.data?.replayed){try{await notifyPortalOrder(checkout.data);}catch(error){console.error("Portal order notification failed",error);}}
       return NextResponse.json({result:checkout.data},{headers:{"Cache-Control":"no-store"}});
     }
-    const orderResult = await admin.rpc(requiresDenominationGuard ? "create_purchase_checked_order" : "create_business_checked_order", {
-      ...(requiresDenominationGuard ? { p_ip: customerIp } : {}),
+    const orderResult = await admin.rpc("create_customer_checked_order", {
+      p_denomination_guard: requiresDenominationGuard, p_ip: customerIp, p_browser: purchaseContext.browserId,
       p_user: signedInUser?.id ?? null,
       p_customer_name: customerName.length >= 2 ? customerName : "Customer",
       p_customer_email: String(customer.email ?? ""),
@@ -958,7 +962,8 @@ export async function handleOrder(request: NextRequest, apiUser?: User, apiIp?: 
         accessToken,
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof CustomerPurchaseAccessError) return privateJson({ error: error.message }, error.status);
     return NextResponse.json(
       { error: "Unable to create your order." },
       { status: 500 }

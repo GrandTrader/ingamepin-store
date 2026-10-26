@@ -1,3 +1,4 @@
+import { assertCustomerPurchaseAccess, customerPurchaseContext, CustomerPurchaseAccessError } from "@/lib/customer-purchase-access";
 import { retryPaymentOptions } from "@/lib/checkout-payment-options";
 import { businessSessionReady } from "@/lib/business-security";
 import { randomBytes } from "node:crypto";
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
       : `/track-order/${encodeURIComponent(order.order_number)}`;
     // A retry after a successful wallet response was lost must never debit twice.
     if (order.paid_at) return privateJson({ paid: true, receiptUrl });
+    await assertCustomerPurchaseAccess(admin, await customerPurchaseContext(request), { userId: identity.userId ?? order.customer_id, email: order.customer_email });
     await assertCheckoutOpen(order.id);
     const payment = await admin.from("payments").select("method,status,checkout_variant,checkout_revision,verified_at,submitted_at,transaction_id,screenshot_url").eq("order_id", order.id).single();
     if (payment.error || !retryPaymentMethods[payment.data.method]) throw Error("This payment method cannot be resumed online. Please contact support.");
@@ -106,6 +108,7 @@ export async function POST(request: NextRequest) {
       nextUrl: retryPaymentPath(data.paymentMethod),
     });
   } catch (error) {
+    if (error instanceof CustomerPurchaseAccessError) return privateJson({ error: error.message }, error.status);
     return privateJson({ error: error instanceof Error ? error.message : "Unable to retry payment." }, 409);
   }
 }

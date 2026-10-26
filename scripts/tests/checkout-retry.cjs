@@ -6,6 +6,8 @@ function load(file,mocks={}){const exports={};vm.runInNewContext(ts.transpileMod
 const expiry=load('lib/checkout-expiry.ts');
 const access=load('lib/purchase-access.ts',{'next/headers':{},'@/lib/supabase/server':{},'@/lib/supabase/admin':{}});
 function query(data,opts={}){const q={eq(){return q},or(){return q},not(){return q},select(){return q},update(p){opts.writes?.push(p);return q},single(){return Promise.resolve({data,error:opts.error??null})},maybeSingle(){return q.single()}};return q;}
+class PurchaseBlocked extends Error { constructor() { super('New purchases restricted'); this.status=403; } }
+function purchaseAccessMock(opts) { return { customerPurchaseContext: async()=>({browserId:'browser',ip:'192.0.2.1'}), assertCustomerPurchaseAccess: async()=>{if(opts.blocked)throw new PurchaseBlocked()}, CustomerPurchaseAccessError:PurchaseBlocked }; }
 function retryFixture(opts={}){
  const order={id,order_number:'IP2026TEST',customer_id:opts.other? 'other':buyer,customer_email:opts.other?'other@example.com':'buyer@example.com',customer_name:'Buyer',total:10,currency:'USD',status:'PENDING_PAYMENT',sales_channel:opts.business?'BUSINESS':'RETAIL',paid_at:opts.paid?'today':null};
  const user={id:buyer,email:'buyer@example.com',email_confirmed_at:'today',app_metadata:{wallet_disabled:opts.disabled}};
@@ -19,7 +21,7 @@ function retryFixture(opts={}){
  return opts.rpcError?{error:{code:'P0001',message:'Payment already submitted'}}:{data:{id,orderNumber:order.order_number,totalAmount:10,currency:'USD',paymentMethod:opts.method??'PALLY',createdAt:'2026-10-23T10:00:00Z',expiresAt:'2026-10-23T10:15:00Z'}};
  }};
  const route=load('app/api/orders/retry-payment/route.ts',{
- 'next/server':{NextRequest,NextResponse},'@/lib/supabase/admin':{createAdminClient:()=>db},
+ '@/lib/customer-purchase-access':purchaseAccessMock(opts),'next/server':{NextRequest,NextResponse},'@/lib/supabase/admin':{createAdminClient:()=>db},
  '@/lib/supabase/server':{createClient:async()=>({auth:{getUser:async()=>({data:{user}})}})},
  '@/lib/business-security':{businessSessionReady:async()=>!opts.businessDenied},
  '@/lib/purchase-access':{...access,purchaseIdentity:async()=>identity},
@@ -67,7 +69,7 @@ function sessionFixture(opts={}){
  async rpc(name){state.calls.push(name);if(name==='assert_checkout_open'&&opts.expired)return{error:{code:'P0001',message:'expired'}};
  if(name==='begin_checkout_session')return opts.concurrent?{error:{code:'P0001',message:'session being prepared'}}:{data:{checkout_creation_token:'token'}};
  return{data:true};}};
- const mod=load('lib/checkout-payment-session.ts',{'next/server':{NextRequest,NextResponse},'@/lib/supabase/admin':{createAdminClient:()=>db}});
+ const mod=load('lib/checkout-payment-session.ts',{'@/lib/customer-purchase-access':purchaseAccessMock(opts),'next/server':{NextRequest,NextResponse},'@/lib/supabase/admin':{createAdminClient:()=>db}});
  return{state,send:async({token=secret,method='PALLY',invalid=false}={})=>mod.runCheckoutSession(new NextRequest('https://shop.test/api/payment',{method:'POST',body:JSON.stringify({orderId:id,accessToken:token})}),method,async(_,claim,existingUrl)=>{
  if(existingUrl)return NextResponse.json({checkoutUrl:existingUrl});
  if(invalid)return NextResponse.json({error:'invalid network'},{status:400});
@@ -105,4 +107,10 @@ test('payment options require ownership, and method changes require the displaye
  assert.equal(f.state.calls[0].name,'switch_checkout_payment_method');assert.equal(f.state.calls[0].args.p_method,'PAYPAL');
  const guest=retryFixture({guest:true});assert.equal((await guest.send({paymentMethod:'wallet',action:'pay-wallet',revision:0,expectedTotal:10})).status,409);assert.equal(guest.state.debits,0);
  const wallet=retryFixture();assert.equal((await wallet.send({paymentMethod:'wallet',action:'pay-wallet',revision:0,expectedTotal:10})).status,200);assert.equal(wallet.state.debits,1);
+});
+
+test('restricted customers cannot retry or start invoices; already-paid receipts remain accessible',async()=>{
+ for(const method of ['WALLET','PALLY','PAYPAL']){const f=retryFixture({blocked:true,method}),r=await f.send({action:'pay-wallet'});assert.equal(r.status,403);assert.equal(f.state.debits,0);assert.equal(f.state.calls.length,0);assert.equal(f.state.writes.length,0);}
+ const f=retryFixture({blocked:true,paid:true});assert.equal((await f.send()).status,200);assert.equal(f.state.calls.length,0);
+ for(const method of ['PALLY','BINANCE_PAY','USDT_DIRECT','NOWPAYMENTS','FREEKASSA']){const f=sessionFixture({blocked:true,method});assert.equal((await f.send({method})).status,403);assert.equal(f.state.created,0);assert.equal(f.state.calls.length,0);}
 });

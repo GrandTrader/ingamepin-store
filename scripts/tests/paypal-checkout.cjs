@@ -80,7 +80,7 @@ test('webhook verification preserves original JSON and rejects missing, invalid 
 test('customer payment route denies foreign origins, bad access and repeated attempts; notification failure cannot reverse payment success',async()=>{
   let allowed=true,limited=false,created=0,confirmed=0;
   const origin=load('lib/paypal-request-origin.ts',{'server-only':{}},{process:{env:{NODE_ENV:'production'}}});
-  const route=load('app/api/paypal/checkout/route.ts',{
+  const route=load('app/api/paypal/checkout/route.ts',{'@/lib/customer-purchase-access': { customerPurchaseContext: async () => ({ browserId: 'browser', ip: '192.0.2.1' }), assertCustomerPurchaseAccess: async () => {}, CustomerPurchaseAccessError: class extends Error {} },'@/lib/supabase/admin':{createAdminClient:()=>({from:()=>({select(){return this},eq(){return this},single:async()=>({data:{customer_email:'buyer@example.invalid'}})})})},
     '@/lib/paypal-request-origin':origin,'@/lib/paypal-webhook':{readPayPalBody:r=>r.text()},
     '@/lib/request-security':{privateJson:(b,s=200)=>Response.json(b,{status:s}),consumeRate:async()=>!limited},
     '@/lib/paypal-notifications':{finishPayPalOrder:async()=>{throw Error('mail retry')}},

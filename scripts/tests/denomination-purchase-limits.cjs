@@ -99,6 +99,7 @@ test('checkout quotes check history across denominations and exemptions before a
   const imports = { 'server-only': {}, 'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } } };
   for (const m of fs.readFileSync('lib/order-request-handler.ts', 'utf8').matchAll(/from ["'](@\/[^"']+)["']/g)) imports[m[1]] ??= {};
   Object.assign(imports, {
+'@/lib/customer-purchase-access': { customerPurchaseContext: async () => ({ browserId: 'browser', ip: '192.0.2.1' }), assertCustomerPurchaseAccess: async () => {}, CustomerPurchaseAccessError: class extends Error {} },
     '@/lib/checkout-payment-session': { expireUnpaidCheckouts: async ids => { assert.deepEqual([...ids], ['past']); if (expired) previous = []; return expired ? 1 : 0; } },
     '@/lib/payment-failure-sync': { syncFailedGatewayPayments: async () => { if (recoverFailure) previous = []; return { checked: 0, failed: 0, releasedOrderIds: [] }; } },
     '@/lib/denomination-purchase-limit': limit,
