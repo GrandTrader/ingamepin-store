@@ -41,7 +41,7 @@ export default async function ProductStockPage({ params, searchParams }: {
   if (optionsResult.error) throw new Error("Unable to load product options.");
   const product = productResult.data;
   const supplierEnabled=["DEFINITEPLAY", "FKWALLET", "WUPEX"].includes(product.stock_source);
-  type BackupInventory = { optionId: string; enabled: boolean; uploadedQuantity: number; supplierQuantity: number; availableQuantity: number };
+  type BackupInventory = { optionId: string; enabled: boolean; uploadedOnly?: boolean; uploadedQuantity: number; supplierQuantity: number; availableQuantity: number };
   const inventory = supplierEnabled ? await admin.rpc("supplier_backup_inventory", { p_product_id: id }) : null;
   if (inventory?.error) throw new Error("Unable to load uploaded backup inventory. Apply the supplier backup database update.");
   const backupRows = new Map<string, BackupInventory>(((inventory?.data ?? []) as BackupInventory[]).map(row => [row.optionId, row]));
@@ -52,6 +52,7 @@ export default async function ProductStockPage({ params, searchParams }: {
       id: option.id, name: option.option_name, denomination: option.denomination === null ? null : Number(option.denomination),
       currency: option.denomination_currency,
       availableCount: supplierEnabled ? Number(backupRows.get(option.id)?.uploadedQuantity ?? 0) : Number(option.stock_quantity ?? 0),
+      uploadedOnly: !!backupRows.get(option.id)?.uploadedOnly,
       supplierAvailableCount: Number(backupRows.get(option.id)?.supplierQuantity ?? 0),
       publishedAvailableCount: Number(backupRows.get(option.id)?.availableQuantity ?? 0),
     }))} initialOptionId={optionId} revision={new Date().toISOString()} />;
@@ -66,7 +67,7 @@ export default async function ProductStockPage({ params, searchParams }: {
         <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
           <h2 className="text-lg font-black">Supplier first · uploaded stock backup</h2>
           <p className="mt-2 text-sm">Stock supplied by {product.stock_source === "WUPEX" ? "Wupex" : product.stock_source === "FKWALLET" ? "FKWallet" : "Definite Play"}. After verified payment, uploaded codes for the same denomination are used when supplier stock cannot cover the order.</p>
-          <p className="mt-2 text-sm text-slate-600">Each order item uses one source. Purchases already submitted to the supplier stay with that supplier.</p>
+          <p className="mt-2 text-sm text-slate-600">Denominations marked Uploaded stock only use your codes exclusively and keep their current prices. Each order item uses one source. Purchases already submitted to the supplier stay with that supplier.</p>
           <Link className="mt-3 inline-flex text-sm font-bold text-blue-600 underline" href={"/admin/products/"+id+"/edit/supplier"}>Manage supplier delivery</Link>
         </div>
         {backupOptions.length ? stockManager : <p className="text-sm text-slate-600">Uploaded backup stock supports fixed voucher denominations. Account top-ups and custom ranges use their existing delivery method.</p>}

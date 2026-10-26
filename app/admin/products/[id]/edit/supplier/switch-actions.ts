@@ -4,7 +4,7 @@ import { requireWupexAdmin } from "@/lib/wupex-admin";
 import { wupexUuid } from "@/lib/wupex-import";
 import { supplierCatalogFilters, supplierCatalogue, prepareSupplierConfiguration } from "@/lib/supplier-switch-catalogue";
 import { supplierPreviewToken, verifySupplierPreview } from "@/lib/supplier-switch-preview";
-import { isSupplier, type SupplierProvider, type SupplierSetup, type SupplierSelection, type SupplierPreview } from "@/lib/supplier-switch";
+import { isSupplier, type SupplierProvider, type SupplierSetup, type SupplierSelection, type SupplierPreview, type UploadedOnlyOption } from "@/lib/supplier-switch";
 import { syncWupexProduct } from "@/lib/wupex-fulfillment";
 import { requireWupexCredentials } from "@/lib/wupex-storage";
 import { syncFKProductStock } from "@/lib/fkwallet-fulfillment";
@@ -71,13 +71,23 @@ export async function searchSupplierDenominations(provider:SupplierProvider,quer
  await requireWupexAdmin();
  try{return {data:await supplierCatalogue(provider,query,category,region,page)};}catch(error){return {error:message(error)};}
 }
+async function prepareSwitch(db: Awaited<ReturnType<typeof requireWupexAdmin>>["db"], productId: string, selection: SupplierSelection) {
+ const prepared = await prepareSupplierConfiguration(db,productId,selection);
+ let uploadedOptions: UploadedOnlyOption[] = [];
+ if(prepared.draft.kind==="CODE") {
+  const result = await db.rpc("supplier_uploaded_options_to_keep",{p_product_id:productId,p_options:prepared.draft.options});
+  if(result.error || !Array.isArray(result.data)) throw new Error("Install the uploaded-only denomination database update before switching suppliers.");
+  uploadedOptions = result.data as UploadedOnlyOption[];
+ }
+ return {...prepared,draft:{...prepared.draft,uploadedOptions}};
+}
 export async function previewSupplierSwitch(productId:string,selection:SupplierSelection):Promise<{data?:SupplierPreview;error?:string}> {
  const {db,userId}=await requireWupexAdmin();
  if(!wupexUuid(productId))return {error:"Choose a valid product."};
  try{
   const version=await db.rpc("product_supplier_version",{p_product_id:productId});
   if(version.error||!version.data)throw new Error("Install the supplier switching database update first.");
-  const prepared=await prepareSupplierConfiguration(db,productId,selection);
+  const prepared=await prepareSwitch(db,productId,selection);
   const active=await db.from("product_options").select("id,denomination,denomination_currency").eq("product_id",productId).eq("is_active",true);
   if(active.error)throw new Error("Current product options could not be loaded.");
   for(const o of selection.options.filter(o=>o.optionId)){
@@ -86,7 +96,8 @@ export async function previewSupplierSwitch(productId:string,selection:SupplierS
   }
   return {data:{token:supplierPreviewToken(userId,productId,version.data,prepared,selection),version:version.data,selection,
    options:prepared.draft.options.map(o=>({name:o.name,denomination:String(o.denomination),currency:o.currency,cost:String(o.supplierCost),costCurrency:o.supplierCurrency,price:String(o.price)})),
-   hiddenCount:(active.data??[]).filter(o=>!selection.options.some(s=>s.optionId===o.id)).length,
+   uploadedOptions:prepared.draft.uploadedOptions,
+   hiddenCount:(active.data??[]).filter(o=>!selection.options.some(s=>s.optionId===o.id)&&!prepared.draft.uploadedOptions.some(u=>u.optionId===o.id)).length,
    recipientFields:prepared.draft.customerFields?.map(f=>f.label)??[]}};
  }catch(error){return {error:message(error)};}
 }
@@ -97,11 +108,11 @@ export async function applySupplierSwitch(productId:string,requestId:string,prev
   const previous=await db.from("product_supplier_changes").select("product_id,admin_id,result").eq("id",requestId).maybeSingle();
   if(previous.error)throw new Error("Install the supplier switching database update first.");
   if(previous.data){if(previous.data.product_id!==productId||previous.data.admin_id!==userId)throw new Error("Switch reference already used.");return {success:true,message:"Supplier configuration was already saved."};}
-  const prepared=await prepareSupplierConfiguration(db,productId,preview.selection);
-  if(!verifySupplierPreview(preview.token,userId,productId,preview.version,prepared,preview.selection))throw new Error("Supplier prices changed or the preview expired. Preview denominations again.");
+  const prepared=await prepareSwitch(db,productId,preview.selection);
+  if(!verifySupplierPreview(preview.token,userId,productId,preview.version,prepared,preview.selection))throw new Error("Supplier prices or uploaded stock changed, or the preview expired. Preview denominations again.");
   const result=await db.rpc("apply_product_supplier_configuration",{p_request_id:requestId,p_product_id:productId,p_admin_id:userId,p_version:preview.version,p_provider:preview.selection.provider,p_connection:prepared.connection,p_draft:prepared.draft,p_selection:preview.selection});
   if(result.error){
-   const safe=["Product changed. Preview denominations again","Resolve unfinished website orders before switching or syncing denominations","Resolve unfinished DigiSeller orders before switching or syncing denominations","Resolve reserved codes before switching supplier","Match every denomination with uploaded stock to the same voucher denomination before switching","Disable custom ranges before switching fixed denominations","Match only the same denomination and currency, or add a new option","Start the Wupex delivery worker first","Start the FKWallet delivery worker first"];
+   const safe=["Uploaded stock changed. Preview denominations again","Uploaded codes must belong to valid fixed voucher denominations before switching","Match the existing uploaded denomination instead of creating a duplicate option","Uploaded-only denominations require voucher code delivery","Product changed. Preview denominations again","Resolve unfinished website orders before switching or syncing denominations","Resolve unfinished DigiSeller orders before switching or syncing denominations","Resolve reserved codes before switching supplier","Match every denomination with uploaded stock to the same voucher denomination before switching","Disable custom ranges before switching fixed denominations","Match only the same denomination and currency, or add a new option","Start the Wupex delivery worker first","Start the FKWallet delivery worker first"];
    throw new Error(result.error.code==="23505"?"A selected supplier denomination is already linked to another product. No changes were saved.":safe.includes(result.error.message)?result.error.message:"Supplier setup could not be saved. No changes were applied; check the database update and supplier setup.");
   }
   let warning="";
@@ -115,7 +126,7 @@ export async function applySupplierSwitch(productId:string,requestId:string,prev
     // The background worker refreshes stock; never turn catalogue presence into quantity.
     warning=" Stock will update on the next supplier refresh.";
    }
-  }catch{warning=" Stock is unavailable until the next successful supplier refresh.";}
+  }catch{warning=" Supplier stock will update on the next successful refresh. Uploaded stock remains available.";}
   updateTag("homepage-store-data"); revalidatePath(`/admin/products/${productId}/edit/supplier`);revalidatePath(`/admin/products/${productId}/edit/options`);revalidatePath("/admin/products");
   return {success:true,message:"Supplier and denominations saved."+warning};
  }catch(error){return {error:message(error)};}

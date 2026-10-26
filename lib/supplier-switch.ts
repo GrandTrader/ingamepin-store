@@ -14,10 +14,11 @@ export type SupplierSetup = {
   selection: SupplierSelection | null;
   options: { id: string; name: string; denomination: string; currency: string; active: boolean }[];
 };
+export type UploadedOnlyOption = { optionId: string; name: string; denomination: string; currency: string; price: string; quantity: number };
 export type SupplierPreview = {
   token: string; version: string; selection: SupplierSelection;
   options: { name: string; denomination: string; currency: string; cost: string; costCurrency: string; price: string }[];
-  hiddenCount: number; recipientFields: string[];
+  hiddenCount: number; recipientFields: string[]; uploadedOptions?: UploadedOnlyOption[];
 };
 export function isSupplier(value: unknown): value is SupplierProvider {
   return typeof value === "string" && Object.hasOwn(SUPPLIERS, value);

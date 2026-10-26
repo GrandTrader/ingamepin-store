@@ -15,8 +15,8 @@ test('preview binds administrator, product, source version, prices and selection
  const expired=tokens.supplierPreviewToken('admin','product','version',draft,selection,Date.now()-1);
  assert.equal(tokens.verifySupplierPreview(expired,'admin','product','version',draft,selection),false);
 });
-function actions(authorized=true){let calls=[],price='11',source='v1',configured=false;const draft=()=>({connection:'c',draft:{customerFields:[],options:[{name:'PUBG',denomination:'1',currency:'USD',supplierCost:'10',supplierCurrency:'USD',price}]}});
- const db={from(table){calls.push(table);return {select(){return this},eq(){return this},maybeSingle:async()=>({data:null}),then(resolve){resolve({data:[{id:'old'}]});}}},rpc:async(name)=>{calls.push(name);if(name==='product_supplier_version')return {data:source};configured=true;return {data:{productId:'product'}};}};
+function actions(authorized=true){let calls=[],price='11',source='v1',configured=false,uploaded=[],missing=false;const draft=()=>({connection:'c',draft:{kind:'CODE',customerFields:[],options:[{name:'PUBG',denomination:'1',currency:'USD',supplierCost:'10',supplierCurrency:'USD',price}]}});
+ const db={from(table){calls.push(table);return {select(){return this},eq(){return this},maybeSingle:async()=>({data:null}),then(resolve){resolve({data:[{id:'old'}]});}}},rpc:async(name)=>{calls.push(name);if(name==='product_supplier_version')return {data:source};if(name==='supplier_uploaded_options_to_keep')return missing?{error:{message:'missing'}}:{data:uploaded};configured=true;return {data:{productId:'product'}};}};
  const module=load('app/admin/products/[id]/edit/supplier/switch-actions.ts',{
   'next/cache':{revalidatePath:p=>calls.push('path:'+p),updateTag:t=>calls.push('tag:'+t)},
   '@/lib/wupex-admin':{requireWupexAdmin:async()=>{calls.push('auth');if(!authorized)throw new Error('unauthorized');return {db,userId:'admin'}}},
@@ -24,9 +24,9 @@ function actions(authorized=true){let calls=[],price='11',source='v1',configured
   '@/lib/supplier-switch-preview':tokens,'@/lib/supplier-switch':types,
   '@/lib/wupex-fulfillment':{syncWupexProduct:async()=>calls.push('stock-refresh')},'@/lib/wupex-storage':{requireWupexCredentials:async()=>({})},
   '@/lib/fkwallet-fulfillment':{syncFKProductStock:async()=>{}},'@/lib/fkwallet-storage':{requireCredentials:async()=>({})},'@/lib/definiteplay-relay':{getDefinitePlayItems:async()=>({items:[],stale:false})},
- });return {module,calls,changePrice:()=>price='12',configured:()=>configured};}
+ });return {module,calls,changePrice:()=>price='12',setUploaded:value=>uploaded=value,missingMigration:()=>missing=true,configured:()=>configured};}
 test('unauthorized users cannot search suppliers, preview, or save',async()=>{const f=actions(false);for(const [name,args] of [['loadSupplierCatalogFilters',['WUPEX']],['searchSupplierDenominations',['WUPEX','','','',1]],['previewSupplierSwitch',['product',selection]],['applySupplierSwitch',['product','request',{}]]])await assert.rejects(f.module[name](...args),/unauthorized/);assert.deepEqual(f.calls,['auth','auth','auth','auth']);});
-test('changed supplier price prevents a save and preserves the current configuration',async()=>{const f=actions();const r=await f.module.previewSupplierSwitch('product',selection);assert(r.data);f.changePrice();const result=await f.module.applySupplierSwitch('product','request',r.data);assert.match(result.error,/prices changed/);assert.equal(f.configured(),false);});
+test('changed supplier price prevents a save and preserves the current configuration',async()=>{const f=actions();const r=await f.module.previewSupplierSwitch('product',selection);assert(r.data);f.changePrice();const result=await f.module.applySupplierSwitch('product','request',r.data);assert.match(result.error,/prices or uploaded stock changed/);assert.equal(f.configured(),false);});
 test('valid reviewed save uses the atomic RPC, then refreshes stock and storefront data',async()=>{const f=actions();const r=await f.module.previewSupplierSwitch('product',selection);const result=await f.module.applySupplierSwitch('product','request',r.data);assert.equal(result.success,true);assert.equal(f.configured(),true);assert(f.calls.indexOf('apply_product_supplier_configuration')<f.calls.indexOf('stock-refresh'));assert(f.calls.includes('tag:homepage-store-data'));});
 
 
@@ -70,4 +70,17 @@ test('exact value and currency preserve uploaded-stock links despite different s
  assert.equal(types.matchingSupplierOption({...item,denomination:''},existing,[]),null);
  assert.equal(types.matchingSupplierOption(item,existing,[{optionId:'owned-option'}]),null);
  assert.equal(types.matchingSupplierOption(item,[...existing,{...existing[0],id:'other'}],[]),null);
+});
+
+
+test('uploaded-only options are shown in the preview and are bound to its signed stock snapshot',async()=>{
+ const f=actions();const local={optionId:'old',name:'10 TRY',denomination:'10',currency:'TRY',price:'0.26',quantity:17};
+ f.setUploaded([local]);const r=await f.module.previewSupplierSwitch('product',selection);assert(r.data);
+ assert.equal(r.data.hiddenCount,0);assert.equal(r.data.uploadedOptions[0].quantity,17);assert.equal(f.configured(),false);
+ f.setUploaded([{...local,quantity:16}]);const result=await f.module.applySupplierSwitch('product','request',r.data);
+ assert.match(result.error,/Preview denominations again/);assert.equal(f.configured(),false);
+});
+test('missing uploaded-only migration blocks preparation without saving anything',async()=>{
+ const f=actions();f.missingMigration();const r=await f.module.previewSupplierSwitch('product',selection);
+ assert.match(r.error,/database update/);assert.equal(f.configured(),false);
 });

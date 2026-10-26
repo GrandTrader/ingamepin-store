@@ -46,6 +46,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{PGlite}=requir
  await db.exec('do $$declare src text;fn regprocedure;begin\n'+rangeSource.slice(guardStart,guardEnd)+'\nend $$;');
  await db.exec(fs.readFileSync('supabase/migrations/20261026_210000_supplier_uploaded_backup.sql','utf8'));
  await db.exec(fs.readFileSync('supabase/migrations/20261026_210000_supplier_uploaded_backup.sql','utf8'));
+ for(let n=0;n<2;n++)await db.exec(fs.readFileSync('supabase/migrations/20261026_220000_supplier_uploaded_only.sql','utf8'));
  const makeProduct=async(n,provider='DEFINITEPLAY',kind='CODE')=>{
   const pid=id(n),oid=id(n+1);
   await q("insert into products(id,name,slug,category_id,region,currency) values($1,'Backup fixture',$2,$3,'Global','USD')",[pid,'backup-'+n,id(90001)]);
@@ -155,9 +156,9 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{PGlite}=requir
  const switchDraft={markup:'10',exchangeRate:'1',kind:'CODE',customerFields:[],options:[{
   supplierKey:'6001',optionId:synced.oid,name:'10 USD',denomination:'10',currency:'USD',supplierCost:'10',supplierCurrency:'USD',price:'11.00',
   supplierSnapshot:{id:6001,sku:'MATCHED',name:'10 USD',cardType:'voucher',subType:null,fields:[]}}]};
- const switchProduct=async(n,d)=>q('select apply_product_supplier_configuration($1,$2,$3,$4,$5,$6,$7,$8)',
-  [id(n),synced.pid,id(90000),await v(),'WUPEX',connection,JSON.stringify(d),JSON.stringify({provider:'WUPEX',options:[]})]);
- await assert.rejects(switchProduct(6005,{...switchDraft,options:[{...switchDraft.options[0],optionId:null}]}),/Match every denomination/);
+ const switchProduct=async(n,d)=>{d={...d,uploadedOptions:(await one('select supplier_uploaded_options_to_keep($1,$2) v',[synced.pid,JSON.stringify(d.options)])).v};return q('select apply_product_supplier_configuration($1,$2,$3,$4,$5,$6,$7,$8)',
+  [id(n),synced.pid,id(90000),await v(),'WUPEX',connection,JSON.stringify(d),JSON.stringify({provider:'WUPEX',options:[]})]);};
+ await assert.rejects(switchProduct(6005,{...switchDraft,options:[{...switchDraft.options[0],optionId:null}]}),/Match the existing uploaded denomination/);
  await assert.rejects(switchProduct(6005,{...switchDraft,options:[{...switchDraft.options[0],denomination:'20'}]}),/same denomination/);
  await switchProduct(6005,switchDraft);
  assert.equal((await one("select count(*)::int n from gift_card_codes where product_id=$1 and status='AVAILABLE'",[synced.pid])).n,3);
@@ -219,10 +220,81 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{PGlite}=requir
  await q("update payments set amount=$2 where order_id=$1",[underpaid.order,underpaid.total]);
  assert.equal(await sold(underpaid),1,'verified full payment releases the matching code');
 
+
+ // Mixed supplier / uploaded-only configurations preserve the actual option IDs and prices.
+ for(const [ix,provider] of ['DEFINITEPLAY','WUPEX','FKWALLET'].entries()){
+  const base=10000+ix*1000,pid=id(base),smallId=id(base+1),mediumId=id(base+2),linkedId=id(base+3),hiddenId=id(base+4);
+  await q("insert into products(id,name,slug,category_id,region,currency,stock_source) values($1,'Mixed fixture',$2,$3,'Turkey','USD','OWNED')",[pid,'mixed-'+base,id(90001)]);
+  for(const [oid,value,price,active] of [[smallId,10,0.26,true],[mediumId,50,1.30,true],[linkedId,100,2.60,true],[hiddenId,200,5.20,false]]){
+   await q("insert into product_options(id,product_id,option_name,denomination,denomination_currency,selling_price,is_active,option_type) values($1,$2,$3,$4,'TRY',$5,$6,'CURRENCY')",[oid,pid,value+' TRY',value,price,active]);
+   await q("insert into gift_card_codes(product_id,product_option_id,denomination,code,status) values($1,$2,$3,$4,'AVAILABLE')",[pid,oid,value,'MIXED-'+oid]);
+  }
+  const draft={markup:'10',exchangeRate:'1',kind:'CODE',customerFields:[],options:[{
+   supplierKey:String(base),optionId:linkedId,name:'Apple 100 TRY',denomination:'100',currency:'TRY',supplierCost:'2',supplierCurrency:'USD',price:'2.20',
+   supplierSnapshot:{id:base,sku:'MIXED'+base,name:'Apple 100 TRY',cardType:'voucher',subType:null,fields:[]}}]};
+  const preview=async d=>({...d,uploadedOptions:(await one('select supplier_uploaded_options_to_keep($1,$2) v',[pid,JSON.stringify(d.options)])).v});
+  const apply=async(n,d)=>q('select apply_product_supplier_configuration($1,$2,$3,$4,$5,$6,$7,$8)',[id(n),pid,id(90000),(await one('select product_supplier_version($1) v',[pid])).v,provider,connection,JSON.stringify(d),JSON.stringify({provider,category:'10',options:[]})]);
+  let reviewed=await preview(draft);
+  assert.deepEqual(reviewed.uploadedOptions.map(o=>o.optionId),[smallId,mediumId]);
+  // Changes after the preview invalidate the entire transaction.
+  await q("insert into gift_card_codes(product_id,product_option_id,denomination,code,status) values($1,$2,10,$3,'AVAILABLE')",[pid,smallId,'MIXED-EXTRA-'+base]);
+  await assert.rejects(apply(base+5,reviewed),/Uploaded stock changed/);
+  assert.equal((await one('select stock_source from products where id=$1',[pid])).stock_source,'OWNED');
+  await assert.rejects(apply(base+5,{...reviewed,kind:'ACCOUNT'}),/valid fixed voucher/);
+  reviewed=await preview(draft);
+  // Reserved inventory cannot be reconfigured.
+  await q("update gift_card_codes set status='RESERVED' where code=$1",['MIXED-EXTRA-'+base]);
+  await assert.rejects(apply(base+5,reviewed),/Resolve reserved codes/);
+  await q("update gift_card_codes set status='AVAILABLE' where code=$1",['MIXED-EXTRA-'+base]);
+  await apply(base+5,reviewed);
+  const flags=(await q('select option_id from product_uploaded_stock_options where product_id=$1 order by option_id',[pid])).rows;
+  assert.deepEqual(flags.map(r=>r.option_id),[smallId,mediumId]);
+  assert.equal((await one('select count(*)::int n from definiteplay_stock where product_id=$1',[pid])).n,1,'no fake supplier mappings');
+  for(const [oid,price,count] of [[smallId,0.26,2],[mediumId,1.30,1]]){
+   const option=await one('select * from product_options where id=$1',[oid]);
+   assert.equal(Number(option.selling_price),price);assert.equal(option.is_active,true);assert.equal(option.stock_quantity,count);
+   assert.equal(Number((await one('select confirmed_supplier_quantity($1) n',[oid])).n),0);
+  }
+  assert.equal((await one('select is_active from product_options where id=$1',[hiddenId])).is_active,false);
+  assert.equal((await one('select count(*)::int n from gift_card_codes where product_option_id=$1 and status=\'AVAILABLE\'',[hiddenId])).n,1,'hidden inventory retained');
+  const inventory=(await one('select supplier_backup_inventory($1) v',[pid])).v;
+  assert.equal(inventory.find(o=>o.optionId===smallId).uploadedOnly,true);
+  assert.equal(inventory.find(o=>o.optionId===linkedId).uploadedOnly,false);
+  // Create a real paid order against the uploaded-only denomination, with the supplier offline.
+  if(provider!=='DEFINITEPLAY')await q('update '+(provider==='WUPEX'?'wupex':'fkwallet')+"_worker_state set seen_at='epoch'");
+  const local={pid,oid:smallId},o=await order(local,base+10,2);
+  assert.equal((await job(o)).uploaded_backup_only,true);assert.equal(Number((await job(o)).max_unit_cost),0);
+  assert.equal(await sold(o),0);
+  await pay(o);assert.equal(await sold(o),2);await q('select deliver_uploaded_supplier_backup($1)',[o.item]);assert.equal(await sold(o),2);
+  assert.equal((await job(o)).delivery_source,'UPLOADED_STOCK');assert.equal(await quantity(local),0);
+  if(provider!=='DEFINITEPLAY'){
+   assert.equal((await one('select count(*)::int n from '+(provider==='WUPEX'?'wupex':'fkwallet')+'_units where item_id=$1',[o.item])).n,0,'no external purchase units');
+   await q('update '+(provider==='WUPEX'?'wupex':'fkwallet')+'_worker_state set seen_at=now()');
+  }
+  // Sync retains an exhausted uploaded option and its original price, then restocking makes it buyable.
+  await apply(base+20,await preview(draft));
+  assert.equal((await one('select is_active from product_options where id=$1',[smallId])).is_active,true);
+  assert.equal(await quantity(local),0);await upload(local,1);assert.equal(await quantity(local),1);
+  // Unfinished orders still block switching.
+  const pending=await order(local,base+30);
+  await assert.rejects(apply(base+40,await preview(draft)),/Resolve unfinished website orders/);
+  await q("update orders set status='CANCELLED' where id=$1",[pending.order]);
+  // A later real supplier mapping for 10 TRY reuses the existing option, clears its private flag,
+  // and keeps its one uploaded code as supplier fallback.
+  const expanded={...draft,options:[...draft.options,{...draft.options[0],supplierKey:String(base+99),optionId:smallId,name:'Apple 10 TRY',denomination:'10',supplierCost:'0.2',price:'0.22',supplierSnapshot:{...draft.options[0].supplierSnapshot,id:base+99,sku:'TEN'+base}}]};
+  await apply(base+40,await preview(expanded));
+  assert.equal((await one('select count(*)::int n from product_uploaded_stock_options where option_id=$1',[smallId])).n,0);
+  assert.equal((await one('select count(*)::int n from definiteplay_stock where option_id=$1',[smallId])).n,1);
+  assert.equal(await quantity(local),1);
+  assert.equal((await one('select is_active from product_options where id=$1',[mediumId])).is_active,true);
+ }
+ console.log('PASS: mixed uploaded-only / supplier denominations across all providers, stock-sensitive preview, reserve guards, exhausted-option retention, restock and later remapping');
  // Permission boundaries.
  for(const role of ['anon','authenticated']){
   await db.exec('set role '+role);
   await reject('select supplier_backup_inventory($1)',[p.pid]);
+  await reject('select * from product_uploaded_stock_options');
+  await reject('select supplier_uploaded_options_to_keep($1,$2)',[p.pid,'[]']);
   await reject('select deliver_uploaded_supplier_backup($1)',[protectedOrders[0].item]);
   await reject('select fulfill_uploaded_supplier_backups(100)');
   await db.exec('reset role');
