@@ -84,3 +84,15 @@ test('missing uploaded-only migration blocks preparation without saving anything
  const f=actions();f.missingMigration();const r=await f.module.previewSupplierSwitch('product',selection);
  assert.match(r.error,/database update/);assert.equal(f.configured(),false);
 });
+
+ test('Wupex Turkish lira names populate denomination and currency safely',()=>{
+ const parser=load('lib/wupex-import.ts',{'./fkwallet-import':load('lib/fkwallet-import.ts')});
+ for(const amount of [2500,3000,4000,5000]) {
+  for(const label of [amount+' TL',amount+'TL','TL '+amount,amount+' tl',amount+' TRY',amount+' ₺']) {
+   const result=parser.wupexCardDenomination({name:'PlayStation Gift Card '+label+' (Turkey)'});
+   assert.equal(result?.denomination,String(amount));assert.equal(result?.currency,'TRY');
+  }
+ }
+ for(const label of ['2500 TLX','2500 BTL','2500 TL2','2500-5000 TL','2500+500 TL','2500 TL 100 USD'])
+  assert.equal(parser.wupexCardDenomination({name:'PlayStation Gift Card '+label+' (Turkey)'}),null);
+});

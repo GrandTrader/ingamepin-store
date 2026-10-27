@@ -11,7 +11,7 @@ export type WupexImportProduct = WupexProduct & { fields: WupexField[] };
  */
 const cardCurrencies = new Set(Intl.supportedValuesOf("currency"));
 export function wupexCardDenomination(product: Pick<WupexProduct, "name">): { denomination: string; currency: string } | null {
-  const name = product.name.toUpperCase().replace(/[€₹₺₽£]/g, symbol => ({ "€": " EUR ", "₹": " INR ", "₺": " TRY ", "₽": " RUB ", "£": " GBP " })[symbol]!);
+  const name = product.name.toUpperCase().replace(/(?<![A-Z])TL(?![A-Z0-9])/g, " TRY ").replace(/[€₹₺₽£]/g, symbol => ({ "€": " EUR ", "₹": " INR ", "₺": " TRY ", "₽": " RUB ", "£": " GBP " })[symbol]!);
   // A range or bonus bundle cannot safely be interpreted as one fixed value.
   if (/\d[\d,.]*\s*[-–+\/]\s*\d/.test(name)) return null;
   const matches: { amount: string; currency: string }[] = [];
